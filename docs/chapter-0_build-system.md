@@ -28,22 +28,22 @@ The project is organized as follows:
 graph TD
     A(native/)
     A --> B[CMakeLists.txt]
-    A --> C[include/]
+    A --> C(include/)
     C --> C1[native.hpp]
-    A --> D[src/]
+    A --> D(src/)
     D --> D1[app.cpp]
-    A --> E[platform/]
+    A --> E(platform/)
     E --> E1[linux/]
     E1 --> E1a[app_linux.cpp]
     E --> E2[windows/]
     E2 --> E2a[app_windows.cpp]
     E --> E3[haiku/]
     E3 --> E3a[app_haiku.cpp]
-    A --> F[examples/]
+    A --> F(examples/)
     F --> F1[hello_world/]
     F1 --> F1a[CMakeLists.txt]
     F1 --> F1b[main.cpp]
-    A --> G[chapters/]
+    A --> G(chapters/)
     G --> G1[chapter-0_build-system.md]
     G --> G2[chapter-1_application.md]
 
