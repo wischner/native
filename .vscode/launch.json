@@ -2,20 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
+            "name": "Run app-example (Make build)",
+            "type": "cppdbg",                       // Or "cppvsdbg" for MSVC on Windows
             "request": "launch",
-            "program": "${workspaceFolder}/build/raster",
+            "program": "${workspaceFolder}/build/examples/app-example/app-example", // Adjust for Windows
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "preLaunchTask": "build",
+            "externalConsole": true,                // Better for GUI apps, change to false if you prefer
+            "MIMode": "gdb",                        // "gdb" for GCC/MinGW; "lldb" for clang/lldb
+            "miDebuggerPath": "/usr/bin/gdb",       // Adjust if you're on Windows or different gdb path
+            "preLaunchTask": "CMake Build (Make)",  // This makes it wait for your build to complete!
             "setupCommands": [
                 {
-                    "description": "Enable pretty-printing for gdb",
+                    "description": "Enable pretty-printing",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }

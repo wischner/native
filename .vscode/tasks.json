@@ -1,16 +1,48 @@
 {
     "version": "2.0.0",
     "tasks": [
-      {
-        "type": "shell",
-        "label": "build",
-        "command": "make",
-        "args": ["x11"],
-        "problemMatcher": ["$gcc"],
-        "group": {
-          "kind": "build",
-          "isDefault": true
+        {
+            "label": "CMake Configure (Make)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", ".",
+                "-B", "build",
+                "-G", "Unix Makefiles",               // Force Makefiles generator
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "CMake Build (Make)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build",
+                "--config", "Debug",                 // For single-config generators like Makefiles, this is optional
+                "-j", "8"                            // Use 8 threads, adjust to your CPU
+            ],
+            "problemMatcher": "$gcc",                // For GCC/Clang; use $msCompile for MSVC
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": ["CMake Configure (Make)"]
+        },
+        {
+            "label": "CMake Clean (Make)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build",
+                "--target", "clean"
+            ],
+            "problemMatcher": [],
+            "group": "build"
         }
-      }
     ]
-  }
+}
