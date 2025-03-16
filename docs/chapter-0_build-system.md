@@ -43,9 +43,6 @@ graph LR
     examples --> hello_world
     hello_world --> example_cmake[CMakeLists.txt]
     hello_world --> example_main[main.cpp]
-    native --> chapters
-    chapters --> chapter0[chapter-0_build-system.md]
-    chapters --> chapter1[chapter-1_application.md]
 ```
 
 This directory layout separates platform-independent code, platform-specific implementations, examples, and documentation into clear and distinct locations.
