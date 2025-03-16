@@ -22,8 +22,6 @@ The project uses **CMake** for its build system, with the goal of being simple, 
 
 The project is organized as follows:
 
-## Directory Structure
-
 ```mermaid
 graph LR
     native
