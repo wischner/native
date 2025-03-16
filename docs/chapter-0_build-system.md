@@ -25,7 +25,7 @@ The project is organized as follows:
 ## Directory Structure
 
 ```mermaid
-graph TB
+graph LR
     native
     native --> CMakeLists[CMakeLists.txt]
     native --> include
