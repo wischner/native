@@ -22,25 +22,28 @@ The project uses **CMake** for its build system, with the goal of being simple, 
 
 The project is organized as follows:
 
-```mermaid
-graph LR
-    native
-    native --> CMakeLists[CMakeLists.txt]
-    native --> include
-    include --> native_hpp[native.hpp]
-    native --> src
-    src --> app_cpp[app.cpp]
-    native --> platform
-    platform --> linux
-    linux --> app_linux[app_linux.cpp]
-    platform --> windows
-    windows --> app_windows[app_windows.cpp]
-    platform --> haiku
-    haiku --> app_haiku[app_haiku.cpp]
-    native --> examples
-    examples --> hello_world
-    hello_world --> example_cmake[CMakeLists.txt]
-    hello_world --> example_main[main.cpp]
+```
+native/
+├── CMakeLists.txt
+├── include/
+│   └── native.hpp
+├── src/
+│   └── app.cpp
+├── platform/
+│   ├── linux/
+│   │   └── app_linux.cpp
+│   ├── windows/
+│   │   └── app_windows.cpp
+│   └── haiku/
+│       └── app_haiku.cpp
+├── examples/
+│   └── hello_world/
+│       ├── CMakeLists.txt
+│       └── main.cpp
+└── chapters/
+    ├── chapter-0_build-system.md
+    └── chapter-1_application.md
+
 ```
 
 This directory layout separates platform-independent code, platform-specific implementations, examples, and documentation into clear and distinct locations.
