@@ -25,27 +25,42 @@ The project is organized as follows:
 ## Directory Structure
 
 ```mermaid
-graph TD
-    A(native/)
-    A --> B[CMakeLists.txt]
-    A --> C(include/)
-    C --> C1[native.hpp]
-    A --> D(src/)
-    D --> D1[app.cpp]
-    A --> E(platform/)
-    E --> E1[linux/]
-    E1 --> E1a[app_linux.cpp]
-    E --> E2[windows/]
-    E2 --> E2a[app_windows.cpp]
-    E --> E3[haiku/]
-    E3 --> E3a[app_haiku.cpp]
-    A --> F(examples/)
-    F --> F1[hello_world/]
-    F1 --> F1a[CMakeLists.txt]
-    F1 --> F1b[main.cpp]
-    A --> G(chapters/)
-    G --> G1[chapter-0_build-system.md]
-    G --> G2[chapter-1_application.md]
+graph TB
+    subgraph native
+        CMakeLists["CMakeLists.txt"]
+
+        subgraph include
+            native_hpp["native.hpp"]
+        end
+
+        subgraph src
+            app_cpp["app.cpp"]
+        end
+
+        subgraph platform
+            subgraph linux
+                app_linux["app_linux.cpp"]
+            end
+            subgraph windows
+                app_windows["app_windows.cpp"]
+            end
+            subgraph haiku
+                app_haiku["app_haiku.cpp"]
+            end
+        end
+
+        subgraph examples
+            subgraph hello_world
+                example_cmake["CMakeLists.txt"]
+                example_main["main.cpp"]
+            end
+        end
+
+        subgraph chapters
+            chapter0["chapter-0_build-system.md"]
+            chapter1["chapter-1_application.md"]
+        end
+    end
 ```
 
 This directory layout separates platform-independent code, platform-specific implementations, examples, and documentation into clear and distinct locations.
