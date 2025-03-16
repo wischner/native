@@ -24,8 +24,7 @@ The project is organized as follows:
 
 ## Directory Structure
 
-```markdown
-~~~mermaid
+```mermaid
 graph TD
     A(native/)
     A --> B[CMakeLists.txt]
@@ -47,6 +46,6 @@ graph TD
     A --> G(chapters/)
     G --> G1[chapter-0_build-system.md]
     G --> G2[chapter-1_application.md]
-~~~
+```
 
 This directory layout separates platform-independent code, platform-specific implementations, examples, and documentation into clear and distinct locations.
