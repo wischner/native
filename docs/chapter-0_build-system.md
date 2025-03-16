@@ -26,41 +26,26 @@ The project is organized as follows:
 
 ```mermaid
 graph TB
-    subgraph native
-        CMakeLists["CMakeLists.txt"]
-
-        subgraph include
-            native_hpp["native.hpp"]
-        end
-
-        subgraph src
-            app_cpp["app.cpp"]
-        end
-
-        subgraph platform
-            subgraph linux
-                app_linux["app_linux.cpp"]
-            end
-            subgraph windows
-                app_windows["app_windows.cpp"]
-            end
-            subgraph haiku
-                app_haiku["app_haiku.cpp"]
-            end
-        end
-
-        subgraph examples
-            subgraph hello_world
-                example_cmake["CMakeLists.txt"]
-                example_main["main.cpp"]
-            end
-        end
-
-        subgraph chapters
-            chapter0["chapter-0_build-system.md"]
-            chapter1["chapter-1_application.md"]
-        end
-    end
+    native
+    native --> CMakeLists[CMakeLists.txt]
+    native --> include
+    include --> native_hpp[native.hpp]
+    native --> src
+    src --> app_cpp[app.cpp]
+    native --> platform
+    platform --> linux
+    linux --> app_linux[app_linux.cpp]
+    platform --> windows
+    windows --> app_windows[app_windows.cpp]
+    platform --> haiku
+    haiku --> app_haiku[app_haiku.cpp]
+    native --> examples
+    examples --> hello_world
+    hello_world --> example_cmake[CMakeLists.txt]
+    hello_world --> example_main[main.cpp]
+    native --> chapters
+    chapters --> chapter0[chapter-0_build-system.md]
+    chapters --> chapter1[chapter-1_application.md]
 ```
 
 This directory layout separates platform-independent code, platform-specific implementations, examples, and documentation into clear and distinct locations.
