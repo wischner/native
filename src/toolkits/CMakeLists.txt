@@ -1,0 +1,11 @@
+set(NATIVE_TOOLKIT "OpenMotif" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
+
+if(NATIVE_TOOLKIT STREQUAL "SDL3")
+    add_subdirectory(sdl3)
+elseif(NATIVE_TOOLKIT STREQUAL "OpenMotif")
+    add_subdirectory(openmotif)
+elseif(NATIVE_TOOLKIT STREQUAL "X11")
+    add_subdirectory(x11)
+else()
+    message(FATAL_ERROR "Unknown toolkit: ${NATIVE_TOOLKIT}")
+endif()

@@ -3,13 +3,13 @@
 #include <windows.h>
 
 // Declare the user's main
-extern "C" int main(int argc, char** argv);
+extern "C" int program(int argc, char** argv);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     int argc = __argc;
     char** argv = __argv;
 
-    return main(argc, argv);
+    return program(argc, argv);
 }
 #endif

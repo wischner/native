@@ -11,7 +11,7 @@ By the end of this chapter, the application structure will allow a minimal progr
 ```cpp
 #include "native.hpp"
 
-int main(int argc, char* argv[])
+int program(int argc, char* argv[])
 {
     return native::app::run(app_wnd("Hello World!"));
 }
