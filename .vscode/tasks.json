@@ -8,7 +8,7 @@
             "args": [
                 "-S", ".",
                 "-B", "build",
-                "-G", "Unix Makefiles",               // Force Makefiles generator
+                "-G", "Unix Makefiles",               // Force Makefiles
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
@@ -23,10 +23,10 @@
             "command": "cmake",
             "args": [
                 "--build", "build",
-                "--config", "Debug",                 // For single-config generators like Makefiles, this is optional
-                "-j", "8"                            // Use 8 threads, adjust to your CPU
+                "--config", "Debug",                 // Change to Release!
+                "-j", "8"
             ],
-            "problemMatcher": "$gcc",                // For GCC/Clang; use $msCompile for MSVC
+            "problemMatcher": "$gcc",                // Use $msCompile for MSVC!
             "group": {
                 "kind": "build",
                 "isDefault": true
