@@ -18,7 +18,8 @@ if(NOT TARGET native)
 endif()
 
 target_sources(native PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
 )
 
 # Conditionally include directories if needed

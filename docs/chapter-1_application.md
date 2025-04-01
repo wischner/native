@@ -9,9 +9,10 @@ The goal is to establish a consistent and minimal interface for starting applica
 By the end of this chapter, the application structure will allow a minimal program to be written as follows:
 
 ```cpp
-#include "native.hpp"
+#include "native.h"
 
 int program(int argc, char* argv[])
 {
     return native::app::run(app_wnd("Hello World!"));
 }
+```
