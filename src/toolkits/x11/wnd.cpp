@@ -8,6 +8,11 @@ Window g_main_window = 0;
 
 namespace native
 {
+    using native_handle = ::Window;
+
+    static std::unordered_map<native_handle, native::wnd *> native_to_wnd;
+    static std::unordered_map<native::wnd *, native_handle> wnd_to_native;
+
     void wnd::create() const
     {
         g_display = XOpenDisplay(nullptr);

@@ -1,14 +1,18 @@
 #include <native.h>
+#include <bindings.h>
 #include <Xm/Xm.h>
 #include <iostream>
 
-extern XtAppContext app_context;
+namespace motif
+{
+    XtAppContext app_instance;
+}
 
 namespace native
 {
     int app::main_loop()
     {
-        XtAppMainLoop(app_context);
-        return 0; // never reached unless XtAppSetExitFlag is used
+        XtAppMainLoop(motif::app_instance);
+        return 0;
     }
 }
