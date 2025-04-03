@@ -55,14 +55,14 @@
         },
 
         {
-            "label": "CMake Configure (MinGW)",
+            "label": "CMake Configure (MSVC)",
             "type": "shell",
             "command": "cmake",
             "args": [
               "-S", ".",
               "-B", "build",
-              "-G", "MinGW Makefiles",
-              "-DCMAKE_BUILD_TYPE=Debug",
+              "-G", "NMake Makefiles",
+              "-DCMAKE_BUILD_TYPE=Debug"
             ],
             "problemMatcher": [],
             "group": {
@@ -75,26 +75,25 @@
           }
           ,
           {
-            "label": "CMake Build (MinGW)",
+            "label": "CMake Build (MSVC)",
             "type": "shell",
             "command": "cmake",
             "args": [
               "--build", "build",
-              "--config", "Debug",
-              "-j", "8"
+              "--config", "Debug"
             ],
-            "problemMatcher": "$gcc",
+            "problemMatcher": "$msCompile",
             "group": {
               "kind": "build",
               "isDefault": true
             },
-            "dependsOn": ["CMake Configure (MinGW)"],
+            "dependsOn": ["CMake Configure (MSVC)"],
             "os": {
               "windows": true
             }
           },
           {
-            "label": "CMake Clean (MinGW)",
+            "label": "CMake Clean (MSVC)",
             "type": "shell",
             "command": "cmake",
             "args": [
