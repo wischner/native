@@ -15,6 +15,9 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "os": {
+                "linux": true
             }
         },
         {
@@ -31,7 +34,10 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn": ["CMake Configure (Make)"]
+            "dependsOn": ["CMake Configure (Make)"],
+            "os": {
+                "linux": true
+            }
         },
         {
             "label": "CMake Clean (Make)",
@@ -42,7 +48,63 @@
                 "--target", "clean"
             ],
             "problemMatcher": [],
-            "group": "build"
-        }
+            "group": "build",
+            "os": {
+                "linux": true
+            }
+        },
+
+        {
+            "label": "CMake Configure (MinGW)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+              "-S", ".",
+              "-B", "build",
+              "-G", "MinGW Makefiles",
+              "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": [],
+            "group": {
+              "kind": "build",
+              "isDefault": true
+            },
+            "os": {
+              "windows": true
+            }
+          },
+          {
+            "label": "CMake Build (MinGW)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+              "--build", "build",
+              "--config", "Debug",
+              "-j", "8"
+            ],
+            "problemMatcher": "$gcc",
+            "group": {
+              "kind": "build",
+              "isDefault": true
+            },
+            "dependsOn": ["CMake Configure (MinGW)"],
+            "os": {
+              "windows": true
+            }
+          },
+          {
+            "label": "CMake Clean (MinGW)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+              "--build", "build",
+              "--target", "clean"
+            ],
+            "problemMatcher": [],
+            "group": "build",
+            "os": {
+              "windows": true
+            }
+          }
     ]
 }
