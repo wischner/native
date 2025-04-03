@@ -1,5 +1,7 @@
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
 )
 
