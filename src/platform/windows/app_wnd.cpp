@@ -4,7 +4,7 @@
 #include <iostream>
 
 namespace win {
-    native::bindings<HWND, native::wnd*> wnd_bindings;
+    extern native::bindings<HWND, native::wnd*> wnd_bindings;
 
     // Window class name
     constexpr wchar_t CLASS_NAME[] = L"native_window_class";
