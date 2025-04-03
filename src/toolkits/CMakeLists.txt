@@ -1,4 +1,4 @@
-set(NATIVE_TOOLKIT "OpenMotif" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
+set(NATIVE_TOOLKIT "X11" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
 
 if(NATIVE_TOOLKIT STREQUAL "SDL2")
     add_subdirectory(sdl2)
