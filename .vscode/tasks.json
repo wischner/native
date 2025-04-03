@@ -62,7 +62,7 @@
               "-S", ".",
               "-B", "build",
               "-G", "MinGW Makefiles",
-              "-DCMAKE_BUILD_TYPE=Debug"
+              "-DCMAKE_BUILD_TYPE=Debug",
             ],
             "problemMatcher": [],
             "group": {
@@ -72,7 +72,8 @@
             "os": {
               "windows": true
             }
-          },
+          }
+          ,
           {
             "label": "CMake Build (MinGW)",
             "type": "shell",
