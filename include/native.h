@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <utility>
+#include <cstdint>
 
 extern int program(int argc, char **argv);
 
@@ -13,6 +14,7 @@ namespace native
 
     // --- Geometry. -------------------------------------------------
     using coord = int;
+    using rgba = uint32_t;
 
     struct point
     {
@@ -169,6 +171,68 @@ namespace native
             : position(pos), delta(d), direction(dir) {}
     };
 
+    // --- Graphics --------------------------------------------------
+    class pen
+    {
+    public:
+        pen(rgba color, coord thickness);
+        ~pen();
+
+        pen(const pen &) = delete;
+        pen &operator=(const pen &) = delete;
+
+        pen(pen &&) noexcept;
+        pen &operator=(pen &&) noexcept;
+
+        rgba color() const;
+        coord thickness() const;
+
+    private:
+        rgba _color;
+        coord _thickness;
+    };
+
+    class img; // forward declare
+
+    class gpx
+    {
+    public:
+        virtual ~gpx() = default;
+
+        virtual void set_pen(const pen &p) = 0;
+        virtual pen get_pen() const = 0;
+
+        virtual void clear(rgba color) = 0;
+        virtual void draw_line(point from, point to) = 0;
+        virtual void draw_rect(rect r, bool filled = false) = 0;
+        virtual void draw_text(const std::string &text, point p) = 0;
+        virtual void draw_img(const img &src, point dst) = 0;
+
+        virtual void set_clip(const rect &r) = 0;
+        virtual rect get_clip() const = 0;
+    };
+
+    // --- Image. ----------------------------------------------------
+    class img
+    {
+    public:
+        img(coord w, coord h);
+        ~img();
+
+        coord width() const { return _w; }
+        coord height() const { return _h; }
+
+        rgba *pixels() { return _data; }
+        const rgba *pixels() const { return _data; }
+
+        gpx &get_gpx() const;
+
+    private:
+        coord _w, _h;
+        rgba *_data;
+        mutable gpx *_gpx = nullptr;
+    };
+
     // --- Screen. ---------------------------------------------------
     class screen
     {
@@ -225,6 +289,8 @@ namespace native
         virtual void create() const = 0;
         virtual void show() const = 0;
 
+        gpx &get_gpx() const; // New method to obtain gpx for this window
+
         signal<> on_wnd_create;
         signal<point> on_wnd_move;
         signal<size> on_wnd_resize;
@@ -254,4 +320,5 @@ namespace native
     private:
         std::string _title;
     };
+
 }
