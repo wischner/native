@@ -276,7 +276,6 @@ namespace native
     };
 
     // --- Windows. --------------------------------------------------
-    using native_handle = void *;
     class wnd
     {
     public:

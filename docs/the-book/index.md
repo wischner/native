@@ -23,3 +23,6 @@ If you haven’t already, read the [README](../../README.md) first for an overvi
 
 6. [Patterns: application entry and main loop](patterns-application.md)  
    Describes how applications start via the `program()` function, how the `app` class manages the main window and loop, and how platform-specific `main()` functions route into a common entry point.
+
+7. [Patterns: windows and app windows](patterns-windows.md)  
+   Base class for all windows (`wnd`), main application window (`app_wnd`), and how platforms implement native creation and event routing.
