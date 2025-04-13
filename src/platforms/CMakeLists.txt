@@ -2,8 +2,8 @@
 
 if(WIN32)
     add_subdirectory(windows)
+elseif(HAIKU)
+    add_subdirectory(haiku)
 elseif(UNIX AND NOT APPLE)
     add_subdirectory(linux)
-elseif(HAIKU)
-    #add_subdirectory(haiku)
 endif()

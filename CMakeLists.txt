@@ -5,6 +5,11 @@ project(native LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Detect if we are building on Haiku
+if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
+    set(HAIKU TRUE)
+endif()
+
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(examples)
