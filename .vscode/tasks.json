@@ -1,110 +1,108 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "CMake Configure (Make)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S", ".",
-                "-B", "build",
-                "-G", "Unix Makefiles",               // Force Makefiles
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "os": {
-                "linux": true
-            }
-        },
-        {
-            "label": "CMake Build (Make)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "build",
-                "--config", "Debug",                 // Change to Release!
-                "-j", "8"
-            ],
-            "problemMatcher": "$gcc",                // Use $msCompile for MSVC!
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "dependsOn": ["CMake Configure (Make)"],
-            "os": {
-                "linux": true
-            }
-        },
-        {
-            "label": "CMake Clean (Make)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "build",
-                "--target", "clean"
-            ],
-            "problemMatcher": [],
-            "group": "build",
-            "os": {
-                "linux": true
-            }
-        },
+  "version": "2.0.0",
+  "tasks": [
+      // Linux
+      {
+          "label": "CMake Configure (Make)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["-S", ".", "-B", "build", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
+          "problemMatcher": [],
+          "group": { "kind": "build", "isDefault": true },
+          "os": { "linux": true }
+      },
+      {
+          "label": "CMake Build (Make)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "build", "--config", "Debug", "-j", "8"],
+          "problemMatcher": "$gcc",
+          "group": { "kind": "build", "isDefault": true },
+          "dependsOn": ["CMake Configure (Make)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "CMake Clean (Make)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "build", "--target", "clean"],
+          "problemMatcher": [],
+          "group": "build",
+          "os": { "linux": true }
+      },
 
-        {
-            "label": "CMake Configure (MSVC)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-              "-S", ".",
-              "-B", "build",
-              "-G", "NMake Makefiles",
-              "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": [],
-            "group": {
-              "kind": "build",
-              "isDefault": true
-            },
-            "os": {
-              "windows": true
-            }
-          }
-          ,
-          {
-            "label": "CMake Build (MSVC)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-              "--build", "build",
-              "--config", "Debug"
-            ],
-            "problemMatcher": "$msCompile",
-            "group": {
-              "kind": "build",
-              "isDefault": true
-            },
-            "dependsOn": ["CMake Configure (MSVC)"],
-            "os": {
-              "windows": true
-            }
+      // Windows
+      {
+          "label": "CMake Configure (MSVC)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["-S", ".", "-B", "build", "-G", "NMake Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
+          "problemMatcher": [],
+          "group": { "kind": "build", "isDefault": true },
+          "os": { "windows": true }
+      },
+      {
+          "label": "CMake Build (MSVC)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "build", "--config", "Debug"],
+          "problemMatcher": "$msCompile",
+          "group": { "kind": "build", "isDefault": true },
+          "dependsOn": ["CMake Configure (MSVC)"],
+          "os": { "windows": true }
+      },
+      {
+          "label": "CMake Clean (MSVC)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "build", "--target", "clean"],
+          "problemMatcher": [],
+          "group": "build",
+          "os": { "windows": true }
+      },
+
+      // Haiku
+      {
+          "label": "Sync to Haiku VM (rsync)",
+          "type": "shell",
+          "command": "rsync",
+          "options": {
+              "env": {
+                  "HAIKU_PROJECT_DIR": "/boot/home/Projects"
+              }
           },
-          {
-            "label": "CMake Clean (MSVC)",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-              "--build", "build",
-              "--target", "clean"
-            ],
-            "problemMatcher": [],
-            "group": "build",
-            "os": {
-              "windows": true
-            }
-          }
-    ]
+          "args": [
+              "-avz",
+              "--rsync-path=/boot/system/bin/rsync",
+              "-e", "ssh -T -o 'RemoteCommand=none' -o 'RequestTTY=no'",
+              "${workspaceFolder}/",
+              "user@haiku-vm:$HAIKU_PROJECT_DIR//${workspaceFolderBasename}/"
+          ],
+          "problemMatcher": [],
+          "group": { "kind": "build", "isDefault": false }
+      },
+      {
+          "label": "CMake Configure (Haiku VM)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "user@haiku-vm",
+              "cd /boot/home/Projects/${workspaceFolderBasename}/ && cmake -B build -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Debug"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Sync to Haiku VM (rsync)"]
+      },
+      {
+          "label": "Build (Haiku VM)",
+          "type": "process",
+          "command": "bash",
+          "args": [
+              "-c",
+              "ssh user@haiku-vm 'cd /boot/home/Projects/${workspaceFolderBasename}/build && make -j4' | sed 's|/boot/home/Projects/${workspaceFolderBasename}|${workspaceFolder}|g'; exit ${PIPESTATUS[0]}"
+          ],
+          "group": { "kind": "build", "isDefault": true },
+          "problemMatcher": "$gcc",
+          "dependsOn": ["CMake Configure (Haiku VM)"]
+      }
+  ]
 }

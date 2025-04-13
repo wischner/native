@@ -234,7 +234,7 @@ namespace native
     };
 
     // --- Screen. ---------------------------------------------------
-    class screen
+    class screen final
     {
     public:
         screen(int index, const rect &bounds, const rect &work_area, bool is_primary);
@@ -244,7 +244,7 @@ namespace native
         const rect &bounds() const;
         const rect &work_area() const;
 
-        static void detect();
+        static const std::vector<screen> &detect();
         static int count();
         static screen *at(int index);
         static screen *primary();
@@ -255,6 +255,8 @@ namespace native
         rect _bounds;
         rect _work_area;
         bool _is_primary;
+
+        static std::vector<screen> _screens;
     };
 
     // --- Application. ----------------------------------------------
