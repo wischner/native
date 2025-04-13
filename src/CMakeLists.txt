@@ -19,6 +19,6 @@ target_sources(native PRIVATE
 
 add_subdirectory(platforms)
 
-if(NOT WIN32 AND NOT HAIKU)
+if(NOT WIN32 AND NOT HAIKU AND NOT APPLE)
     add_subdirectory(toolkits)
 endif()

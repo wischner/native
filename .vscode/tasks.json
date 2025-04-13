@@ -103,6 +103,50 @@
           "group": { "kind": "build", "isDefault": true },
           "problemMatcher": "$gcc",
           "dependsOn": ["CMake Configure (Haiku VM)"]
-      }
+      },
+
+      {
+        "label": "Sync to macOS (rsync)",
+        "type": "shell",
+        "command": "rsync",
+        "args": [
+            "-avz",
+            "-e", "ssh -T -o 'RemoteCommand=none' -o 'RequestTTY=no'",
+            "${workspaceFolder}/",
+            "tomaz@vader.local:/Users/tomaz/Projects/${workspaceFolderBasename}/"
+        ],
+        "problemMatcher": [],
+        "group": {
+            "kind": "build",
+            "isDefault": false
+        }
+    },
+    {
+        "label": "CMake Configure (macOS)",
+        "type": "shell",
+        "command": "ssh",
+        "args": [
+            "tomaz@vader.local",
+            "cd /Users/tomaz/Projects/${workspaceFolderBasename}/ && /usr/local/bin/cmake -B build -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Debug"
+        ],
+        "problemMatcher": [],
+        "dependsOn": ["Sync to macOS (rsync)"]
+    },
+    {
+        "label": "Build (macOS)",
+        "type": "process",
+        "command": "bash",
+        "args": [
+            "-c",
+            "ssh tomaz@vader.local 'cd /Users/tomaz/Projects/${workspaceFolderBasename}/build && make -j4' | sed 's|/Users/tomaz/Projects/${workspaceFolderBasename}|${workspaceFolder}|g'; exit ${PIPESTATUS[0]}"
+        ],
+        "group": {
+            "kind": "build",
+            "isDefault": true
+        },
+        "problemMatcher": "$gcc",
+        "dependsOn": ["CMake Configure (macOS)"]
+    }    
+      
   ]
 }
