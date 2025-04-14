@@ -1,4 +1,13 @@
-# Widgets
+## GnuStep
+
+### Use apt to install all libraries
+
+sudo apt install gnustep gnustep-devel gnustep-make gobjc gnustep-base-runtime
+sudo apt install gobjc++ gnustep-base-common
+
+### Configure pkgconfig
+
+## Arena Widgets (Obsolete)
 
 Install neXtaw (Athena Widgets for Window Maker)
 
