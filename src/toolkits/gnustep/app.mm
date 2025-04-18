@@ -1,32 +1,33 @@
 #import <AppKit/AppKit.h>
-#import <GNUstepBase/GSObjCRuntime.h>
 #include <native.h>
 #include <iostream>
 #include "globals.h"
 
-namespace native
-{
+extern "C" void GSInitializeProcess(int argc, char **argv, char **envp);
 
-int app::main_loop(int argc, char** argv, char** envp)
+namespace native {
+
+int app::main_loop()
 {
-    // Correct call to GNUstep runtime setup
+    // Required for GNUstep apps — this must come before any NS classes are used
     GSInitializeProcess(argc, argv, envp);
 
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    std::cout << "GNUstep: Creating NSApplication instance...\n";
-
     gnustep::global_app = [NSApplication sharedApplication];
+    if (!gnustep::global_app)
+    {
+        std::cerr << "GNUstep: NSApplication is null\n";
+        return 1;
+    }
 
-    // Ignore this warning if it doesn't support setActivationPolicy on GNUstep
-    //[gnustep::global_app setActivationPolicy:NSApplicationActivationPolicyRegular];
+    // Some backends don't support setActivationPolicy
+    if ([gnustep::global_app respondsToSelector:@selector(setActivationPolicy:)])
+    {
+        [gnustep::global_app setActivationPolicy:NSApplicationActivationPolicyRegular];
+    }
 
-    std::cout << "GNUstep: Running application...\n";
+    std::cout << "GNUstep: Entering main loop.\n";
     [gnustep::global_app run];
-
-    [pool release];
-
-    std::cout << "GNUstep: Application exited.\n";
+    std::cout << "GNUstep: Exiting main loop.\n";
     return 0;
 }
 

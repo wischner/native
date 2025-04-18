@@ -271,6 +271,11 @@ namespace native
 
         static app_wnd *main_wnd(); // Expose current main window
 
+        // Static arguments and environment
+        static inline int argc = 0;
+        static inline char **argv = nullptr;
+        static inline char **envp = nullptr;
+
     private:
         static inline app_wnd *_main_wnd = nullptr;
     };

@@ -1,6 +1,12 @@
-#include "native.h"
+#include <native.h>
+
+extern char **environ;
 
 int main(int argc, char **argv)
 {
-    return program(argc, argv); // Kicks off everything else
+    native::app::argc = argc;
+    native::app::argv = argv;
+    native::app::envp = environ;
+
+    return program(argc, argv);
 }
