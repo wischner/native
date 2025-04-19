@@ -1,5 +1,5 @@
-// src/img.cpp
 #include <native.h>
+#include <gpx_img.h>
 
 namespace native
 {
@@ -7,7 +7,7 @@ namespace native
     {
         if (!_gpx)
         {
-            _gpx = x11::create_gpx_img(const_cast<img *>(this));
+            _gpx = new native::gpx_img(const_cast<img *>(this));
         }
         return *_gpx;
     }

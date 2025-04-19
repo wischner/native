@@ -1,16 +1,11 @@
-#include <native.h>
-#include <bindings.h>
-#include <X11/Xlib.h>
 #include <iostream>
 
-namespace x11
-{
-    // Reuse the cached display from screen.cpp
-    extern Display *cached_display;
+#include <X11/Xlib.h>
+#include <Xm/Xm.h>
 
-    // Binding between X11 windows and native::wnd instances
-    native::bindings<Window, native::wnd *> wnd_bindings;
-}
+#include <native.h>
+#include <bindings.h>
+#include "globals.h"
 
 namespace native
 {

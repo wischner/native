@@ -1,13 +1,9 @@
+#include <iostream>
+#include <X11/Xlib.h>
+
 #include <native.h>
 #include <bindings.h>
-#include <X11/Xlib.h>
-#include <iostream>
-
-namespace x11
-{
-    extern Display *cached_display;
-    extern native::bindings<Window, native::wnd *> wnd_bindings;
-}
+#include "globals.h"
 
 namespace native
 {

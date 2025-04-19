@@ -1,30 +1,25 @@
-#include <native.h>
-#include <X11/Xlib.h>
 #include <iostream>
 
-namespace x11
-{
-    Display *cached_display = nullptr;
-}
+#include <X11/Xlib.h>
+
+#include <native.h>
+#include "globals.h"
 
 namespace native
 {
-
-    extern std::vector<native::screen> screens;
-
-    void screen::detect()
+    const std::vector<screen> &screen::detect()
     {
+        _screens.clear();
+
         if (!x11::cached_display)
         {
             x11::cached_display = XOpenDisplay(nullptr);
             if (!x11::cached_display)
             {
                 std::cerr << "X11: No display available to detect screens.\n";
-                return;
+                return _screens;
             }
         }
-
-        screens.clear();
         int screen_count = ScreenCount(x11::cached_display);
 
         for (int i = 0; i < screen_count; ++i)
@@ -38,8 +33,9 @@ namespace native
 
             bool is_primary = (i == DefaultScreen(x11::cached_display));
 
-            screens.emplace_back(i, bounds, work_area, is_primary);
+            _screens.emplace_back(i, bounds, work_area, is_primary);
         }
+        return _screens;
     }
 
 } // namespace native

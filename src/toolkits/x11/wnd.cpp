@@ -1,11 +1,9 @@
-#include <native.h>
-#include <bindings.h>
 #include <Xm/Xm.h>
 
-namespace x11
-{
-    native::bindings<Widget, native::wnd *> wnd_bindings;
-}
+#include <native.h>
+#include <bindings.h>
+
+#include <gpx_wnd.h>
 
 namespace native
 {
@@ -13,7 +11,7 @@ namespace native
     {
         if (!_gpx)
         {
-            _gpx = x11::create_gpx_wnd(const_cast<wnd *>(this));
+            _gpx = new native::gpx_wnd((const_cast<wnd *>(this)));
         }
         return *_gpx;
     }

@@ -1,24 +1,17 @@
-// src/toolkits/x11/gpx_wnd.cpp
-#include <native.h>
-#include <gpx_wnd.h>
-#include <X11/Xlib.h>
 #include <stdexcept>
 
-namespace x11
-{
-    extern Display *cached_display;
-    extern native::bindings<Window, native::wnd *> wnd_bindings;
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
-    native::gpx *create_gpx_wnd(native::wnd *window)
-    {
-        return new native::gpx_wnd(window);
-    }
-}
+#include <native.h>
+#include "gpx_wnd.h"
+#include "globals.h"
 
 namespace native
 {
 
-    gpx_wnd::gpx_wnd(wnd *window) : _window(window)
+    gpx_wnd::gpx_wnd(const wnd *window)
+        : _wnd(const_cast<wnd *>(window)), _pen(rgba(0, 0, 0, 255), 1)
     {
         if (!x11::cached_display)
         {
@@ -39,7 +32,7 @@ namespace native
     void gpx_wnd::clear(rgba color)
     {
         Display *display = x11::cached_display;
-        Window win = x11::wnd_bindings.from_b(_window);
+        Window win = x11::wnd_bindings.from_b(_wnd);
         GC gc = XCreateGC(display, win, 0, nullptr);
         XSetForeground(display, gc, color);
         XRectangle xr = {static_cast<short>(_clip.p.x), static_cast<short>(_clip.p.y),
@@ -53,10 +46,10 @@ namespace native
     void gpx_wnd::draw_line(point from, point to)
     {
         Display *display = x11::cached_display;
-        Window win = x11::wnd_bindings.from_b(_window);
+        Window win = x11::wnd_bindings.from_b(_wnd);
         GC gc = XCreateGC(display, win, 0, nullptr);
-        XSetForeground(display, gc, _pen.color());
-        XSetLineAttributes(display, gc, _pen.thickness(), LineSolid, CapButt, JoinMiter);
+        XSetForeground(display, gc, _pen.color);
+        XSetLineAttributes(display, gc, _pen.thickness, LineSolid, CapButt, JoinMiter);
         XRectangle xr = {static_cast<short>(_clip.p.x), static_cast<short>(_clip.p.y),
                          static_cast<unsigned short>(_clip.d.w), static_cast<unsigned short>(_clip.d.h)};
         XSetClipRectangles(display, gc, 0, 0, &xr, 1, Unsorted);
@@ -68,9 +61,9 @@ namespace native
     void gpx_wnd::draw_rect(rect r, bool filled)
     {
         Display *display = x11::cached_display;
-        Window win = x11::wnd_bindings.from_b(_window);
+        Window win = x11::wnd_bindings.from_b(_wnd);
         GC gc = XCreateGC(display, win, 0, nullptr);
-        XSetForeground(display, gc, _pen.color());
+        XSetForeground(display, gc, _pen.color);
         XRectangle xr = {static_cast<short>(_clip.p.x), static_cast<short>(_clip.p.y),
                          static_cast<unsigned short>(_clip.d.w), static_cast<unsigned short>(_clip.d.h)};
         XSetClipRectangles(display, gc, 0, 0, &xr, 1, Unsorted);
@@ -89,9 +82,9 @@ namespace native
     void gpx_wnd::draw_text(const std::string &text, point p)
     {
         Display *display = x11::cached_display;
-        Window win = x11::wnd_bindings.from_b(_window);
+        Window win = x11::wnd_bindings.from_b(_wnd);
         GC gc = XCreateGC(display, win, 0, nullptr);
-        XSetForeground(display, gc, _pen.color());
+        XSetForeground(display, gc, _pen.color);
         Font font = XLoadFont(display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
         XSetFont(display, gc, font);
         XRectangle xr = {static_cast<short>(_clip.p.x), static_cast<short>(_clip.p.y),
@@ -106,7 +99,7 @@ namespace native
     void gpx_wnd::draw_img(const img &src, point dst)
     {
         Display *display = x11::cached_display;
-        Window win = x11::wnd_bindings.from_b(_window);
+        Window win = x11::wnd_bindings.from_b(_wnd);
         GC gc = XCreateGC(display, win, 0, nullptr);
         XImage *ximg = XCreateImage(display, DefaultVisual(display, DefaultScreen(display)),
                                     DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0,

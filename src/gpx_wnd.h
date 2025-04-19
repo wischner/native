@@ -22,7 +22,7 @@ namespace native
         void draw_img(const img &src, point dst) override;
 
     private:
-        const wnd *_wnd;
+        wnd *_wnd;
         pen _pen;
         rect _clip;
     };

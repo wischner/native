@@ -1,9 +1,12 @@
-// src/toolkits/x11/gpx_img.cpp
-#include <native.h>
-#include <gpx_img.h>
-#include <X11/Xlib.h>
 #include <stdexcept>
 #include <algorithm>
+
+#include <X11/Xutil.h>
+#include <X11/Xlib.h>
+
+#include <native.h>
+#include "gpx_img.h"
+#include "globals.h"
 
 namespace x11
 {
@@ -18,7 +21,8 @@ namespace x11
 namespace native
 {
 
-    gpx_img::gpx_img(const img *image) : _img(image)
+    gpx_img::gpx_img(const img *image)
+        : _img(image), _pen(rgba(0, 0, 0, 255), 1)
     {
         if (!x11::cached_display)
         {
@@ -69,7 +73,7 @@ namespace native
             if (x0 >= clip_x1 && x0 <= clip_x2 && y0 >= clip_y1 && y0 <= clip_y2 &&
                 x0 >= 0 && x0 < _img->width() && y0 >= 0 && y0 < _img->height())
             {
-                pixels[y0 * _img->width() + x0] = _pen.color();
+                pixels[y0 * _img->width() + x0] = _pen.color;
             }
             if (x0 == x1 && y0 == y1)
                 break;
@@ -104,7 +108,7 @@ namespace native
             {
                 for (int x = x1; x <= x2; ++x)
                 {
-                    pixels[y * _img->width() + x] = _pen.color();
+                    pixels[y * _img->width() + x] = _pen.color;
                 }
             }
         }
@@ -112,13 +116,13 @@ namespace native
         {
             for (int x = x1; x <= x2; ++x)
             {
-                pixels[y1 * _img->width() + x] = _pen.color();
-                pixels[y2 * _img->width() + x] = _pen.color();
+                pixels[y1 * _img->width() + x] = _pen.color;
+                pixels[y2 * _img->width() + x] = _pen.color;
             }
             for (int y = y1 + 1; y < y2; ++y)
             {
-                pixels[y * _img->width() + x1] = _pen.color();
-                pixels[y * _img->width() + x2] = _pen.color();
+                pixels[y * _img->width() + x1] = _pen.color;
+                pixels[y * _img->width() + x2] = _pen.color;
             }
         }
     }
@@ -131,7 +135,7 @@ namespace native
                                     reinterpret_cast<char *>(const_cast<rgba *>(_img->pixels())),
                                     _img->width(), _img->height(), 32, 0);
         GC gc = XCreateGC(display, DefaultRootWindow(display), 0, nullptr);
-        XSetForeground(display, gc, _pen.color());
+        XSetForeground(display, gc, _pen.color);
         Font font = XLoadFont(display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
         XSetFont(display, gc, font);
 

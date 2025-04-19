@@ -1,4 +1,4 @@
-set(TOOLKIT "GNUSTEP" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
+set(TOOLKIT "X11" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
 
 if(TOOLKIT STREQUAL "SDL2")
     add_subdirectory(sdl2)

@@ -14,7 +14,26 @@ namespace native
 
     // --- Geometry. -------------------------------------------------
     using coord = int;
-    using rgba = uint32_t;
+    union rgba
+    {
+        uint32_t value;
+        struct
+        {
+            /* TODO: endian handling */
+            uint8_t r;
+            uint8_t g;
+            uint8_t b;
+            uint8_t a;
+        };
+
+        constexpr rgba() : value(0) {}
+        constexpr rgba(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
+            : r(red), g(green), b(blue), a(alpha) {}
+
+        constexpr rgba(uint32_t val) : value(val) {}
+
+        operator uint32_t() const { return value; }
+    };
 
     struct point
     {
@@ -172,24 +191,13 @@ namespace native
     };
 
     // --- Graphics --------------------------------------------------
-    class pen
+    struct pen
     {
-    public:
-        pen(rgba color, coord thickness);
-        ~pen();
+        rgba color;
+        unsigned short thickness;
 
-        pen(const pen &) = delete;
-        pen &operator=(const pen &) = delete;
-
-        pen(pen &&) noexcept;
-        pen &operator=(pen &&) noexcept;
-
-        rgba color() const;
-        coord thickness() const;
-
-    private:
-        rgba _color;
-        coord _thickness;
+        pen(rgba c = rgba(0, 0, 0, 255), unsigned short t = 1)
+            : color(c), thickness(t) {}
     };
 
     class img; // forward declare
@@ -281,21 +289,35 @@ namespace native
     };
 
     // --- Windows. --------------------------------------------------
+    class layout_manager;
     class wnd
     {
     public:
         wnd(int x = 100, int y = 100, int width = 640, int height = 480);
+        wnd(const point &pos, const size &dim);
+        wnd(const rect &bounds);
+
         virtual ~wnd() = default;
 
-        int x() const;
-        int y() const;
-        int width() const;
-        int height() const;
+        virtual point position() const;
+        virtual wnd &set_position(const point &p);
 
-        virtual void create() const = 0;
+        virtual size dimensions() const;
+        virtual wnd &set_dimensions(const size &s);
+
+        virtual rect bounds() const;
+        virtual wnd &set_bounds(const rect &r);
+
+        virtual wnd *parent() const;
+        virtual wnd &set_parent(wnd *parent);
+
         virtual void show() const = 0;
 
-        gpx &get_gpx() const; // New method to obtain gpx for this window
+        // Layout
+        void set_layout(std::unique_ptr<layout_manager> layout);
+        layout_manager *layout() const;
+
+        gpx &get_gpx() const;
 
         signal<> on_wnd_create;
         signal<point> on_wnd_move;
@@ -306,7 +328,13 @@ namespace native
         signal<mouse_wheel_event> on_mouse_wheel;
 
     protected:
-        int _x, _y, _width, _height;
+        virtual void create() const = 0;
+
+        mutable gpx *_gpx = nullptr;
+        wnd *_parent;
+        std::vector<wnd *> _children;
+        std::unique_ptr<layout_manager> _layout;
+        bool _created;
     };
 
     class app_wnd : public wnd
@@ -316,15 +344,33 @@ namespace native
                 int x = 100, int y = 100,
                 int width = 640, int height = 480);
 
+        app_wnd(const std::string &title, const point &pos, const size &dim);
+        app_wnd(const std::string &title, const rect &bounds);
+
         virtual ~app_wnd() = default;
 
         const std::string &title() const;
+        app_wnd &set_title(const std::string &title);
 
         virtual void create() const override;
         virtual void show() const override;
+    };
 
-    private:
-        std::string _title;
+    // --- Layout manager. -------------------------------------------
+    class layout_manager
+    {
+    public:
+        virtual ~layout_manager() = default;
+
+        // Called by container when laying out children
+        virtual void layout(wnd *parent, const rect &bounds) = 0;
+
+        // Add/remove children
+        virtual void add_child(wnd *child) = 0;
+        virtual void remove_child(wnd *child) = 0;
+
+        // Access child list (optional)
+        virtual const std::vector<wnd *> &children() const = 0;
     };
 
 }
