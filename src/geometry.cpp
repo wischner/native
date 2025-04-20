@@ -28,19 +28,19 @@ namespace native
     }
 
     // Size
-    size::size(coord w_, coord h_) : w(w_), h(h_) {}
+    size::size(dim w_, dim h_) : w(w_), h(h_) {}
 
     // Rect
     rect::rect(point p_, size d_) : p(p_), d(d_) {}
-    rect::rect(coord x, coord y, coord w, coord h) : p(x, y), d(w, h) {}
+    rect::rect(coord x, coord y, dim w, dim h) : p(x, y), d(w, h) {}
 
     coord rect::x1() const { return p.x; }
     coord rect::y1() const { return p.y; }
     coord rect::x2() const { return p.x + d.w; }
     coord rect::y2() const { return p.y + d.h; }
 
-    coord rect::width() const { return d.w; }
-    coord rect::height() const { return d.h; }
+    dim rect::w() const { return d.w; }
+    dim rect::h() const { return d.h; }
 
     bool rect::contains(point pt) const
     {

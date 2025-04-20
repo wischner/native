@@ -1,15 +1,16 @@
+#include <stdexcept>
+
 #include <native.h>
 
 namespace native
 {
-    img::img(coord w, coord h) : _w(w), _h(h)
+    img::img(dim w, dim h)
+        : _w(w), _h(h), _data(std::make_unique<rgba[]>(_w * _h))
     {
-        _data = new rgba[w * h]();
+        if (w == 0 || h == 0)
+            throw std::invalid_argument("img: dimensions must be > 0");
     }
 
-    img::~img()
-    {
-        delete[] _data;
-        delete _gpx;
-    }
-}
+    img::~img() = default;
+
+} // namespace native

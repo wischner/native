@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <functional>
 #include <map>
 #include <utility>
@@ -13,7 +14,9 @@ namespace native
 {
 
     // --- Geometry. -------------------------------------------------
-    using coord = int;
+    using coord = int16_t;
+    using dim = uint16_t;
+
     union rgba
     {
         uint32_t value;
@@ -58,11 +61,11 @@ namespace native
 
     struct size
     {
-        coord w = 0;
-        coord h = 0;
+        dim w = 0;
+        dim h = 0;
 
         size() = default;
-        size(coord w_, coord h_);
+        size(dim w_, dim h_);
     };
 
     struct rect
@@ -72,15 +75,15 @@ namespace native
 
         rect() = default;
         rect(point p_, size d_);
-        rect(coord x, coord y, coord w, coord h);
+        rect(coord x, coord y, dim w, dim h);
 
         coord x1() const;
         coord y1() const;
         coord x2() const;
         coord y2() const;
 
-        coord width() const;
-        coord height() const;
+        dim w() const;
+        dim h() const;
 
         bool contains(point pt) const;
     };
@@ -190,55 +193,56 @@ namespace native
             : position(pos), delta(d), direction(dir) {}
     };
 
-    // --- Graphics --------------------------------------------------
-    struct pen
-    {
-        rgba color;
-        unsigned short thickness;
-
-        pen(rgba c = rgba(0, 0, 0, 255), unsigned short t = 1)
-            : color(c), thickness(t) {}
-    };
-
-    class img; // forward declare
-
-    class gpx
-    {
-    public:
-        virtual ~gpx() = default;
-
-        virtual void set_pen(const pen &p) = 0;
-        virtual pen get_pen() const = 0;
-
-        virtual void clear(rgba color) = 0;
-        virtual void draw_line(point from, point to) = 0;
-        virtual void draw_rect(rect r, bool filled = false) = 0;
-        virtual void draw_text(const std::string &text, point p) = 0;
-        virtual void draw_img(const img &src, point dst) = 0;
-
-        virtual void set_clip(const rect &r) = 0;
-        virtual rect get_clip() const = 0;
-    };
-
     // --- Image. ----------------------------------------------------
+    class gpx; // forward declare
     class img
     {
     public:
-        img(coord w, coord h);
+        img(dim w, dim h);
         ~img();
 
-        coord width() const { return _w; }
-        coord height() const { return _h; }
+        coord w() const { return _w; }
+        coord h() const { return _h; }
 
-        rgba *pixels() { return _data; }
-        const rgba *pixels() const { return _data; }
+        rgba *pixels() { return _data.get(); }
+        const rgba *pixels() const { return _data.get(); }
 
         gpx &get_gpx() const;
 
     private:
         coord _w, _h;
-        rgba *_data;
-        mutable gpx *_gpx = nullptr;
+        std::unique_ptr<rgba[]> _data;
+        mutable std::unique_ptr<gpx> _gpx;
+    };
+
+    // --- Graphics --------------------------------------------------
+    class gpx
+    {
+    public:
+        virtual ~gpx() = default;
+
+        gpx &set_ink(const rgba c);
+        rgba ink() const;
+
+        gpx &set_paper(const rgba c);
+        rgba paper() const;
+
+        gpx &set_pen(const uint8_t thickness);
+        uint8_t pen() const;
+
+        virtual gpx &set_clip(const rect &r) = 0;
+        virtual rect clip() const = 0;
+
+        virtual gpx &clear(rgba color) = 0;
+        virtual gpx &draw_line(point from, point to) = 0;
+        virtual gpx &draw_rect(rect r, bool filled = false) = 0;
+        virtual gpx &draw_text(const std::string &text, point p) = 0;
+        virtual gpx &draw_img(const img &src, point dst) = 0;
+
+    protected:
+        rgba _ink;
+        rgba _paper;
+        uint8_t _thickness;
     };
 
     // --- Screen. ---------------------------------------------------
@@ -293,7 +297,7 @@ namespace native
     class wnd
     {
     public:
-        wnd(int x = 100, int y = 100, int width = 640, int height = 480);
+        wnd(coord x = 100, coord y = 100, dim w = 640, dim h = 480);
         wnd(const point &pos, const size &dim);
         wnd(const rect &bounds);
 
@@ -330,19 +334,22 @@ namespace native
     protected:
         virtual void create() const = 0;
 
+        // Has create() been called?
+        mutable bool _created;
+
+        rect _bounds;
+        std::unique_ptr<layout_manager> _layout;
         mutable gpx *_gpx = nullptr;
         wnd *_parent;
         std::vector<wnd *> _children;
-        std::unique_ptr<layout_manager> _layout;
-        bool _created;
     };
 
     class app_wnd : public wnd
     {
     public:
         app_wnd(std::string title,
-                int x = 100, int y = 100,
-                int width = 640, int height = 480);
+                coord x = 100, coord y = 100,
+                dim w = 640, dim h = 480);
 
         app_wnd(const std::string &title, const point &pos, const size &dim);
         app_wnd(const std::string &title, const rect &bounds);
@@ -354,6 +361,9 @@ namespace native
 
         virtual void create() const override;
         virtual void show() const override;
+
+    private:
+        std::string _title;
     };
 
     // --- Layout manager. -------------------------------------------
@@ -363,7 +373,7 @@ namespace native
         virtual ~layout_manager() = default;
 
         // Called by container when laying out children
-        virtual void layout(wnd *parent, const rect &bounds) = 0;
+        virtual void relayout(wnd *parent, const rect &bounds) = 0;
 
         // Add/remove children
         virtual void add_child(wnd *child) = 0;

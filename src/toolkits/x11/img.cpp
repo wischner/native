@@ -1,5 +1,7 @@
+#include <memory>
+
 #include <native.h>
-#include <gpx_img.h>
+#include "gpx_img.h"
 
 namespace native
 {
@@ -7,7 +9,7 @@ namespace native
     {
         if (!_gpx)
         {
-            _gpx = new native::gpx_img(const_cast<img *>(this));
+            _gpx = std::make_unique<gpx_img>(*this);
         }
         return *_gpx;
     }

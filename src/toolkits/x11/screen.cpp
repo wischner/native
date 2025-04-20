@@ -1,4 +1,4 @@
-#include <iostream>
+#include <stdexcept>
 
 #include <X11/Xlib.h>
 
@@ -7,6 +7,7 @@
 
 namespace native
 {
+
     const std::vector<screen> &screen::detect()
     {
         _screens.clear();
@@ -15,11 +16,9 @@ namespace native
         {
             x11::cached_display = XOpenDisplay(nullptr);
             if (!x11::cached_display)
-            {
-                std::cerr << "X11: No display available to detect screens.\n";
-                return _screens;
-            }
+                throw std::runtime_error("X11: No display available to detect screens.");
         }
+
         int screen_count = ScreenCount(x11::cached_display);
 
         for (int i = 0; i < screen_count; ++i)
@@ -35,6 +34,7 @@ namespace native
 
             _screens.emplace_back(i, bounds, work_area, is_primary);
         }
+
         return _screens;
     }
 
