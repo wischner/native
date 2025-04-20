@@ -27,8 +27,12 @@ namespace native
             switch (event.type)
             {
             case Expose:
-                // Placeholder: later will emit on_wnd_paint with wnd->get_gpx()
-                break;
+            {
+                rect r(event.xexpose.x, event.xexpose.y, event.xexpose.width, event.xexpose.height);
+                wnd_paint_event e{r, wnd->get_gpx()};
+                wnd->on_wnd_paint.emit(e);
+            }
+            break;
 
             case ConfigureNotify:
                 wnd->on_wnd_resize.emit(size(event.xconfigure.width, event.xconfigure.height));
@@ -78,7 +82,10 @@ namespace native
             }
 
             case ClientMessage:
-                // Handle WM_DELETE_WINDOW when implemented
+                if (event.xclient.data.l[0] == static_cast<long>(x11::wm_delete_window_atom))
+                {
+                    running = false;
+                }
                 break;
 
             default:

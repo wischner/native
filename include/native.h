@@ -292,6 +292,16 @@ namespace native
         static inline app_wnd *_main_wnd = nullptr;
     };
 
+    // --- Events. ---------------------------------------------------
+    struct wnd_paint_event
+    {
+        rect r;
+        gpx &g;
+
+        wnd_paint_event(const rect &rect, gpx &gpx)
+            : r(rect), g(gpx) {}
+    };
+
     // --- Windows. --------------------------------------------------
     class layout_manager;
     class wnd
@@ -301,7 +311,7 @@ namespace native
         wnd(const point &pos, const size &dim);
         wnd(const rect &bounds);
 
-        virtual ~wnd() = default;
+        virtual ~wnd();
 
         virtual point position() const;
         virtual wnd &set_position(const point &p);
@@ -315,6 +325,9 @@ namespace native
         virtual wnd *parent() const;
         virtual wnd &set_parent(wnd *parent);
 
+        virtual wnd &invalidate() const;
+        virtual wnd &invalidate(const rect &r) const;
+
         virtual void show() const = 0;
 
         // Layout
@@ -326,6 +339,7 @@ namespace native
         signal<> on_wnd_create;
         signal<point> on_wnd_move;
         signal<size> on_wnd_resize;
+        signal<wnd_paint_event> on_wnd_paint;
 
         signal<point> on_mouse_move;
         signal<mouse_event> on_mouse_click;

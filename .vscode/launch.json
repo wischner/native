@@ -5,7 +5,7 @@
             "name": "Run app-example (Linux, Make)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/examples/01_app_example/app-example",
+            "program": "${workspaceFolder}/build/examples/02_painter_example/painter-example",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

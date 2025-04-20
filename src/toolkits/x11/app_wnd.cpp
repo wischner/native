@@ -71,6 +71,10 @@ namespace native
                      ExposureMask | StructureNotifyMask | ButtonPressMask |
                          ButtonReleaseMask | PointerMotionMask | KeyPressMask | KeyReleaseMask);
 
+        // Handle WM_DELETE_WINDOW
+        x11::wm_delete_window_atom = XInternAtom(x11::cached_display, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(x11::cached_display, main_wnd, &x11::wm_delete_window_atom, 1);
+
         // Register in window binding registry
         x11::wnd_bindings.register_pair(main_wnd, const_cast<app_wnd *>(this));
 

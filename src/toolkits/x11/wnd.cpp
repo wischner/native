@@ -29,6 +29,14 @@ namespace native
         set_bounds(bounds);
     }
 
+    wnd::~wnd()
+    {
+        if (_created)
+        {
+            x11::wnd_bindings.unregister_by_b(this);
+        }
+    }
+
     point wnd::position() const
     {
         return _bounds.p;
@@ -116,6 +124,28 @@ namespace native
     wnd *wnd::parent() const
     {
         return _parent;
+    }
+
+    wnd &wnd::invalidate() const
+    {
+        if (!_created)
+            return const_cast<wnd &>(*this);
+
+        Window win = x11::wnd_bindings.from_b(const_cast<wnd *>(this));
+        XClearArea(x11::cached_display, win, 0, 0, 0, 0, True);
+        XFlush(x11::cached_display);
+        return const_cast<wnd &>(*this);
+    }
+
+    wnd &wnd::invalidate(const rect &r) const
+    {
+        if (!_created)
+            return const_cast<wnd &>(*this);
+
+        Window win = x11::wnd_bindings.from_b(const_cast<wnd *>(this));
+        XClearArea(x11::cached_display, win, r.p.x, r.p.y, r.d.w, r.d.h, True);
+        XFlush(x11::cached_display);
+        return const_cast<wnd &>(*this);
     }
 
     gpx &wnd::get_gpx() const
