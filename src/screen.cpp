@@ -15,6 +15,7 @@ namespace native
     // Accessors
     int screen::index() const { return _index; }
     bool screen::is_primary() const { return _is_primary; }
+    bool screen::is_landscape() const { return _bounds.w() > _bounds.h(); }
     const rect &screen::bounds() const { return _bounds; }
     const rect &screen::work_area() const { return _work_area; }
 

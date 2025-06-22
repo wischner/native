@@ -24,7 +24,7 @@ private:
         {
             _drawing = !_drawing;
             _points.push_back(e.position);
-            invalidate({e.position, {1, 1}});
+            invalidate();
         }
         return true;
     }
@@ -35,7 +35,7 @@ private:
         if (_drawing)
         {
             _points.push_back(p);
-            invalidate({p, {1, 1}});
+            invalidate();
         }
         return true;
     }
@@ -51,6 +51,9 @@ private:
     // Paint only visible points
     bool on_paint(native::wnd_paint_event e)
     {
+        /*
+        e.g.set_ink(0x000000FF); // Black color, opaque
+        */
         for (const auto &pt : _points)
         {
             if (e.r.contains(pt))

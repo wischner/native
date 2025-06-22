@@ -86,6 +86,7 @@ namespace native
         dim h() const;
 
         bool contains(point pt) const;
+        rect intersect(const rect &other) const;
     };
 
     // --- Signals. --------------------------------------------------
@@ -253,6 +254,7 @@ namespace native
 
         int index() const;
         bool is_primary() const;
+        bool is_landscape() const;
         const rect &bounds() const;
         const rect &work_area() const;
 

@@ -46,4 +46,17 @@ namespace native
     {
         return pt.x >= x1() && pt.x < x2() && pt.y >= y1() && pt.y < y2();
     }
+
+    rect rect::intersect(const rect &other) const
+    {
+        coord nx1 = std::max(p.x, other.p.x);
+        coord ny1 = std::max(p.y, other.p.y);
+        coord nx2 = std::min(x2(), other.x2());
+        coord ny2 = std::min(y2(), other.y2());
+
+        if (nx2 <= nx1 || ny2 <= ny1)
+            return rect(); // empty / no intersection
+
+        return rect(nx1, ny1, nx2 - nx1, ny2 - ny1);
+    }
 } // namespace native

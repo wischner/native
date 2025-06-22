@@ -26,3 +26,6 @@ If you haven’t already, read the [README](../../README.md) first for an overvi
 
 7. [Patterns: windows and app windows](patterns-windows.md)  
    Base class for all windows (`wnd`), main application window (`app_wnd`), and how platforms implement native creation and event routing.
+
+8. [Feature support matrix](feature-matrix.md)  
+   A comprehensive overview of which `native` features are implemented and functional across supported platforms.
