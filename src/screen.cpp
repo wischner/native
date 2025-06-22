@@ -3,7 +3,6 @@
 
 namespace native
 {
-
     std::vector<screen> screen::_screens;
 
     // Constructor

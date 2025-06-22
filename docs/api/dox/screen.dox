@@ -1,0 +1,136 @@
+/// \file screen.dox
+/// \ingroup native
+/// \brief Documentation for the `screen` class in the native library.
+///
+/// The `screen` class represents a physical monitor as detected via the
+/// X11/XRandR system. It provides methods to detect all screens, query
+/// screen bounds and usable area, determine orientation, and retrieve the
+/// primary screen.
+///
+/// \note This class does not yet support virtual desktops or per-desktop
+/// work areas.
+
+
+/// \class native::screen
+/// \brief Represents a physical screen or monitor in a multi-display
+/// X11 environment.
+///
+/// \see native::screen::detect
+/// \see native::screen::primary
+/// \see native::screen::work_area
+
+
+/// \fn native::screen::screen(int index, const rect& bounds, const rect& work_area, bool is_primary)
+/// \brief Constructs a screen object.
+/// \param index Index of the screen in the system-wide list.
+/// \param bounds The full screen rectangle in virtual screen coordinates.
+/// \param work_area The usable area of the screen, excluding taskbars or
+/// docks.
+/// \param is_primary True if this is the primary display.
+///
+/// This constructor is typically used internally after screen detection.
+
+
+/// \fn int native::screen::index() const
+/// \brief Returns the index of this screen.
+/// \return An integer index, starting from 0.
+///
+/// \code
+/// const auto& screens = native::screen::detect();
+/// for (const auto& s : screens)
+///     std::cout << "Screen " << s.index() << "\n";
+/// \endcode
+
+    
+/// \fn bool native::screen::is_primary() const
+/// \brief Checks if this screen is the primary screen.
+/// \return True if this is the primary screen.
+///
+/// \code
+/// if (s.is_primary())
+///     std::cout << "This is the primary monitor.\n";
+/// \endcode
+
+    
+/// \fn bool native::screen::is_landscape() const
+/// \brief Checks if the screen is in landscape orientation.
+/// \return True if width is greater than or equal to height.
+///
+/// \code
+/// if (s.is_landscape())
+///     std::cout << "Screen is in landscape mode.\n";
+/// \endcode
+
+    
+/// \fn const rect& native::screen::bounds() const
+/// \brief Gets the full screen bounds (position and size) in virtual
+/// coordinates.
+/// \return A `rect` representing the full screen area.
+///
+/// \code
+/// auto r = s.bounds();
+/// std::cout << "Bounds: " << r.w() << "x" << r.h() << "\n";
+/// \endcode
+
+    
+/// \fn const rect& native::screen::work_area() const
+/// \brief Gets the usable area of the screen (excluding panels, docks).
+/// \return A `rect` representing the usable area.
+///
+/// \code
+/// auto wa = s.work_area();
+/// std::cout << "Work area: " << wa.w() << "x" << wa.h() << "\n";
+/// \endcode
+
+    
+/// \fn static const std::vector<native::screen>& native::screen::detect()
+/// \brief Detects all connected screens using XRandR and caches them
+/// internally.
+/// \return Reference to the list of detected screens.
+///
+/// \code
+/// const auto& screens = native::screen::detect();
+/// std::cout << "Detected " << screens.size() << " screens.\n";
+/// \endcode
+
+    
+/// \fn static int native::screen::count()
+/// \brief Gets the number of detected screens.
+/// \return Number of screens.
+///
+/// \code
+/// std::cout << "Screen count: " << native::screen::count() << "\n";
+/// \endcode
+
+    
+/// \fn static native::screen* native::screen::at(int index)
+/// \brief Gets a pointer to a screen by index.
+/// \param index The screen index.
+/// \return Pointer to the screen, or nullptr if index is out of range.
+///
+/// \code
+/// if (native::screen* s = native::screen::at(1))
+///     std::cout << "Screen 1 width: " << s->bounds().w();
+/// \endcode
+
+    
+/// \fn static native::screen* native::screen::primary()
+/// \brief Gets the primary screen.
+/// \return Pointer to the primary screen, or nullptr if not found.
+///
+/// \code
+/// if (native::screen* primary = native::screen::primary())
+///     std::cout << "Primary screen origin: "
+///               << primary->bounds().p.x << ", "
+///               << primary->bounds().p.y;
+/// \endcode
+
+    
+/// \fn static rect native::screen::virtual_bounds()
+/// \brief Gets the bounding rectangle that encloses all detected screens.
+/// \return A `rect` representing the union of all screen bounds.
+///
+/// \code
+/// rect vb = native::screen::virtual_bounds();
+/// std::cout << "Virtual bounds: " << vb.w() << "x" << vb.h();
+/// \endcode

@@ -1,0 +1,28 @@
+/// \mainpage Native C++ Library
+///
+/// Welcome to the documentation of the `native` C++ UI library.
+///
+/// This documentation includes:
+/// - Class reference (e.g. `native::screen`)
+/// - Functions, data structures, and modules
+/// - Cross-platform behavior descriptions
+///
+/// \section intro_sec Introduction
+///
+/// `native` is a multi-platform UI and graphics toolkit built in modern C++.
+///
+/// It supports:
+/// - X11, Haiku, Windows
+/// - Platform-specific rendering via `gpx`
+/// - Full control over screen, input, and windowing
+///
+/// \section usage_sec Getting Started
+///
+/// To get started:
+/// 1. Include `native.h`
+/// 2. Call `native::app::run()`
+/// 3. Define your own `main()`
+///
+/// \section links_sec Further Links
+///
+/// Visit the GitHub repository for examples and issue tracking.

@@ -1,0 +1,125 @@
+/// \file geometry.dox
+/// \ingroup native
+/// \brief Geometry types used throughout the native UI library.
+///
+/// This file documents all geometry-related types including points,
+/// sizes, rectangles, and low-level color and coordinate structures.
+
+
+/// \page geometry Geometry Overview
+///
+/// This page describes all geometry-related types:
+/// - `native::point` — represents a coordinate
+/// - `native::size` — width and height
+/// - `native::rect` — rectangle bounds
+/// - `native::line` — a segment between two points
+///
+/// These types are declared in `geometry.h` and used throughout the
+/// library.
+
+
+/// \typedef native::coord
+/// \brief Signed coordinate type used for screen positions.
+///
+/// Defined as:
+/// ```cpp
+/// using coord = int16_t;
+/// ```
+
+
+/// \typedef native::dim
+/// \brief Unsigned type for non-negative dimensions like width or height.
+///
+/// Defined as:
+/// ```cpp
+/// using dim = uint16_t;
+/// ```
+
+
+/// \union native::rgba
+/// \brief Represents a 32-bit RGBA color value.
+///
+/// This type is a 32-bit union that can be interpreted either as a raw
+/// `uint32_t` value or as individual 8-bit RGBA components.
+///
+/// \note Endian handling is not yet implemented.
+
+
+/// \struct native::point
+/// \brief Represents a 2D coordinate using signed integers.
+///
+/// \code
+/// native::point p(10, 20);
+/// \endcode
+
+
+/// \fn native::point::point(coord x_, coord y_)
+/// \brief Constructs a point from x and y coordinates.
+
+
+/// \struct native::line
+/// \brief Represents a line segment between two points.
+
+
+/// \fn native::line::line(point p1, point p2)
+/// \brief Constructs a line from two points.
+
+
+/// \fn native::line::line(coord x1, coord y1, coord x2, coord y2)
+/// \brief Constructs a line from two coordinate pairs.
+
+
+/// \fn native::line::contains(point pt) const
+/// \brief Returns true if the given point lies on the line.
+
+
+/// \struct native::size
+/// \brief Represents a width and height using unsigned dimensions.
+
+
+/// \fn native::size::size(dim w_, dim h_)
+/// \brief Constructs a size with the specified width and height.
+
+
+/// \struct native::rect
+/// \brief Represents a rectangle defined by a top-left point and size.
+
+
+/// \fn native::rect::rect(point p_, size d_)
+/// \brief Constructs a rectangle from a point and size.
+
+
+/// \fn native::rect::rect(coord x, coord y, dim w, dim h)
+/// \brief Constructs a rectangle from individual components.
+
+
+/// \fn native::rect::x1() const
+/// \brief Returns the left x-coordinate of the rectangle.
+
+
+/// \fn native::rect::y1() const
+/// \brief Returns the top y-coordinate of the rectangle.
+
+
+/// \fn native::rect::x2() const
+/// \brief Returns the right x-coordinate (exclusive) of the rectangle.
+
+
+/// \fn native::rect::y2() const
+/// \brief Returns the bottom y-coordinate (exclusive) of the rectangle.
+
+
+/// \fn native::rect::w() const
+/// \brief Returns the width of the rectangle.
+
+
+/// \fn native::rect::h() const
+/// \brief Returns the height of the rectangle.
+
+
+/// \fn native::rect::contains(point pt) const
+/// \brief Returns true if the point is inside the rectangle.
+
+
+/// \fn native::rect::intersect(const rect &other) const
+/// \brief Returns the intersection of two rectangles.
