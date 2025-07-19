@@ -331,6 +331,8 @@ namespace native
         virtual wnd &invalidate(const rect &r) const;
 
         virtual void show() const = 0;
+        virtual void create() const = 0;
+        virtual void destroy() const = 0;
 
         // Layout
         void set_layout(std::unique_ptr<layout_manager> layout);
@@ -348,7 +350,8 @@ namespace native
         signal<mouse_wheel_event> on_mouse_wheel;
 
     protected:
-        virtual void create() const = 0;
+
+        // Utility function to
 
         // Has create() been called?
         mutable bool _created;
@@ -376,6 +379,7 @@ namespace native
         app_wnd &set_title(const std::string &title);
 
         virtual void create() const override;
+        virtual void destroy() const override;
         virtual void show() const override;
 
     private:

@@ -85,6 +85,32 @@ namespace native
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 
+    void app_wnd::destroy() const
+    {
+        if (!_created)
+            return;
+
+        auto *aw_this = const_cast<app_wnd *>(this);   // Step 1
+        wnd *self = static_cast<wnd *>(aw_this);    // Step 2
+
+        Window win = x11::wnd_bindings.from_b(self);
+        if (win)
+        {
+            if (auto *cache = x11::wnd_gpx_bindings.from_a(self))
+            {
+                if (cache->gc)
+                    XFreeGC(x11::cached_display, cache->gc);
+                delete cache;
+                x11::wnd_gpx_bindings.unregister_by_a(self);
+            }
+
+            XDestroyWindow(x11::cached_display, win);
+            x11::wnd_bindings.unregister_by_b(self);
+        }
+
+        _created = false;
+    }
+
     void app_wnd::show() const
     {
         if (!_created)

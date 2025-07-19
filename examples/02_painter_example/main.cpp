@@ -51,16 +51,19 @@ private:
     // Paint only visible points
     bool on_paint(native::wnd_paint_event e)
     {
-        /*
-        e.g.set_ink(0x000000FF); // Black color, opaque
-        */
-        for (const auto &pt : _points)
+        if (_points.size() < 2)
+            return true; // Nothing to draw
+
+        for (size_t i = 1; i < _points.size(); ++i)
         {
-            if (e.r.contains(pt))
-                e.g.draw_rect({pt, {1, 1}}, true);
+            const auto &p0 = _points[i - 1];
+            const auto &p1 = _points[i];
+            e.g.draw_line(p0, p1);
         }
+
         return true;
     }
+
 };
 
 int program(int argc, char *argv[])
