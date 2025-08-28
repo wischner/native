@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include <X11/Xlib.h>
-#include <Xm/Xm.h>
 
 #include <native.h>
 #include "bindings.h"

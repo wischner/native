@@ -1,139 +1,67 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Run app-example (Linux, Make)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/examples/02_painter_example/painter-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Make)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "condition": "linux"
-        },
-        {
-            "name": "Run app-example (Windows, MSVC)",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/examples/01_app_example/app-example.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "preLaunchTask": "CMake Build (MSVC)",
-            "condition": "windows"
-        },
-        {
-            "name": "Run app-example (Haiku VM, Remote)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "/boot/home/Projects/${workspaceFolderBasename}/build/examples/01_app_example/app-example",
-            "cwd": "/boot/home/Projects/${workspaceFolderBasename}/build",
-            "MIMode": "gdb",
-            "ssh": {
-                "host": "haiku-vm",
-                "user": "user"
-            },
-            "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": [
-                    "-T",
-                    "user@haiku-vm"
-                ],
-                "debuggerPath": "/bin/gdb"
-            },
-            "setupCommands": [
-                {
-                    "text": "-exec set pagination off",
-                    "description": "Disable pagination",
-                    "ignoreFailures": true
-                },
-                {
-                    "text": "-gdb-set scheduler-locking on",
-                    "description": "Lock scheduler for single thread stepping",
-                    "ignoreFailures": true
-                }
-            ],
-            "sourceFileMap": {
-                "/boot/home/Projects/native": "/media/tomaz/Work/wischner/native"
-            },
-            "preLaunchTask": "Build (Haiku VM)",
-            "console": "integratedTerminal",
-            "externalConsole": false,
-            "stopAtEntry": true,
-            "condition": "haiku"
-        },
-
-        {
-            "name": "Run app-example (macOS, Remote)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "/Users/tomaz/Projects/${workspaceFolderBasename}/build/examples/01_app_example/app-example",
-            "cwd": "/Users/tomaz/Projects/${workspaceFolderBasename}/build",
-            "MIMode": "gdb",
-            "ssh": {
-                "host": "vader.local",
-                "user": "tomaz"
-            },
-            "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": [
-                    "-T",
-                    "tomaz@vader.local"
-                ],
-                "debuggerPath": "/usr/local/bin/gdb"
-            },
-            "setupCommands": [
-                {
-                    "text": "-exec set pagination off",
-                    "description": "Disable pagination",
-                    "ignoreFailures": true
-                },
-                {
-                    "text": "-gdb-set scheduler-locking on",
-                    "description": "Lock scheduler for single thread stepping",
-                    "ignoreFailures": true
-                }
-            ],
-            "sourceFileMap": {
-                "/Users/tomaz/Projects/${workspaceFolderBasename}": "${workspaceFolder}"
-            },
-            "preLaunchTask": "Build (macOS)",
-            "console": "integratedTerminal",
-            "externalConsole": false,
-            "stopAtEntry": true,
-            "condition": "mac"
-        }
-    ],
-    "compounds": [
-        {
-            "name": "Debug on Linux",
-            "configurations": ["Run app-example (Linux, Make)"]
-        },
-        {
-            "name": "Debug on Windows",
-            "configurations": ["Run app-example (Windows, MSVC)"]
-        },
-        {
-            "name": "Debug on Haiku VM",
-            "configurations": ["Run app-example (Haiku VM, Remote)"]
-        },
-        {
-            "name": "Debug on macOS VM",
-            "configurations": ["Run app-example (macOS, Remote)"]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug app-example (linux-x11 in Docker)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/work/build-linux-x11/examples/app-example",
+      "cwd": "/work/build-linux-x11",
+      "MIMode": "gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Build (linux-x11, Docker)",
+      "sourceFileMap": { "/work": "${workspaceFolder}" },
+      "setupCommands": [
+        { "text": "-enable-pretty-printing", "description": "Enable pretty printing", "ignoreFailures": true },
+        { "text": "-gdb-set pagination off", "description": "No pagination", "ignoreFailures": true }
+      ],
+      "pipeTransport": {
+        "pipeProgram": "docker",
+        "pipeArgs": [
+          "run","--rm","-i",
+          "-v","${workspaceFolder}:/work",
+          "-w","/work",
+          "-e","DISPLAY",
+          "-v","/tmp/.X11-unix:/tmp/.X11-unix",
+          "--network=host",
+          "native-build:linux-x11",
+          "/usr/bin/gdb","--interpreter=mi"  // ← critical
+        ],
+        "debuggerPath": "/usr/bin/gdb",
+        "pipeCwd": "${workspaceFolder}",
+        "quoteArgs": true
+      }
+    },
+    {
+      "name": "Debug painter-example (linux-x11 in Docker)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/work/build-linux-x11/examples/painter-example",
+      "cwd": "/work/build-linux-x11",
+      "MIMode": "gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Build (linux-x11, Docker)",
+      "sourceFileMap": { "/work": "${workspaceFolder}" },
+      "setupCommands": [
+        { "text": "-enable-pretty-printing", "description": "Enable pretty printing", "ignoreFailures": true },
+        { "text": "-gdb-set pagination off", "description": "No pagination", "ignoreFailures": true }
+      ],
+      "pipeTransport": {
+        "pipeProgram": "docker",
+        "pipeArgs": [
+          "run","--rm","-i",
+          "-v","${workspaceFolder}:/work",
+          "-w","/work",
+          "-e","DISPLAY",
+          "-v","/tmp/.X11-unix:/tmp/.X11-unix",
+          "--network=host",
+          "native-build:linux-x11",
+          "/usr/bin/gdb","--interpreter=mi"  // ← critical
+        ],
+        "debuggerPath": "/usr/bin/gdb",
+        "pipeCwd": "${workspaceFolder}",
+        "quoteArgs": true
+      }
+    }
+  ]
 }

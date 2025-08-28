@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Xm/Xm.h>
-
 #include <native.h>
 #include <bindings.h>
 

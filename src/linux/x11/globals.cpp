@@ -1,4 +1,5 @@
-#include <Xm/Xm.h>
+#include <X11/Xlib.h>   // Display, Window, GC, events, etc.
+#include <X11/Xatom.h>  // Atom
 
 #include <native.h>
 #include <bindings.h>
