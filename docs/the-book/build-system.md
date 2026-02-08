@@ -11,6 +11,13 @@ The build is managed using **CMake**, with `make` as the intended build tool. Th
 - Keep shared C++ code isolated in a single core library
 - Cleanly separate platform and toolkit implementations
 
+## Missing
+
+Doxygen  sudo apt install doxygen
+
+sudo apt install libmotif-dev
+
+
 ## Root configuration
 
 The top-level `CMakeLists.txt` sets up the project, the C++ standard, and includes the core source and example directories:

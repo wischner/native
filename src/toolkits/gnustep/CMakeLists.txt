@@ -26,9 +26,15 @@ set(GNUSTEP_OBJCXX_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.mm
 )
 
-target_sources(native PRIVATE ${GNUSTEP_OBJCXX_SOURCES})
+set(GNUSTEP_CPP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
+)
+
+target_sources(native PRIVATE ${GNUSTEP_OBJCXX_SOURCES} ${GNUSTEP_CPP_SOURCES})
 
 # --- Apply ObjC++ flags only to OBJCXX sources -----------------------
 target_compile_options(native PRIVATE

@@ -1,4 +1,5 @@
 #include <Application.h>
+#include <View.h>
 #include <native.h>
 #include <bindings.h>
 
@@ -8,4 +9,6 @@ namespace haiku
     BApplication *global_app = new BApplication("application/x-vnd.native-app");
     // Bind: BWindow to wnd.
     native::bindings<BWindow *, native::wnd *> wnd_bindings;
+    // Bind: wnd to graphics cache.
+    native::bindings<native::wnd *, haikugpx *> wnd_gpx_bindings;
 }

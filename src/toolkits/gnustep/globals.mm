@@ -8,6 +8,7 @@ namespace gnustep
 {
     NSApplication *global_app = nil;
     native::bindings<NSWindow *, native::wnd *> wnd_bindings;
+    native::bindings<native::wnd *, gnustepgpx *> wnd_gpx_bindings;
 }
 
 // Ensure NSApplication is initialized on load

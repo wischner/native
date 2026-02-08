@@ -22,6 +22,10 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
 )
 
 # Conditionally include directories if needed
