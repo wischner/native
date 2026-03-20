@@ -1,1 +1,0 @@
-/usr/bin/c++ -g "CMakeFiles/painter-example.dir/main.cpp.o" -o painter-example  ../../src/libnative.a /usr/lib/x86_64-linux-gnu/libSM.so /usr/lib/x86_64-linux-gnu/libICE.so /usr/lib/x86_64-linux-gnu/libX11.so /usr/lib/x86_64-linux-gnu/libXext.so -lpixman-1 -lXrandr 
