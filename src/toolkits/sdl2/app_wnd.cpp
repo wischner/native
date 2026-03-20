@@ -1,23 +1,44 @@
 #include <native.h>
 #include <bindings.h>
 #include <SDL2/SDL.h>
+#ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
+#endif
 #include <iostream>
 
 #include "globals.h"
 
-namespace sdl
-{
-    SDL_Window *main_window = nullptr;
-    extern native::bindings<SDL_Window *, native::wnd *> wnd_bindings;
-    extern native::bindings<native::wnd *, sdl2gpx *> wnd_gpx_bindings;
-}
-
 namespace native
 {
+    app_wnd::app_wnd(std::string title, coord x, coord y, dim w, dim h)
+        : wnd(x, y, w, h), _title(std::move(title))
+    {
+    }
+
+    app_wnd &app_wnd::set_title(const std::string &title)
+    {
+        _title = title;
+
+        if (_created)
+        {
+            SDL_Window *window = sdl::wnd_bindings.from_b(this);
+            if (window)
+                SDL_SetWindowTitle(window, _title.c_str());
+        }
+
+        return *this;
+    }
+
+    const std::string &app_wnd::title() const
+    {
+        return _title;
+    }
+
     void app_wnd::create() const
     {
-        // Initialize SDL video subsystem
+        if (_created)
+            return;
+
         if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
         {
             std::cerr << "SDL2: Failed to initialize video subsystem: "
@@ -25,17 +46,22 @@ namespace native
             return;
         }
 
-        // Initialize SDL_ttf
+#ifdef HAVE_SDL2_TTF
         if (TTF_Init() != 0)
         {
             std::cerr << "SDL2: Failed to initialize TTF: "
                       << TTF_GetError() << std::endl;
         }
+#endif
+
+        const bool use_default_position = (_bounds.p.x == 100 && _bounds.p.y == 100);
+        const int window_x = use_default_position ? SDL_WINDOWPOS_CENTERED : _bounds.p.x;
+        const int window_y = use_default_position ? SDL_WINDOWPOS_CENTERED : _bounds.p.y;
 
         SDL_Window *window = SDL_CreateWindow(
-            title().c_str(),
-            bounds().p.x, bounds().p.y,
-            bounds().d.w, bounds().d.h,
+            _title.c_str(),
+            window_x, window_y,
+            _bounds.d.w, _bounds.d.h,
             SDL_WINDOW_SHOWN);
 
         if (!window)
@@ -45,17 +71,13 @@ namespace native
             return;
         }
 
-        // Store the main window pointer
         sdl::main_window = window;
 
-        // Register in bindings
         sdl::wnd_bindings.register_pair(window, const_cast<app_wnd *>(this));
 
-        // Mark as created
         _created = true;
 
-        // Emit create signal
-        on_wnd_create.emit();
+        const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 
     void app_wnd::show() const
@@ -68,6 +90,7 @@ namespace native
         }
 
         SDL_ShowWindow(window);
+        invalidate();
     }
 
     void app_wnd::destroy() const
@@ -77,18 +100,18 @@ namespace native
 
         app_wnd *self = const_cast<app_wnd *>(this);
 
-        // Clean up graphics cache
         if (auto *cache = sdl::wnd_gpx_bindings.from_a(self))
         {
             if (cache->renderer)
                 SDL_DestroyRenderer(cache->renderer);
+#ifdef HAVE_SDL2_TTF
             if (cache->font)
                 TTF_CloseFont(cache->font);
+#endif
             delete cache;
             sdl::wnd_gpx_bindings.unregister_by_a(self);
         }
 
-        // Destroy window
         SDL_Window *window = sdl::wnd_bindings.from_b(self);
         if (window)
         {
@@ -98,8 +121,10 @@ namespace native
 
         _created = false;
 
-        // Quit SDL_ttf and SDL
+#ifdef HAVE_SDL2_TTF
         TTF_Quit();
+#endif
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
-}
+
+} // namespace native

@@ -1,33 +1,34 @@
 {
   "version": "2.0.0",
   "tasks": [
-      // Linux
+      // Linux Docker-backed CMake targets
       {
-          "label": "CMake Configure (Make)",
+          "label": "CMake Configure (Docker Targets)",
           "type": "shell",
           "command": "cmake",
-          "args": ["-S", ".", "-B", "build", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
-          "problemMatcher": [],
-          "group": { "kind": "build", "isDefault": true },
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Make)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "build", "--config", "Debug", "-j", "8"],
-          "problemMatcher": "$gcc",
-          "group": { "kind": "build", "isDefault": true },
-          "dependsOn": ["CMake Configure (Make)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Clean (Make)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "build", "--target", "clean"],
+          "args": ["-S", ".", "-B", "out", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
           "problemMatcher": [],
           "group": "build",
+          "os": { "linux": true }
+      },
+      {
+          "label": "CMake Build (Docker X11)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-x11"],
+          "problemMatcher": "$gcc",
+          "group": "build",
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "CMake Build (Docker SDL2)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-sdl2"],
+          "problemMatcher": "$gcc",
+          "group": { "kind": "build", "isDefault": true },
+          "dependsOn": ["CMake Configure (Docker Targets)"],
           "os": { "linux": true }
       },
 

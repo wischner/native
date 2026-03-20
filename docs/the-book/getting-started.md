@@ -6,10 +6,10 @@ This chapter explains how to build the **native** UI library and run the include
 
 To build **native**, you will need:
 
-- A C++20-compatible compiler (e.g. `g++`, `clang++`, or MSVC)
 - CMake version 3.16 or newer
-- Standard build tools (e.g. `make`)
-- Development packages for any required toolkit (e.g. X11, SDL2, OpenMotif)
+- Docker
+
+For Linux `X11` and `SDL2` builds, the project uses Docker images that already contain the required compiler toolchain and development headers. This avoids host-specific setup issues.
 
 ## Cloning the repository
 
@@ -20,22 +20,34 @@ cd native
 
 ## Building the library
 
-To configure and build the project:
+First configure a small host-side CMake build tree that exposes the Docker-backed targets:
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -S . -B out
 ```
 
-You can optionally select a specific toolkit backend:
+Then build the default `X11` toolkit inside Docker:
 
 ```bash
-cmake -DTOOLKIT=X11 ..
+cmake --build out --target docker-x11
 ```
 
-If not specified, the default toolkit is `"X11"`.
+To build the `SDL2` toolkit inside Docker:
+
+```bash
+cmake --build out --target docker-sdl2
+```
+
+The top-level `CMakeLists.txt` defines these Docker-backed targets and selects the matching image for each toolkit. The generated toolkit build directories remain in the repository:
+
+- `build/` for `TOOLKIT=X11`
+- `build-sdl2/` for `TOOLKIT=SDL2`
+
+API documentation is disabled by default in this workflow so normal compilation does not depend on Doxygen being available in the selected image. If you want docs too, enable them explicitly when configuring the host-side CMake tree:
+
+```bash
+cmake -S . -B out -DBUILD_DOCS=ON
+```
 
 ## Platform and toolkit structure
 
@@ -66,10 +78,10 @@ src/toolkits/sdl2/
 src/toolkits/openmotif/
 ```
 
-The toolkit is selected at build time using the `TOOLKIT` CMake variable:
+The toolkit is selected at build time using the `TOOLKIT` CMake variable, which the Docker-backed CMake targets pass to the containerized configure step:
 
 ```bash
-cmake -DTOOLKIT=SDL2 ..
+cmake --build out --target docker-sdl2
 ```
 
 Toolkit selection logic is defined in the top-level `CMakeLists.txt`:
@@ -103,10 +115,10 @@ macOS will be added in the same way when its platform backend is complete.
 After building, you can run the example programs from the build directory:
 
 ```bash
-./examples/example_hello
+./build/examples/01_app_example/app-example
 ```
 
-Make sure the chosen toolkit works correctly on your platform and that any dependencies (like X11 or SDL2) are installed.
+For SDL2 builds, use the executable under `build-sdl2/` instead.
 
 ## Folder structure overview
 

@@ -14,56 +14,58 @@ public:
     }
 
 private:
-    std::vector<native::point> _points;
+    std::vector<std::vector<native::point>> _strokes;
     bool _drawing;
 
-    // Mouse button handler (start/stop drawing)
+    // Left mouse down starts a stroke; left mouse up ends it.
     bool on_click(native::mouse_event e)
     {
         if (e.button == native::mouse_button::left)
         {
-            _drawing = !_drawing;
-            _points.push_back(e.position);
+            if (e.action == native::mouse_action::press)
+            {
+                _strokes.push_back({e.position});
+                _drawing = true;
+            }
+            else if (e.action == native::mouse_action::release)
+            {
+                _drawing = false;
+            }
             invalidate();
         }
         return true;
     }
 
-    // Track mouse motion and draw when drawing
+    // Track mouse motion during a stroke.
     bool on_move(native::point p)
     {
         if (_drawing)
         {
-            _points.push_back(p);
+            _strokes.back().push_back(p);
             invalidate();
         }
         return true;
     }
 
-    // Clear drawing on mouse wheel
+    // Mouse wheel clears all strokes.
     bool on_wheel(native::mouse_wheel_event)
     {
-        _points.clear();
+        _strokes.clear();
+        _drawing = false;
         invalidate();
         return true;
     }
 
-    // Paint only visible points
+    // Paint all strokes.
     bool on_paint(native::wnd_paint_event e)
     {
-        if (_points.size() < 2)
-            return true; // Nothing to draw
-
-        for (size_t i = 1; i < _points.size(); ++i)
+        for (const auto &stroke : _strokes)
         {
-            const auto &p0 = _points[i - 1];
-            const auto &p1 = _points[i];
-            e.g.draw_line(p0, p1);
+            for (size_t i = 1; i < stroke.size(); ++i)
+                e.g.draw_line(stroke[i - 1], stroke[i]);
         }
-
         return true;
     }
-
 };
 
 int program(int argc, char *argv[])

@@ -2,7 +2,9 @@
 #include <cmath>
 
 #include <SDL2/SDL.h>
+#ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
+#endif
 
 #include <native.h>
 #include "gpx_wnd.h"
@@ -80,8 +82,7 @@ namespace native
         // Clear with color
         SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(renderer, &clip_rect);
-
-        SDL_RenderPresent(renderer);
+        cache->current_fg = color;
         return *this;
     }
 
@@ -95,8 +96,6 @@ namespace native
         apply_sdl_state(renderer, this, cache);
 
         SDL_RenderDrawLine(renderer, from.x, from.y, to.x, to.y);
-
-        SDL_RenderPresent(renderer);
         return *this;
     }
 
@@ -115,13 +114,12 @@ namespace native
             SDL_RenderFillRect(renderer, &sdl_rect);
         else
             SDL_RenderDrawRect(renderer, &sdl_rect);
-
-        SDL_RenderPresent(renderer);
         return *this;
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p)
     {
+#ifdef HAVE_SDL2_TTF
         auto *cache = sdl::wnd_gpx_bindings.from_a(_wnd);
         if (!cache || !cache->renderer)
             return *this;
@@ -134,21 +132,16 @@ namespace native
         {
             cache->font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12);
             if (!cache->font)
-            {
-                // Try alternative font path
                 cache->font = TTF_OpenFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 12);
-            }
             if (!cache->font)
-                return *this; // Font loading failed
+                return *this;
         }
 
-        // Render text to surface
         SDL_Color color = {ink().r, ink().g, ink().b, ink().a};
         SDL_Surface *surface = TTF_RenderText_Solid(cache->font, text.c_str(), color);
         if (!surface)
             return *this;
 
-        // Create texture from surface
         SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
         if (texture)
         {
@@ -158,7 +151,7 @@ namespace native
         }
 
         SDL_FreeSurface(surface);
-        SDL_RenderPresent(renderer);
+#endif
         return *this;
     }
 
@@ -190,7 +183,6 @@ namespace native
         }
 
         SDL_FreeSurface(surface);
-        SDL_RenderPresent(renderer);
         return *this;
     }
 

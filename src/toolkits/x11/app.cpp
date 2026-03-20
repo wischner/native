@@ -30,18 +30,70 @@ namespace native
             switch (event.type)
             {
             case Expose:
+            {
+                // Drain any additional queued Expose events for this window
+                // so we only repaint once for the latest state.
                 {
-                    // Just emit paint event, cache already initialized in create()
-                    rect r(event.xexpose.x, event.xexpose.y, event.xexpose.width, event.xexpose.height);
-                    auto &g = wnd->get_gpx().set_clip(r); 
-                    wnd_paint_event e{r, g};
-                    wnd->on_wnd_paint.emit(e);
+                    XEvent discard;
+                    while (XCheckTypedWindowEvent(x11::cached_display,
+                                                  event.xany.window, Expose, &discard))
+                    {}
                 }
-                break;
+
+                // Always repaint the full backbuffer regardless of the Expose
+                // rectangle — partial repaints cause artifacts when the clip
+                // region doesn't cover the whole window.
+                auto &g = wnd->get_gpx();
+                auto *cache = x11::wnd_gpx_bindings.from_a(wnd);
+                rect r(0, 0,
+                       cache ? cache->buf_w : 0,
+                       cache ? cache->buf_h : 0);
+                g.set_clip(r);
+
+                // Clear the full backbuffer to white, then let the user paint.
+                g.clear(rgba(255, 255, 255, 255));
+                wnd_paint_event e{r, g};
+                wnd->on_wnd_paint.emit(e);
+
+                // Present full backbuffer to window in one fast blit.
+                if (cache && cache->backbuffer)
+                {
+                    XCopyArea(x11::cached_display,
+                              cache->backbuffer, event.xany.window, cache->gc,
+                              0, 0, cache->buf_w, cache->buf_h,
+                              0, 0);
+                    XFlush(x11::cached_display);
+                }
+            }
+            break;
 
             case ConfigureNotify:
                 wnd->on_wnd_resize.emit(size(event.xconfigure.width, event.xconfigure.height));
                 wnd->on_wnd_move.emit(point(event.xconfigure.x, event.xconfigure.y));
+                {
+                    // Recreate the backbuffer whenever the window is resized.
+                    auto *cache = x11::wnd_gpx_bindings.from_a(wnd);
+                    if (cache && cache->backbuffer &&
+                        (event.xconfigure.width  != cache->buf_w ||
+                         event.xconfigure.height != cache->buf_h))
+                    {
+                        Display *display = x11::cached_display;
+                        int screen = DefaultScreen(display);
+                        int nw = event.xconfigure.width;
+                        int nh = event.xconfigure.height;
+
+                        XFreePixmap(display, cache->backbuffer);
+                        cache->backbuffer = XCreatePixmap(display, event.xany.window,
+                                                          nw, nh,
+                                                          DefaultDepth(display, screen));
+                        cache->buf_w = nw;
+                        cache->buf_h = nh;
+
+                        XSetForeground(display, cache->gc, WhitePixel(display, screen));
+                        XFillRectangle(display, cache->backbuffer, cache->gc,
+                                       0, 0, nw, nh);
+                    }
+                }
                 break;
 
             case MotionNotify:
@@ -50,36 +102,39 @@ namespace native
 
             case ButtonPress:
             case ButtonRelease:
+            {
+                mouse_button btn = mouse_button::none;
+                mouse_action act = (event.type == ButtonPress)
+                                       ? mouse_action::press
+                                       : mouse_action::release;
+
+                switch (event.xbutton.button)
                 {
-                    mouse_button btn = mouse_button::none;
+                case Button1: btn = mouse_button::left;   break;
+                case Button2: btn = mouse_button::middle; break;
+                case Button3: btn = mouse_button::right;  break;
 
-                    switch (event.xbutton.button)
-                    {
-                    case Button1: btn = mouse_button::left; break;
-                    case Button2: btn = mouse_button::middle; break;
-                    case Button3: btn = mouse_button::right; break;
-
-                    case Button4:
-                    case Button5:
-                    {
-                        mouse_wheel_event wheel(
-                            point(event.xbutton.x, event.xbutton.y),
-                            (event.xbutton.button == Button4 ? 1 : -1),
-                            wheel_direction::vertical);
-                        wnd->on_mouse_wheel.emit(wheel);
-                        break;
-                    }
-
-                    default: break;
-                    }
-
-                    if (btn != mouse_button::none)
-                    {
-                        mouse_event e(btn, point(event.xbutton.x, event.xbutton.y));
-                        wnd->on_mouse_click.emit(e);
-                    }
+                case Button4:
+                case Button5:
+                {
+                    mouse_wheel_event wheel(
+                        point(event.xbutton.x, event.xbutton.y),
+                        (event.xbutton.button == Button4 ? 1 : -1),
+                        wheel_direction::vertical);
+                    wnd->on_mouse_wheel.emit(wheel);
+                    break;
                 }
-                break;
+
+                default: break;
+                }
+
+                if (btn != mouse_button::none)
+                {
+                    mouse_event e(btn, act, point(event.xbutton.x, event.xbutton.y));
+                    wnd->on_mouse_click.emit(e);
+                }
+            }
+            break;
 
             case DestroyNotify:
                 if (wnd)
@@ -93,7 +148,6 @@ namespace native
             case ClientMessage:
                 if (event.xclient.data.l[0] == static_cast<long>(x11::wm_delete_window_atom))
                 {
-                    // Let the window handle destruction
                     wnd->destroy();
                     running = false;
                 }

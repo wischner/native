@@ -1,6 +1,5 @@
 #include <stdexcept>
 
-#include <Xm/Xm.h>
 #include <X11/Xlib.h>
 
 #include <native.h>

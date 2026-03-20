@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include <X11/Xlib.h>
-#include <Xm/Xm.h>
 
 #include <native.h>
 #include "bindings.h"
@@ -63,6 +62,11 @@ namespace native
         if (!main_wnd)
             throw std::runtime_error("X11: Failed to create main window.");
 
+        // Suppress the server-side background paint so XClearArea only
+        // generates Expose events without blanking the window to white.
+        // The backbuffer XCopyArea fills the window instead.
+        XSetWindowBackgroundPixmap(x11::cached_display, main_wnd, None);
+
         // Set window title
         XStoreName(x11::cached_display, main_wnd, title().c_str());
 
@@ -100,6 +104,8 @@ namespace native
             {
                 if (cache->gc)
                     XFreeGC(x11::cached_display, cache->gc);
+                if (cache->backbuffer)
+                    XFreePixmap(x11::cached_display, cache->backbuffer);
                 delete cache;
                 x11::wnd_gpx_bindings.unregister_by_a(self);
             }

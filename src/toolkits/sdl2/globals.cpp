@@ -7,6 +7,7 @@
 
 namespace sdl
 {
+    SDL_Window *main_window = nullptr;
     native::bindings<SDL_Window *, native::wnd *> wnd_bindings;
     native::bindings<native::wnd *, sdl2gpx *> wnd_gpx_bindings;
 }

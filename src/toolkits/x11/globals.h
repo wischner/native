@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Xm/Xm.h>
+#include <X11/Xlib.h>
 
 #include <native.h>
 #include <bindings.h>
@@ -11,18 +11,19 @@ namespace x11
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
 
-    // Internally cached values for gc
-    typedef struct 
+    // Internally cached values for gc and backbuffer
+    typedef struct
     {
-        GC gc = nullptr;  // Now it owns the GC!
+        GC gc = nullptr;
+
+        // Off-screen backbuffer (eliminates white-flash on repaint)
+        Pixmap backbuffer = 0;
+        int buf_w = 0;
+        int buf_h = 0;
 
         // Cached draw parameters
         native::rgba current_fg = 0xFFFFFFFF;
         int current_thickness = -1;
-
-        // Clip region
-        native::rect clip = {};
-        bool dirty_clip = true;
 
         // Cached font
         std::string font_name;

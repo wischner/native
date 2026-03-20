@@ -167,14 +167,21 @@ namespace native
         x2
     };
 
+    enum class mouse_action
+    {
+        press,
+        release
+    };
+
     struct mouse_event
     {
         mouse_button button;
+        mouse_action action;
         point position;
 
         mouse_event() = default;
-        mouse_event(mouse_button b, point pos)
-            : button(b), position(pos) {}
+        mouse_event(mouse_button b, mouse_action a, point pos)
+            : button(b), action(a), position(pos) {}
     };
 
     enum class wheel_direction
@@ -241,9 +248,9 @@ namespace native
         virtual gpx &draw_img(const img &src, point dst) = 0;
 
     protected:
-        rgba _ink;
-        rgba _paper;
-        uint8_t _thickness;
+        rgba _ink   = rgba(0, 0, 0, 255);   // black
+        rgba _paper = rgba(255, 255, 255, 255); // white
+        uint8_t _thickness = 1;
     };
 
     // --- Screen. ---------------------------------------------------

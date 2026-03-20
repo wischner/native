@@ -124,13 +124,8 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        // Trigger a repaint by posting an expose event
-        SDL_Event event;
-        event.type = SDL_WINDOWEVENT;
-        event.window.event = SDL_WINDOWEVENT_EXPOSED;
-        SDL_Window *win = sdl::wnd_bindings.from_b(const_cast<wnd *>(this));
-        event.window.windowID = SDL_GetWindowID(win);
-        SDL_PushEvent(&event);
+        if (auto *cache = sdl::wnd_gpx_bindings.from_a(const_cast<wnd *>(this)))
+            cache->invalidated = true;
 
         return const_cast<wnd &>(*this);
     }

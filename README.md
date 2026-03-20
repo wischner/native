@@ -41,6 +41,18 @@ int program(int argc, char* argv[])
 }
 ```
 
+## Building
+
+Linux `X11` and `SDL2` builds can be driven through Docker from CMake so the required headers and tools come from a known image instead of the host machine.
+
+```bash
+cmake -S . -B out
+cmake --build out --target docker-x11
+cmake --build out --target docker-sdl2
+```
+
+The Docker-backed targets build `X11` into `build/` and `SDL2` into `build-sdl2/`. API docs are skipped by default; enable them with `-DBUILD_DOCS=ON` when configuring the host CMake tree if needed.
+
 ## The book of native
 
 Explore the full, chapter-by-chapter explanation of how the **native** UI library is built.

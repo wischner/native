@@ -2,7 +2,9 @@
 #include <algorithm>
 
 #include <SDL2/SDL.h>
+#ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
+#endif
 
 #include <native.h>
 #include "gpx_img.h"
@@ -114,6 +116,7 @@ namespace native
 
     gpx &gpx_img::draw_text(const std::string &text, point p)
     {
+#ifdef HAVE_SDL2_TTF
         // Load font
         TTF_Font *font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12);
         if (!font)
@@ -173,6 +176,10 @@ namespace native
         SDL_UnlockSurface(surface);
         SDL_FreeSurface(surface);
         TTF_CloseFont(font);
+#else
+        (void)text;
+        (void)p;
+#endif
         return *this;
     }
 
