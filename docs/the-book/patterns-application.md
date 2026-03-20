@@ -1,151 +1,73 @@
-# Patterns: application entry and main loop
+# Patterns: Application Entry And Main Loop
 
-This chapter explains the **application startup pattern** used in the **native** UI library. It defines how applications are structured, where execution begins, and how platform-specific entry points delegate to a portable `program()` function that drives the application lifecycle.
+This chapter describes the application startup path that exists in the code
+today.
 
----
+## User entry point
 
-## Goals of the application pattern
-
-The application pattern provides:
-
-- A **standardized way to launch** native applications on any platform
-- A **pure C++ entry point** (`program()`) for user code
-- Platform-specific `main()` or `WinMain()` functions that handle low-level setup
-- Support for **screen detection**, **window initialization**, and a **main loop**
-- Future support for **per-frame updates** inside the loop (for animations or games)
-
----
-
-## The `app` class
-
-The `app` class coordinates application startup. It has no public constructor and is fully static:
+Applications provide:
 
 ```cpp
-class app final
-{
-public:
-    app() = delete;
-
-    static int run(const app_wnd &wnd);
-    static int main_loop();
-
-    static app_wnd *main_wnd();
-
-private:
-    static inline app_wnd *_main_wnd = nullptr;
-};
+int program(int argc, char **argv);
 ```
 
----
+Backend-specific `main()` functions call `program()` and keep platform-specific
+startup details out of user code.
 
-## Application flow
+## `app::run`
 
-The standard application flow begins by calling:
+The shared startup path lives in `src/app.cpp`.
 
-```cpp
-int program(int argc, char* argv[])
-{
-    return native::app::run(app_wnd("Hello World!"));
-}
-```
+Today `app::run()` performs these steps:
 
-The `run()` method:
+1. detect screens
+2. create the main application window
+3. store the main window in `app`
+4. show the main window
+5. enter the backend main loop
 
-1. Detects connected screens
-2. Creates and shows the main window
-3. Stores the main window for access via `app::main_wnd()`
-4. Enters the platform-specific main loop
+That shared flow gives each backend the same application shape even though the
+event loop implementation differs.
 
----
+## Main window ownership
 
-## `app::run()` implementation
+`app` stores a pointer to the main window so the backend can refer back to it
+when needed.
 
-```cpp
-int app::run(const app_wnd &wnd)
-{
-    screen::detect();
+This is part of the current architecture and is used by the Linux toolkit
+implementations during repaint and event dispatch.
 
-    wnd.create();
-    _main_wnd = const_cast<app_wnd *>(&wnd);
-    wnd.show();
+## Backend main loops
 
-    return app::main_loop();
-}
-```
+The main loop itself is not implemented in the shared `src/` layer.
+It is implemented by the selected backend.
 
-This abstracts the entire initialization process behind a single call.
+That means:
 
----
+- startup shape is shared
+- event pumping is backend-specific
+- native messages are translated into `native` events before they reach user code
 
-## Platform-specific entry point
+## Screen detection
 
-Instead of writing a `main()` function yourself, the platform defines it for you and redirects to `program()`.
+Screen detection happens before the main window is created.
 
-### Windows: `WinMain()`
+The shared `screen` type stores:
 
-```cpp
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine, int nCmdShow)
-{
-    // Parse command line into argc/argv
-    // ...
-    return program(argc, argv_c.data());
-}
-```
+- screen index
+- bounds
+- work area
+- primary-screen flag
 
-### Linux/macOS/Haiku: `main()`
+Backends populate that information in their own `screen::detect()` logic.
 
-```cpp
-int main(int argc, char **argv)
-{
-    return program(argc, argv);
-}
-```
+## Why this pattern exists
 
-This ensures platform differences are abstracted away from your application logic.
+This keeps the public application model small:
 
----
+- user code writes `program()`
+- user code calls `app::run(...)`
+- backend code owns platform startup and event processing
 
-## Main loop
-
-Each platform implements its own message loop. For example, on Windows:
-
-```cpp
-int app::main_loop()
-{
-    MSG msg;
-    BOOL ret;
-
-    while ((ret = GetMessage(&msg, nullptr, 0, 0)) != 0)
-    {
-        if (ret == -1)
-            return -1;
-
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-    return static_cast<int>(msg.wParam);
-}
-```
-
----
-
-## Upcoming enhancement: per-frame updates
-
-To support frame-based updates (e.g. for games, animations, or custom renderers), a **hook function** will be added to `main_loop()` and called between iterations. This allows applications to update internal state or redraw content without using timers.
-
-This approach avoids breaking the message loop and maintains full compatibility with event-driven UIs.
-
----
-
-## Summary
-
-The application pattern in **native** gives you:
-
-- A single entry point (`program()`)
-- A self-contained `app::run()` startup flow
-- Abstracted, per-platform main functions
-- Consistent behavior across all supported platforms
-
-It provides the foundation upon which all user-facing applications are built, while staying out of your way when not needed.
+The result is a consistent entry model without exposing native startup details in
+the public API.

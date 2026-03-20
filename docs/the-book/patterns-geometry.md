@@ -1,115 +1,103 @@
-# Patterns: geometry and type conventions
+# Patterns: Geometry And Type Conventions
 
-This chapter describes the design principles behind the geometry types used in the **native** UI library — including how points, sizes, and rectangles are represented, and how coordinates are treated consistently across all platforms and toolkits.
+This chapter describes the basic value types used throughout the codebase.
 
----
+## Coordinate and dimension types
 
-## Coordinate type: `coord`
-
-At the core of all geometry is the `coord` type — a type alias that defines the scalar used for screen coordinates, widths, and heights:
+The public header defines:
 
 ```cpp
-using coord = int;
+using coord = int16_t;
+using dim = uint16_t;
 ```
 
-By using a single alias, the library can easily switch to other types (like `float` or `double`) in the future if needed — or to use fixed-point math in constrained environments. All positions and dimensions are expressed in `coord` units.
+These types are used across:
 
----
+- geometry
+- window bounds
+- image dimensions
+- input events
 
 ## `point`
 
-Represents a location on a 2D plane, defined by its `x` and `y` coordinates:
+`point` represents a position:
 
 ```cpp
 struct point
 {
     coord x = 0;
     coord y = 0;
-
-    point() = default;
-    point(coord x_, coord y_);
 };
 ```
 
-Points are used to specify positions of elements, mouse coordinates, and corners of rectangles.
-
----
+It is used for window positions, mouse coordinates, and drawing endpoints.
 
 ## `size`
 
-Represents a two-dimensional size, defined by width and height:
+`size` represents dimensions:
 
 ```cpp
 struct size
 {
-    coord w = 0;
-    coord h = 0;
-
-    size() = default;
-    size(coord w_, coord h_);
+    dim w = 0;
+    dim h = 0;
 };
 ```
 
-`size` is used to define dimensions of windows, images, or any drawable object.
-
----
+It is used for window sizes, image sizes, and resize events.
 
 ## `rect`
 
-The rectangle is the most important composite geometry type, built from a `point` (origin) and a `size` (extent):
+`rect` combines a position and dimensions:
 
 ```cpp
 struct rect
 {
     point p;
     size d;
-
-    rect() = default;
-    rect(point p_, size d_);
-    rect(coord x, coord y, coord w, coord h);
-
-    coord x1() const;
-    coord y1() const;
-    coord x2() const;
-    coord y2() const;
-
-    coord width() const;
-    coord height() const;
-
-    bool contains(point pt) const;
 };
 ```
 
-The `rect` abstraction makes it easier to manage areas and bounds — and provides utility methods like `contains()` to test whether a point lies inside it.
+The implementation provides helper methods such as:
 
----
+- `x1()`
+- `y1()`
+- `x2()`
+- `y2()`
+- `w()`
+- `h()`
+- `contains()`
+- `intersect()`
 
-## Accessors and utility
+These are used by painting code, clipping, screen work areas, and hit testing.
 
-The API design favors accessor methods like `x1()`, `x2()`, `width()`, `height()` for consistency and composability. For example, you can:
+## `line`
 
-- Get the top-left and bottom-right corners
-- Calculate width/height even when rect is constructed differently
-- Avoid needing direct access to raw fields
+`line` is a small value type built from two points.
+It currently provides a `contains()` helper for simple geometric tests.
 
----
+## `rgba`
 
-## Immutability by convention
+Color values are represented by the `rgba` union in the public header.
 
-All geometry types are **value types**, designed to be cheap to copy and passed by value. They have no heap allocations, no virtual functions, and no polymorphism. This ensures performance and correctness in tight loops like rendering, hit-testing, and layout.
+It provides:
 
----
+- channel access through `r`, `g`, `b`, `a`
+- packed 32-bit storage through `value`
 
-## Geometry in the graphics stack
+The graphics layer uses `rgba` consistently for ink, paper, image pixels, and
+background clears.
 
-The same geometry types are used throughout the graphics system:
+## Why these types matter
 
-- `point` and `rect` are used in `gpx::draw_line`, `draw_text`, `draw_img`
-- `rect` defines the clipping region
-- `size` is used when creating `img` or defining window dimensions
+These small value types give every layer of the library the same vocabulary.
 
-By using a consistent set of lightweight types, all drawing and layout operations speak the same "language."
+The same `point`, `size`, `rect`, and `rgba` types appear in:
 
----
+- event payloads
+- screen metadata
+- window bounds
+- graphics APIs
+- image manipulation
 
-This geometry layer forms the mathematical backbone of all rendering, event processing, and window layout in **native**. It is simple by design — and powerful in composition.
+That consistency is part of what keeps the public interface clean and portable.

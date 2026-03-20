@@ -1,152 +1,82 @@
-# Patterns: windows and app windows
+# Patterns: Windows And App Windows
 
-Let’s talk about windows. Not the operating system — just windows. And yes, before you ask...
+This chapter explains the current window model.
 
-> The base class for all windows in **native** is called `wnd`.  
-> You weren’t expecting that, were you?
+## `wnd`
 
----
+`wnd` is the shared base class for windows.
 
-## The `wnd` class
+It stores common state such as:
 
-The `wnd` class is the foundational class for all window types in the **native** UI library. Every top-level or child window is derived from this class — even on platforms like SDL where there’s only one visible window.
+- bounds
+- parent pointer
+- optional layout manager
+- lazily created graphics object
+- event signals
 
-It is minimal by design, but extensible by intention. Over time, it will grow to support:
+The base class does not own native window handles directly.
 
-- Layout managers
-- Menus
-- Accelerators
-- Child controls
-- Focus and keyboard handling
-- Custom drawing
-- And more
+## Current responsibilities of `wnd`
 
-Here’s what it looks like today:
+Today `wnd` provides:
 
-```cpp
-class wnd
-{
-public:
-    wnd(int x = 100, int y = 100, int width = 640, int height = 480);
-    virtual ~wnd() = default;
+- position and size access
+- bounds updates
+- parent assignment
+- invalidation entry points
+- access to a `gpx` drawing object
+- common signals for paint and input
 
-    int x() const;
-    int y() const;
-    int width() const;
-    int height() const;
+The shared class defines the interface.
+Backends provide the native behavior for creation, showing, destruction,
+invalidation, and painting.
 
-    virtual void create() const = 0;
-    virtual void show() const = 0;
+## `app_wnd`
 
-    gpx &get_gpx() const;
+`app_wnd` is the main application window type.
 
-    signal<> on_wnd_create;
-    signal<point> on_wnd_move;
-    signal<size> on_wnd_resize;
+It extends `wnd` with:
 
-    signal<point> on_mouse_move;
-    signal<mouse_event> on_mouse_click;
-    signal<mouse_wheel_event> on_mouse_wheel;
+- a title
+- backend window creation
+- backend show logic
+- backend destroy logic
 
-protected:
-    int _x, _y, _width, _height;
-};
-```
+An `app_wnd` is passed into `app::run()` and becomes the main window for the
+application.
 
-This pure C++ class lives in `src/wnd.cpp`, where its members simply store geometry:
+## Painting model
 
-```cpp
-wnd::wnd(int x, int y, int width, int height)
-    : _x(x), _y(y), _width(width), _height(height) {}
+Painting is event-driven.
 
-int wnd::x() const { return _x; }
-int wnd::y() const { return _y; }
-int wnd::width() const { return _width; }
-int wnd::height() const { return _height; }
-```
+Backends are responsible for:
 
----
+- noticing that a window needs repaint
+- preparing the backend drawing surface
+- setting the clip region
+- clearing the window background
+- emitting `on_wnd_paint`
 
-## The `app_wnd` class
+The painter example exercises that model by storing strokes in user code and
+redrawing them during paint events.
 
-The `app_wnd` is a subclass of `wnd`, and represents the main application window — the one passed into `app::run()`.
+## Graphics object lifetime
 
-```cpp
-class app_wnd : public wnd
-{
-public:
-    app_wnd(std::string title,
-            int x = 100, int y = 100,
-            int width = 640, int height = 480);
+The drawing object returned by `wnd::get_gpx()` is created lazily.
 
-    virtual ~app_wnd() = default;
+That means the backend graphics object is not created until it is first needed.
+Its native resources live in backend-specific caches rather than in the public
+window object.
 
-    const std::string &title() const;
+## Why this structure is used
 
-    virtual void create() const override;
-    virtual void show() const override;
+This window model keeps the shared API small while still allowing each backend
+to manage:
 
-private:
-    std::string _title;
-};
-```
+- native window handles
+- renderer or graphics state
+- invalidation behavior
+- event translation
 
-The constructor simply stores its title and passes the geometry to `wnd`.
-
----
-
-## Platform implementations
-
-Each platform or toolkit defines the behavior of `create()` and `show()` through its own native implementation. Let's look at two examples.
-
-### Example 1: Windows (Win32)
-
-#### `create()`:
-
-- Registers a window class if needed
-- Creates a native `HWND` with the appropriate styles
-- Registers the object in the bindings table
-- Subclasses the window procedure to dispatch events via signals
-
-#### `show()`:
-
-- Shows and updates the window
-- Uses `ShowWindow()` and `UpdateWindow()`
-
-All event messages like `WM_MOVE`, `WM_SIZE`, `WM_MOUSEMOVE`, and `WM_MOUSEWHEEL` are routed through a custom `WndProc` that emits the proper signal.
-
-### Example 2: SDL2
-
-Even though SDL has no native window hierarchy, `wnd` is still used as a base class. This ensures a consistent application model.
-
-#### `create()`:
-
-- Initializes the SDL video subsystem (if not already done)
-- Creates a single `SDL_Window`
-- Registers it with the `bindings` system
-
-#### `show()`:
-
-- Shows the window using `SDL_ShowWindow()`
-- Clears it with a white background using a `SDL_Renderer`
-
-SDL-specific rendering logic will live in `gpx_img` and `gpx_wnd`.
-
-### Toolkit bindings
-
-Each toolkit registers its bindings in a toolkit-specific file (e.g. `globals.cpp`). All mappings between native handles and C++ objects (like `HWND` ↔ `wnd*`) will be defined there and only there.
-
-This keeps implementation clean, avoids global state spread, and makes it easier to port to new toolkits like OpenLook or Cocoa.
-
----
-
-## Summary
-
-- The `wnd` class is the foundation for all windows — even on platforms without window hierarchies.
-- It defines geometry, virtual `create()` and `show()`, and a set of signals for UI interaction.
-- `app_wnd` is a specialization for the main application window, holding a title and owning the event loop.
-- Platform-specific behavior is implemented in `create()` and `show()` per toolkit.
-- Event routing is done via signal emission in response to native messages.
-- All native-to-C++ mappings will be consolidated into `globals.cpp` per toolkit.
-
-Stay tuned — future chapters will cover layout, controls, and painting.
+The result is a public window abstraction that stays portable even though the
+native work differs underneath.

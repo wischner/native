@@ -51,7 +51,7 @@ cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
 ```
 
-The Docker-backed targets build `X11` into `build/` and `SDL2` into `build-sdl2/`. API docs are skipped by default; enable them with `-DBUILD_DOCS=ON` when configuring the host CMake tree if needed.
+The Docker-backed targets build `X11` into `build/linux-x11/` and `SDL2` into `build/linux-sdl2/`.
 
 ## The book of native
 

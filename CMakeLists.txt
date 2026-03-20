@@ -5,8 +5,6 @@ project(native LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_DOCS "Generate API documentation using Doxygen" OFF)
-
 find_program(OBJCXX_COMPILER NAMES g++ clang++)
 set(CMAKE_OBJCXX_COMPILER ${OBJCXX_COMPILER})
 
@@ -44,7 +42,6 @@ if(UNIX AND NOT APPLE)
                     cmake -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_SOURCE_DIR}/${build_dir}
                     -DTOOLKIT=${toolkit}
                     -DCMAKE_BUILD_TYPE=$<IF:$<BOOL:${CMAKE_BUILD_TYPE}>,${CMAKE_BUILD_TYPE},Debug>
-                    -DBUILD_DOCS=${BUILD_DOCS}
                 COMMAND ${DOCKER_EXECUTABLE} run --rm
                     -u ${HOST_UID}:${HOST_GID}
                     -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
@@ -56,12 +53,11 @@ if(UNIX AND NOT APPLE)
             )
         endfunction()
 
-        add_linux_docker_build_target(docker-x11 X11 build ${DOCKER_IMAGE_X11})
-        add_linux_docker_build_target(docker-sdl2 SDL2 build-sdl2 ${DOCKER_IMAGE_SDL2})
+        add_linux_docker_build_target(docker-x11 X11 build/linux-x11 ${DOCKER_IMAGE_X11})
+        add_linux_docker_build_target(docker-sdl2 SDL2 build/linux-sdl2 ${DOCKER_IMAGE_SDL2})
     endif()
 endif()
 
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(examples)
-add_subdirectory(docs)

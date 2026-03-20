@@ -1,194 +1,130 @@
-# Build system
+# Build System
 
-This chapter describes how the **native** build system is organized using CMake. It explains how platforms and toolkits are conditionally compiled, how the shared code is isolated, and how to extend the system to support new operating systems or UI backends.
+This chapter describes the build structure that exists in the repository today.
+It focuses on the current CMake workflow and the separation between the host
+control tree and the Linux toolkit build trees.
 
 ## Overview
 
-The build is managed using **CMake**, with `make` as the intended build tool. The project is structured to:
+The project uses CMake as its build entry point.
 
-- Automatically detect the current platform
-- Allow explicit selection of a toolkit using the `TOOLKIT` variable
-- Keep shared C++ code isolated in a single core library
-- Cleanly separate platform and toolkit implementations
+At the root, CMake does three things:
 
-## Missing
+- sets the project language and C++ standard
+- builds the `native` library and examples
+- exposes Docker-backed Linux toolkit targets
 
-Doxygen  sudo apt install doxygen
+The top-level build flow is:
 
-sudo apt install libmotif-dev
-
-
-## Root configuration
-
-The top-level `CMakeLists.txt` sets up the project, the C++ standard, and includes the core source and example directories:
-
-```cmake
-cmake_minimum_required(VERSION 3.16)
-project(native LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-add_subdirectory(src)
-add_subdirectory(examples)
+```bash
+cmake -S . -B out
+cmake --build out --target docker-x11
+cmake --build out --target docker-sdl2
 ```
 
-## Core library setup
+## Build directories
 
-The core logic lives in `src/`. This directory contains all platform-independent C++ code, and conditionally includes the appropriate platform and toolkit subdirectories:
+The repository uses three different build directories for Linux work:
 
-```cmake
-add_library(native STATIC)
+- `out/`
+  - host-side CMake control tree
+  - contains the generated top-level targets such as `docker-x11` and `docker-sdl2`
 
-target_include_directories(native
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
+- `build/linux-x11/`
+  - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
 
-target_sources(native PRIVATE
-    geometry.cpp
-    pen.cpp
-    screen.cpp
-    wnd.cpp
-    app_wnd.cpp
-    app.cpp
-)
+- `build/linux-sdl2/`
+  - toolkit build tree for the Linux backend configured with `TOOLKIT=SDL2`
 
-add_subdirectory(platforms)
+These build trees are kept separate so that toolkit-specific CMake cache data,
+dependencies, and generated files do not overwrite each other.
 
-if(NOT WIN32 AND NOT HAIKU)
-    add_subdirectory(toolkits)
-endif()
-```
+## Docker-backed Linux targets
 
-The shared logic in this directory is entirely portable and reused by all platforms and toolkits.
+The Linux toolkit builds are driven by custom targets in the top-level
+`CMakeLists.txt`.
 
-## Platform handling
+Those targets run CMake inside Docker images that already contain the required
+toolchain and system headers.
 
-Platform-specific backends are located in `src/platforms/`, one subdirectory per OS. The appropriate platform is selected automatically using CMake variables like `WIN32`, `APPLE`, and `UNIX`.
+- `docker-x11`
+- `docker-sdl2`
 
-The logic for selecting the platform is in `src/platforms/CMakeLists.txt`:
+The images are:
 
-```cmake
-if(WIN32)
-    add_subdirectory(windows)
-elseif(UNIX AND NOT APPLE)
-    add_subdirectory(linux)
-elseif(HAIKU)
-    # add_subdirectory(haiku)
-endif()
-```
+- `wischner/gcc-x86_64-linux-x11`
+- `wischner/gcc-x86_64-linux-sdl`
 
-Each platform directory contributes its own source files and links to system libraries as needed. For example, `src/platforms/windows/CMakeLists.txt`:
+The source tree is mounted into the container at the same absolute path that it
+has on the host. This keeps CMake build trees and cache paths stable between
+host-side and Docker-side invocation.
 
-```cmake
-target_sources(native PRIVATE
-    main.cpp
-    screen.cpp
-)
+## Root project structure
 
-target_link_libraries(native PRIVATE
-    user32
-    gdi32
-    shell32
-)
-```
+The root `CMakeLists.txt` adds two code subtrees:
 
-macOS and Haiku will be enabled when their ports are complete.
+- `src/`
+- `examples/`
+
+The current top-level project does not build generated API documentation.
+The book in `docs/the-book/` is maintained as source documentation only.
+
+## Core library target
+
+The `native` library is defined in `src/CMakeLists.txt`.
+
+The shared target contains portable code such as:
+
+- geometry
+- screen metadata
+- application startup
+- common graphics state
+
+The same target is then extended by platform and toolkit subdirectories.
+
+## Platform selection
+
+Platform code lives under `src/platforms/`.
+
+The platform subtree is selected with standard CMake platform variables:
+
+- `WIN32`
+- `HAIKU`
+- `APPLE`
+- `UNIX`
+
+On Linux, the platform layer is combined with a toolkit layer.
 
 ## Toolkit selection
 
-Toolkit backends are located in `src/toolkits/`. Only one toolkit is compiled at a time. The selected toolkit is controlled by the `TOOLKIT` variable, which is defined and evaluated in `src/toolkits/CMakeLists.txt`:
+Toolkit code lives under `src/toolkits/`.
 
-```cmake
-set(TOOLKIT "X11" CACHE STRING "Toolkit backend to use (SDL2, OpenMotif, etc.)")
+The active toolkit is selected through the cached `TOOLKIT` variable in
+`src/toolkits/CMakeLists.txt`.
 
-if(TOOLKIT STREQUAL "SDL2")
-    add_subdirectory(sdl2)
-elseif(TOOLKIT STREQUAL "OPENMOTIF")
-    add_subdirectory(openmotif)
-elseif(TOOLKIT STREQUAL "X11")
-    add_subdirectory(x11)
-else()
-    message(FATAL_ERROR "Unknown toolkit: ${TOOLKIT}")
-endif()
-```
+Only one toolkit subtree is added per configured build tree.
 
-Each toolkit directory contributes its own drawing, event handling, and possibly font rendering code. Dependencies such as SDL2 or Motif are located using `find_package()` inside the toolkit's own `CMakeLists.txt`.
-
-Toolkits are only compiled for platforms that require them. For example, Windows and Haiku do not use a separate toolkit and are handled entirely in their platform backends.
-
-## Header structure
-
-The main public header is located at:
-
-```
-include/native.h
-```
-
-This header exposes all shared C++ interfaces, including geometry types, window classes, the drawing system (`gpx`), and application control. It includes no platform-specific or toolkit-specific declarations.
+That is why Linux toolkit builds use different directories instead of sharing
+one `build/` directory.
 
 ## Examples
 
-Each example lives in its own subdirectory under `examples/`. The examples are compiled separately and link against the `native` library:
+Examples are built from `examples/` and link against `native`.
 
-```
-examples/
-├── app_example/
-│   └── CMakeLists.txt
-│   └── main.cpp
-```
+Today the repository includes:
 
-An example `CMakeLists.txt`:
+- a minimal application window example
+- a painter example
 
-```cmake
-add_executable(app-example main.cpp)
-target_link_libraries(app-example PRIVATE native)
-```
+The Linux outputs are produced inside the toolkit-specific build trees:
 
-All examples are included from the top-level `CMakeLists.txt`:
-
-```cmake
-add_subdirectory(examples)
-```
-
-## Adding a new platform
-
-To add support for a new platform:
-
-1. Create a new subdirectory under `src/platforms/` (e.g. `solaris/`)
-2. Add the necessary source files and `CMakeLists.txt`
-3. Update `src/platforms/CMakeLists.txt` to detect the platform and include the directory
-
-Example:
-
-```cmake
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    add_subdirectory(solaris)
-```
-
-## Adding a new toolkit
-
-To add a new toolkit:
-
-1. Create a new subdirectory under `src/toolkits/` (e.g. `openlook/`)
-2. Add drawing, input, and system integration logic in C++
-3. Add a `CMakeLists.txt` that contributes source files and links any dependencies
-4. Add the toolkit to the conditionals in `src/toolkits/CMakeLists.txt`:
-
-```cmake
-elseif(TOOLKIT STREQUAL "OPENLOOK")
-    add_subdirectory(openlook)
-```
+- `build/linux-x11/examples/...`
+- `build/linux-sdl2/examples/...`
 
 ## Summary
 
-- The `native` build is modular, clean, and organized by platform and toolkit.
-- The `TOOLKIT` variable selects a single backend for UI drawing and input.
-- Platform code is selected automatically and provides system integration.
-- All shared C++ logic lives in `src/` and is declared in `include/native.h`.
-- Adding support for a new target involves only adding a subdirectory and updating a few CMake conditionals.
-
-This structure makes it easy to port the library to new systems and test backends in isolation.
+- CMake is the build entry point.
+- `out/` is the host control tree.
+- Linux toolkit builds run inside Docker.
+- `build/linux-x11/` and `build/linux-sdl2/` are separate on purpose.
+- The root project currently builds code and examples, not generated API docs.

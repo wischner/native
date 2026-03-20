@@ -1,69 +1,74 @@
-# Feature Support Matrix
+# Feature Matrix
 
-This chapter tracks the current state of feature implementation across all supported platforms. It helps identify missing functionality and plan future development.
+This chapter records only the feature surface that is implemented and exercised
+in the current stable backends. It is intentionally conservative.
 
----
+## Current stable backends
 
-## Platforms
+The project currently treats these Linux toolkit backends as stable:
 
-| Platform    | Status     | Notes                                                       |
-| ----------- | ---------- | ----------------------------------------------------------- |
-| Windows     | ✅ Stable  | Fully functional with MSVC.                                 |
-| Linux (X11) | ⚠️ Partial | Core event handling works; advanced features pending.       |
-| Haiku       | ⚠️ Partial | Basic functionality implemented; incomplete event handling. |
+- the Linux backend configured with the native window-system toolkit
+- the Linux backend configured with the SDL-based toolkit
 
----
+This chapter does not describe unfinished ports or planned features.
 
-## Core Features
+## Application lifecycle
 
-| Feature               | Windows | Linux (X11) | Haiku | Notes               |
-| --------------------- | ------- | ----------- | ----- | ------------------- |
-| Window creation       | ✅      | ✅          | ✅    |                     |
-| Native handle access  | ✅      | ✅          | ✅    |                     |
-| Event dispatch system | ✅      | ✅          | ✅    | Via `signal<>`.     |
-| Main loop integration | ✅      | ✅          | ✅    | Uses `native::app`. |
+Implemented in the stable backends:
 
----
+- screen detection before application startup
+- main application window creation
+- main loop entry through `app::run`
+- example programs linked against the shared `native` library
 
-## Input Events
+## Window events
 
-| Feature            | Windows | Linux (X11) | Haiku | Notes                                       |
-| ------------------ | ------- | ----------- | ----- | ------------------------------------------- |
-| Mouse click events | ✅      | ✅          | ✅    |                                             |
-| Mouse move events  | ✅      | ✅          | ✅    |                                             |
-| Mouse wheel events | ✅      | ✅          | ⬜    | Not implemented on Haiku.                   |
-| Keyboard events    | ✅      | ⚠️ Partial  | ⬜    | Limited support on Linux, pending on Haiku. |
+Implemented in the stable backends:
 
----
+- window creation notification
+- window move notification
+- window resize notification
+- paint notification
 
-## Rendering and Graphics
+## Mouse events
 
-| Feature                | Windows | Linux (X11) | Haiku | Notes                           |
-| ---------------------- | ------- | ----------- | ----- | ------------------------------- |
-| Basic drawing API      | ✅      | ✅          | ✅    | `gpx` class.                    |
-| Draw rect              | ✅      | ✅          | ✅    |                                 |
-| Draw lines             | ✅      | ✅          | ✅    |                                 |
-| Clipping (`clip_rect`) | ✅      | ⬜          | ⬜    | Not yet working on Linux/Haiku. |
-| Image buffer (`img`)   | ✅      | ✅          | ✅    | Always 32bpp RGBA.              |
-| Double buffering       | ✅      | ⚠️ Flickers | ⬜    | Linux needs proper buffering.   |
-| DPI awareness          | ⬜      | ⬜          | ⬜    | Not implemented.                |
+Implemented in the stable backends:
 
----
+- mouse move
+- mouse button press
+- mouse button release
+- mouse wheel
 
-## Window Management
+These events are exposed through the `signal<>` mechanism on `wnd`.
 
-| Feature               | Windows | Linux (X11) | Haiku | Notes                       |
-| --------------------- | ------- | ----------- | ----- | --------------------------- |
-| Resizing              | ✅      | ✅          | ✅    |                             |
-| Minimizing/Maximizing | ✅      | ⬜          | ⬜    | Missing on Linux and Haiku. |
-| Custom cursors        | ✅      | ⬜          | ⬜    | Pending.                    |
-| Clipboard access      | ⬜      | ⬜          | ⬜    | Not yet implemented.        |
-| Drag & drop           | ⬜      | ⬜          | ⬜    | Not yet implemented.        |
+## Drawing surface
 
----
+Implemented in the stable backends:
 
-✅ **Legend**
+- window-backed graphics via `gpx_wnd`
+- image-backed graphics via `gpx_img`
+- clipping
+- line drawing
+- rectangle drawing
+- image blitting
 
-- ✅ Fully implemented and tested
-- ⚠️ Partially implemented or unstable
-- ⬜ Not yet implemented
+## Text drawing
+
+Text drawing exists in the graphics interface.
+
+For the SDL-based backend, text rendering is optional and depends on whether the
+build finds `SDL2_ttf`. If that dependency is not present, text drawing becomes
+a no-op rather than a build failure.
+
+## Examples
+
+The current examples exercise the stable feature set:
+
+- minimal main window
+- interactive painter using mouse input and retained strokes
+
+## What this chapter does not do
+
+This chapter is not a roadmap.
+If a feature is not described here, it should be added only when the code and
+the examples support it.

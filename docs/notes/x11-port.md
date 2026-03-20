@@ -1,1 +1,0 @@
-sudo apt install libpixman-1-dev

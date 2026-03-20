@@ -1,31 +1,39 @@
 # The Book of Native
 
-This book documents the internals of the **native** UI library — from the build system and core architecture to drawing, font rendering, and platform integration.
+This book explains how the current codebase works.
 
-If you haven’t already, read the [README](../../README.md) first for an overview of what `native` is and what problems it solves.
+It is not a roadmap and it is not a wish list.
+Each chapter should describe behavior, structure, and practices that already
+exist in the repository.
+
+If a feature is added later, the book can grow with it.
 
 ## Chapters
 
-1. [Getting started](getting-started.md)  
-   How to build `native`, its structure, toolkits, and how to run examples.
+1. [Getting started](getting-started.md)
+   Build the project, run the examples, and understand the build directories.
 
-2. [Build system](build-system.md)  
-   Toolkit detection, per-platform source inclusion, and CMake practices.
+2. [Build system](build-system.md)
+   How the top-level CMake project, Docker-backed Linux targets, and toolkit
+   build trees are organized.
 
-3. [Patterns: source layering and native bindings](patterns-layering.md)  
-   Describes the architecture for isolating native code, layering `src/`, `platforms/`, and `toolkits/`, and using the `bindings` mechanism.
+3. [Patterns: source layering and native bindings](patterns-layering.md)
+   How the code separates public C++ abstractions from native implementation
+   details and maps handles to objects.
 
-4. [Patterns: geometry and type conventions](patterns-geometry.md)  
-   Design of basic geometry types (`point`, `size`, `rect`) and the coordinate model used across toolkits.
+4. [Patterns: geometry and type conventions](patterns-geometry.md)
+   The basic value types used across windows, graphics, and events.
 
-5. [Patterns: signal and event dispatching](patterns-signals.md)  
-   The design of `signal<>` and its role in window events, including connection, disconnection, and event propagation.
+5. [Patterns: signal and event dispatching](patterns-signals.md)
+   How event delivery works through the internal `signal<>` mechanism.
 
-6. [Patterns: application entry and main loop](patterns-application.md)  
-   Describes how applications start via the `program()` function, how the `app` class manages the main window and loop, and how platform-specific `main()` functions route into a common entry point.
+6. [Patterns: application entry and main loop](patterns-application.md)
+   How `program()`, `app::run()`, screen detection, window creation, and the
+   backend main loop fit together.
 
-7. [Patterns: windows and app windows](patterns-windows.md)  
-   Base class for all windows (`wnd`), main application window (`app_wnd`), and how platforms implement native creation and event routing.
+7. [Patterns: windows and app windows](patterns-windows.md)
+   The role of `wnd`, `app_wnd`, invalidation, painting, and backend-specific
+   native resources.
 
-8. [Feature support matrix](feature-matrix.md)  
-   A comprehensive overview of which `native` features are implemented and functional across supported platforms.
+8. [Feature matrix](feature-matrix.md)
+   The feature surface that is implemented in the currently stable backends.
