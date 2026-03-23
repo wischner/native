@@ -25,9 +25,10 @@ Current tested runtime path uses:
 - `src/toolkits/x11/`
 - `src/toolkits/sdl2/`
 - `src/platforms/windows/`
+- `src/platforms/haiku/`
 
-Haiku and Apple code paths are present but not yet runtime-tested in the
-current workflow.
+Apple code paths are present but not yet runtime-tested in the current
+workflow.
 
 ## Public API boundary
 

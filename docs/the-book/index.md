@@ -13,8 +13,11 @@ When code changes, this book should be updated in the same commit.
   - Linux X11 backend
   - Linux SDL2 backend
   - Windows backend (MinGW build, run through Wine)
+  - Haiku backend (Docker cross-build, deploy and run over SSH)
+- Build-tested but not yet runtime-tested in this workflow:
+  - Linux OpenMotif backend
+  - Linux GNUstep backend
 - Implemented but not yet runtime-tested in this workflow:
-  - Haiku backend
   - Apple backend
 - Work in progress:
   - other toolkit targets and ports not listed above

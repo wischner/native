@@ -1,210 +1,208 @@
-#import <Cocoa/Cocoa.h>
+#import <AppKit/AppKit.h>
+
 #include <stdexcept>
 
 #include <native.h>
+
 #include "gpx_wnd.h"
 #include "globals.h"
 
-static void apply_cocoa_state(NSGraphicsContext *context, native::gpx_wnd *self, gnustep::gnustepgpx *cache)
+namespace
 {
-    if (!context || !cache)
-        return;
-
-    CGContextRef cgContext = (CGContextRef)[context CGContext];
-
-    // Set stroke color if changed
-    if (cache->current_fg != self->ink())
+    NSColor *to_color(native::rgba c)
     {
-        native::rgba c = self->ink();
-        CGContextSetRGBStrokeColor(cgContext, c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0);
-        CGContextSetRGBFillColor(cgContext, c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0);
-        cache->current_fg = self->ink();
+        return [NSColor colorWithCalibratedRed:c.r / 255.0
+                                         green:c.g / 255.0
+                                          blue:c.b / 255.0
+                                         alpha:c.a / 255.0];
     }
 
-    // Set line width if changed
-    if (cache->current_thickness != self->pen())
+    void apply_state(native::gpx_wnd *self, gnustep::gnustepgpx *cache)
     {
-        CGContextSetLineWidth(cgContext, self->pen());
-        cache->current_thickness = self->pen();
+        if (!cache)
+            return;
+
+        if (cache->current_fg != self->ink())
+        {
+            NSColor *c = to_color(self->ink());
+            [c setStroke];
+            [c setFill];
+            cache->current_fg = self->ink();
+        }
+
+        if (cache->current_thickness != self->pen())
+            cache->current_thickness = self->pen();
     }
 
-    // Set clip rectangle
-    CGRect clip_rect = CGRectMake(
-        self->clip().p.x,
-        self->clip().p.y,
-        self->clip().d.w,
-        self->clip().d.h);
-    CGContextClipToRect(cgContext, clip_rect);
+    void apply_clip(const native::rect &clip)
+    {
+        NSRect r = NSMakeRect(clip.p.x, clip.p.y, clip.d.w, clip.d.h);
+        [[NSBezierPath bezierPathWithRect:r] addClip];
+    }
 }
 
 namespace native
 {
 
-    gpx_wnd::gpx_wnd(const wnd *window, point offset)
-        : _wnd(const_cast<wnd *>(window)), _offset(offset)
-    {
-        NSWindow *nswin = gnustep::wnd_bindings.from_b(_wnd);
-        if (!nswin)
-            throw std::runtime_error("GNUstep: No NSWindow available for gpx_wnd");
+gpx_wnd::gpx_wnd(const wnd *window, point offset)
+    : _wnd(const_cast<wnd *>(window)), _offset(offset)
+{
+    NSView *view = gnustep::view_bindings.from_b(_wnd);
+    if (!view)
+        throw std::runtime_error("GNUstep: No NSView available for gpx_wnd.");
 
-        // Get or create cache
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache)
-        {
-            cache = new gnustep::gnustepgpx();
-            cache->view = [nswin contentView];
-            gnustep::wnd_gpx_bindings.register_pair(_wnd, cache);
-        }
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache)
+    {
+        cache = new gnustep::gnustepgpx();
+        cache->view = view;
+        gnustep::wnd_gpx_bindings.register_pair(_wnd, cache);
     }
+}
 
-    gpx_wnd::~gpx_wnd() = default;
+gpx_wnd::~gpx_wnd() = default;
 
-    gpx &gpx_wnd::set_clip(const rect &r)
-    {
-        _clip = r;
+gpx &gpx_wnd::set_clip(const rect &r)
+{
+    _clip = r;
+    return *this;
+}
+
+rect gpx_wnd::clip() const
+{
+    return _clip;
+}
+
+gpx &gpx_wnd::clear(rgba color)
+{
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache || !cache->view)
         return *this;
-    }
 
-    rect gpx_wnd::clip() const
-    {
-        return _clip;
-    }
-
-    gpx &gpx_wnd::clear(rgba color)
-    {
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache || !cache->view)
-            return *this;
-
-        NSView *view = cache->view;
-        [view lockFocus];
-
-        NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        CGContextRef cgContext = (CGContextRef)[context CGContext];
-
-        // Set fill color
-        CGContextSetRGBFillColor(cgContext, color.r / 255.0, color.g / 255.0, color.b / 255.0, color.a / 255.0);
-
-        // Fill rectangle
-        CGRect rect = CGRectMake(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
-        CGContextFillRect(cgContext, rect);
-
-        [view unlockFocus];
-        [view setNeedsDisplay:YES];
+    if (![NSGraphicsContext currentContext])
         return *this;
-    }
 
-    gpx &gpx_wnd::draw_line(point from, point to)
-    {
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache || !cache->view)
-            return *this;
+    [NSGraphicsContext saveGraphicsState];
+    apply_clip(_clip);
+    [to_color(color) setFill];
+    NSRectFill(NSMakeRect(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h));
+    [NSGraphicsContext restoreGraphicsState];
 
-        NSView *view = cache->view;
-        [view lockFocus];
+    cache->current_fg = color;
+    return *this;
+}
 
-        NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        apply_cocoa_state(context, this, cache);
-        CGContextRef cgContext = (CGContextRef)[context CGContext];
-
-        // Draw line
-        CGContextBeginPath(cgContext);
-        CGContextMoveToPoint(cgContext, from.x, from.y);
-        CGContextAddLineToPoint(cgContext, to.x, to.y);
-        CGContextStrokePath(cgContext);
-
-        [view unlockFocus];
-        [view setNeedsDisplay:YES];
+gpx &gpx_wnd::draw_line(point from, point to)
+{
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache || !cache->view)
         return *this;
-    }
 
-    gpx &gpx_wnd::draw_rect(rect r, bool filled)
-    {
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache || !cache->view)
-            return *this;
-
-        NSView *view = cache->view;
-        [view lockFocus];
-
-        NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        apply_cocoa_state(context, this, cache);
-        CGContextRef cgContext = (CGContextRef)[context CGContext];
-
-        CGRect rect = CGRectMake(r.p.x, r.p.y, r.d.w, r.d.h);
-
-        if (filled)
-            CGContextFillRect(cgContext, rect);
-        else
-            CGContextStrokeRect(cgContext, rect);
-
-        [view unlockFocus];
-        [view setNeedsDisplay:YES];
+    if (![NSGraphicsContext currentContext])
         return *this;
-    }
 
-    gpx &gpx_wnd::draw_text(const std::string &text, point p)
-    {
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache || !cache->view)
-            return *this;
+    [NSGraphicsContext saveGraphicsState];
+    apply_clip(_clip);
+    apply_state(this, cache);
 
-        NSView *view = cache->view;
-        [view lockFocus];
+    NSBezierPath *path = [NSBezierPath bezierPath];
+    [path setLineWidth:pen()];
+    [path moveToPoint:NSMakePoint(from.x, from.y)];
+    [path lineToPoint:NSMakePoint(to.x, to.y)];
+    [path stroke];
 
-        // Convert C++ string to NSString
-        NSString *nsText = [NSString stringWithUTF8String:text.c_str()];
+    [NSGraphicsContext restoreGraphicsState];
+    return *this;
+}
 
-        // Set text attributes
-        native::rgba c = ink();
-        NSColor *color = [NSColor colorWithRed:c.r/255.0 green:c.g/255.0 blue:c.b/255.0 alpha:c.a/255.0];
-        NSDictionary *attributes = @{
-            NSForegroundColorAttributeName: color,
-            NSFontAttributeName: [NSFont systemFontOfSize:12]
-        };
-
-        // Draw text
-        [nsText drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attributes];
-
-        [view unlockFocus];
-        [view setNeedsDisplay:YES];
+gpx &gpx_wnd::draw_rect(rect r, bool filled)
+{
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache || !cache->view)
         return *this;
-    }
 
-    gpx &gpx_wnd::draw_img(const img &src, point dst)
-    {
-        auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
-        if (!cache || !cache->view)
-            return *this;
-
-        NSView *view = cache->view;
-        [view lockFocus];
-
-        // Create CGImage from RGBA pixel data
-        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-        CGContextRef bitmapContext = CGBitmapContextCreate(
-            const_cast<rgba *>(src.pixels()),
-            src.w(), src.h(), 8, src.w() * 4,
-            colorSpace,
-            kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-
-        CGImageRef cgImage = CGBitmapContextCreateImage(bitmapContext);
-
-        NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        CGContextRef cgContext = (CGContextRef)[context CGContext];
-
-        // Draw image
-        CGRect rect = CGRectMake(dst.x, dst.y, src.w(), src.h());
-        CGContextDrawImage(cgContext, rect, cgImage);
-
-        // Cleanup
-        CGImageRelease(cgImage);
-        CGContextRelease(bitmapContext);
-        CGColorSpaceRelease(colorSpace);
-
-        [view unlockFocus];
-        [view setNeedsDisplay:YES];
+    if (![NSGraphicsContext currentContext])
         return *this;
+
+    [NSGraphicsContext saveGraphicsState];
+    apply_clip(_clip);
+    apply_state(this, cache);
+
+    NSRect rr = NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h);
+    NSBezierPath *path = [NSBezierPath bezierPathWithRect:rr];
+    [path setLineWidth:pen()];
+
+    if (filled)
+        [path fill];
+    else
+        [path stroke];
+
+    [NSGraphicsContext restoreGraphicsState];
+    return *this;
+}
+
+gpx &gpx_wnd::draw_text(const std::string &text, point p)
+{
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache || !cache->view)
+        return *this;
+
+    if (![NSGraphicsContext currentContext])
+        return *this;
+
+    [NSGraphicsContext saveGraphicsState];
+    apply_clip(_clip);
+
+    NSString *ns_text = [NSString stringWithUTF8String:text.c_str()];
+    NSDictionary *attrs = [NSDictionary dictionaryWithObjectsAndKeys:
+        to_color(ink()), NSForegroundColorAttributeName,
+        [NSFont systemFontOfSize:12], NSFontAttributeName,
+        nil];
+    [ns_text drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attrs];
+
+    [NSGraphicsContext restoreGraphicsState];
+    return *this;
+}
+
+gpx &gpx_wnd::draw_img(const img &src, point dst)
+{
+    auto *cache = gnustep::wnd_gpx_bindings.from_a(_wnd);
+    if (!cache || !cache->view)
+        return *this;
+
+    if (![NSGraphicsContext currentContext])
+        return *this;
+
+    [NSGraphicsContext saveGraphicsState];
+    apply_clip(_clip);
+
+    unsigned char *planes[5] = {reinterpret_cast<unsigned char *>(const_cast<rgba *>(src.pixels())), nullptr, nullptr, nullptr, nullptr};
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:planes
+                      pixelsWide:src.w()
+                      pixelsHigh:src.h()
+                   bitsPerSample:8
+                 samplesPerPixel:4
+                        hasAlpha:YES
+                        isPlanar:NO
+                  colorSpaceName:NSDeviceRGBColorSpace
+                    bytesPerRow:src.w() * 4
+                   bitsPerPixel:32];
+
+    if (rep)
+    {
+        NSImage *img_obj = [[NSImage alloc] initWithSize:NSMakeSize(src.w(), src.h())];
+        [img_obj addRepresentation:rep];
+        [img_obj drawInRect:NSMakeRect(dst.x, dst.y, src.w(), src.h())
+                   fromRect:NSMakeRect(0, 0, src.w(), src.h())
+                  operation:NSCompositeSourceOver
+                   fraction:1.0];
+        [img_obj release];
+        [rep release];
     }
+
+    [NSGraphicsContext restoreGraphicsState];
+    return *this;
+}
 
 } // namespace native

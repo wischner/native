@@ -19,6 +19,8 @@ if(UNIX AND NOT APPLE)
     set(DOCKER_TAG "latest" CACHE STRING "Docker tag used for Linux toolkit build images")
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
+    set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
+    set(DOCKER_IMAGE_GNUSTEP "wischner/gcc-x86_64-linux-gnustep:${DOCKER_TAG}" CACHE STRING "Docker image for GNUstep builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG}" CACHE STRING "Docker image for Haiku cross-builds")
 
@@ -59,6 +61,10 @@ if(UNIX AND NOT APPLE)
             -DTOOLKIT=X11)
         add_docker_cmake_build_target(docker-sdl2 build/linux-sdl2 ${DOCKER_IMAGE_SDL2}
             -DTOOLKIT=SDL2)
+        add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
+            -DTOOLKIT=MOTIF)
+        add_docker_cmake_build_target(docker-gnustep build/linux-gnustep ${DOCKER_IMAGE_GNUSTEP}
+            -DTOOLKIT=GNUSTEP)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/toolchain-mingw.cmake)
         add_docker_cmake_build_target(docker-haiku build/haiku ${DOCKER_IMAGE_HAIKU}

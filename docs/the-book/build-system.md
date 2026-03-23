@@ -20,12 +20,14 @@ The top-level build flow is:
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-openmotif
+cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
 ```
 
-This is the current reproducible path used for Linux and Windows cross-builds.
-Haiku cross-build is available in the same model.
+This is the current reproducible path used for Linux, Windows, and Haiku
+cross-builds.
 
 ## Build directories
 
@@ -33,13 +35,19 @@ The repository uses separate build directories per backend:
 
 - `out/`
   - host-side CMake control tree
-  - contains generated top-level targets such as `docker-x11`, `docker-sdl2`, `docker-win`, and `docker-haiku`
+  - contains generated top-level targets such as `docker-x11`, `docker-sdl2`, `docker-openmotif`, `docker-gnustep`, `docker-win`, and `docker-haiku`
 
 - `build/linux-x11/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
 
 - `build/linux-sdl2/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=SDL2`
+
+- `build/linux-openmotif/`
+  - toolkit build tree for the Linux backend configured with `TOOLKIT=MOTIF`
+
+- `build/linux-gnustep/`
+  - toolkit build tree for the Linux backend configured with `TOOLKIT=GNUSTEP`
 
 - `build/windows-mingw-w64/`
   - platform build tree for the Windows MinGW-w64 target
@@ -60,6 +68,8 @@ toolchain and system headers.
 
 - `docker-x11`
 - `docker-sdl2`
+- `docker-openmotif`
+- `docker-gnustep`
 - `docker-win`
 - `docker-haiku`
 
@@ -67,6 +77,8 @@ The images are:
 
 - `wischner/gcc-x86_64-linux-x11`
 - `wischner/gcc-x86_64-linux-sdl`
+- `wischner/gcc-x86_64-linux-motif`
+- `wischner/gcc-x86_64-linux-gnustep`
 - `wischner/gcc-x86_64-windows-mingw-w64`
 - `wischner/gcc-x86_64-haiku`
 
@@ -80,8 +92,11 @@ host-side and Docker-side invocation.
   - Linux X11
   - Linux SDL2
   - Windows MinGW binaries run through Wine
+  - Haiku binaries built through Docker, copied to a Haiku machine, and run there
+- Build-tested only:
+  - Linux OpenMotif
+  - Linux GNUstep
 - Not runtime-tested yet:
-  - Haiku
   - Apple
 - Other backends/toolkits:
   - still work in progress
@@ -150,6 +165,8 @@ Outputs are produced inside backend-specific build trees:
 
 - `build/linux-x11/examples/...`
 - `build/linux-sdl2/examples/...`
+- `build/linux-openmotif/examples/...`
+- `build/linux-gnustep/examples/...`
 - `build/windows-mingw-w64/examples/...`
 - `build/haiku/examples/...`
 
@@ -160,4 +177,7 @@ Outputs are produced inside backend-specific build trees:
 - Backend builds run inside Docker.
 - Backend build trees are separate on purpose.
 - The root project currently builds code and examples, not generated API docs.
-- Runtime verification currently focuses on Linux X11/SDL2 and Windows/Wine.
+- Runtime verification currently covers Linux X11/SDL2, Windows/Wine, and
+  Haiku deploy-and-run over SSH.
+- Linux GNUstep runtime is exercised through Docker launch with X11 passthrough.
+- Linux OpenMotif runtime depends on host OpenMotif runtime availability.

@@ -9,8 +9,11 @@ verified.
   - Linux X11
   - Linux SDL2
   - Windows build through MinGW, run through Wine
+  - Haiku cross-build, copied to a Haiku machine and run over SSH
+- Build-verified but not runtime-verified in this workflow:
+  - Linux OpenMotif
+  - Linux GNUstep
 - Implemented but not runtime-verified in this workflow:
-  - Haiku
   - Apple
 - Other toolkits/ports:
   - still work in progress
@@ -57,6 +60,18 @@ Build the Linux toolkit target backed by the SDL-based image:
 cmake --build out --target docker-sdl2
 ```
 
+Build the Linux toolkit target backed by the OpenMotif image:
+
+```bash
+cmake --build out --target docker-openmotif
+```
+
+Build the Linux toolkit target backed by the GNUstep image:
+
+```bash
+cmake --build out --target docker-gnustep
+```
+
 Build the Windows MinGW-w64 target:
 
 ```bash
@@ -73,8 +88,12 @@ Note:
 
 - `docker-win` is part of the current verified workflow.
   It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
-- `docker-haiku` is available as a cross-build target.
-  It produces Haiku binaries, but runtime is not yet exercised in this workflow.
+- `docker-openmotif` is part of the current build-verified workflow.
+  It produces OpenMotif-linked Linux binaries in a separate build tree.
+- `docker-gnustep` is part of the current build-verified workflow.
+  It produces GNUstep-linked Linux binaries in a separate build tree.
+- `docker-haiku` is part of the current verified workflow.
+  It produces Haiku binaries locally, and those binaries are copied to a Haiku machine for runtime checks.
 - Apple platform code exists, but there is no current Docker backend target for Apple builds in this repository.
 
 ## Build outputs
@@ -83,6 +102,8 @@ The generated outputs are placed in separate backend build trees:
 
 - `build/linux-x11/`
 - `build/linux-sdl2/`
+- `build/linux-openmotif/`
+- `build/linux-gnustep/`
 - `build/windows-mingw-w64/`
 - `build/haiku/`
 
@@ -107,6 +128,41 @@ For the SDL-based toolkit build:
 ./build/linux-sdl2/examples/02_painter_example/painter-example
 ```
 
+For the OpenMotif toolkit build:
+
+```bash
+./build/linux-openmotif/examples/01_app_example/app-example
+./build/linux-openmotif/examples/02_painter_example/painter-example
+```
+
+In the current workflow, these binaries are build-verified but not yet runtime-exercised.
+
+For the GNUstep toolkit build:
+
+```bash
+XAUTH=${XAUTHORITY:-$HOME/.Xauthority}
+docker run --rm \
+  -e DISPLAY=$DISPLAY \
+  -e XAUTHORITY=/tmp/.Xauthority \
+  -v "$XAUTH":/tmp/.Xauthority:ro \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v "$PWD":/src \
+  -w /src/build/linux-gnustep/examples/01_app_example \
+  wischner/gcc-x86_64-linux-gnustep ./app-example
+
+docker run --rm \
+  -e DISPLAY=$DISPLAY \
+  -e XAUTHORITY=/tmp/.Xauthority \
+  -v "$XAUTH":/tmp/.Xauthority:ro \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v "$PWD":/src \
+  -w /src/build/linux-gnustep/examples/02_painter_example \
+  wischner/gcc-x86_64-linux-gnustep ./painter-example
+```
+
+Host-direct execution of GNUstep binaries is only expected to work when GNUstep
+runtime libraries are installed on the host.
+
 For the Windows cross-build:
 
 ```bash
@@ -126,8 +182,14 @@ For the Haiku cross-build:
 
 Status:
 
-- Linux X11/SDL2 and Windows/Wine runs are currently exercised.
-- Haiku and Apple runs are not yet exercised in this workflow.
+- Linux X11/SDL2, Windows/Wine, and Haiku SSH runs are currently exercised.
+- Linux GNUstep runs are currently exercised through Docker runtime launch.
+- Linux OpenMotif runs depend on host OpenMotif runtime availability.
+- Apple runs are not yet exercised in this workflow.
+
+For Haiku runtime checks in the current workflow, the binaries are copied to a
+Haiku machine and launched there. The repository includes VS Code tasks and
+launch entries for that deploy-and-run path.
 
 ## Repository layout
 
@@ -142,6 +204,8 @@ docs/notes/           exceptional notes only
 out/                  host CMake control tree
 build/linux-x11/      Linux toolkit build tree
 build/linux-sdl2/     Linux toolkit build tree
+build/linux-openmotif/ Linux OpenMotif build tree
+build/linux-gnustep/  Linux GNUstep build tree
 build/windows-mingw-w64/ Windows MinGW-w64 build tree
 build/haiku/          Haiku build tree
 ```

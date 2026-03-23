@@ -4,7 +4,7 @@
 #include <X11/Xlib.h>
 
 #include <native.h>
-#include "bindings.h"
+
 #include "gpx_wnd.h"
 #include "globals.h"
 
@@ -34,6 +34,7 @@ namespace native
         if (_created)
         {
             motif::wnd_bindings.unregister_by_b(this);
+            motif::shell_bindings.unregister_by_b(this);
         }
     }
 
@@ -48,11 +49,9 @@ namespace native
 
         if (_created)
         {
-            Widget widget = motif::wnd_bindings.from_b(this);
-            XtVaSetValues(widget,
-                          XmNx, p.x,
-                          XmNy, p.y,
-                          NULL);
+            Widget shell = motif::shell_bindings.from_b(this);
+            if (shell)
+                XtVaSetValues(shell, XtNx, p.x, XtNy, p.y, nullptr);
         }
 
         return *this;
@@ -69,11 +68,12 @@ namespace native
 
         if (_created)
         {
-            Widget widget = motif::wnd_bindings.from_b(this);
-            XtVaSetValues(widget,
-                          XmNwidth, s.w,
-                          XmNheight, s.h,
-                          NULL);
+            Widget shell = motif::shell_bindings.from_b(this);
+            Widget canvas = motif::wnd_bindings.from_b(this);
+            if (shell)
+                XtVaSetValues(shell, XtNwidth, s.w, XtNheight, s.h, nullptr);
+            if (canvas)
+                XtVaSetValues(canvas, XmNwidth, s.w, XmNheight, s.h, nullptr);
         }
 
         return *this;
@@ -90,13 +90,22 @@ namespace native
 
         if (_created)
         {
-            Widget widget = motif::wnd_bindings.from_b(this);
-            XtVaSetValues(widget,
-                          XmNx, r.p.x,
-                          XmNy, r.p.y,
-                          XmNwidth, r.d.w,
-                          XmNheight, r.d.h,
-                          NULL);
+            Widget shell = motif::shell_bindings.from_b(this);
+            Widget canvas = motif::wnd_bindings.from_b(this);
+
+            if (shell)
+            {
+                XtVaSetValues(
+                    shell,
+                    XtNx, r.p.x,
+                    XtNy, r.p.y,
+                    XtNwidth, r.d.w,
+                    XtNheight, r.d.h,
+                    nullptr);
+            }
+
+            if (canvas)
+                XtVaSetValues(canvas, XmNwidth, r.d.w, XmNheight, r.d.h, nullptr);
         }
 
         return *this;
@@ -117,14 +126,6 @@ namespace native
     wnd &wnd::set_parent(wnd *p)
     {
         _parent = p;
-
-        if (_created && p && p->_created)
-        {
-            Widget child = motif::wnd_bindings.from_b(this);
-            Widget parent = motif::wnd_bindings.from_b(p);
-            XtVaSetValues(child, XmNparent, parent, NULL);
-        }
-
         return *this;
     }
 
@@ -138,10 +139,13 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        Widget widget = motif::wnd_bindings.from_b(const_cast<wnd *>(this));
-        Window win = XtWindow(widget);
-        XClearArea(motif::cached_display, win, 0, 0, 0, 0, True);
-        XFlush(motif::cached_display);
+        Widget canvas = motif::wnd_bindings.from_b(const_cast<wnd *>(this));
+        if (canvas && XtIsRealized(canvas))
+        {
+            XClearArea(motif::cached_display, XtWindow(canvas), 0, 0, 0, 0, True);
+            XFlush(motif::cached_display);
+        }
+
         return const_cast<wnd &>(*this);
     }
 
@@ -150,10 +154,13 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        Widget widget = motif::wnd_bindings.from_b(const_cast<wnd *>(this));
-        Window win = XtWindow(widget);
-        XClearArea(motif::cached_display, win, r.p.x, r.p.y, r.d.w, r.d.h, True);
-        XFlush(motif::cached_display);
+        Widget canvas = motif::wnd_bindings.from_b(const_cast<wnd *>(this));
+        if (canvas && XtIsRealized(canvas))
+        {
+            XClearArea(motif::cached_display, XtWindow(canvas), r.p.x, r.p.y, r.d.w, r.d.h, True);
+            XFlush(motif::cached_display);
+        }
+
         return const_cast<wnd &>(*this);
     }
 

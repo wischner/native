@@ -44,6 +44,64 @@
             ]
         },
         {
+            "name": "Run app-example (Linux, OpenMotif)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-openmotif/examples/01_app_example/app-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker OpenMotif)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run painter (Linux, OpenMotif)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-openmotif/examples/02_painter_example/painter-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker OpenMotif)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run app-example (Linux, GNUstep)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/01_app_example wischner/gcc-x86_64-linux-gnustep ./app-example'",
+            "preLaunchTask": "CMake Build (Docker GNUstep)"
+        },
+        {
+            "name": "Run painter (Linux, GNUstep)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/02_painter_example wischner/gcc-x86_64-linux-gnustep ./painter-example'",
+            "preLaunchTask": "CMake Build (Docker GNUstep)"
+        },
+        {
             "name": "Run painter (Windows via Wine)",
             "type": "node-terminal",
             "request": "launch",
@@ -60,44 +118,20 @@
             "preLaunchTask": "Prepare app runtime (Wine DLLs)"
         },
         {
-            "name": "Run app-example (Haiku VM, Remote)",
-            "type": "cppdbg",
+            "name": "Run app-example (Haiku via SSH)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "/boot/home/Projects/${workspaceFolderBasename}/build/examples/01_app_example/app-example",
-            "cwd": "/boot/home/Projects/${workspaceFolderBasename}/build",
-            "MIMode": "gdb",
-            "ssh": {
-                "host": "haiku-vm",
-                "user": "user"
-            },
-            "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": [
-                    "-T",
-                    "user@haiku-vm"
-                ],
-                "debuggerPath": "/bin/gdb"
-            },
-            "setupCommands": [
-                {
-                    "text": "-exec set pagination off",
-                    "description": "Disable pagination",
-                    "ignoreFailures": true
-                },
-                {
-                    "text": "-gdb-set scheduler-locking on",
-                    "description": "Lock scheduler for single thread stepping",
-                    "ignoreFailures": true
-                }
-            ],
-            "sourceFileMap": {
-                "/boot/home/Projects/native": "/media/tomaz/Work/wischner/native"
-            },
-            "preLaunchTask": "Build (Haiku VM)",
-            "console": "integratedTerminal",
-            "externalConsole": false,
-            "stopAtEntry": true,
-            "condition": "haiku"
+            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./app-example'",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Deploy app-example to Haiku"
+        },
+        {
+            "name": "Run painter (Haiku via SSH)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./painter-example'",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Deploy painter to Haiku"
         },
 
         {
@@ -147,12 +181,20 @@
             "configurations": ["Run painter (Linux, SDL2)"]
         },
         {
+            "name": "Run on Linux OpenMotif",
+            "configurations": ["Run app-example (Linux, OpenMotif)", "Run painter (Linux, OpenMotif)"]
+        },
+        {
+            "name": "Run on Linux GNUstep",
+            "configurations": ["Run app-example (Linux, GNUstep)", "Run painter (Linux, GNUstep)"]
+        },
+        {
             "name": "Debug on Windows",
             "configurations": ["Run app-example (Windows via Wine)", "Run painter (Windows via Wine)"]
         },
         {
-            "name": "Debug on Haiku VM",
-            "configurations": ["Run app-example (Haiku VM, Remote)"]
+            "name": "Run on Haiku",
+            "configurations": ["Run app-example (Haiku via SSH)", "Run painter (Haiku via SSH)"]
         },
         {
             "name": "Debug on macOS VM",

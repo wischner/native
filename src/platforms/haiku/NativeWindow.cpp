@@ -66,6 +66,10 @@ namespace
             if (!_owner)
                 return;
 
+            // Keep receiving move/up events for drag interactions such as the
+            // painter sample while the mouse button is held.
+            SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
+
             uint32 buttons = 0;
             if (BMessage *msg = Window()->CurrentMessage())
             {
@@ -133,7 +137,9 @@ namespace haiku
             wnd_bindings.unregister_by_a(this);
         }
 
-        be_app->PostMessage(B_QUIT_REQUESTED);
+        if (be_app)
+            be_app->Quit();
+
         return true;
     }
 

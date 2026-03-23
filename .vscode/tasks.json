@@ -32,6 +32,26 @@
           "os": { "linux": true }
       },
       {
+          "label": "CMake Build (Docker OpenMotif)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-openmotif"],
+          "problemMatcher": "$gcc",
+          "group": "build",
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "CMake Build (Docker GNUstep)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-gnustep"],
+          "problemMatcher": "$gcc",
+          "group": "build",
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
+      },
+      {
           "label": "CMake Build (Docker Win)",
           "type": "shell",
           "command": "cmake",
@@ -98,46 +118,81 @@
 
       // Haiku
       {
-          "label": "Sync to Haiku VM (rsync)",
+          "label": "CMake Build (Docker Haiku)",
           "type": "shell",
-          "command": "rsync",
-          "options": {
-              "env": {
-                  "HAIKU_PROJECT_DIR": "/boot/home/Projects"
-              }
-          },
-          "args": [
-              "-avz",
-              "--rsync-path=/boot/system/bin/rsync",
-              "-e", "ssh -T -o 'RemoteCommand=none' -o 'RequestTTY=no'",
-              "${workspaceFolder}/",
-              "user@haiku-vm:$HAIKU_PROJECT_DIR//${workspaceFolderBasename}/"
-          ],
-          "problemMatcher": [],
-          "group": { "kind": "build", "isDefault": false }
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-haiku"],
+          "problemMatcher": "$gcc",
+          "group": "build",
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
       },
       {
-          "label": "CMake Configure (Haiku VM)",
+          "label": "Prepare Haiku run dir",
           "type": "shell",
           "command": "ssh",
           "args": [
-              "user@haiku-vm",
-              "cd /boot/home/Projects/${workspaceFolderBasename}/ && cmake -B build -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Debug"
+              "user@192.168.122.90",
+              "mkdir -p /boot/home/Projects/${workspaceFolderBasename}/run"
           ],
           "problemMatcher": [],
-          "dependsOn": ["Sync to Haiku VM (rsync)"]
+          "os": { "linux": true }
       },
       {
-          "label": "Build (Haiku VM)",
-          "type": "process",
-          "command": "bash",
+          "label": "Deploy app-example to Haiku",
+          "type": "shell",
+          "command": "scp",
           "args": [
-              "-c",
-              "ssh user@haiku-vm 'cd /boot/home/Projects/${workspaceFolderBasename}/build && make -j4' | sed 's|/boot/home/Projects/${workspaceFolderBasename}|${workspaceFolder}|g'; exit ${PIPESTATUS[0]}"
+              "${workspaceFolder}/build/haiku/examples/01_app_example/app-example",
+              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/app-example"
           ],
-          "group": { "kind": "build", "isDefault": true },
-          "problemMatcher": "$gcc",
-          "dependsOn": ["CMake Configure (Haiku VM)"]
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Haiku)", "Prepare Haiku run dir"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Deploy painter to Haiku",
+          "type": "shell",
+          "command": "scp",
+          "args": [
+              "${workspaceFolder}/build/haiku/examples/02_painter_example/painter-example",
+              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/painter-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Haiku)", "Prepare Haiku run dir"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run app-example (Haiku)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "user@192.168.122.90",
+              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./app-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Deploy app-example to Haiku"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run painter (Haiku)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "user@192.168.122.90",
+              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./painter-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Deploy painter to Haiku"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
       },
 
       {

@@ -5,33 +5,69 @@
 #include <X11/Xutil.h>
 
 #include <native.h>
+
 #include "gpx_wnd.h"
 #include "globals.h"
 
-static void apply_gc(Display *display, GC gc, native::gpx_wnd *self, motif::motifgpx *cache)
+namespace
 {
-    if (!cache)
-        return;
-
-    if (cache->current_fg != self->ink())
+    Colormap widget_colormap(Widget widget)
     {
-        XSetForeground(display, gc, self->ink());
-        cache->current_fg = self->ink();
+        Colormap colormap = DefaultColormapOfScreen(XtScreen(widget));
+        XtVaGetValues(widget, XtNcolormap, &colormap, nullptr);
+        return colormap;
     }
 
-    if (cache->current_thickness != self->pen())
+    Pixel rgba_to_pixel(Widget widget, native::rgba color)
     {
-        XSetLineAttributes(display, gc, self->pen(), LineSolid, CapButt, JoinMiter);
-        cache->current_thickness = self->pen();
+        if (!widget || !motif::cached_display)
+            return 0;
+
+        XColor xc = {};
+        xc.red = static_cast<unsigned short>(color.r) * 257;
+        xc.green = static_cast<unsigned short>(color.g) * 257;
+        xc.blue = static_cast<unsigned short>(color.b) * 257;
+
+        Colormap colormap = widget_colormap(widget);
+        if (XAllocColor(motif::cached_display, colormap, &xc))
+            return xc.pixel;
+
+        return BlackPixelOfScreen(XtScreen(widget));
     }
 
-    XRectangle xr = {
-        static_cast<short>(self->clip().p.x),
-        static_cast<short>(self->clip().p.y),
-        static_cast<unsigned short>(self->clip().d.w),
-        static_cast<unsigned short>(self->clip().d.h)};
-    XSetClipRectangles(display, gc, 0, 0, &xr, 1, Unsorted);
-}
+    native::rgba pixel_to_rgba(Widget widget, Pixel pixel)
+    {
+        if (!widget || !motif::cached_display)
+            return native::rgba(0, 0, 0, 255);
+
+        XColor xc = {};
+        xc.pixel = pixel;
+        XQueryColor(motif::cached_display, widget_colormap(widget), &xc);
+        return native::rgba(
+            static_cast<uint8_t>(xc.red >> 8),
+            static_cast<uint8_t>(xc.green >> 8),
+            static_cast<uint8_t>(xc.blue >> 8),
+            255);
+    }
+
+    void apply_gc(Widget widget, native::gpx_wnd *self, motif::motifgpx *cache)
+    {
+        if (!widget || !cache || !cache->gc)
+            return;
+
+        if (cache->current_fg != self->ink())
+        {
+            XSetForeground(motif::cached_display, cache->gc, rgba_to_pixel(widget, self->ink()));
+            cache->current_fg = self->ink();
+        }
+
+        if (cache->current_thickness != self->pen())
+        {
+            XSetLineAttributes(motif::cached_display, cache->gc, self->pen(), LineSolid, CapButt, JoinMiter);
+            cache->current_thickness = self->pen();
+        }
+    }
+} // namespace
 
 namespace native
 {
@@ -40,7 +76,48 @@ namespace native
         : _wnd(const_cast<wnd *>(window)), _offset(offset)
     {
         if (!motif::cached_display)
-            throw std::runtime_error("Motif: No display available for gpx_wnd");
+            throw std::runtime_error("Motif: No display available for gpx_wnd.");
+
+        Widget canvas = motif::wnd_bindings.from_b(_wnd);
+        if (!canvas || !XtIsRealized(canvas))
+            throw std::runtime_error("Motif: Drawing widget is not realized.");
+
+        auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        if (!cache)
+        {
+            cache = new motif::motifgpx();
+            cache->gc = XCreateGC(motif::cached_display, XtWindow(canvas), 0, nullptr);
+
+            XWindowAttributes attrs;
+            XGetWindowAttributes(motif::cached_display, XtWindow(canvas), &attrs);
+            cache->backbuffer = XCreatePixmap(
+                motif::cached_display,
+                XtWindow(canvas),
+                static_cast<unsigned int>(attrs.width),
+                static_cast<unsigned int>(attrs.height),
+                static_cast<unsigned int>(attrs.depth));
+            cache->buf_w = attrs.width;
+            cache->buf_h = attrs.height;
+
+            Pixel background = WhitePixelOfScreen(XtScreen(canvas));
+            Pixel foreground = BlackPixelOfScreen(XtScreen(canvas));
+            XtVaGetValues(canvas, XmNbackground, &background, XmNforeground, &foreground, nullptr);
+
+            set_paper(pixel_to_rgba(canvas, background));
+            set_ink(pixel_to_rgba(canvas, foreground));
+
+            XSetForeground(motif::cached_display, cache->gc, background);
+            XFillRectangle(
+                motif::cached_display,
+                cache->backbuffer,
+                cache->gc,
+                0, 0,
+                static_cast<unsigned int>(cache->buf_w),
+                static_cast<unsigned int>(cache->buf_h));
+            cache->current_fg = paper();
+
+            motif::wnd_gpx_bindings.register_pair(_wnd, cache);
+        }
     }
 
     gpx_wnd::~gpx_wnd() = default;
@@ -58,104 +135,99 @@ namespace native
 
     gpx &gpx_wnd::clear(rgba color)
     {
-        Display *display = motif::cached_display;
-        Widget widget = motif::wnd_bindings.from_b(_wnd);
-        Window win = XtWindow(widget);
+        auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        Widget canvas = motif::wnd_bindings.from_b(_wnd);
+        if (!cache || !cache->backbuffer || !canvas)
+            return *this;
 
-        GC gc = XCreateGC(display, win, 0, nullptr);
-        XSetForeground(display, gc, color);
-
-        XRectangle xr = {
-            static_cast<short>(_clip.p.x),
-            static_cast<short>(_clip.p.y),
-            static_cast<unsigned short>(_clip.d.w),
-            static_cast<unsigned short>(_clip.d.h)};
-        XSetClipRectangles(display, gc, 0, 0, &xr, 1, Unsorted);
-
-        XFillRectangle(display, win, gc, _clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
-        XFreeGC(display, gc);
-        XFlush(display);
+        XSetForeground(motif::cached_display, cache->gc, rgba_to_pixel(canvas, color));
+        XFillRectangle(
+            motif::cached_display,
+            cache->backbuffer,
+            cache->gc,
+            _clip.p.x, _clip.p.y,
+            static_cast<unsigned int>(_clip.d.w),
+            static_cast<unsigned int>(_clip.d.h));
+        cache->current_fg = color;
         return *this;
     }
 
     gpx &gpx_wnd::draw_line(point from, point to)
     {
-        Display *display = motif::cached_display;
-        Widget widget = motif::wnd_bindings.from_b(_wnd);
-        Window win = XtWindow(widget);
         auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        Widget canvas = motif::wnd_bindings.from_b(_wnd);
+        if (!cache || !cache->backbuffer || !canvas)
+            return *this;
 
-        GC gc = XCreateGC(display, win, 0, nullptr);
-        apply_gc(display, gc, this, cache);
-
-        XDrawLine(display, win, gc, from.x, from.y, to.x, to.y);
-
-        XFreeGC(display, gc);
-        XFlush(display);
+        apply_gc(canvas, this, cache);
+        XDrawLine(motif::cached_display, cache->backbuffer, cache->gc, from.x, from.y, to.x, to.y);
         return *this;
     }
 
     gpx &gpx_wnd::draw_rect(rect r, bool filled)
     {
-        Display *display = motif::cached_display;
-        Widget widget = motif::wnd_bindings.from_b(_wnd);
-        Window win = XtWindow(widget);
         auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        Widget canvas = motif::wnd_bindings.from_b(_wnd);
+        if (!cache || !cache->backbuffer || !canvas)
+            return *this;
 
-        GC gc = XCreateGC(display, win, 0, nullptr);
-        apply_gc(display, gc, this, cache);
+        apply_gc(canvas, this, cache);
 
         if (filled)
-            XFillRectangle(display, win, gc, r.p.x, r.p.y, r.d.w, r.d.h);
+        {
+            XFillRectangle(motif::cached_display, cache->backbuffer, cache->gc, r.p.x, r.p.y, r.d.w, r.d.h);
+        }
         else
-            XDrawRectangle(display, win, gc, r.p.x, r.p.y, r.d.w - 1, r.d.h - 1);
+        {
+            XDrawRectangle(motif::cached_display, cache->backbuffer, cache->gc, r.p.x, r.p.y, r.d.w - 1, r.d.h - 1);
+        }
 
-        XFreeGC(display, gc);
-        XFlush(display);
         return *this;
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p)
     {
-        Display *display = motif::cached_display;
-        Widget widget = motif::wnd_bindings.from_b(_wnd);
-        Window win = XtWindow(widget);
         auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        Widget canvas = motif::wnd_bindings.from_b(_wnd);
+        if (!cache || !cache->backbuffer || !canvas)
+            return *this;
 
-        GC gc = XCreateGC(display, win, 0, nullptr);
-        apply_gc(display, gc, this, cache);
+        apply_gc(canvas, this, cache);
 
-        Font font = XLoadFont(display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
-        XSetFont(display, gc, font);
-
-        XDrawString(display, win, gc, p.x, p.y, text.c_str(), text.length());
-
-        XUnloadFont(display, font);
-        XFreeGC(display, gc);
-        XFlush(display);
+        Font font = XLoadFont(motif::cached_display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
+        XSetFont(motif::cached_display, cache->gc, font);
+        XDrawString(motif::cached_display, cache->backbuffer, cache->gc, p.x, p.y, text.c_str(), text.length());
+        XUnloadFont(motif::cached_display, font);
         return *this;
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst)
     {
-        Display *display = motif::cached_display;
-        Widget widget = motif::wnd_bindings.from_b(_wnd);
-        Window win = XtWindow(widget);
         auto *cache = motif::wnd_gpx_bindings.from_a(_wnd);
+        if (!cache || !cache->backbuffer)
+            return *this;
 
-        GC gc = XCreateGC(display, win, 0, nullptr);
-        apply_gc(display, gc, this, cache);
+        XImage *ximg = XCreateImage(
+            motif::cached_display,
+            DefaultVisual(motif::cached_display, DefaultScreen(motif::cached_display)),
+            DefaultDepth(motif::cached_display, DefaultScreen(motif::cached_display)),
+            ZPixmap,
+            0,
+            reinterpret_cast<char *>(const_cast<rgba *>(src.pixels())),
+            src.w(),
+            src.h(),
+            32,
+            0);
 
-        XImage *ximg = XCreateImage(display, DefaultVisual(display, DefaultScreen(display)),
-                                    DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0,
-                                    reinterpret_cast<char *>(const_cast<rgba *>(src.pixels())),
-                                    src.w(), src.h(), 32, 0);
-
-        XPutImage(display, win, gc, ximg, 0, 0, dst.x, dst.y, src.w(), src.h());
-
+        XPutImage(
+            motif::cached_display,
+            cache->backbuffer,
+            cache->gc,
+            ximg,
+            0, 0,
+            dst.x, dst.y,
+            src.w(), src.h());
         XDestroyImage(ximg);
-        XFreeGC(display, gc);
-        XFlush(display);
         return *this;
     }
 

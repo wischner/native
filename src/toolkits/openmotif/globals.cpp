@@ -8,7 +8,11 @@
 
 namespace motif
 {
+    XtAppContext app_instance = nullptr;
+    bool exit_requested = false;
+
     native::bindings<Widget, native::wnd *> wnd_bindings;
+    native::bindings<Widget, native::wnd *> shell_bindings;
     native::bindings<native::wnd *, motifgpx *> wnd_gpx_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;

@@ -1,4 +1,5 @@
 #include <native.h>
+#include <Application.h>
 #include <Screen.h>
 #include <iostream>
 
@@ -10,8 +11,13 @@ namespace native
     {
         _screens.clear();
 
-        // Haiku currently only supports one screen per BScreen instance
-        BScreen bscreen;
+        // BScreen needs a live app_server connection. In this backend the
+        // first screen query happens before the window is created, so make
+        // sure the application object exists first.
+        if (!be_app && !haiku::global_app)
+            haiku::global_app = new BApplication("application/x-vnd.wischner-native");
+
+        BScreen bscreen(B_MAIN_SCREEN_ID);
         if (!bscreen.IsValid())
         {
             std::cerr << "Haiku: No valid BScreen found.\n";

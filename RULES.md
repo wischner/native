@@ -28,7 +28,7 @@ The codebase is organized into three layers:
 3. Toolkit layer
    - Located in `src/toolkits/`
    - Used when a platform needs a separate windowing or rendering backend
-   - Examples on Linux: `x11`, `sdl2`, `openmotif`
+   - Examples on Linux: `x11`, `sdl2`, `openmotif`, `gnustep`
 
 ## Public interface rules
 
@@ -59,6 +59,8 @@ The top-level CMake project provides:
 
 - `docker-x11`
 - `docker-sdl2`
+- `docker-openmotif`
+- `docker-gnustep`
 - `docker-win`
 - `docker-haiku`
 
@@ -66,6 +68,8 @@ These targets use the following Docker images:
 
 - X11: `wischner/gcc-x86_64-linux-x11`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
+- OpenMotif: `wischner/gcc-x86_64-linux-motif`
+- GNUstep: `wischner/gcc-x86_64-linux-gnustep`
 - Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
@@ -75,6 +79,8 @@ The expected workflow is:
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-openmotif
+cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
 ```
@@ -84,6 +90,8 @@ cmake --build out --target docker-haiku
 - `out/` is the host-side CMake control tree.
 - `build/linux-x11/` is the Docker-produced X11 build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
+- `build/linux-openmotif/` is the Docker-produced OpenMotif build tree.
+- `build/linux-gnustep/` is the Docker-produced GNUstep build tree.
 - `build/windows-mingw-w64/` is the Docker-produced Windows MinGW-w64 build tree.
 - `build/haiku/` is the Docker-produced Haiku build tree.
 
@@ -106,6 +114,27 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 - SDL2 paint flow must render at frame boundaries, not present once per primitive.
 - Avoid repaint backlogs and laggy input paths; invalidation should be efficient.
 - Default SDL2 windows should open in a reachable on-screen position.
+
+### OpenMotif backend
+
+- Files under `src/toolkits/openmotif/` are for Motif/Xt integration only.
+- Keep Motif and Xt types out of `include/native.h`.
+- Use widget or resource colors when available, so Motif environments such as CDE can provide the default look.
+- If resource lookup fails, fall back to explicit defaults:
+  - paper = white
+  - ink = black
+- Keep the plain X11 backend independent from Motif headers and libraries.
+
+### GNUstep backend
+
+- Files under `src/toolkits/gnustep/` are for GNUstep AppKit integration only.
+- Keep Objective-C and AppKit details out of `include/native.h`.
+- Use the same event semantics as stable Linux backends:
+  - press starts stroke
+  - move extends stroke
+  - release ends stroke
+  - wheel clears strokes
+- Keep `gpx_img` functional even when native text/image helpers differ from Apple Cocoa.
 
 ## Windows backend rules
 

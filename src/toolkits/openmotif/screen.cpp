@@ -1,46 +1,38 @@
-#include <native.h>
-#include <Xm/Xm.h>
-#include <X11/Xlib.h>
-#include <iostream>
+#include <stdexcept>
 
-namespace motif
-{
-    Display *cached_display = nullptr;
-}
+#include <X11/Xlib.h>
+
+#include <native.h>
+
+#include "globals.h"
 
 namespace native
 {
 
-    extern std::vector<native::screen> screens;
-
-    void screen::detect()
+    const std::vector<screen> &screen::detect()
     {
+        _screens.clear();
+
         if (!motif::cached_display)
         {
             motif::cached_display = XOpenDisplay(nullptr);
             if (!motif::cached_display)
-            {
-                std::cerr << "Motif: No display available to detect screens.\n";
-                return;
-            }
+                throw std::runtime_error("Motif: No display available to detect screens.");
         }
 
-        screens.clear();
-        int screen_count = ScreenCount(motif::cached_display);
+        Display *display = motif::cached_display;
+        const int screen_count = ScreenCount(display);
+
         for (int i = 0; i < screen_count; ++i)
         {
-            Screen *scr = ScreenOfDisplay(motif::cached_display, i);
-            int w = WidthOfScreen(scr);
-            int h = HeightOfScreen(scr);
-            rect bounds(0, 0, w, h);
+            Screen *scr = ScreenOfDisplay(display, i);
+            rect bounds(0, 0, WidthOfScreen(scr), HeightOfScreen(scr));
             rect work_area = bounds;
-            bool is_primary = (i == DefaultScreen(motif::cached_display));
-            screens.emplace_back(i, bounds, work_area, is_primary);
+            bool is_primary = (i == DefaultScreen(display));
+            _screens.emplace_back(i, bounds, work_area, is_primary);
         }
+
+        return _screens;
     }
 
-    std::vector<screen> &get_screens()
-    {
-        return native::screens;
-    }
 } // namespace native

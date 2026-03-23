@@ -1,26 +1,37 @@
-#import <AppKit/AppKit.h> // includes NSScreen
+#import <AppKit/AppKit.h>
+
 #include <native.h>
 
-namespace native {
+#include "globals.h"
 
-const std::vector<screen>& screen::detect()
+namespace native
 {
+
+const std::vector<screen> &screen::detect()
+{
+    gnustep::ensure_app_initialized();
+
     _screens.clear();
 
     NSScreen *primary = [NSScreen mainScreen];
-    NSArray *screens = [NSScreen screens];
+    NSArray *all_screens = [NSScreen screens];
 
-    for (NSInteger i = 0; i < [screens count]; ++i)
+    for (NSInteger i = 0; i < [all_screens count]; ++i)
     {
-        NSScreen *s = [screens objectAtIndex:i];
+        NSScreen *s = [all_screens objectAtIndex:i];
         NSRect f = [s frame];
         NSRect v = [s visibleFrame];
 
-        rect bounds(f.origin.x, f.origin.y, f.size.width, f.size.height);
-        rect work(v.origin.x, v.origin.y, v.size.width, v.size.height);
+        rect bounds(static_cast<coord>(f.origin.x),
+                    static_cast<coord>(f.origin.y),
+                    static_cast<dim>(f.size.width),
+                    static_cast<dim>(f.size.height));
+        rect work(static_cast<coord>(v.origin.x),
+                  static_cast<coord>(v.origin.y),
+                  static_cast<dim>(v.size.width),
+                  static_cast<dim>(v.size.height));
 
-        bool is_primary = (s == primary);
-        _screens.emplace_back((int)i, bounds, work, is_primary);
+        _screens.emplace_back(static_cast<int>(i), bounds, work, s == primary);
     }
 
     return _screens;

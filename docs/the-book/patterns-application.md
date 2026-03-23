@@ -58,7 +58,7 @@ That means:
 - native messages are translated into `native` events before they reach user code
 
 In the current workflow, runtime checks exercise this model on Linux X11, Linux
-SDL2, and Windows (via Wine).
+SDL2, Windows (via Wine), and Haiku (deploy-and-run over SSH).
 
 ## Screen detection
 

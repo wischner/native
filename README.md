@@ -24,7 +24,7 @@ If you are looking for a straightforward, understandable UI library, or if you w
 
 ## Features
 
-- **Cross-platform support**: Linux (X11, SDL2, Motif, OpenLook), Windows (WinAPI), Haiku (API), macOS (Cocoa)
+- **Backend coverage today**: Linux (X11, SDL2, OpenMotif build path, GNUstep build path), Windows (WinAPI), Haiku (API), macOS (Cocoa code path)
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Minimal and modern C++**: Clean code, few dependencies
 - **Educational**: Open development process, detailed documentation in chapters
@@ -43,12 +43,14 @@ int program(int argc, char* argv[])
 
 ## Building
 
-Linux `X11` and `SDL2`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.
+Linux `X11`, `SDL2`, `OpenMotif`, and `GNUstep`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.
 
 ```bash
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-openmotif
+cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
 ```
@@ -57,8 +59,22 @@ The Docker-backed targets build:
 
 - `X11` into `build/linux-x11/`
 - `SDL2` into `build/linux-sdl2/`
+- `OpenMotif` into `build/linux-openmotif/`
+- `GNUstep` into `build/linux-gnustep/`
 - Windows MinGW-w64 into `build/windows-mingw-w64/`
 - Haiku into `build/haiku/`
+
+Current exercised runtime paths are:
+
+- Linux X11
+- Linux SDL2
+- Windows MinGW binaries run through Wine
+- Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
+
+Current additional build-verified path is:
+
+- Linux OpenMotif through `docker-openmotif`
+- Linux GNUstep through `docker-gnustep`
 
 ## The book of native
 

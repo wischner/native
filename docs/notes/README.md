@@ -23,6 +23,7 @@ The normal maintained workflow belongs in `docs/the-book/`.
 ## Current notes
 
 - [Backend open issues](backend-open-issues.md)
+- [Haiku remote runtime and debug](haiku-remote-runtime.md)
 - [Production source TODOs](production-source-todos.md)
 - [Lab source TODOs](lab-source-todos.md)
 - [Windows Wine runtime note](windows-wine-runtime.md)

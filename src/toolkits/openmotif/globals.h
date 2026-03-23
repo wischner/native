@@ -8,25 +8,25 @@
 
 namespace motif
 {
-    // Graphics cache structure for OpenMotif (same as X11)
     typedef struct
     {
-        GC gc = nullptr; // Cached X11 graphics context
+        GC gc = nullptr;
+        Pixmap backbuffer = 0;
+        int buf_w = 0;
+        int buf_h = 0;
 
-        // Cached draw parameters
         native::rgba current_fg = 0xFFFFFFFF;
         int current_thickness = -1;
 
-        // Clip region
-        native::rect clip = {};
-        bool dirty_clip = true;
-
-        // Cached font
         std::string font_name;
         Font font = 0;
     } motifgpx;
 
+    extern XtAppContext app_instance;
+    extern bool exit_requested;
+
     extern native::bindings<Widget, native::wnd *> wnd_bindings;
+    extern native::bindings<Widget, native::wnd *> shell_bindings;
     extern native::bindings<native::wnd *, motifgpx *> wnd_gpx_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;

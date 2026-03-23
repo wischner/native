@@ -125,6 +125,8 @@ namespace native
             view->FillRect(rect);
         });
 
+        cache->current_fg = color;
+
         return *this;
     }
 
