@@ -43,15 +43,22 @@ int program(int argc, char* argv[])
 
 ## Building
 
-Linux `X11` and `SDL2` builds can be driven through Docker from CMake so the required headers and tools come from a known image instead of the host machine.
+Linux `X11` and `SDL2`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.
 
 ```bash
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-win
+cmake --build out --target docker-haiku
 ```
 
-The Docker-backed targets build `X11` into `build/linux-x11/` and `SDL2` into `build/linux-sdl2/`.
+The Docker-backed targets build:
+
+- `X11` into `build/linux-x11/`
+- `SDL2` into `build/linux-sdl2/`
+- Windows MinGW-w64 into `build/windows-mingw-w64/`
+- Haiku into `build/haiku/`
 
 ## The book of native
 

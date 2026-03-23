@@ -10,9 +10,9 @@ You need:
 - CMake 3.16 or newer
 - Docker
 
-The Linux toolkit builds are performed inside Docker so that the required
-compiler and system development packages come from known images rather than the
-host machine.
+Backend builds are performed inside Docker so that the required compilers and
+system development packages come from known images rather than the host
+machine.
 
 ## Clone the repository
 
@@ -29,9 +29,9 @@ Create the top-level CMake control tree:
 cmake -S . -B out
 ```
 
-This produces the host-side targets that launch the Linux toolkit builds.
+This produces the host-side targets that launch backend builds.
 
-## Build the Linux toolkit targets
+## Build the backend targets
 
 Build the Linux toolkit target backed by the native window-system image:
 
@@ -45,19 +45,33 @@ Build the Linux toolkit target backed by the SDL-based image:
 cmake --build out --target docker-sdl2
 ```
 
+Build the Windows MinGW-w64 target:
+
+```bash
+cmake --build out --target docker-win
+```
+
+Build the Haiku target:
+
+```bash
+cmake --build out --target docker-haiku
+```
+
 ## Build outputs
 
-The generated outputs are placed in separate toolkit build trees:
+The generated outputs are placed in separate backend build trees:
 
 - `build/linux-x11/`
 - `build/linux-sdl2/`
+- `build/windows-mingw-w64/`
+- `build/haiku/`
 
 The `out/` directory is different: it is only the host-side control tree for
 the top-level CMake project.
 
 ## Run the examples
 
-Examples are produced inside the toolkit-specific build directories.
+Examples are produced inside backend-specific build directories.
 
 For the native window-system toolkit build:
 
@@ -73,6 +87,20 @@ For the SDL-based toolkit build:
 ./build/linux-sdl2/examples/02_painter_example/painter-example
 ```
 
+For the Windows cross-build:
+
+```bash
+./build/windows-mingw-w64/examples/01_app_example/app-example.exe
+./build/windows-mingw-w64/examples/02_painter_example/painter-example.exe
+```
+
+For the Haiku cross-build:
+
+```bash
+./build/haiku/examples/01_app_example/app-example
+./build/haiku/examples/02_painter_example/painter-example
+```
+
 ## Repository layout
 
 The main folders used in daily work are:
@@ -86,10 +114,11 @@ docs/notes/           exceptional notes only
 out/                  host CMake control tree
 build/linux-x11/      Linux toolkit build tree
 build/linux-sdl2/     Linux toolkit build tree
+build/windows-mingw-w64/ Windows MinGW-w64 build tree
+build/haiku/          Haiku build tree
 ```
 
 ## What this chapter avoids
 
 This chapter describes only the workflow that is currently maintained.
-It does not document deferred API documentation generation or unfinished porting
-work.
+It does not document deferred API documentation generation.

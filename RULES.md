@@ -51,19 +51,23 @@ The codebase is organized into three layers:
 - The build system entry point is `CMakeLists.txt`.
 - Do not add a new top-level `Makefile` for normal project orchestration.
 - All builds must run through Docker-backed CMake targets.
-- The purpose of Docker is to make Linux builds reproducible and independent of host package drift.
+- The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
-### Linux Docker targets
+### Docker targets
 
 The top-level CMake project provides:
 
 - `docker-x11`
 - `docker-sdl2`
+- `docker-win`
+- `docker-haiku`
 
 These targets use the following Docker images:
 
 - X11: `wischner/gcc-x86_64-linux-x11`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
+- Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
+- Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
 The expected workflow is:
 
@@ -71,6 +75,8 @@ The expected workflow is:
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-win
+cmake --build out --target docker-haiku
 ```
 
 ### Build directories
@@ -78,8 +84,10 @@ cmake --build out --target docker-sdl2
 - `out/` is the host-side CMake control tree.
 - `build/linux-x11/` is the Docker-produced X11 build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
+- `build/windows-mingw-w64/` is the Docker-produced Windows MinGW-w64 build tree.
+- `build/haiku/` is the Docker-produced Haiku build tree.
 
-Do not collapse multiple Linux toolkit builds into the same CMake build directory.
+Do not collapse multiple platform or toolkit builds into the same CMake build directory.
 
 ## Linux backend rules
 
@@ -98,6 +106,28 @@ Do not collapse multiple Linux toolkit builds into the same CMake build director
 - SDL2 paint flow must render at frame boundaries, not present once per primitive.
 - Avoid repaint backlogs and laggy input paths; invalidation should be efficient.
 - Default SDL2 windows should open in a reachable on-screen position.
+
+## Windows backend rules
+
+- Files under `src/platforms/windows/` are for Win32 integration only.
+- Keep Win32 handle types and message-loop details out of `include/native.h`.
+- Mouse press/release/move/wheel events must map to the same `native` semantics used by Linux backends.
+- `painter` behavior must match Linux stable backends:
+  - press starts stroke
+  - move extends stroke
+  - release ends stroke
+  - wheel clears strokes
+
+## Haiku backend rules
+
+- Files under `src/platforms/haiku/` are for Haiku API integration only.
+- Keep `BApplication`, `BWindow`, and `BView` usage behind the platform layer.
+- Mouse press/release/move/wheel and paint invalidation flow must match Linux stable backends.
+- `painter` behavior must match Linux stable backends:
+  - press starts stroke
+  - move extends stroke
+  - release ends stroke
+  - wheel clears strokes
 
 ## Documentation rules
 

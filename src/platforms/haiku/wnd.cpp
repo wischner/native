@@ -1,12 +1,31 @@
-#include <native.h>
-#include <bindings.h>
+#include <stdexcept>
+
 #include <Window.h>
 #include <View.h>
-#include <Application.h>
-#include <iostream>
+
+#include <native.h>
 
 #include "gpx_wnd.h"
 #include "globals.h"
+
+namespace
+{
+    template <typename Fn>
+    void with_locked_window(BWindow *window, Fn &&fn)
+    {
+        if (!window)
+            return;
+
+        const bool already_locked = window->IsLocked();
+        if (!already_locked && !window->Lock())
+            return;
+
+        fn(window);
+
+        if (!already_locked)
+            window->Unlock();
+    }
+} // namespace
 
 namespace native
 {
@@ -57,11 +76,7 @@ namespace native
         if (_created)
         {
             BWindow *bwin = haiku::wnd_bindings.from_b(this);
-            if (bwin && bwin->Lock())
-            {
-                bwin->MoveTo(p.x, p.y);
-                bwin->Unlock();
-            }
+            with_locked_window(bwin, [&](BWindow *window) { window->MoveTo(p.x, p.y); });
         }
 
         return *this;
@@ -79,11 +94,7 @@ namespace native
         if (_created)
         {
             BWindow *bwin = haiku::wnd_bindings.from_b(this);
-            if (bwin && bwin->Lock())
-            {
-                bwin->ResizeTo(s.w, s.h);
-                bwin->Unlock();
-            }
+            with_locked_window(bwin, [&](BWindow *window) { window->ResizeTo(s.w, s.h); });
         }
 
         return *this;
@@ -101,12 +112,10 @@ namespace native
         if (_created)
         {
             BWindow *bwin = haiku::wnd_bindings.from_b(this);
-            if (bwin && bwin->Lock())
-            {
-                bwin->MoveTo(r.p.x, r.p.y);
-                bwin->ResizeTo(r.d.w, r.d.h);
-                bwin->Unlock();
-            }
+            with_locked_window(bwin, [&](BWindow *window) {
+                window->MoveTo(r.p.x, r.p.y);
+                window->ResizeTo(r.d.w, r.d.h);
+            });
         }
 
         return *this;
@@ -145,13 +154,11 @@ namespace native
             return const_cast<wnd &>(*this);
 
         BWindow *bwin = haiku::wnd_bindings.from_b(const_cast<wnd *>(this));
-        if (bwin && bwin->Lock())
-        {
-            BView *view = bwin->ChildAt(0);
+        with_locked_window(bwin, [](BWindow *window) {
+            BView *view = window->ChildAt(0);
             if (view)
                 view->Invalidate();
-            bwin->Unlock();
-        }
+        });
 
         return const_cast<wnd &>(*this);
     }
@@ -162,16 +169,14 @@ namespace native
             return const_cast<wnd &>(*this);
 
         BWindow *bwin = haiku::wnd_bindings.from_b(const_cast<wnd *>(this));
-        if (bwin && bwin->Lock())
-        {
-            BView *view = bwin->ChildAt(0);
-            if (view)
-            {
-                BRect rect(r.p.x, r.p.y, r.x2(), r.y2());
-                view->Invalidate(rect);
-            }
-            bwin->Unlock();
-        }
+        with_locked_window(bwin, [&](BWindow *window) {
+            BView *view = window->ChildAt(0);
+            if (!view)
+                return;
+
+            BRect rect(r.p.x, r.p.y, r.x2(), r.y2());
+            view->Invalidate(rect);
+        });
 
         return const_cast<wnd &>(*this);
     }

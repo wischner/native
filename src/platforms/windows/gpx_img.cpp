@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <algorithm>
+#include <cstring>
 #include <windows.h>
 
 #include <native.h>

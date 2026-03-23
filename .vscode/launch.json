@@ -44,17 +44,20 @@
             ]
         },
         {
-            "name": "Run app-example (Windows, MSVC)",
-            "type": "cppvsdbg",
+            "name": "Run painter (Windows via Wine)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "${workspaceFolder}/build/examples/01_app_example/app-example.exe",
-            "args": [],
-            "stopAtEntry": false,
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/02_painter_example/painter-example.exe\"",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "preLaunchTask": "CMake Build (MSVC)",
-            "condition": "windows"
+            "preLaunchTask": "Prepare painter runtime (Wine DLLs)"
+        },
+        {
+            "name": "Run app-example (Windows via Wine)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/01_app_example/app-example.exe\"",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Prepare app runtime (Wine DLLs)"
         },
         {
             "name": "Run app-example (Haiku VM, Remote)",
@@ -145,7 +148,7 @@
         },
         {
             "name": "Debug on Windows",
-            "configurations": ["Run app-example (Windows, MSVC)"]
+            "configurations": ["Run app-example (Windows via Wine)", "Run painter (Windows via Wine)"]
         },
         {
             "name": "Debug on Haiku VM",

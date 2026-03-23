@@ -31,35 +31,69 @@
           "dependsOn": ["CMake Configure (Docker Targets)"],
           "os": { "linux": true }
       },
-
-      // Windows
       {
-          "label": "CMake Configure (MSVC)",
+          "label": "CMake Build (Docker Win)",
           "type": "shell",
           "command": "cmake",
-          "args": ["-S", ".", "-B", "build", "-G", "NMake Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
-          "problemMatcher": [],
-          "group": { "kind": "build", "isDefault": true },
-          "os": { "windows": true }
-      },
-      {
-          "label": "CMake Build (MSVC)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "build", "--config", "Debug"],
-          "problemMatcher": "$msCompile",
-          "group": { "kind": "build", "isDefault": true },
-          "dependsOn": ["CMake Configure (MSVC)"],
-          "os": { "windows": true }
-      },
-      {
-          "label": "CMake Clean (MSVC)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "build", "--target", "clean"],
-          "problemMatcher": [],
+          "args": ["--build", "out", "--target", "docker-win"],
+          "problemMatcher": "$gcc",
           "group": "build",
-          "os": { "windows": true }
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run painter (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/02_painter_example/painter-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare painter runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run app-example (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/01_app_example/app-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare app runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare painter runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/02_painter_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare app runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/01_app_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
       },
 
       // Haiku

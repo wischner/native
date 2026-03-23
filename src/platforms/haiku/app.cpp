@@ -14,8 +14,9 @@ namespace native
             return 1;
         }
 
-        std::cout << "Haiku: entering BApplication Run loop." << std::endl;
         haiku::global_app->Run();
+        delete haiku::global_app;
+        haiku::global_app = nullptr;
 
         return 0;
     }

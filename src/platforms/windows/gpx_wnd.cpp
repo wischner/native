@@ -53,6 +53,9 @@ namespace native
         HWND hwnd = win::wnd_bindings.from_b(_wnd);
         if (!hwnd)
             throw std::runtime_error("Windows: No HWND available for gpx_wnd");
+
+        if (!win::wnd_gpx_bindings.from_a(_wnd))
+            win::wnd_gpx_bindings.register_pair(_wnd, new win::wingpx());
     }
 
     gpx_wnd::~gpx_wnd() = default;

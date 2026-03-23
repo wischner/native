@@ -1,9 +1,11 @@
 #include <stdexcept>
 #include <algorithm>
+#include <cstring>
 
 #include <Application.h>
 #include <View.h>
 #include <Bitmap.h>
+#include <Region.h>
 #include <String.h>
 
 #include <native.h>
@@ -128,7 +130,7 @@ namespace native
         }
 
         // Copy our pixel data to the bitmap
-        memcpy(bitmap->Bits(), _img.pixels(), _img.w() * _img.h() * 4);
+        std::memcpy(bitmap->Bits(), _img.pixels(), _img.w() * _img.h() * 4);
 
         // Get view from bitmap
         BView *view = new BView(bounds, "offscreen", B_FOLLOW_NONE, B_WILL_DRAW);
@@ -150,7 +152,7 @@ namespace native
             view->Sync();
 
             // Copy result back
-            memcpy(const_cast<rgba *>(_img.pixels()), bitmap->Bits(), _img.w() * _img.h() * 4);
+            std::memcpy(const_cast<rgba *>(_img.pixels()), bitmap->Bits(), _img.w() * _img.h() * 4);
 
             bitmap->Unlock();
         }

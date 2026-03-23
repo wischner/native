@@ -1,20 +1,20 @@
 # Feature Matrix
 
 This chapter records only the feature surface that is implemented and exercised
-in the current stable backends. It is intentionally conservative.
+in the current maintained backends. It is intentionally conservative.
 
-## Current stable backends
+## Current maintained backends
 
-The project currently treats these Linux toolkit backends as stable:
+The project currently maintains these backends:
 
-- the Linux backend configured with the native window-system toolkit
-- the Linux backend configured with the SDL-based toolkit
-
-This chapter does not describe unfinished ports or planned features.
+- Linux backend configured with the native window-system toolkit
+- Linux backend configured with the SDL-based toolkit
+- Windows backend (Win32)
+- Haiku backend (BeAPI)
 
 ## Application lifecycle
 
-Implemented in the stable backends:
+Implemented in the maintained backends:
 
 - screen detection before application startup
 - main application window creation
@@ -23,7 +23,7 @@ Implemented in the stable backends:
 
 ## Window events
 
-Implemented in the stable backends:
+Implemented in the maintained backends:
 
 - window creation notification
 - window move notification
@@ -32,7 +32,7 @@ Implemented in the stable backends:
 
 ## Mouse events
 
-Implemented in the stable backends:
+Implemented in the maintained backends:
 
 - mouse move
 - mouse button press
@@ -43,7 +43,7 @@ These events are exposed through the `signal<>` mechanism on `wnd`.
 
 ## Drawing surface
 
-Implemented in the stable backends:
+Implemented in the maintained backends:
 
 - window-backed graphics via `gpx_wnd`
 - image-backed graphics via `gpx_img`
@@ -62,7 +62,7 @@ a no-op rather than a build failure.
 
 ## Examples
 
-The current examples exercise the stable feature set:
+The current examples exercise the maintained feature set:
 
 - minimal main window
 - interactive painter using mouse input and retained strokes

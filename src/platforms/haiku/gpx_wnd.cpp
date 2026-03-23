@@ -1,9 +1,11 @@
 #include <stdexcept>
+#include <cstring>
 
 #include <Application.h>
 #include <Window.h>
 #include <View.h>
 #include <Bitmap.h>
+#include <Region.h>
 #include <String.h>
 
 #include <native.h>
@@ -41,6 +43,26 @@ static void apply_bview_state(BView *view, native::gpx_wnd *self, haiku::haikugp
     view->ConstrainClippingRegion(&region);
 }
 
+template <typename Fn>
+static void with_locked_view(BView *view, Fn &&fn)
+{
+    if (!view)
+        return;
+
+    BLooper *looper = view->Looper();
+    if (!looper)
+        return;
+
+    const bool already_locked = looper->IsLocked();
+    if (!already_locked && !looper->Lock())
+        return;
+
+    fn(view);
+
+    if (!already_locked)
+        looper->Unlock();
+}
+
 namespace native
 {
 
@@ -56,15 +78,22 @@ namespace native
         if (!cache)
         {
             cache = new haiku::haikugpx();
-            // Get the main view from the window
+
+            const bool already_locked = bwin->IsLocked();
+            if (!already_locked && !bwin->Lock())
+                throw std::runtime_error("Haiku: Failed to lock BWindow while creating gpx_wnd.");
+
             cache->view = bwin->ChildAt(0);
             if (!cache->view)
             {
-                // Create a view if none exists
                 BRect bounds = bwin->Bounds();
                 cache->view = new BView(bounds, "MainView", B_FOLLOW_ALL, B_WILL_DRAW);
                 bwin->AddChild(cache->view);
             }
+
+            if (!already_locked)
+                bwin->Unlock();
+
             haiku::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
     }
@@ -88,18 +117,13 @@ namespace native
         if (!cache || !cache->view)
             return *this;
 
-        BView *view = cache->view;
-
-        if (view->LockLooper())
-        {
+        with_locked_view(cache->view, [&](BView *view) {
             rgb_color c = {color.r, color.g, color.b, color.a};
             view->SetHighColor(c);
 
             BRect rect(_clip.p.x, _clip.p.y, _clip.x2(), _clip.y2());
             view->FillRect(rect);
-
-            view->UnlockLooper();
-        }
+        });
 
         return *this;
     }
@@ -110,14 +134,10 @@ namespace native
         if (!cache || !cache->view)
             return *this;
 
-        BView *view = cache->view;
-
-        if (view->LockLooper())
-        {
+        with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
             view->StrokeLine(BPoint(from.x, from.y), BPoint(to.x, to.y));
-            view->UnlockLooper();
-        }
+        });
 
         return *this;
     }
@@ -128,10 +148,7 @@ namespace native
         if (!cache || !cache->view)
             return *this;
 
-        BView *view = cache->view;
-
-        if (view->LockLooper())
-        {
+        with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
 
             BRect rect(r.p.x, r.p.y, r.x2(), r.y2());
@@ -140,9 +157,7 @@ namespace native
                 view->FillRect(rect);
             else
                 view->StrokeRect(rect);
-
-            view->UnlockLooper();
-        }
+        });
 
         return *this;
     }
@@ -153,14 +168,10 @@ namespace native
         if (!cache || !cache->view)
             return *this;
 
-        BView *view = cache->view;
-
-        if (view->LockLooper())
-        {
+        with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
             view->DrawString(text.c_str(), BPoint(p.x, p.y));
-            view->UnlockLooper();
-        }
+        });
 
         return *this;
     }
@@ -171,29 +182,17 @@ namespace native
         if (!cache || !cache->view)
             return *this;
 
-        BView *view = cache->view;
-
-        if (view->LockLooper())
-        {
+        with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
 
-            // Create BBitmap from RGBA pixel data
             BRect bounds(0, 0, src.w() - 1, src.h() - 1);
-            BBitmap *bitmap = new BBitmap(bounds, B_RGBA32);
+            BBitmap bitmap(bounds, B_RGBA32);
+            if (!bitmap.IsValid())
+                return;
 
-            if (bitmap && bitmap->IsValid())
-            {
-                // Copy pixel data
-                memcpy(bitmap->Bits(), src.pixels(), src.w() * src.h() * 4);
-
-                // Draw bitmap
-                view->DrawBitmap(bitmap, BPoint(dst.x, dst.y));
-
-                delete bitmap;
-            }
-
-            view->UnlockLooper();
-        }
+            std::memcpy(bitmap.Bits(), src.pixels(), static_cast<std::size_t>(src.w()) * src.h() * 4);
+            view->DrawBitmap(&bitmap, BPoint(dst.x, dst.y));
+        });
 
         return *this;
     }

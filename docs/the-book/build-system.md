@@ -2,7 +2,7 @@
 
 This chapter describes the build structure that exists in the repository today.
 It focuses on the current CMake workflow and the separation between the host
-control tree and the Linux toolkit build trees.
+control tree and backend-specific build trees.
 
 ## Overview
 
@@ -12,7 +12,7 @@ At the root, CMake does three things:
 
 - sets the project language and C++ standard
 - builds the `native` library and examples
-- exposes Docker-backed Linux toolkit targets
+- exposes Docker-backed backend targets
 
 The top-level build flow is:
 
@@ -20,15 +20,17 @@ The top-level build flow is:
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
+cmake --build out --target docker-win
+cmake --build out --target docker-haiku
 ```
 
 ## Build directories
 
-The repository uses three different build directories for Linux work:
+The repository uses separate build directories per backend:
 
 - `out/`
   - host-side CMake control tree
-  - contains the generated top-level targets such as `docker-x11` and `docker-sdl2`
+  - contains generated top-level targets such as `docker-x11`, `docker-sdl2`, `docker-win`, and `docker-haiku`
 
 - `build/linux-x11/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
@@ -36,12 +38,18 @@ The repository uses three different build directories for Linux work:
 - `build/linux-sdl2/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=SDL2`
 
-These build trees are kept separate so that toolkit-specific CMake cache data,
+- `build/windows-mingw-w64/`
+  - platform build tree for the Windows MinGW-w64 target
+
+- `build/haiku/`
+  - platform build tree for the Haiku target
+
+These build trees are kept separate so backend-specific CMake cache data,
 dependencies, and generated files do not overwrite each other.
 
-## Docker-backed Linux targets
+## Docker-backed targets
 
-The Linux toolkit builds are driven by custom targets in the top-level
+The backend builds are driven by custom targets in the top-level
 `CMakeLists.txt`.
 
 Those targets run CMake inside Docker images that already contain the required
@@ -49,11 +57,15 @@ toolchain and system headers.
 
 - `docker-x11`
 - `docker-sdl2`
+- `docker-win`
+- `docker-haiku`
 
 The images are:
 
 - `wischner/gcc-x86_64-linux-x11`
 - `wischner/gcc-x86_64-linux-sdl`
+- `wischner/gcc-x86_64-windows-mingw-w64`
+- `wischner/gcc-x86_64-haiku`
 
 The source tree is mounted into the container at the same absolute path that it
 has on the host. This keeps CMake build trees and cache paths stable between
@@ -116,15 +128,17 @@ Today the repository includes:
 - a minimal application window example
 - a painter example
 
-The Linux outputs are produced inside the toolkit-specific build trees:
+Outputs are produced inside backend-specific build trees:
 
 - `build/linux-x11/examples/...`
 - `build/linux-sdl2/examples/...`
+- `build/windows-mingw-w64/examples/...`
+- `build/haiku/examples/...`
 
 ## Summary
 
 - CMake is the build entry point.
 - `out/` is the host control tree.
-- Linux toolkit builds run inside Docker.
-- `build/linux-x11/` and `build/linux-sdl2/` are separate on purpose.
+- Backend builds run inside Docker.
+- Backend build trees are separate on purpose.
 - The root project currently builds code and examples, not generated API docs.

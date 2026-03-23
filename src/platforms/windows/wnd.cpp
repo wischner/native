@@ -1,113 +1,167 @@
-#include <native.h>
-#include <bindings.h>
+#include <stdexcept>
+
 #include <windows.h>
 #include <windowsx.h>
-#include <iostream>
+
+#include <native.h>
 
 #include "gpx_wnd.h"
 #include "globals.h"
 
-namespace win {
-    extern native::bindings<HWND, native::wnd*> wnd_bindings;
-    extern native::bindings<native::wnd *, wingpx *> wnd_gpx_bindings;
+namespace win
+{
+    static native::mouse_button button_from_msg(UINT msg, WPARAM wParam)
+    {
+        switch (msg)
+        {
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONUP:
+            return native::mouse_button::left;
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONUP:
+            return native::mouse_button::right;
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONUP:
+            return native::mouse_button::middle;
+        case WM_XBUTTONDOWN:
+        case WM_XBUTTONUP:
+            return (HIWORD(wParam) == XBUTTON1)
+                       ? native::mouse_button::x1
+                       : native::mouse_button::x2;
+        default:
+            return native::mouse_button::none;
+        }
+    }
 
-    // Global custom WndProc
     LRESULT CALLBACK RoutedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        native::wnd* wnd = wnd_bindings.from_a(hwnd);
-
-        if (wnd)
+        if (msg == WM_NCCREATE)
         {
-            switch (msg)
+            auto *create = reinterpret_cast<CREATESTRUCT *>(lParam);
+            auto *native_wnd = reinterpret_cast<native::wnd *>(create->lpCreateParams);
+            if (native_wnd)
             {
-                case WM_CREATE:
-                    wnd->on_wnd_create.emit();
-                    break;
-
-                case WM_MOVE:
-                    wnd->on_wnd_move.emit(native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
-                    break;
-
-                case WM_SIZE:
-                    wnd->on_wnd_resize.emit(native::size(LOWORD(lParam), HIWORD(lParam)));
-                    break;
-
-                case WM_MOUSEMOVE:
-                    wnd->on_mouse_move.emit(native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
-                    break;
-
-                case WM_LBUTTONDOWN:
-                case WM_RBUTTONDOWN:
-                case WM_MBUTTONDOWN:
-                case WM_LBUTTONUP:
-                case WM_RBUTTONUP:
-                case WM_MBUTTONUP:
-                {
-                    native::mouse_button button = native::mouse_button::none;
-                    if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP) button = native::mouse_button::left;
-                    if (msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP) button = native::mouse_button::right;
-                    if (msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP) button = native::mouse_button::middle;
-
-                    native::mouse_event evt(button, native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
-                    wnd->on_mouse_click.emit(evt);
-                    break;
-                }
-
-                case WM_MOUSEWHEEL:
-                {
-                    native::mouse_wheel_event whe(
-                        native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)),
-                        GET_WHEEL_DELTA_WPARAM(wParam),
-                        native::wheel_direction::vertical);
-                    wnd->on_mouse_wheel.emit(whe);
-                    break;
-                }
-
-                case WM_PAINT:
-                {
-                    PAINTSTRUCT ps;
-                    HDC hdc = BeginPaint(hwnd, &ps);
-
-                    // Convert RECT to native::rect
-                    native::rect r(
-                        ps.rcPaint.left,
-                        ps.rcPaint.top,
-                        ps.rcPaint.right - ps.rcPaint.left,
-                        ps.rcPaint.bottom - ps.rcPaint.top);
-
-                    // Get graphics context and set clip
-                    auto &g = wnd->get_gpx().set_clip(r);
-
-                    // Emit paint event
-                    native::wnd_paint_event e{r, g};
-                    wnd->on_wnd_paint.emit(e);
-
-                    EndPaint(hwnd, &ps);
-                    break;
-                }
+                SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(native_wnd));
+                wnd_bindings.register_pair(hwnd, native_wnd);
             }
+        }
+
+        native::wnd *wnd = wnd_bindings.from_a(hwnd);
+        if (!wnd)
+        {
+            wnd = reinterpret_cast<native::wnd *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+            if (wnd)
+                wnd_bindings.register_pair(hwnd, wnd);
+        }
+
+        if (!wnd)
+            return DefWindowProc(hwnd, msg, wParam, lParam);
+
+        switch (msg)
+        {
+        case WM_MOVE:
+            wnd->on_wnd_move.emit(native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+            break;
+
+        case WM_SIZE:
+            wnd->on_wnd_resize.emit(native::size(LOWORD(lParam), HIWORD(lParam)));
+            break;
+
+        case WM_MOUSEMOVE:
+            wnd->on_mouse_move.emit(native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+            break;
+
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONUP:
+        {
+            const native::mouse_button btn = button_from_msg(msg, wParam);
+            const native::mouse_action act = (msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN ||
+                                              msg == WM_MBUTTONDOWN || msg == WM_XBUTTONDOWN)
+                                                 ? native::mouse_action::press
+                                                 : native::mouse_action::release;
+
+            if (btn != native::mouse_button::none)
+            {
+                native::mouse_event me(
+                    btn, act,
+                    native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                wnd->on_mouse_click.emit(me);
+            }
+            break;
+        }
+
+        case WM_MOUSEWHEEL:
+#ifdef WM_MOUSEHWHEEL
+        case WM_MOUSEHWHEEL:
+#endif
+        {
+            POINT screen_pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            ScreenToClient(hwnd, &screen_pt);
+
+            native::mouse_wheel_event wheel(
+                native::point(screen_pt.x, screen_pt.y),
+                static_cast<native::coord>(GET_WHEEL_DELTA_WPARAM(wParam)),
+#ifdef WM_MOUSEHWHEEL
+                msg == WM_MOUSEHWHEEL
+                    ? native::wheel_direction::horizontal
+#else
+                false
+#endif
+                    ? native::wheel_direction::horizontal
+                    : native::wheel_direction::vertical);
+            wnd->on_mouse_wheel.emit(wheel);
+            break;
+        }
+
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            BeginPaint(hwnd, &ps);
+
+            native::rect r(
+                static_cast<native::coord>(ps.rcPaint.left),
+                static_cast<native::coord>(ps.rcPaint.top),
+                static_cast<native::dim>(ps.rcPaint.right - ps.rcPaint.left),
+                static_cast<native::dim>(ps.rcPaint.bottom - ps.rcPaint.top));
+
+            auto &g = wnd->get_gpx().set_clip(r);
+            g.clear(native::rgba(255, 255, 255, 255));
+            native::wnd_paint_event e{r, g};
+            wnd->on_wnd_paint.emit(e);
+
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+
+        case WM_ERASEBKGND:
+            return 1;
+
+        case WM_CLOSE:
+            DestroyWindow(hwnd);
+            return 0;
+
+        case WM_DESTROY:
+            wnd_bindings.unregister_by_a(hwnd);
+            if (wnd == native::app::main_wnd())
+                PostQuitMessage(0);
+            return 0;
+
+        default:
+            break;
         }
 
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
-
-    // Free function to bind events
-    void bind_events(HWND hwnd, native::wnd* wnd)
-    {
-        if (!hwnd || !wnd)
-        {
-            std::cerr << "Windows: Can't bind events — HWND or wnd is null.\n";
-            return;
-        }
-
-        win::wnd_bindings.register_pair(hwnd, wnd);
-        SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(win::RoutedWndProc));
-    }
-}
+} // namespace win
 
 namespace native
 {
-
     wnd::wnd(coord x, coord y, dim w, dim h)
         : _parent(nullptr), _created(false)
     {
@@ -128,23 +182,19 @@ namespace native
 
     wnd::~wnd()
     {
-        if (_created)
+        if (auto *cache = win::wnd_gpx_bindings.from_a(this))
         {
-            // Clean up graphics cache
-            if (auto *cache = win::wnd_gpx_bindings.from_a(this))
-            {
-                if (cache->pen)
-                    DeleteObject(cache->pen);
-                if (cache->brush)
-                    DeleteObject(cache->brush);
-                if (cache->font)
-                    DeleteObject(cache->font);
-                delete cache;
-                win::wnd_gpx_bindings.unregister_by_a(this);
-            }
-
-            win::wnd_bindings.unregister_by_b(this);
+            if (cache->pen)
+                DeleteObject(cache->pen);
+            if (cache->brush)
+                DeleteObject(cache->brush);
+            if (cache->font)
+                DeleteObject(cache->font);
+            delete cache;
+            win::wnd_gpx_bindings.unregister_by_a(this);
         }
+
+        win::wnd_bindings.unregister_by_b(this);
     }
 
     point wnd::position() const
@@ -159,7 +209,8 @@ namespace native
         if (_created)
         {
             HWND hwnd = win::wnd_bindings.from_b(this);
-            SetWindowPos(hwnd, nullptr, p.x, p.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+            if (hwnd)
+                SetWindowPos(hwnd, nullptr, p.x, p.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
         }
 
         return *this;
@@ -177,7 +228,8 @@ namespace native
         if (_created)
         {
             HWND hwnd = win::wnd_bindings.from_b(this);
-            SetWindowPos(hwnd, nullptr, 0, 0, s.w, s.h, SWP_NOMOVE | SWP_NOZORDER);
+            if (hwnd)
+                SetWindowPos(hwnd, nullptr, 0, 0, s.w, s.h, SWP_NOMOVE | SWP_NOZORDER);
         }
 
         return *this;
@@ -195,7 +247,8 @@ namespace native
         if (_created)
         {
             HWND hwnd = win::wnd_bindings.from_b(this);
-            SetWindowPos(hwnd, nullptr, r.p.x, r.p.y, r.d.w, r.d.h, SWP_NOZORDER);
+            if (hwnd)
+                SetWindowPos(hwnd, nullptr, r.p.x, r.p.y, r.d.w, r.d.h, SWP_NOZORDER);
         }
 
         return *this;
@@ -221,7 +274,8 @@ namespace native
         {
             HWND child = win::wnd_bindings.from_b(this);
             HWND parent = win::wnd_bindings.from_b(p);
-            SetParent(child, parent);
+            if (child && parent)
+                SetParent(child, parent);
         }
 
         return *this;
@@ -238,7 +292,8 @@ namespace native
             return const_cast<wnd &>(*this);
 
         HWND hwnd = win::wnd_bindings.from_b(const_cast<wnd *>(this));
-        InvalidateRect(hwnd, nullptr, TRUE);
+        if (hwnd)
+            InvalidateRect(hwnd, nullptr, FALSE);
         return const_cast<wnd &>(*this);
     }
 
@@ -248,8 +303,11 @@ namespace native
             return const_cast<wnd &>(*this);
 
         HWND hwnd = win::wnd_bindings.from_b(const_cast<wnd *>(this));
-        RECT rect = {r.p.x, r.p.y, r.x2() + 1, r.y2() + 1};
-        InvalidateRect(hwnd, &rect, TRUE);
+        if (hwnd)
+        {
+            RECT rect = {r.p.x, r.p.y, r.x2(), r.y2()};
+            InvalidateRect(hwnd, &rect, FALSE);
+        }
         return const_cast<wnd &>(*this);
     }
 
@@ -263,5 +321,4 @@ namespace native
 
         return *_gpx;
     }
-
 } // namespace native
