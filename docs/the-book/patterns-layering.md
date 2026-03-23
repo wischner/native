@@ -20,6 +20,15 @@ The code is split into three implementation layers:
 The public header in `include/native.h` sits above those layers and should not
 expose native handles or native headers.
 
+Current tested runtime path uses:
+
+- `src/toolkits/x11/`
+- `src/toolkits/sdl2/`
+- `src/platforms/windows/`
+
+Haiku and Apple code paths are present but not yet runtime-tested in the
+current workflow.
+
 ## Public API boundary
 
 The user-facing types are written as portable C++ abstractions:
@@ -32,6 +41,26 @@ The user-facing types are written as portable C++ abstractions:
 - screen metadata
 
 Backend code is responsible for mapping those abstractions to native resources.
+
+## Concept sample: boundary discipline
+
+This is the intended design boundary:
+
+```cpp
+// Public layer
+class wnd
+{
+    virtual void create() const = 0;
+    virtual void show() const = 0;
+};
+```
+
+```cpp
+// Backend layer (example)
+HWND hwnd = CreateWindowExW(...); // native handle stays backend-side
+```
+
+The public model stays portable, and backend files do the native work.
 
 ## Native bindings
 
@@ -72,4 +101,4 @@ This pattern keeps responsibilities clear:
 - native resources stay outside the public API
 
 That separation is one of the main reasons the project stays readable even while
-supporting multiple backends.
+supporting multiple backends. This is practical and it scales.

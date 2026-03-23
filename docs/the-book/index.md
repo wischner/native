@@ -1,39 +1,46 @@
 # The Book of Native
 
-This book explains how the current codebase works.
+This book documents how the current codebase works today.
 
 It is not a roadmap and it is not a wish list.
-Each chapter should describe behavior, structure, and practices that already
-exist in the repository.
+Each chapter describes behavior and structure that exists in the repository.
 
-If a feature is added later, the book can grow with it.
+When code changes, this book should be updated in the same commit.
+
+## Current scope (March 2026)
+
+- Runtime-tested in this project workflow:
+  - Linux X11 backend
+  - Linux SDL2 backend
+  - Windows backend (MinGW build, run through Wine)
+- Implemented but not yet runtime-tested in this workflow:
+  - Haiku backend
+  - Apple backend
+- Work in progress:
+  - other toolkit targets and ports not listed above
 
 ## Chapters
 
 1. [Getting started](getting-started.md)
-   Build the project, run the examples, and understand the build directories.
+   Build the project, run current examples, and understand the output layout.
 
 2. [Build system](build-system.md)
-   How the top-level CMake project, Docker-backed Linux targets, and toolkit
-   build trees are organized.
+   How top-level CMake and Docker-backed backend targets are organized.
 
 3. [Patterns: source layering and native bindings](patterns-layering.md)
-   How the code separates public C++ abstractions from native implementation
-   details and maps handles to objects.
+   Core layering model and native handle/object mappings.
 
 4. [Patterns: geometry and type conventions](patterns-geometry.md)
-   The basic value types used across windows, graphics, and events.
+   Shared value types used by geometry, windows, graphics, and events.
 
 5. [Patterns: signal and event dispatching](patterns-signals.md)
-   How event delivery works through the internal `signal<>` mechanism.
+   Event dispatch semantics using `signal<>`.
 
 6. [Patterns: application entry and main loop](patterns-application.md)
-   How `program()`, `app::run()`, screen detection, window creation, and the
-   backend main loop fit together.
+   Startup sequence from `program()` to backend main loops.
 
 7. [Patterns: windows and app windows](patterns-windows.md)
-   The role of `wnd`, `app_wnd`, invalidation, painting, and backend-specific
-   native resources.
+   Responsibilities of `wnd`, `app_wnd`, invalidation, paint flow, and caches.
 
 8. [Feature matrix](feature-matrix.md)
-   The feature surface that is implemented in the currently stable backends.
+   Per-backend feature and test status for what is implemented now.

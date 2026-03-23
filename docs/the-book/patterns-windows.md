@@ -16,6 +16,8 @@ It stores common state such as:
 
 The base class does not own native window handles directly.
 
+This separation is deliberate: `wnd` models behavior, backends own handles.
+
 ## Current responsibilities of `wnd`
 
 Today `wnd` provides:
@@ -30,6 +32,15 @@ Today `wnd` provides:
 The shared class defines the interface.
 Backends provide the native behavior for creation, showing, destruction,
 invalidation, and painting.
+
+## Concept sample: invalidate and repaint
+
+The pattern is:
+
+1. user code calls `invalidate()`
+2. backend receives native paint request
+3. backend prepares `gpx`, clip, and background clear
+4. backend emits `on_wnd_paint`
 
 ## `app_wnd`
 
@@ -68,6 +79,8 @@ That means the backend graphics object is not created until it is first needed.
 Its native resources live in backend-specific caches rather than in the public
 window object.
 
+This keeps shared objects small and backend ownership explicit.
+
 ## Why this structure is used
 
 This window model keeps the shared API small while still allowing each backend
@@ -79,4 +92,5 @@ to manage:
 - event translation
 
 The result is a public window abstraction that stays portable even though the
-native work differs underneath.
+native work differs underneath. It is a strong base for incremental backend
+improvements.

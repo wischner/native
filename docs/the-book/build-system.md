@@ -24,6 +24,9 @@ cmake --build out --target docker-win
 cmake --build out --target docker-haiku
 ```
 
+This is the current reproducible path used for Linux and Windows cross-builds.
+Haiku cross-build is available in the same model.
+
 ## Build directories
 
 The repository uses separate build directories per backend:
@@ -71,6 +74,18 @@ The source tree is mounted into the container at the same absolute path that it
 has on the host. This keeps CMake build trees and cache paths stable between
 host-side and Docker-side invocation.
 
+## Backend status from this workflow
+
+- Runtime-tested:
+  - Linux X11
+  - Linux SDL2
+  - Windows MinGW binaries run through Wine
+- Not runtime-tested yet:
+  - Haiku
+  - Apple
+- Other backends/toolkits:
+  - still work in progress
+
 ## Root project structure
 
 The root `CMakeLists.txt` adds two code subtrees:
@@ -106,6 +121,7 @@ The platform subtree is selected with standard CMake platform variables:
 - `UNIX`
 
 On Linux, the platform layer is combined with a toolkit layer.
+On Apple and Haiku, platform-specific source sets are used.
 
 ## Toolkit selection
 
@@ -118,6 +134,8 @@ Only one toolkit subtree is added per configured build tree.
 
 That is why Linux toolkit builds use different directories instead of sharing
 one `build/` directory.
+
+Windows and Haiku do not use the toolkit selector in the current build path.
 
 ## Examples
 
@@ -142,3 +160,4 @@ Outputs are produced inside backend-specific build trees:
 - Backend builds run inside Docker.
 - Backend build trees are separate on purpose.
 - The root project currently builds code and examples, not generated API docs.
+- Runtime verification currently focuses on Linux X11/SDL2 and Windows/Wine.

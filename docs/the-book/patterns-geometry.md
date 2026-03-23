@@ -18,6 +18,8 @@ These types are used across:
 - image dimensions
 - input events
 
+This keeps all backends on the same coordinate vocabulary.
+
 ## `point`
 
 `point` represents a position:
@@ -71,6 +73,17 @@ The implementation provides helper methods such as:
 
 These are used by painting code, clipping, screen work areas, and hit testing.
 
+## Concept sample: half-open rectangles
+
+`rect::contains()` uses half-open bounds:
+
+```cpp
+pt.x >= x1() && pt.x < x2()
+pt.y >= y1() && pt.y < y2()
+```
+
+This avoids fencepost ambiguity and matches common graphics practice.
+
 ## `line`
 
 `line` is a small value type built from two points.
@@ -100,4 +113,4 @@ The same `point`, `size`, `rect`, and `rgba` types appear in:
 - graphics APIs
 - image manipulation
 
-That consistency is part of what keeps the public interface clean and portable.
+That consistency keeps the API predictable and makes backend work easier.

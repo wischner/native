@@ -17,6 +17,8 @@ Signals are used for events such as:
 - mouse button actions
 - mouse wheel
 
+This gives all tested backends the same user-facing event contract.
+
 ## Connection model
 
 Slots can be connected as:
@@ -34,6 +36,14 @@ They are dispatched in reverse order of registration.
 
 If a slot returns `true`, dispatch stops.
 That gives event handlers a built-in short-circuit mechanism.
+
+## Concept sample: handler precedence
+
+Because dispatch is reverse-registration order, the most recently connected
+handler runs first. This is useful for layered behavior:
+
+1. local handler decides whether to consume
+2. fallback handler runs only if not consumed
 
 ## Lazy initialization
 
@@ -60,4 +70,4 @@ Backends are responsible for:
 4. emitting the corresponding `signal<>`
 
 This keeps backend-specific event details out of the shared API and gives the
-library a consistent event model.
+library a consistent event model. It is small, explicit, and effective.

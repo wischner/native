@@ -1,7 +1,19 @@
 # Getting Started
 
-This chapter explains how to build the project as it works today and how to run
-the example programs that come with the repository.
+This chapter explains the build and run workflow that is currently used and
+verified.
+
+## Verified runtime scope
+
+- Verified runtime in this workflow:
+  - Linux X11
+  - Linux SDL2
+  - Windows build through MinGW, run through Wine
+- Implemented but not runtime-verified in this workflow:
+  - Haiku
+  - Apple
+- Other toolkits/ports:
+  - still work in progress
 
 ## Prerequisites
 
@@ -57,6 +69,14 @@ Build the Haiku target:
 cmake --build out --target docker-haiku
 ```
 
+Note:
+
+- `docker-win` is part of the current verified workflow.
+  It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
+- `docker-haiku` is available as a cross-build target.
+  It produces Haiku binaries, but runtime is not yet exercised in this workflow.
+- Apple platform code exists, but there is no current Docker backend target for Apple builds in this repository.
+
 ## Build outputs
 
 The generated outputs are placed in separate backend build trees:
@@ -94,12 +114,20 @@ For the Windows cross-build:
 ./build/windows-mingw-w64/examples/02_painter_example/painter-example.exe
 ```
 
+When running MinGW binaries through Wine, MinGW runtime DLLs must be available
+next to each `.exe` (or provided through Wine path configuration).
+
 For the Haiku cross-build:
 
 ```bash
 ./build/haiku/examples/01_app_example/app-example
 ./build/haiku/examples/02_painter_example/painter-example
 ```
+
+Status:
+
+- Linux X11/SDL2 and Windows/Wine runs are currently exercised.
+- Haiku and Apple runs are not yet exercised in this workflow.
 
 ## Repository layout
 

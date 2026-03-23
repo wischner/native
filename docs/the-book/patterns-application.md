@@ -14,6 +14,15 @@ int program(int argc, char **argv);
 Backend-specific `main()` functions call `program()` and keep platform-specific
 startup details out of user code.
 
+Concept sample:
+
+```cpp
+int program(int argc, char **argv)
+{
+    return native::app::run(my_main_window());
+}
+```
+
 ## `app::run`
 
 The shared startup path lives in `src/app.cpp`.
@@ -35,7 +44,7 @@ event loop implementation differs.
 when needed.
 
 This is part of the current architecture and is used by the Linux toolkit
-implementations during repaint and event dispatch.
+implementations and the Windows backend during repaint and event dispatch.
 
 ## Backend main loops
 
@@ -47,6 +56,9 @@ That means:
 - startup shape is shared
 - event pumping is backend-specific
 - native messages are translated into `native` events before they reach user code
+
+In the current workflow, runtime checks exercise this model on Linux X11, Linux
+SDL2, and Windows (via Wine).
 
 ## Screen detection
 
