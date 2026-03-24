@@ -11,7 +11,7 @@ using namespace native;
 
 @implementation NativeWindowDelegate
 - (BOOL)windowShouldClose:(id)sender {
-    [mac::global_app terminate:nil];
+    [mac::global_app stop:nil];
     return YES;
 }
 @end
@@ -30,6 +30,7 @@ NativeWindow::NativeWindow(app_wnd* owner, const char* title, int x, int y, int 
     NSString *nsTitle = [NSString stringWithUTF8String:title];
     [win setTitle:nsTitle];
     [win makeKeyAndOrderFront:nil];
+    [mac::global_app activateIgnoringOtherApps:YES];
 
     auto delegate = [[NativeWindowDelegate alloc] init];
     [win setDelegate:delegate];

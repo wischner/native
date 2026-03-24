@@ -1,20 +1,18 @@
 #include <native.h>
-#include <iostream>
-#include <ApplicationServices/ApplicationServices.h>
+
+#import <Cocoa/Cocoa.h>
+
+#include "globals.h"
 
 namespace native
 {
 
     int app::main_loop()
     {
-        // macOS main loop is usually handled by NSApplication,
-        // but for now, we’ll simulate it using CFRunLoop.
-        std::cout << "macOS: Entering main loop.\n";
+        if (!mac::global_app)
+            mac::global_app = [NSApplication sharedApplication];
 
-        // Run the Core Foundation run loop
-        CFRunLoopRun();
-
-        std::cout << "macOS: Exiting main loop.\n";
+        [mac::global_app run];
         return 0;
     }
 

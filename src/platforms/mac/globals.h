@@ -7,7 +7,7 @@
 namespace mac
 {
     // Graphics cache structure for macOS Cocoa/Quartz
-    typedef struct
+    struct macgpx
     {
         NSView *view = nullptr;           // Cached NSView for drawing
         NSGraphicsContext *context = nullptr; // Cached graphics context
@@ -19,7 +19,7 @@ namespace mac
         // Clip region
         native::rect clip = {};
         bool dirty_clip = true;
-    } macgpx;
+    };
 
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;

@@ -5,4 +5,6 @@ __attribute__((constructor))
 static void init_mac_app()
 {
     mac::global_app = [NSApplication sharedApplication];
+    [mac::global_app setActivationPolicy:NSApplicationActivationPolicyRegular];
+    [mac::global_app finishLaunching];
 }

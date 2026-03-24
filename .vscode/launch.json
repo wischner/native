@@ -177,44 +177,36 @@
         },
 
         {
-            "name": "Run app-example (macOS, Remote)",
-            "type": "cppdbg",
+            "name": "Run app-example (macOS leia)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "/Users/tomaz/Projects/${workspaceFolderBasename}/build/examples/01_app_example/app-example",
-            "cwd": "/Users/tomaz/Projects/${workspaceFolderBasename}/build",
-            "MIMode": "gdb",
-            "ssh": {
-                "host": "vader.local",
-                "user": "tomaz"
-            },
-            "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": [
-                    "-T",
-                    "tomaz@vader.local"
-                ],
-                "debuggerPath": "/usr/local/bin/gdb"
-            },
-            "setupCommands": [
-                {
-                    "text": "-exec set pagination off",
-                    "description": "Disable pagination",
-                    "ignoreFailures": true
-                },
-                {
-                    "text": "-gdb-set scheduler-locking on",
-                    "description": "Lock scheduler for single thread stepping",
-                    "ignoreFailures": true
-                }
-            ],
-            "sourceFileMap": {
-                "/Users/tomaz/Projects/${workspaceFolderBasename}": "${workspaceFolder}"
-            },
-            "preLaunchTask": "Build (macOS)",
-            "console": "integratedTerminal",
-            "externalConsole": false,
-            "stopAtEntry": true,
-            "condition": "mac"
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" app",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build (macOS leia)"
+        },
+        {
+            "name": "Run painter (macOS leia)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" painter",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build (macOS leia)"
+        },
+        {
+            "name": "Debug app-example (macOS leia, LLDB)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" app",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build (macOS leia)"
+        },
+        {
+            "name": "Debug painter (macOS leia, LLDB)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" painter",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build (macOS leia)"
         }
     ],
     "compounds": [
@@ -243,8 +235,12 @@
             "configurations": ["Run app-example (Haiku via SSH)", "Run painter (Haiku via SSH)"]
         },
         {
-            "name": "Debug on macOS VM",
-            "configurations": ["Run app-example (macOS, Remote)"]
+            "name": "Run on macOS (leia)",
+            "configurations": ["Run app-example (macOS leia)", "Run painter (macOS leia)"]
+        },
+        {
+            "name": "Debug on macOS (leia)",
+            "configurations": ["Debug app-example (macOS leia, LLDB)"]
         }
     ]
 }
