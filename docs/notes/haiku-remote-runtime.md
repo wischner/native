@@ -1,4 +1,4 @@
-# Haiku Remote Runtime And Debug
+# Haiku Remote Runtime
 
 This note records the current Haiku workflow that is actually exercised.
 
@@ -10,7 +10,7 @@ This note records the current Haiku workflow that is actually exercised.
 - Copy the produced binaries to the Haiku machine over `scp`.
 - Run the binaries on the Haiku machine over `ssh`.
 
-The current VS Code tasks and launch entries use this model for run only.
+The VS Code tasks and launch entries include deploy-and-run workflows.
 
 ## What is verified
 
@@ -20,20 +20,6 @@ The current VS Code tasks and launch entries use this model for run only.
   - `/boot/home/Projects/native/run/`
 - both binaries were launched on the Haiku machine and stayed alive during a
   short smoke test
-
-## Current debug blocker
-
-Remote source-level debugging is not working on the tested Haiku machine yet.
-
-The blocker is not the build or SSH path. Remote `gdb` can start, breakpoints
-can be hit, and execution can continue. The remaining problem is source-level
-stepping.
-
-On the tested machine, `next` and `step` fail because `gdb` cannot insert the
-temporary breakpoints it needs for stepping.
-
-Because of that, the repository does not currently expose a Haiku VS Code debug
-launch. Only deploy-and-run entries are kept in the normal user workflow.
 
 ## Why this note exists
 

@@ -17,12 +17,14 @@ if(UNIX AND NOT APPLE)
     find_program(DOCKER_EXECUTABLE docker)
 
     set(DOCKER_TAG "latest" CACHE STRING "Docker tag used for Linux toolkit build images")
+    set(DOCKER_TAG_HAIKU "1.1.0" CACHE STRING "Docker tag used for the Haiku cross-build image")
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
     set(DOCKER_IMAGE_GNUSTEP "wischner/gcc-x86_64-linux-gnustep:${DOCKER_TAG}" CACHE STRING "Docker image for GNUstep builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
-    set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG}" CACHE STRING "Docker image for Haiku cross-builds")
+    set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
+    set(DOCKER_IMAGE_OPENLOOK "wischner/gcc-x86_64-linux-openlook:${DOCKER_TAG}" CACHE STRING "Docker image for OpenLook-style Linux builds")
 
     if(DOCKER_EXECUTABLE)
         execute_process(
@@ -37,6 +39,21 @@ if(UNIX AND NOT APPLE)
         )
 
         function(add_docker_cmake_build_target target_name build_dir image)
+            set(cmake_args ${ARGN})
+            set(has_explicit_build_type FALSE)
+
+            foreach(cmake_arg IN LISTS cmake_args)
+                if(cmake_arg MATCHES "^-DCMAKE_BUILD_TYPE=")
+                    set(has_explicit_build_type TRUE)
+                    break()
+                endif()
+            endforeach()
+
+            if(NOT has_explicit_build_type)
+                list(APPEND cmake_args
+                    -DCMAKE_BUILD_TYPE=$<IF:$<BOOL:${CMAKE_BUILD_TYPE}>,${CMAKE_BUILD_TYPE},Debug>)
+            endif()
+
             add_custom_target(${target_name}
                 COMMAND ${DOCKER_EXECUTABLE} run --rm
                     -u ${HOST_UID}:${HOST_GID}
@@ -44,8 +61,7 @@ if(UNIX AND NOT APPLE)
                     -w ${CMAKE_SOURCE_DIR}
                     ${image}
                     cmake -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_SOURCE_DIR}/${build_dir}
-                    ${ARGN}
-                    -DCMAKE_BUILD_TYPE=$<IF:$<BOOL:${CMAKE_BUILD_TYPE}>,${CMAKE_BUILD_TYPE},Debug>
+                    ${cmake_args}
                 COMMAND ${DOCKER_EXECUTABLE} run --rm
                     -u ${HOST_UID}:${HOST_GID}
                     -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
@@ -63,6 +79,8 @@ if(UNIX AND NOT APPLE)
             -DTOOLKIT=SDL2)
         add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
             -DTOOLKIT=MOTIF)
+        add_docker_cmake_build_target(docker-openlook build/linux-openlook ${DOCKER_IMAGE_OPENLOOK}
+            -DTOOLKIT=OPENLOOK)
         add_docker_cmake_build_target(docker-gnustep build/linux-gnustep ${DOCKER_IMAGE_GNUSTEP}
             -DTOOLKIT=GNUSTEP)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}

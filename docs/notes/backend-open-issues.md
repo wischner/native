@@ -19,10 +19,6 @@ This note lists backend-level open issues that are real today.
 
 ## Current open issues
 
-- Haiku runtime is exercised in the current workflow, but source-level
-  debugging is still blocked in practice on the tested Haiku machine.
-  Remote `gdb` can start, but source-level stepping is not reliable enough for
-  a supported VS Code debug workflow.
 - Apple runtime is not yet exercised in the current workflow.
   Platform code exists, but it is not part of the current verified build/run path.
 - Other toolkit ports are still work in progress.

@@ -86,6 +86,48 @@
             ]
         },
         {
+            "name": "Run app-example (Linux, OpenLook)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-openlook/examples/01_app_example/app-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker OpenLook)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run painter (Linux, OpenLook)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-openlook/examples/02_painter_example/painter-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker OpenLook)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "Run app-example (Linux, GNUstep)",
             "type": "node-terminal",
             "request": "launch",
@@ -183,6 +225,10 @@
         {
             "name": "Run on Linux OpenMotif",
             "configurations": ["Run app-example (Linux, OpenMotif)", "Run painter (Linux, OpenMotif)"]
+        },
+        {
+            "name": "Run on Linux OpenLook",
+            "configurations": ["Run app-example (Linux, OpenLook)", "Run painter (Linux, OpenLook)"]
         },
         {
             "name": "Run on Linux GNUstep",

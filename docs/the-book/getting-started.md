@@ -12,6 +12,7 @@ verified.
   - Haiku cross-build, copied to a Haiku machine and run over SSH
 - Build-verified but not runtime-verified in this workflow:
   - Linux OpenMotif
+  - Linux OpenLook
   - Linux GNUstep
 - Implemented but not runtime-verified in this workflow:
   - Apple
@@ -66,6 +67,12 @@ Build the Linux toolkit target backed by the OpenMotif image:
 cmake --build out --target docker-openmotif
 ```
 
+Build the Linux toolkit target backed by the OpenLook image:
+
+```bash
+cmake --build out --target docker-openlook
+```
+
 Build the Linux toolkit target backed by the GNUstep image:
 
 ```bash
@@ -90,6 +97,8 @@ Note:
   It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
 - `docker-openmotif` is part of the current build-verified workflow.
   It produces OpenMotif-linked Linux binaries in a separate build tree.
+- `docker-openlook` is part of the current build-verified workflow.
+  It produces OpenLook-linked Linux binaries in a separate build tree.
 - `docker-gnustep` is part of the current build-verified workflow.
   It produces GNUstep-linked Linux binaries in a separate build tree.
 - `docker-haiku` is part of the current verified workflow.
@@ -103,6 +112,7 @@ The generated outputs are placed in separate backend build trees:
 - `build/linux-x11/`
 - `build/linux-sdl2/`
 - `build/linux-openmotif/`
+- `build/linux-openlook/`
 - `build/linux-gnustep/`
 - `build/windows-mingw-w64/`
 - `build/haiku/`
@@ -133,6 +143,15 @@ For the OpenMotif toolkit build:
 ```bash
 ./build/linux-openmotif/examples/01_app_example/app-example
 ./build/linux-openmotif/examples/02_painter_example/painter-example
+```
+
+In the current workflow, these binaries are build-verified but not yet runtime-exercised.
+
+For the OpenLook toolkit build:
+
+```bash
+./build/linux-openlook/examples/01_app_example/app-example
+./build/linux-openlook/examples/02_painter_example/painter-example
 ```
 
 In the current workflow, these binaries are build-verified but not yet runtime-exercised.
@@ -185,6 +204,7 @@ Status:
 - Linux X11/SDL2, Windows/Wine, and Haiku SSH runs are currently exercised.
 - Linux GNUstep runs are currently exercised through Docker runtime launch.
 - Linux OpenMotif runs depend on host OpenMotif runtime availability.
+- Linux OpenLook runs depend on host OpenLook runtime availability.
 - Apple runs are not yet exercised in this workflow.
 
 For Haiku runtime checks in the current workflow, the binaries are copied to a
@@ -205,6 +225,7 @@ out/                  host CMake control tree
 build/linux-x11/      Linux toolkit build tree
 build/linux-sdl2/     Linux toolkit build tree
 build/linux-openmotif/ Linux OpenMotif build tree
+build/linux-openlook/ Linux OpenLook build tree
 build/linux-gnustep/  Linux GNUstep build tree
 build/windows-mingw-w64/ Windows MinGW-w64 build tree
 build/haiku/          Haiku build tree
