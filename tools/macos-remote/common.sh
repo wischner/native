@@ -12,8 +12,8 @@ PROJECT_NAME="${MAC_REMOTE_PROJECT:-$(basename "${WORKSPACE_DIR}")}"
 REMOTE="${MAC_REMOTE_USER}@${MAC_REMOTE_HOST}"
 REMOTE_PROJECT_DIR="${MAC_REMOTE_BASE}/${PROJECT_NAME}"
 REMOTE_BUILD_DIR="${REMOTE_PROJECT_DIR}/build/macos-debug"
-REMOTE_APP_EXE="${REMOTE_BUILD_DIR}/examples/01_app_example/app-example"
 REMOTE_PAINTER_EXE="${REMOTE_BUILD_DIR}/examples/02_painter_example/painter-example"
+REMOTE_MENU_EXE="${REMOTE_BUILD_DIR}/examples/03_menu_example/menu-example"
 
 ssh_exec() {
     ssh "${REMOTE}" "$@"

@@ -194,10 +194,12 @@ namespace native
 
         apply_gc(canvas, this, cache);
 
-        Font font = XLoadFont(motif::cached_display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
-        XSetFont(motif::cached_display, cache->gc, font);
-        XDrawString(motif::cached_display, cache->backbuffer, cache->gc, p.x, p.y, text.c_str(), text.length());
-        XUnloadFont(motif::cached_display, font);
+        auto *fh = motif::font_bindings.from_a(font().id());
+        if (fh && fh->xfont)
+            XSetFont(motif::cached_display, cache->gc, fh->xfont);
+
+        XDrawString(motif::cached_display, cache->backbuffer, cache->gc,
+                    p.x, p.y, text.c_str(), text.length());
         return *this;
     }
 

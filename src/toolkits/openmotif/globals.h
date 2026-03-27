@@ -8,6 +8,14 @@
 
 namespace motif
 {
+    // Platform handle for a font_t — owns an X11 core font under Motif.
+    struct motiffont
+    {
+        Display *display;
+        Font xfont;
+        bool owned;
+    };
+
     typedef struct
     {
         GC gc = nullptr;
@@ -17,17 +25,22 @@ namespace motif
 
         native::rgba current_fg = 0xFFFFFFFF;
         int current_thickness = -1;
-
-        std::string font_name;
-        Font font = 0;
     } motifgpx;
+
+    struct motifmenu {
+        Widget menu_bar = nullptr;
+        native::app_wnd *owner = nullptr;
+    };
 
     extern XtAppContext app_instance;
     extern bool exit_requested;
 
     extern native::bindings<Widget, native::wnd *> wnd_bindings;
     extern native::bindings<Widget, native::wnd *> shell_bindings;
+    extern native::bindings<Widget, native::wnd *> main_wnd_bindings;
     extern native::bindings<native::wnd *, motifgpx *> wnd_gpx_bindings;
+    extern native::bindings<uint32_t, motiffont *> font_bindings;
+    extern native::bindings<uint32_t, motifmenu *> menu_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
 }

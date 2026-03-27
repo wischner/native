@@ -7,9 +7,11 @@ set(SRC_FILES
     wnd.cpp
     app_wnd.cpp
     NativeWindow.cpp
+    font.cpp
     gpx_wnd.cpp
     gpx_img.cpp
     img.cpp
+    menu.cpp
 )
 # Create the executable for the main application
 target_sources(native PRIVATE ${SRC_FILES})

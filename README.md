@@ -24,7 +24,7 @@ If you are looking for a straightforward, understandable UI library, or if you w
 
 ## Features
 
-- **Backend coverage today**: Linux (X11, SDL2, OpenMotif/OpenLook build paths, GNUstep build path), Windows (WinAPI), Haiku (API), macOS (Cocoa code path)
+- **Backend coverage today**: Linux (X11, SDL2, OpenMotif build path, GNUstep build path), Windows (WinAPI), Haiku (API), macOS (Cocoa code path)
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Minimal and modern C++**: Clean code, few dependencies
 - **Educational**: Open development process, detailed documentation in chapters
@@ -41,16 +41,145 @@ int program(int argc, char* argv[])
 }
 ```
 
+## Painter example
+
+Demonstrates mouse input and custom painting. Subclass `app_wnd`, connect to the mouse and paint signals, and draw with the graphics context passed to the paint handler.
+
+```cpp
+#include <native.h>
+#include <vector>
+
+class painter_window : public native::app_wnd
+{
+public:
+    painter_window()
+        : native::app_wnd("Native Painter"), _drawing(false)
+    {
+        on_mouse_click.connect(this, &painter_window::on_click);
+        on_mouse_move.connect(this, &painter_window::on_move);
+        on_mouse_wheel.connect(this, &painter_window::on_wheel);
+        on_wnd_paint.connect(this, &painter_window::on_paint);
+    }
+
+private:
+    std::vector<std::vector<native::point>> _strokes;
+    bool _drawing;
+
+    bool on_click(native::mouse_event e)
+    {
+        if (e.button == native::mouse_button::left)
+        {
+            if (e.action == native::mouse_action::press)
+            {
+                _strokes.push_back({e.position});
+                _drawing = true;
+            }
+            else if (e.action == native::mouse_action::release)
+                _drawing = false;
+            invalidate();
+        }
+        return true;
+    }
+
+    bool on_move(native::point p)
+    {
+        if (_drawing) { _strokes.back().push_back(p); invalidate(); }
+        return true;
+    }
+
+    bool on_wheel(native::mouse_wheel_event)
+    {
+        _strokes.clear(); _drawing = false; invalidate();
+        return true;
+    }
+
+    bool on_paint(native::wnd_paint_event e)
+    {
+        for (const auto &stroke : _strokes)
+            for (size_t i = 1; i < stroke.size(); ++i)
+                e.g.draw_line(stroke[i - 1], stroke[i]);
+        return true;
+    }
+};
+
+int program(int argc, char *argv[])
+{
+    return native::app::run(painter_window());
+}
+```
+
+Hold the left mouse button and drag to draw freehand strokes. Scroll the mouse wheel to clear the canvas.
+
+## Menu example
+
+Demonstrates how to build a menu bar with submenus and respond to menu item selections. Menus are populated before the window is shown using the `<<` operator. Items can carry an integer ID for identification in the handler.
+
+```cpp
+#include <string>
+#include <native.h>
+
+class menu_window : public native::app_wnd
+{
+public:
+    menu_window()
+        : native::app_wnd("Menu Example", 100, 100, 640, 480)
+    {
+        menu << "File"
+             << (native::menu_items("New")
+                     << std::make_pair(1, std::string("Open..."))
+                     << std::make_pair(2, std::string("Save"))
+                     << std::make_pair(99, std::string("Exit")))
+             << "Edit"
+             << (native::menu_items("Cut")
+                     << std::string("Copy")
+                     << std::string("Paste"))
+             << "Help"
+             << (native::menu_items("About...")
+                     << std::make_pair(100, std::string("License")));
+
+        on_menu.connect(this, &menu_window::on_menu_item);
+        on_wnd_paint.connect(this, &menu_window::on_paint);
+    }
+
+private:
+    int _last_id = 0;
+
+    bool on_menu_item(int id)
+    {
+        if (id == 99) { destroy(); return true; }
+        _last_id = id;
+        invalidate();
+        return true;
+    }
+
+    bool on_paint(native::wnd_paint_event e)
+    {
+        e.g.set_ink(native::rgba(0, 0, 0, 255));
+        std::string msg = _last_id > 0
+            ? "Selected menu item ID: " + std::to_string(_last_id)
+            : "Click a menu item above.";
+        e.g.draw_text(msg, native::point(20, 60));
+        return true;
+    }
+};
+
+int program(int argc, char **argv)
+{
+    return native::app::run(menu_window());
+}
+```
+
+Menu items without an explicit ID are label-only entries (the first item in each `menu_items` group). Items with an ID fire `on_menu` when selected. Selecting **Exit** (ID 99) calls `destroy()` to close the window and end the app.
+
 ## Building
 
-Linux `X11`, `SDL2`, `OpenMotif`, `OpenLook`, and `GNUstep`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.
+Linux `X11`, `SDL2`, `OpenMotif`, and `GNUstep`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.
 
 ```bash
 cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
 cmake --build out --target docker-openmotif
-cmake --build out --target docker-openlook
 cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
@@ -61,7 +190,6 @@ The Docker-backed targets build:
 - `X11` into `build/linux-x11/`
 - `SDL2` into `build/linux-sdl2/`
 - `OpenMotif` into `build/linux-openmotif/`
-- `OpenLook` into `build/linux-openlook/`
 - `GNUstep` into `build/linux-gnustep/`
 - Windows MinGW-w64 into `build/windows-mingw-w64/`
 - Haiku into `build/haiku/`
@@ -76,7 +204,6 @@ Current exercised runtime paths are:
 Current additional build-verified path is:
 
 - Linux OpenMotif through `docker-openmotif`
-- Linux OpenLook through `docker-openlook`
 - Linux GNUstep through `docker-gnustep`
 
 ## The book of native

@@ -8,4 +8,6 @@ namespace mac
     NSApplication *global_app = nullptr;
     native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     native::bindings<native::wnd *, macgpx *> wnd_gpx_bindings;
+    native::bindings<uint32_t, macfont *> font_bindings;
+    native::bindings<uint32_t, macmenu *> menu_bindings;
 }

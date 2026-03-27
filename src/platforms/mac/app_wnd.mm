@@ -62,6 +62,7 @@ namespace native
             throw std::runtime_error("macOS: Failed to create NativeWindow.");
 
         _created = true;
+        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 

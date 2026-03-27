@@ -201,6 +201,58 @@ namespace native
             : position(pos), delta(d), direction(dir) {}
     };
 
+    // --- Fonts. ----------------------------------------------------
+    enum class font_role
+    {
+        system,   // General UI controls and text
+        fixed,    // Monospace / terminal / code
+        title,    // Window title bars
+        small_,   // Icon labels and small annotations
+        control   // Menus and buttons
+    };
+
+    struct font_spec
+    {
+        std::string name;   // Family name, file path, or native spec (XLFD for X11)
+        int size = 0;       // Point size; 0 = platform default for that role
+        bool bold = false;
+        bool italic = false;
+    };
+
+    class font_t
+    {
+    public:
+        font_t();
+        ~font_t();
+
+        font_t(font_t &&other) noexcept;
+        font_t &operator=(font_t &&other) noexcept;
+
+        font_t(const font_t &) = delete;
+        font_t &operator=(const font_t &) = delete;
+
+        bool valid() const { return _id != 0; }
+        const font_spec &spec() const { return _spec; }
+
+        // Opaque identifier used internally to look up platform bindings.
+        // Stable across moves. Not meaningful to library users.
+        uint32_t id() const { return _id; }
+
+        // Create a font from a cross-platform description.
+        // Platforms that support TTF accept a family name or file path.
+        // X11-based toolkits also accept XLFD strings.
+        static font_t create(const font_spec &spec);
+
+        // Returns a stock platform font for the given role.
+        // Fonts are sourced from system APIs where possible — not hard-coded.
+        // The returned reference is valid for the lifetime of the application.
+        static const font_t &stock(font_role role);
+
+    private:
+        uint32_t _id = 0;   // 0 = not registered; stable key into platform font_bindings
+        font_spec _spec;
+    };
+
     // --- Image. ----------------------------------------------------
     class gpx; // forward declare
     class img
@@ -238,6 +290,9 @@ namespace native
         gpx &set_pen(const uint8_t thickness);
         uint8_t pen() const;
 
+        gpx &set_font(const font_t &f);
+        const font_t &font() const;  // returns set font, or stock(system) if none set
+
         virtual gpx &set_clip(const rect &r) = 0;
         virtual rect clip() const = 0;
 
@@ -248,9 +303,10 @@ namespace native
         virtual gpx &draw_img(const img &src, point dst) = 0;
 
     protected:
-        rgba _ink   = rgba(0, 0, 0, 255);   // black
-        rgba _paper = rgba(255, 255, 255, 255); // white
+        rgba _ink    = rgba(0, 0, 0, 255);      // black
+        rgba _paper  = rgba(255, 255, 255, 255); // white
         uint8_t _thickness = 1;
+        const font_t *_font = nullptr;           // non-owning; nullptr = use stock system
     };
 
     // --- Screen. ---------------------------------------------------
@@ -281,7 +337,7 @@ namespace native
     };
 
     // --- Application. ----------------------------------------------
-    class app_wnd;
+    class app_wnd; // forward declaration for menu
     class app final
     {
     public:
@@ -309,6 +365,119 @@ namespace native
 
         wnd_paint_event(const rect &rect, gpx &gpx)
             : r(rect), g(gpx) {}
+    };
+
+    // --- Menu. -----------------------------------------------------
+    class menu_items_proxy
+    {
+    public:
+        struct entry { int id = 0; std::string label; };
+        std::vector<entry> entries;
+
+        menu_items_proxy &operator<<(const std::string &label)
+        {
+            entries.push_back({0, label});
+            return *this;
+        }
+        menu_items_proxy &operator<<(std::pair<int, std::string> kv)
+        {
+            entries.push_back({kv.first, std::move(kv.second)});
+            return *this;
+        }
+    };
+
+    inline menu_items_proxy menu_items(const std::string &first)
+    {
+        menu_items_proxy p;
+        p << first;
+        return p;
+    }
+
+    class main_menu
+    {
+    public:
+        main_menu() = default;
+        ~main_menu();
+        main_menu(const main_menu &) = delete;
+        main_menu &operator=(const main_menu &) = delete;
+
+        // Called by app_wnd::create() immediately after _created = true
+        void attach(app_wnd &owner);
+
+        // --- DSL builder ---
+        class builder
+        {
+        public:
+            explicit builder(main_menu &m) : _menu(m) {}
+            builder &operator<<(const std::string &top_title)
+            {
+                _menu.add_top(top_title);
+                return *this;
+            }
+            builder &operator<<(const menu_items_proxy &proxy)
+            {
+                for (const auto &e : proxy.entries)
+                    _menu.add_item(e.id, e.label);
+                return *this;
+            }
+        private:
+            main_menu &_menu;
+        };
+
+        builder operator<<(const std::string &top_title)
+        {
+            add_top(top_title);
+            return builder(*this);
+        }
+
+        uint32_t id() const { return _id; }
+
+        // Expose internal structure for platform implementations.
+        struct menu_entry { int id = 0; std::string label; };
+        struct top_entry  { std::string title; std::vector<menu_entry> items; };
+        const std::vector<top_entry> &tops() const { return _tops; }
+
+    private:
+        std::vector<top_entry> _tops;
+        app_wnd *_owner = nullptr;
+        uint32_t _id    = 0;
+
+        void add_top(const std::string &title)   { _tops.push_back({title, {}}); }
+        int next_auto_item_id() const
+        {
+            // Keep auto-generated IDs in a high range to avoid collisions with
+            // common hand-authored command IDs like 1, 2, 100.
+            int candidate = 10000;
+            while (true)
+            {
+                bool used = false;
+                for (const auto &top : _tops)
+                {
+                    for (const auto &item : top.items)
+                    {
+                        if (item.id == candidate)
+                        {
+                            used = true;
+                            break;
+                        }
+                    }
+                    if (used)
+                        break;
+                }
+                if (!used)
+                    return candidate;
+                ++candidate;
+            }
+        }
+        void add_item(int id, const std::string &label)
+        {
+            if (id == 0)
+                id = next_auto_item_id();
+            if (!_tops.empty())
+                _tops.back().items.push_back({id, label});
+        }
+
+        friend class builder;
     };
 
     // --- Windows. --------------------------------------------------
@@ -388,6 +557,9 @@ namespace native
         virtual void create() const override;
         virtual void destroy() const override;
         virtual void show() const override;
+
+        main_menu menu;
+        signal<int> on_menu;
 
     private:
         std::string _title;

@@ -36,4 +36,17 @@ namespace native
         return _thickness;
     }
 
+    gpx &gpx::set_font(const font_t &f)
+    {
+        _font = &f;
+        return *this;
+    }
+
+    const font_t &gpx::font() const
+    {
+        if (_font)
+            return *_font;
+        return font_t::stock(font_role::system);
+    }
+
 } // namespace native

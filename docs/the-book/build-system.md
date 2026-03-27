@@ -21,7 +21,6 @@ cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
 cmake --build out --target docker-openmotif
-cmake --build out --target docker-openlook
 cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
@@ -36,7 +35,7 @@ The repository uses separate build directories per backend:
 
 - `out/`
   - host-side CMake control tree
-  - contains generated top-level targets such as `docker-x11`, `docker-sdl2`, `docker-openmotif`, `docker-openlook`, `docker-gnustep`, `docker-win`, and `docker-haiku`
+  - contains generated top-level targets such as `docker-x11`, `docker-sdl2`, `docker-openmotif`, `docker-gnustep`, `docker-win`, and `docker-haiku`
 
 - `build/linux-x11/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
@@ -46,9 +45,6 @@ The repository uses separate build directories per backend:
 
 - `build/linux-openmotif/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=MOTIF`
-
-- `build/linux-openlook/`
-  - toolkit build tree for the Linux backend configured with `TOOLKIT=OPENLOOK`
 
 - `build/linux-gnustep/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=GNUSTEP`
@@ -73,7 +69,6 @@ toolchain and system headers.
 - `docker-x11`
 - `docker-sdl2`
 - `docker-openmotif`
-- `docker-openlook`
 - `docker-gnustep`
 - `docker-win`
 - `docker-haiku`
@@ -83,7 +78,6 @@ The images are:
 - `wischner/gcc-x86_64-linux-x11`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
-- `wischner/gcc-x86_64-linux-openlook`
 - `wischner/gcc-x86_64-linux-gnustep`
 - `wischner/gcc-x86_64-windows-mingw-w64`
 - `wischner/gcc-x86_64-haiku`
@@ -101,7 +95,6 @@ host-side and Docker-side invocation.
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
 - Build-tested only:
   - Linux OpenMotif
-  - Linux OpenLook
   - Linux GNUstep
 - Not runtime-tested yet:
   - Apple
@@ -173,7 +166,6 @@ Outputs are produced inside backend-specific build trees:
 - `build/linux-x11/examples/...`
 - `build/linux-sdl2/examples/...`
 - `build/linux-openmotif/examples/...`
-- `build/linux-openlook/examples/...`
 - `build/linux-gnustep/examples/...`
 - `build/windows-mingw-w64/examples/...`
 - `build/haiku/examples/...`
@@ -189,4 +181,3 @@ Outputs are produced inside backend-specific build trees:
   Haiku deploy-and-run over SSH.
 - Linux GNUstep runtime is exercised through Docker launch with X11 passthrough.
 - Linux OpenMotif runtime depends on host OpenMotif runtime availability.
-- Linux OpenLook runtime depends on host OpenLook runtime availability.

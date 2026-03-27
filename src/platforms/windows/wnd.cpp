@@ -104,17 +104,15 @@ namespace win
             POINT screen_pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             ScreenToClient(hwnd, &screen_pt);
 
+            native::wheel_direction wdir = native::wheel_direction::vertical;
+#ifdef WM_MOUSEHWHEEL
+            if (msg == WM_MOUSEHWHEEL)
+                wdir = native::wheel_direction::horizontal;
+#endif
             native::mouse_wheel_event wheel(
                 native::point(screen_pt.x, screen_pt.y),
                 static_cast<native::coord>(GET_WHEEL_DELTA_WPARAM(wParam)),
-#ifdef WM_MOUSEHWHEEL
-                msg == WM_MOUSEHWHEEL
-                    ? native::wheel_direction::horizontal
-#else
-                false
-#endif
-                    ? native::wheel_direction::horizontal
-                    : native::wheel_direction::vertical);
+                wdir);
             wnd->on_mouse_wheel.emit(wheel);
             break;
         }
@@ -138,6 +136,15 @@ namespace win
             EndPaint(hwnd, &ps);
             return 0;
         }
+
+        case WM_COMMAND:
+            if (HIWORD(wParam) == 0)
+            {
+                // Menu item click
+                if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+                    aw->on_menu.emit(static_cast<int>(LOWORD(wParam)));
+            }
+            return 0;
 
         case WM_ERASEBKGND:
             return 1;
@@ -188,8 +195,6 @@ namespace native
                 DeleteObject(cache->pen);
             if (cache->brush)
                 DeleteObject(cache->brush);
-            if (cache->font)
-                DeleteObject(cache->font);
             delete cache;
             win::wnd_gpx_bindings.unregister_by_a(this);
         }

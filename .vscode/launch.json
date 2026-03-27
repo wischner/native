@@ -2,6 +2,27 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run menu-example (Linux, SDL2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-sdl2/examples/03_menu_example/menu-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "Run painter (Linux, SDL2)",
             "type": "cppdbg",
             "request": "launch",
@@ -14,6 +35,27 @@
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb",
             "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run menu-example (Linux, X11)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-x11/examples/03_menu_example/menu-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker X11)",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing",
@@ -44,95 +86,35 @@
             ]
         },
         {
-            "name": "Run app-example (Linux, OpenMotif)",
-            "type": "cppdbg",
+            "name": "Run menu-example (OpenMotif, CDE charlie)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-openmotif/examples/01_app_example/app-example",
-            "args": [],
-            "stopAtEntry": false,
+            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./menu-example'",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker OpenMotif)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "preLaunchTask": "Deploy menu-example (OpenMotif charlie)"
         },
         {
-            "name": "Run painter (Linux, OpenMotif)",
-            "type": "cppdbg",
+            "name": "Run painter (OpenMotif, CDE charlie)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-openmotif/examples/02_painter_example/painter-example",
-            "args": [],
-            "stopAtEntry": false,
+            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./painter-example'",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker OpenMotif)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "preLaunchTask": "Deploy painter (OpenMotif charlie)"
         },
         {
-            "name": "Run app-example (Linux, OpenLook)",
-            "type": "cppdbg",
+            "name": "Run app-example (OpenMotif, CDE charlie)",
+            "type": "node-terminal",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-openlook/examples/01_app_example/app-example",
-            "args": [],
-            "stopAtEntry": false,
+            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./app-example'",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker OpenLook)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "preLaunchTask": "Deploy app-example (OpenMotif charlie)"
         },
         {
-            "name": "Run painter (Linux, OpenLook)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-openlook/examples/02_painter_example/painter-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker OpenLook)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run app-example (Linux, GNUstep)",
+            "name": "Run menu-example (Linux, GNUstep)",
             "type": "node-terminal",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/01_app_example wischner/gcc-x86_64-linux-gnustep ./app-example'",
+            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/03_menu_example wischner/gcc-x86_64-linux-gnustep ./menu-example'",
             "preLaunchTask": "CMake Build (Docker GNUstep)"
         },
         {
@@ -152,20 +134,20 @@
             "preLaunchTask": "Prepare painter runtime (Wine DLLs)"
         },
         {
-            "name": "Run app-example (Windows via Wine)",
+            "name": "Run menu-example (Windows via Wine)",
             "type": "node-terminal",
             "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/01_app_example/app-example.exe\"",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/03_menu_example/menu-example.exe\"",
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare app runtime (Wine DLLs)"
+            "preLaunchTask": "Prepare menu runtime (Wine DLLs)"
         },
         {
-            "name": "Run app-example (Haiku via SSH)",
+            "name": "Run menu-example (Haiku via SSH)",
             "type": "node-terminal",
             "request": "launch",
-            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./app-example'",
+            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./menu-example'",
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy app-example to Haiku"
+            "preLaunchTask": "Deploy menu-example to Haiku"
         },
         {
             "name": "Run painter (Haiku via SSH)",
@@ -175,12 +157,11 @@
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Deploy painter to Haiku"
         },
-
         {
-            "name": "Run app-example (macOS leia)",
+            "name": "Run menu-example (macOS leia)",
             "type": "node-terminal",
             "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" app",
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" menu",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build (macOS leia)"
         },
@@ -193,10 +174,10 @@
             "preLaunchTask": "Build (macOS leia)"
         },
         {
-            "name": "Debug app-example (macOS leia, LLDB)",
+            "name": "Debug menu-example (macOS leia, LLDB)",
             "type": "node-terminal",
             "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" app",
+            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" menu",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build (macOS leia)"
         },
@@ -211,36 +192,40 @@
     ],
     "compounds": [
         {
+            "name": "Run on Linux SDL2",
+            "configurations": ["Run menu-example (Linux, SDL2)", "Run painter (Linux, SDL2)"]
+        },
+        {
+            "name": "Run on Linux X11",
+            "configurations": ["Run menu-example (Linux, X11)", "Run painter (Linux, X11)"]
+        },
+        {
             "name": "Debug on Linux",
-            "configurations": ["Run painter (Linux, SDL2)"]
+            "configurations": ["Run menu-example (Linux, SDL2)"]
         },
         {
-            "name": "Run on Linux OpenMotif",
-            "configurations": ["Run app-example (Linux, OpenMotif)", "Run painter (Linux, OpenMotif)"]
-        },
-        {
-            "name": "Run on Linux OpenLook",
-            "configurations": ["Run app-example (Linux, OpenLook)", "Run painter (Linux, OpenLook)"]
+            "name": "Run on CDE (charlie, OpenMotif)",
+            "configurations": ["Run menu-example (OpenMotif, CDE charlie)", "Run painter (OpenMotif, CDE charlie)", "Run app-example (OpenMotif, CDE charlie)"]
         },
         {
             "name": "Run on Linux GNUstep",
-            "configurations": ["Run app-example (Linux, GNUstep)", "Run painter (Linux, GNUstep)"]
+            "configurations": ["Run menu-example (Linux, GNUstep)", "Run painter (Linux, GNUstep)"]
         },
         {
             "name": "Debug on Windows",
-            "configurations": ["Run app-example (Windows via Wine)", "Run painter (Windows via Wine)"]
+            "configurations": ["Run menu-example (Windows via Wine)", "Run painter (Windows via Wine)"]
         },
         {
             "name": "Run on Haiku",
-            "configurations": ["Run app-example (Haiku via SSH)", "Run painter (Haiku via SSH)"]
+            "configurations": ["Run menu-example (Haiku via SSH)", "Run painter (Haiku via SSH)"]
         },
         {
             "name": "Run on macOS (leia)",
-            "configurations": ["Run app-example (macOS leia)", "Run painter (macOS leia)"]
+            "configurations": ["Run menu-example (macOS leia)", "Run painter (macOS leia)"]
         },
         {
             "name": "Debug on macOS (leia)",
-            "configurations": ["Debug app-example (macOS leia, LLDB)"]
+            "configurations": ["Debug menu-example (macOS leia, LLDB)"]
         }
     ]
 }

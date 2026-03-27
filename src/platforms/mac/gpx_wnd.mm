@@ -152,18 +152,19 @@ namespace native
         NSView *view = cache->view;
         [view lockFocus];
 
-        // Convert C++ string to NSString
         NSString *nsText = [NSString stringWithUTF8String:text.c_str()];
 
-        // Set text attributes
         native::rgba c = ink();
         NSColor *color = [NSColor colorWithRed:c.r/255.0 green:c.g/255.0 blue:c.b/255.0 alpha:c.a/255.0];
+
+        auto *fh = mac::font_bindings.from_a(font().id());
+        NSFont *nsfont = fh ? fh->ns_font : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+
         NSDictionary *attributes = @{
             NSForegroundColorAttributeName: color,
-            NSFontAttributeName: [NSFont systemFontOfSize:12]
+            NSFontAttributeName: nsfont
         };
 
-        // Draw text
         [nsText drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attributes];
 
         [view unlockFocus];

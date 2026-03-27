@@ -5,16 +5,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./common.sh
 source "${SCRIPT_DIR}/common.sh"
 
-kind="${1:-app}"
+kind="${1:-painter}"
 case "${kind}" in
-    app)
-        exe="${REMOTE_APP_EXE}"
-        ;;
     painter)
         exe="${REMOTE_PAINTER_EXE}"
         ;;
+    menu)
+        exe="${REMOTE_MENU_EXE}"
+        ;;
     *)
-        echo "Usage: $0 [app|painter]" >&2
+        echo "Usage: $0 [painter|menu]" >&2
         exit 2
         ;;
 esac

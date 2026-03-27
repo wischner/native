@@ -153,10 +153,13 @@ gpx &gpx_wnd::draw_text(const std::string &text, point p)
     [NSGraphicsContext saveGraphicsState];
     apply_clip(_clip);
 
+    auto *fh = gnustep::font_bindings.from_a(font().id());
+    NSFont *nsfont = fh ? fh->ns_font : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+
     NSString *ns_text = [NSString stringWithUTF8String:text.c_str()];
     NSDictionary *attrs = [NSDictionary dictionaryWithObjectsAndKeys:
         to_color(ink()), NSForegroundColorAttributeName,
-        [NSFont systemFontOfSize:12], NSFontAttributeName,
+        nsfont, NSFontAttributeName,
         nil];
     [ns_text drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attrs];
 

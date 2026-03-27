@@ -6,6 +6,12 @@
 
 namespace mac
 {
+    // Platform handle for a font_t — retains an NSFont.
+    struct macfont
+    {
+        NSFont *ns_font;
+    };
+
     // Graphics cache structure for macOS Cocoa/Quartz
     struct macgpx
     {
@@ -21,7 +27,14 @@ namespace mac
         bool dirty_clip = true;
     };
 
+    struct macmenu {
+        NSMenu *ns_menu = nil;
+        native::app_wnd *owner = nullptr;
+    };
+
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, macgpx *> wnd_gpx_bindings;
+    extern native::bindings<uint32_t, macfont *> font_bindings;
+    extern native::bindings<uint32_t, macmenu *> menu_bindings;
 }

@@ -19,6 +19,8 @@ namespace gnustep
     native::bindings<NSView *, native::wnd *> view_bindings;
     native::bindings<native::wnd *, gnustepgpx *> wnd_gpx_bindings;
     native::bindings<native::wnd *, id> delegate_bindings;
+    native::bindings<uint32_t, gnustepfont *> font_bindings;
+    native::bindings<uint32_t, gnustepmenu *> menu_bindings;
 
     void ensure_app_initialized()
     {

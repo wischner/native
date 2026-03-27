@@ -85,6 +85,9 @@ namespace native
         // Mark as created
         _created = true;
 
+        // Attach menu (if any was configured before create())
+        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
+
         // Notify creation
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }

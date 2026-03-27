@@ -77,6 +77,7 @@ namespace native
 
         _created = true;
 
+        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 
@@ -104,10 +105,6 @@ namespace native
         {
             if (cache->renderer)
                 SDL_DestroyRenderer(cache->renderer);
-#ifdef HAVE_SDL2_TTF
-            if (cache->font)
-                TTF_CloseFont(cache->font);
-#endif
             delete cache;
             sdl::wnd_gpx_bindings.unregister_by_a(self);
         }

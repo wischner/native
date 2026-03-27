@@ -127,11 +127,12 @@ namespace native
 
         apply_gc(display, cache, this);
 
-        Font font = XLoadFont(display, "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso8859-1");
-        XSetFont(display, cache->gc, font);
+        auto *fh = x11::font_bindings.from_a(font().id());
+        if (fh && fh->xfont)
+            XSetFont(display, cache->gc, fh->xfont);
+
         XDrawString(display, cache->backbuffer, cache->gc,
                     p.x, p.y, text.c_str(), text.length());
-        XUnloadFont(display, font);
         return *this;
     }
 

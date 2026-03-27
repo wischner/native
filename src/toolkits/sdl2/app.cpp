@@ -30,6 +30,18 @@ namespace native
         g.clear(rgba(255, 255, 255, 255));
         wnd_paint_event pe{r, g};
         wnd->on_wnd_paint.emit(pe);
+
+        // Render menu bar on top if present
+        if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+        {
+            if (aw->menu.id())
+            {
+                auto *sm = sdl::menu_bindings.from_a(aw->menu.id());
+                if (sm)
+                    sdl::render_menu(sm, cache->renderer, w, h);
+            }
+        }
+
         SDL_RenderPresent(cache->renderer);
         cache->invalidated = false;
     }
@@ -67,6 +79,30 @@ namespace native
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                 {
+                    // Let the menu intercept down events first
+                    if (event.type == SDL_MOUSEBUTTONDOWN)
+                    {
+                        if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+                        {
+                            if (aw->menu.id())
+                            {
+                                auto *sm = sdl::menu_bindings.from_a(aw->menu.id());
+                                auto *cache2 = sdl::wnd_gpx_bindings.from_a(wnd);
+                                int btn_win_w = 0, btn_win_h = 0;
+                                SDL_Window *btn_sdl_win = sdl::wnd_bindings.from_b(wnd);
+                                if (btn_sdl_win)
+                                    SDL_GetWindowSize(btn_sdl_win, &btn_win_w, &btn_win_h);
+                                if (sm && sdl::handle_menu_click(sm, event.button.x, event.button.y,
+                                                                  cache2 ? cache2->renderer : nullptr,
+                                                                  btn_win_w))
+                                {
+                                    if (cache2) cache2->invalidated = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     mouse_button btn = mouse_button::none;
                     mouse_action act = (event.type == SDL_MOUSEBUTTONDOWN)
                                            ? mouse_action::press

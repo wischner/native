@@ -13,4 +13,10 @@ namespace haiku
     native::bindings<BWindow *, native::wnd *> wnd_bindings;
     // Bind: wnd to graphics cache.
     native::bindings<native::wnd *, haikugpx *> wnd_gpx_bindings;
+    // Bind: font id to platform font handle.
+    native::bindings<uint32_t, haikufont *> font_bindings;
+    // Bind: menu id to menu handle.
+    native::bindings<uint32_t, haikumenu *> menu_bindings;
+    // Bind: owner app_wnd* to menu handle.
+    native::bindings<native::app_wnd *, haikumenu *> owner_menu_bindings;
 }

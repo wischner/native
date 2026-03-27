@@ -111,6 +111,7 @@ namespace native
 
         win::wnd_bindings.register_pair(hwnd, const_cast<app_wnd *>(this));
         _created = true;
+        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 
@@ -141,8 +142,6 @@ namespace native
                 DeleteObject(cache->pen);
             if (cache->brush)
                 DeleteObject(cache->brush);
-            if (cache->font)
-                DeleteObject(cache->font);
             delete cache;
             win::wnd_gpx_bindings.unregister_by_a(self);
         }

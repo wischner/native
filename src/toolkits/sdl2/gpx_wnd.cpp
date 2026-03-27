@@ -127,18 +127,15 @@ namespace native
         SDL_Renderer *renderer = cache->renderer;
         apply_sdl_state(renderer, this, cache);
 
-        // Load font if not cached
-        if (!cache->font)
-        {
-            cache->font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12);
-            if (!cache->font)
-                cache->font = TTF_OpenFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 12);
-            if (!cache->font)
-                return *this;
-        }
+        if (!font().valid())
+            return *this;
+
+        auto *fh = sdl::font_bindings.from_a(font().id());
+        if (!fh || !fh->ttf_font)
+            return *this;
 
         SDL_Color color = {ink().r, ink().g, ink().b, ink().a};
-        SDL_Surface *surface = TTF_RenderText_Solid(cache->font, text.c_str(), color);
+        SDL_Surface *surface = TTF_RenderText_Solid(fh->ttf_font, text.c_str(), color);
         if (!surface)
             return *this;
 

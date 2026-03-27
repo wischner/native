@@ -4,6 +4,7 @@
 #include <X11/Intrinsic.h>
 #include <X11/Shell.h>
 #include <Xm/DrawingA.h>
+#include <Xm/MainW.h>
 #include <Xm/Protocols.h>
 
 #include <native.h>
@@ -256,7 +257,13 @@ namespace native
             XtNtitle, _title.c_str(),
             nullptr);
 
-        Widget canvas = XmCreateDrawingArea(shell, const_cast<char *>("canvas"), nullptr, 0);
+        // XmMainWindow sits between shell and canvas so the menu bar
+        // can be attached via XmNmenuBar without violating the one-child
+        // rule of the shell widget.
+        Widget main_win = XmCreateMainWindow(shell, const_cast<char *>("main_window"), nullptr, 0);
+        XtManageChild(main_win);
+
+        Widget canvas = XmCreateDrawingArea(main_win, const_cast<char *>("canvas"), nullptr, 0);
         XtVaSetValues(
             canvas,
             XmNwidth, _bounds.d.w,
@@ -280,9 +287,11 @@ namespace native
             const_cast<app_wnd *>(this));
 
         motif::shell_bindings.register_pair(shell, const_cast<app_wnd *>(this));
+        motif::main_wnd_bindings.register_pair(main_win, const_cast<app_wnd *>(this));
         motif::wnd_bindings.register_pair(canvas, const_cast<app_wnd *>(this));
 
         _created = true;
+        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
         const_cast<app_wnd *>(this)->on_wnd_create.emit();
     }
 
@@ -334,6 +343,7 @@ namespace native
         }
 
         motif::wnd_bindings.unregister_by_b(self);
+        motif::main_wnd_bindings.unregister_by_b(self);
         motif::shell_bindings.unregister_by_b(self);
 
         if (shell)

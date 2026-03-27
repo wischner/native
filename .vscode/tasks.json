@@ -42,16 +42,6 @@
           "os": { "linux": true }
       },
       {
-          "label": "CMake Build (Docker OpenLook)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-openlook"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
           "label": "CMake Build (Docker GNUstep)",
           "type": "shell",
           "command": "cmake",
@@ -71,6 +61,119 @@
           "dependsOn": ["CMake Configure (Docker Targets)"],
           "os": { "linux": true }
       },
+
+      // Remote runtime: OpenMotif on CDE machine (charlie)
+      {
+          "label": "Sync source (OpenMotif charlie)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "set -e; rsync -az --delete --exclude .git --exclude build --exclude out --exclude .claude \"$PWD/\" tomaz@charlie:~/Projects/${workspaceFolderBasename}/"
+          ],
+          "problemMatcher": [],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Build native (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "tomaz@charlie",
+              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; cd \"$ROOT\"; cmake -S . -B build/tribblix-openmotif -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=MOTIF; cmake --build build/tribblix-openmotif -j$(getconf NPROCESSORS_ONLN 2>/dev/null || echo 2)"
+          ],
+          "problemMatcher": "$gcc",
+          "dependsOn": ["Sync source (OpenMotif charlie)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Deploy menu-example (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "tomaz@charlie",
+              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/03_menu_example/menu-example\" \"$ROOT/run/menu-example\""
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Build native (OpenMotif charlie)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Deploy painter (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "tomaz@charlie",
+              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/02_painter_example/painter-example\" \"$ROOT/run/painter-example\""
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Build native (OpenMotif charlie)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Deploy app-example (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "tomaz@charlie",
+              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/01_app_example/app-example\" \"$ROOT/run/app-example\""
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Build native (OpenMotif charlie)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run menu-example (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "-tt",
+              "tomaz@charlie",
+              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./menu-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Deploy menu-example (OpenMotif charlie)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run painter (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "-tt",
+              "tomaz@charlie",
+              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./painter-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Deploy painter (OpenMotif charlie)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run app-example (OpenMotif charlie)",
+          "type": "shell",
+          "command": "ssh",
+          "args": [
+              "-tt",
+              "tomaz@charlie",
+              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./app-example"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Deploy app-example (OpenMotif charlie)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+
       {
           "label": "Run painter (Windows via Wine)",
           "type": "shell",
@@ -87,14 +190,14 @@
           "os": { "linux": true }
       },
       {
-          "label": "Run app-example (Windows via Wine)",
+          "label": "Run menu-example (Windows via Wine)",
           "type": "shell",
           "command": "wine",
           "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/01_app_example/app-example.exe"
+              "${workspaceFolder}/build/windows-mingw-w64/examples/03_menu_example/menu-example.exe"
           ],
           "problemMatcher": [],
-          "dependsOn": ["Prepare app runtime (Wine DLLs)"],
+          "dependsOn": ["Prepare menu runtime (Wine DLLs)"],
           "presentation": {
               "reveal": "always",
               "panel": "shared"
@@ -114,12 +217,12 @@
           "os": { "linux": true }
       },
       {
-          "label": "Prepare app runtime (Wine DLLs)",
+          "label": "Prepare menu runtime (Wine DLLs)",
           "type": "shell",
           "command": "bash",
           "args": [
               "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/01_app_example/"
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/03_menu_example/"
           ],
           "problemMatcher": [],
           "dependsOn": ["CMake Build (Docker Win)"],
@@ -149,12 +252,12 @@
           "os": { "linux": true }
       },
       {
-          "label": "Deploy app-example to Haiku",
+          "label": "Deploy menu-example to Haiku",
           "type": "shell",
           "command": "scp",
           "args": [
-              "${workspaceFolder}/build/haiku/examples/01_app_example/app-example",
-              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/app-example"
+              "${workspaceFolder}/build/haiku/examples/03_menu_example/menu-example",
+              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/menu-example"
           ],
           "problemMatcher": [],
           "dependsOn": ["CMake Build (Docker Haiku)", "Prepare Haiku run dir"],
@@ -173,15 +276,15 @@
           "os": { "linux": true }
       },
       {
-          "label": "Run app-example (Haiku)",
+          "label": "Run menu-example (Haiku)",
           "type": "shell",
           "command": "ssh",
           "args": [
               "user@192.168.122.90",
-              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./app-example"
+              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./menu-example"
           ],
           "problemMatcher": [],
-          "dependsOn": ["Deploy app-example to Haiku"],
+          "dependsOn": ["Deploy menu-example to Haiku"],
           "presentation": {
               "reveal": "always",
               "panel": "shared"
@@ -223,10 +326,10 @@
           "os": { "linux": true }
       },
       {
-          "label": "Run app-example (macOS leia)",
+          "label": "Run menu-example (macOS leia)",
           "type": "shell",
           "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/run.sh", "app"],
+          "args": ["${workspaceFolder}/tools/macos-remote/run.sh", "menu"],
           "problemMatcher": [],
           "dependsOn": ["Build (macOS leia)"],
           "presentation": {
@@ -249,10 +352,10 @@
           "os": { "linux": true }
       },
       {
-          "label": "Debug app-example (macOS leia, LLDB)",
+          "label": "Debug menu-example (macOS leia, LLDB)",
           "type": "shell",
           "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/debug.sh", "app"],
+          "args": ["${workspaceFolder}/tools/macos-remote/debug.sh", "menu"],
           "problemMatcher": [],
           "dependsOn": ["Build (macOS leia)"],
           "presentation": {
@@ -286,6 +389,6 @@
           },
           "os": { "linux": true }
       }
-      
+
   ]
 }

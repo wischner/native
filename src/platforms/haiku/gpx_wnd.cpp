@@ -172,6 +172,10 @@ namespace native
 
         with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
+
+            auto *fh = haiku::font_bindings.from_a(font().id());
+            if (fh) view->SetFont(&fh->bfont);
+
             view->DrawString(text.c_str(), BPoint(p.x, p.y));
         });
 

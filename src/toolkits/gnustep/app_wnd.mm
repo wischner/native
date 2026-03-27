@@ -322,6 +322,7 @@ void app_wnd::create() const
     gnustep::delegate_bindings.register_pair(self, delegate);
 
     _created = true;
+    self->menu.attach(*self);
     self->on_wnd_create.emit();
 }
 

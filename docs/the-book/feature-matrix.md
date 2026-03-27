@@ -16,7 +16,6 @@ Legend:
 | Linux X11 | `docker-x11` | Yes (tested) |
 | Linux SDL2 | `docker-sdl2` | Yes (tested) |
 | Linux OpenMotif | `docker-openmotif` | Yes (untested) |
-| Linux OpenLook | `docker-openlook` | Yes (untested) |
 | Linux GNUstep | `docker-gnustep` | Yes (untested) |
 | MS Windows (MinGW) | `docker-win` + Wine | Yes (tested) |
 | Haiku | `docker-haiku` + SSH deploy/run | Yes (tested) |
@@ -25,20 +24,20 @@ Legend:
 
 ## Core feature matrix
 
-| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux OpenLook | Linux GNUstep | MS Windows | Haiku | Apple | Other WIP ports |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Build through current Docker workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
-| `app::run` startup path | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Main window create/show | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse wheel | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_wnd` line/rect/image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_img` software drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `painter-example` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
-| `painter-example` runtime | Yes (tested) | Yes (tested) | No (not run) | No (not run) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
+| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux GNUstep | MS Windows | Haiku | Apple | Other WIP ports |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Build through current Docker workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
+| `app::run` startup path | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Main window create/show | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse wheel | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_wnd` line/rect/image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_img` software drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `painter-example` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
+| `painter-example` runtime | Yes (tested) | Yes (tested) | No (not run) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
 
 ## Notes
 

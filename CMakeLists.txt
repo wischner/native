@@ -24,7 +24,6 @@ if(UNIX AND NOT APPLE)
     set(DOCKER_IMAGE_GNUSTEP "wischner/gcc-x86_64-linux-gnustep:${DOCKER_TAG}" CACHE STRING "Docker image for GNUstep builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
-    set(DOCKER_IMAGE_OPENLOOK "wischner/gcc-x86_64-linux-openlook:${DOCKER_TAG}" CACHE STRING "Docker image for OpenLook-style Linux builds")
 
     if(DOCKER_EXECUTABLE)
         execute_process(
@@ -79,8 +78,6 @@ if(UNIX AND NOT APPLE)
             -DTOOLKIT=SDL2)
         add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
             -DTOOLKIT=MOTIF)
-        add_docker_cmake_build_target(docker-openlook build/linux-openlook ${DOCKER_IMAGE_OPENLOOK}
-            -DTOOLKIT=OPENLOOK)
         add_docker_cmake_build_target(docker-gnustep build/linux-gnustep ${DOCKER_IMAGE_GNUSTEP}
             -DTOOLKIT=GNUSTEP)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}

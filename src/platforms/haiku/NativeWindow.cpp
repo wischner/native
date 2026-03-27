@@ -145,6 +145,17 @@ namespace haiku
 
     void NativeWindow::MessageReceived(BMessage *message)
     {
+        // Check if this is a menu item message for our owner.
+        if (message && _owner)
+        {
+            auto *hm = haiku::owner_menu_bindings.from_a(_owner);
+            if (hm && hm->item_ids.count(static_cast<int>(message->what)))
+            {
+                _owner->on_menu.emit(static_cast<int>(message->what));
+                return;
+            }
+        }
+
         if (message && message->what == B_MOUSE_WHEEL_CHANGED && _owner)
         {
             float dx = 0.0f;

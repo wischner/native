@@ -28,7 +28,7 @@ The codebase is organized into three layers:
 3. Toolkit layer
    - Located in `src/toolkits/`
    - Used when a platform needs a separate windowing or rendering backend
-   - Examples on Linux: `x11`, `sdl2`, `openmotif`, `openlook`, `gnustep`
+   - Examples on Linux: `x11`, `sdl2`, `openmotif`, `gnustep`
 
 ## Public interface rules
 
@@ -60,7 +60,6 @@ The top-level CMake project provides:
 - `docker-x11`
 - `docker-sdl2`
 - `docker-openmotif`
-- `docker-openlook`
 - `docker-gnustep`
 - `docker-win`
 - `docker-haiku`
@@ -70,7 +69,6 @@ These targets use the following Docker images:
 - X11: `wischner/gcc-x86_64-linux-x11`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
-- OpenLook: `wischner/gcc-x86_64-linux-openlook`
 - GNUstep: `wischner/gcc-x86_64-linux-gnustep`
 - Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
@@ -82,7 +80,6 @@ cmake -S . -B out
 cmake --build out --target docker-x11
 cmake --build out --target docker-sdl2
 cmake --build out --target docker-openmotif
-cmake --build out --target docker-openlook
 cmake --build out --target docker-gnustep
 cmake --build out --target docker-win
 cmake --build out --target docker-haiku
@@ -94,7 +91,6 @@ cmake --build out --target docker-haiku
 - `build/linux-x11/` is the Docker-produced X11 build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
 - `build/linux-openmotif/` is the Docker-produced OpenMotif build tree.
-- `build/linux-openlook/` is the Docker-produced OpenLook build tree.
 - `build/linux-gnustep/` is the Docker-produced GNUstep build tree.
 - `build/windows-mingw-w64/` is the Docker-produced Windows MinGW-w64 build tree.
 - `build/haiku/` is the Docker-produced Haiku build tree.

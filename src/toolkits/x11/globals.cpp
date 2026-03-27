@@ -9,6 +9,9 @@ namespace x11
 {
     native::bindings<Window, native::wnd *> wnd_bindings;
     Display *cached_display = nullptr;
-    Atom wm_delete_window_atom = None; // <- added to hold WM_DELETE_WINDOW atom
+    Atom wm_delete_window_atom = None;
     native::bindings<native::wnd *, x11gpx *> wnd_gpx_bindings;
+    native::bindings<uint32_t, x11font *> font_bindings;
+    native::bindings<Window,   x11menu *> menubar_bindings;
+    native::bindings<uint32_t, x11menu *> menu_bindings;
 }

@@ -132,22 +132,14 @@ namespace native
 
         apply_gdi_state(hdc, this, cache);
 
-        // Create or use cached font
-        if (!cache->font)
-        {
-            cache->font = CreateFont(
-                14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"));
-        }
-        SelectObject(hdc, cache->font);
+        auto *fh = win::font_bindings.from_a(font().id());
+        if (fh && fh->hfont)
+            SelectObject(hdc, fh->hfont);
 
-        // Set text color
         native::rgba c = ink();
         SetTextColor(hdc, RGB(c.r, c.g, c.b));
         SetBkMode(hdc, TRANSPARENT);
 
-        // Draw text
         TextOutA(hdc, p.x, p.y, text.c_str(), text.length());
 
         ReleaseDC(hwnd, hdc);

@@ -23,6 +23,16 @@ namespace native
         {
             XNextEvent(x11::cached_display, &event);
 
+            // Check if this event belongs to a menu bar or popup window.
+            {
+                auto *xmenu = x11::menubar_bindings.from_a(event.xany.window);
+                if (xmenu)
+                {
+                    x11::handle_menu_bar_event(xmenu, event);
+                    continue;
+                }
+            }
+
             wnd = x11::wnd_bindings.from_a(event.xany.window);
             if (!wnd)
                 continue;
@@ -70,6 +80,18 @@ namespace native
             case ConfigureNotify:
                 wnd->on_wnd_resize.emit(size(event.xconfigure.width, event.xconfigure.height));
                 wnd->on_wnd_move.emit(point(event.xconfigure.x, event.xconfigure.y));
+                // Resize menu bar if present
+                if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+                {
+                    if (aw->menu.id())
+                    {
+                        auto *xm = x11::menu_bindings.from_a(aw->menu.id());
+                        if (xm && xm->bar_win && x11::cached_display)
+                            XResizeWindow(x11::cached_display, xm->bar_win,
+                                          static_cast<unsigned>(event.xconfigure.width),
+                                          x11::MENU_BAR_H);
+                    }
+                }
                 {
                     // Recreate the backbuffer whenever the window is resized.
                     auto *cache = x11::wnd_gpx_bindings.from_a(wnd);
