@@ -10,4 +10,5 @@ namespace mac
     native::bindings<native::wnd *, macgpx *> wnd_gpx_bindings;
     native::bindings<uint32_t, macfont *> font_bindings;
     native::bindings<uint32_t, macmenu *> menu_bindings;
+    native::bindings<native::button *, macbutton *> button_bindings;
 }

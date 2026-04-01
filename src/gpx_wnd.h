@@ -9,6 +9,8 @@ namespace native
         gpx_wnd(const wnd *wnd, point offset = {0, 0});
         virtual ~gpx_wnd();
 
+        wnd *window() const { return _wnd; }
+
         gpx &set_clip(const rect &r) override;
         rect clip() const override;
 

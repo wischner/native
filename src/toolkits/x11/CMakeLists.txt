@@ -6,6 +6,7 @@ find_package(X11 REQUIRED)
 
 # --- Define target. -------------------------------------------------
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint_backend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
@@ -16,6 +17,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
 )
 
 # --- Add libs. ------------------------------------------------------

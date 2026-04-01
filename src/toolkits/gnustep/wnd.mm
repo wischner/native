@@ -1,11 +1,21 @@
 #import <AppKit/AppKit.h>
 
 #include <stdexcept>
+#include <algorithm>
 
 #include <native.h>
 
 #include "gpx_wnd.h"
 #include "globals.h"
+
+namespace
+{
+native::rect layout_bounds_for(native::wnd *w)
+{
+    native::size d = w->dimensions();
+    return native::rect(0, 0, d.w, d.h);
+}
+}
 
 namespace native
 {
@@ -30,6 +40,15 @@ wnd::wnd(const rect &bounds)
 
 wnd::~wnd()
 {
+    if (_parent)
+    {
+        _parent->_children.erase(
+            std::remove(_parent->_children.begin(), _parent->_children.end(), this),
+            _parent->_children.end());
+        if (_parent->_layout)
+            _parent->_layout->remove_child(this);
+    }
+
     if (_created)
     {
         gnustep::wnd_bindings.unregister_by_b(this);
@@ -72,6 +91,9 @@ wnd &wnd::set_dimensions(const size &s)
             [window setContentSize:NSMakeSize(s.w, s.h)];
     }
 
+    if (_layout)
+        _layout->relayout(this, layout_bounds_for(this));
+
     return *this;
 }
 
@@ -94,14 +116,28 @@ wnd &wnd::set_bounds(const rect &r)
         }
     }
 
+    if (_layout)
+        _layout->relayout(this, layout_bounds_for(this));
+
     return *this;
+}
+
+void wnd::on_native_resize(const size &s)
+{
+    _bounds.d = s;
+    if (_layout)
+        _layout->relayout(this, layout_bounds_for(this));
 }
 
 void wnd::set_layout(std::unique_ptr<layout_manager> layout)
 {
     _layout = std::move(layout);
-    if (_layout && _created)
-        _layout->relayout(this, _bounds);
+    if (_layout)
+    {
+        for (auto *child : _children)
+            _layout->add_child(child);
+        _layout->relayout(this, layout_bounds_for(this));
+    }
 }
 
 layout_manager *wnd::layout() const
@@ -111,7 +147,36 @@ layout_manager *wnd::layout() const
 
 wnd &wnd::set_parent(wnd *p)
 {
+    if (_parent == p)
+        return *this;
+
+    wnd *old_parent = _parent;
+    if (old_parent)
+    {
+        old_parent->_children.erase(
+            std::remove(old_parent->_children.begin(), old_parent->_children.end(), this),
+            old_parent->_children.end());
+
+        if (old_parent->_layout)
+        {
+            old_parent->_layout->remove_child(this);
+            old_parent->_layout->relayout(old_parent, layout_bounds_for(old_parent));
+        }
+    }
+
     _parent = p;
+
+    if (_parent)
+    {
+        if (std::find(_parent->_children.begin(), _parent->_children.end(), this) == _parent->_children.end())
+            _parent->_children.push_back(this);
+
+        if (_parent->_layout)
+        {
+            _parent->_layout->add_child(this);
+            _parent->_layout->relayout(_parent, layout_bounds_for(_parent));
+        }
+    }
 
     if (_created && p && p->_created)
     {

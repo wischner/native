@@ -44,6 +44,90 @@
             ]
         },
         {
+            "name": "Run button-example (Linux, SDL2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-sdl2/examples/04_button_example/button-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run button-configurations-example (Linux, SDL2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-sdl2/examples/05_button_configurations_example/button-configurations-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run layout-absolute-example (Linux, SDL2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-sdl2/examples/06_layout_absolute_example/layout-absolute-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run layout-grid-example (Linux, SDL2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-sdl2/examples/07_layout_grid_example/layout-grid-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker SDL2)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "Run menu-example (Linux, X11)",
             "type": "cppdbg",
             "request": "launch",
@@ -65,10 +149,94 @@
             ]
         },
         {
+            "name": "Run layout-absolute-example (Linux, X11)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-x11/examples/06_layout_absolute_example/layout-absolute-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker X11)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run layout-grid-example (Linux, X11)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-x11/examples/07_layout_grid_example/layout-grid-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker X11)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
             "name": "Run painter (Linux, X11)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-x11/examples/02_painter_example/painter-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker X11)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run button-example (Linux, X11)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-x11/examples/04_button_example/button-example",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "CMake Build (Docker X11)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run button-configurations-example (Linux, X11)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-x11/examples/05_button_configurations_example/button-configurations-example",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -142,6 +310,38 @@
             "preLaunchTask": "Prepare menu runtime (Wine DLLs)"
         },
         {
+            "name": "Run button-example (Windows via Wine)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/04_button_example/button-example.exe\"",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Prepare button runtime (Wine DLLs)"
+        },
+        {
+            "name": "Run button-configurations-example (Windows via Wine)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/05_button_configurations_example/button-configurations-example.exe\"",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Prepare button-configurations runtime (Wine DLLs)"
+        },
+        {
+            "name": "Run layout-absolute-example (Windows via Wine)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/06_layout_absolute_example/layout-absolute-example.exe\"",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Prepare layout-absolute runtime (Wine DLLs)"
+        },
+        {
+            "name": "Run layout-grid-example (Windows via Wine)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/07_layout_grid_example/layout-grid-example.exe\"",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Prepare layout-grid runtime (Wine DLLs)"
+        },
+        {
             "name": "Run menu-example (Haiku via SSH)",
             "type": "node-terminal",
             "request": "launch",
@@ -193,11 +393,11 @@
     "compounds": [
         {
             "name": "Run on Linux SDL2",
-            "configurations": ["Run menu-example (Linux, SDL2)", "Run painter (Linux, SDL2)"]
+            "configurations": ["Run menu-example (Linux, SDL2)", "Run painter (Linux, SDL2)", "Run button-example (Linux, SDL2)", "Run button-configurations-example (Linux, SDL2)", "Run layout-absolute-example (Linux, SDL2)", "Run layout-grid-example (Linux, SDL2)"]
         },
         {
             "name": "Run on Linux X11",
-            "configurations": ["Run menu-example (Linux, X11)", "Run painter (Linux, X11)"]
+            "configurations": ["Run menu-example (Linux, X11)", "Run painter (Linux, X11)", "Run button-example (Linux, X11)", "Run button-configurations-example (Linux, X11)", "Run layout-absolute-example (Linux, X11)", "Run layout-grid-example (Linux, X11)"]
         },
         {
             "name": "Debug on Linux",
@@ -213,7 +413,7 @@
         },
         {
             "name": "Debug on Windows",
-            "configurations": ["Run menu-example (Windows via Wine)", "Run painter (Windows via Wine)"]
+            "configurations": ["Run menu-example (Windows via Wine)", "Run painter (Windows via Wine)", "Run button-example (Windows via Wine)", "Run button-configurations-example (Windows via Wine)", "Run layout-absolute-example (Windows via Wine)", "Run layout-grid-example (Windows via Wine)"]
         },
         {
             "name": "Run on Haiku",

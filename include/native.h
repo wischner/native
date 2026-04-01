@@ -309,6 +309,95 @@ namespace native
         const font_t *_font = nullptr;           // non-owning; nullptr = use stock system
     };
 
+    // --- Native control painter. ----------------------------------
+    class control_paint
+    {
+    public:
+        struct state
+        {
+            bool hot = false;
+            bool pressed = false;
+            bool selected = false;
+            bool disabled = false;
+        };
+
+        struct metrics
+        {
+            int menu_bar_height = 20;
+            int menu_item_height = 20;
+            int popup_width = 180;
+            int text_padding_x = 8;
+        };
+
+        struct palette
+        {
+            rgba button_bg;
+            rgba button_border;
+            rgba button_text;
+            rgba button_hot_bg;
+            rgba button_hot_text;
+            rgba button_pressed_bg;
+            rgba button_pressed_text;
+
+            rgba menu_bar_bg;
+            rgba menu_bar_line_top;
+            rgba menu_bar_line_bottom;
+            rgba menu_text;
+            rgba menu_hot_bg;
+            rgba menu_hot_text;
+            rgba menu_popup_bg;
+            rgba menu_popup_border;
+        };
+
+        explicit control_paint(gpx &painter);
+
+        metrics defaults() const;
+        static palette native_palette();
+
+        control_paint &draw_button_face(const rect &r, const state &s);
+        control_paint &draw_button_frame(const rect &r, const state &s);
+        control_paint &draw_button_text(const rect &r,
+                                        const std::string &text,
+                                        const state &s);
+
+        control_paint &draw_button(const rect &r, const std::string &text);
+        control_paint &draw_button(const rect &r,
+                                   const std::string &text,
+                                   const state &s);
+
+        control_paint &draw_menu_bar_background(const rect &r);
+        control_paint &draw_menu_item_background(const rect &r, const state &s);
+        control_paint &draw_menu_item_text(const rect &r,
+                                           const std::string &text,
+                                           const state &s);
+
+        control_paint &draw_menu_bar(const rect &r);
+        control_paint &draw_menu_title(const rect &r, const std::string &text);
+        control_paint &draw_menu_title(const rect &r,
+                                       const std::string &text,
+                                       const state &s);
+        control_paint &draw_menu_item(const rect &r, const std::string &text);
+        control_paint &draw_menu_item(const rect &r,
+                                      const std::string &text,
+                                      const state &s);
+        control_paint &draw_popup_frame(const rect &r);
+
+        // List and menu highlights should look identical by default.
+        control_paint &draw_list_item(const rect &r, const std::string &text)
+        {
+            return draw_menu_item(r, text);
+        }
+        control_paint &draw_list_item(const rect &r,
+                                      const std::string &text,
+                                      const state &s)
+        {
+            return draw_menu_item(r, text, s);
+        }
+
+    private:
+        gpx &_g;
+    };
+
     // --- Screen. ---------------------------------------------------
     class screen final
     {
@@ -506,6 +595,11 @@ namespace native
         virtual wnd &invalidate() const;
         virtual wnd &invalidate(const rect &r) const;
 
+        // Backend callback when native toolkit notifies a resize event.
+        // Updates cached bounds and relayouts children without issuing
+        // toolkit resize commands back to the OS.
+        void on_native_resize(const size &s);
+
         virtual void show() const = 0;
         virtual void create() const = 0;
         virtual void destroy() const = 0;
@@ -565,6 +659,31 @@ namespace native
         std::string _title;
     };
 
+    class button : public wnd
+    {
+    public:
+        button(std::string text,
+               coord x = 0, coord y = 0,
+               dim w = 96, dim h = 28);
+
+        button(const std::string &text, const point &pos, const size &dim);
+        button(const std::string &text, const rect &bounds);
+
+        virtual ~button() = default;
+
+        const std::string &text() const;
+        button &set_text(const std::string &text);
+
+        virtual void create() const override;
+        virtual void destroy() const override;
+        virtual void show() const override;
+
+        signal<> on_click;
+
+    private:
+        std::string _text;
+    };
+
     // --- Layout manager. -------------------------------------------
     class layout_manager
     {
@@ -580,6 +699,168 @@ namespace native
 
         // Access child list (optional)
         virtual const std::vector<wnd *> &children() const = 0;
+    };
+
+    class absolute_layout_manager final : public layout_manager
+    {
+    public:
+        absolute_layout_manager() = default;
+
+        // DSL: absolute << child_a << child_b;
+        absolute_layout_manager &operator<<(wnd &child);
+
+        // Classic API
+        absolute_layout_manager &add(wnd &child);
+
+        void relayout(wnd *parent, const rect &bounds) override;
+        void add_child(wnd *child) override;
+        void remove_child(wnd *child) override;
+        const std::vector<wnd *> &children() const override;
+
+    private:
+        std::vector<wnd *> _children;
+    };
+
+    using basic_layout_manager = absolute_layout_manager;
+
+    struct grid_length
+    {
+        enum class unit
+        {
+            pixel,
+            star
+        };
+
+        float value = 1.0f;
+        unit type = unit::star;
+
+        static grid_length pixels(float px);
+        static grid_length star(float weight = 1.0f);
+    };
+
+    inline grid_length pixels(float px) { return grid_length::pixels(px); }
+    inline grid_length star(float weight = 1.0f) { return grid_length::star(weight); }
+
+    struct grid_row_def
+    {
+        grid_length length;
+    };
+
+    struct grid_column_def
+    {
+        grid_length length;
+    };
+
+    struct grid_cell_def
+    {
+        wnd *child = nullptr;
+        int row = 0;
+        int column = 0;
+        int row_span = 1;
+        int column_span = 1;
+        int margin = 0;
+    };
+
+    class grid_layout_manager;
+
+    struct grid_child_layout_def
+    {
+        std::unique_ptr<grid_layout_manager> layout;
+        int row = 0;
+        int column = 0;
+        int row_span = 1;
+        int column_span = 1;
+        int margin = 0;
+
+        grid_child_layout_def(std::unique_ptr<grid_layout_manager> child_layout,
+                              int r,
+                              int c,
+                              int rs = 1,
+                              int cs = 1,
+                              int m = 0);
+        grid_child_layout_def(grid_child_layout_def &&) noexcept = default;
+        grid_child_layout_def &operator=(grid_child_layout_def &&) noexcept = default;
+        grid_child_layout_def(const grid_child_layout_def &) = delete;
+        grid_child_layout_def &operator=(const grid_child_layout_def &) = delete;
+    };
+
+    grid_row_def row(const grid_length &length);
+    grid_column_def column(const grid_length &length);
+    grid_cell_def cell(wnd &child,
+                       int row,
+                       int column,
+                       int row_span = 1,
+                       int column_span = 1,
+                       int margin = 0);
+    grid_child_layout_def child_grid(std::unique_ptr<grid_layout_manager> layout,
+                                     int row,
+                                     int column,
+                                     int row_span = 1,
+                                     int column_span = 1,
+                                     int margin = 0);
+
+    class grid_layout_manager final : public layout_manager
+    {
+    public:
+        grid_layout_manager();
+        grid_layout_manager(int rows, int columns);
+
+        // Classic API
+        grid_layout_manager &add_row(grid_length length);
+        grid_layout_manager &add_column(grid_length length);
+        grid_layout_manager &add(wnd &child,
+                                 int row,
+                                 int column,
+                                 int row_span = 1,
+                                 int column_span = 1,
+                                 int margin = 0);
+        grid_layout_manager &add_child_grid(std::unique_ptr<grid_layout_manager> layout,
+                                            int row,
+                                            int column,
+                                            int row_span = 1,
+                                            int column_span = 1,
+                                            int margin = 0);
+
+        // DSL:
+        // grid << row(star()) << column(star()) << cell(btn, 0, 0);
+        grid_layout_manager &operator<<(const grid_row_def &r);
+        grid_layout_manager &operator<<(const grid_column_def &c);
+        grid_layout_manager &operator<<(const grid_cell_def &p);
+        grid_layout_manager &operator<<(grid_child_layout_def &&nested);
+
+        void relayout(wnd *parent, const rect &bounds) override;
+        void add_child(wnd *child) override;
+        void remove_child(wnd *child) override;
+        const std::vector<wnd *> &children() const override;
+
+    private:
+        struct placed_child
+        {
+            wnd *child = nullptr;
+            int row = 0;
+            int column = 0;
+            int row_span = 1;
+            int column_span = 1;
+            int margin = 0;
+        };
+
+        struct nested_grid
+        {
+            std::unique_ptr<grid_layout_manager> layout;
+            int row = 0;
+            int column = 0;
+            int row_span = 1;
+            int column_span = 1;
+            int margin = 0;
+        };
+
+        std::vector<grid_length> _rows;
+        std::vector<grid_length> _columns;
+        std::vector<wnd *> _children;
+        std::vector<placed_child> _placed_children;
+        std::vector<nested_grid> _nested_grids;
+        int _next_auto_row = 0;
+        int _next_auto_column = 0;
     };
 
 }

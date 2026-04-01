@@ -205,6 +205,66 @@
           "os": { "linux": true }
       },
       {
+          "label": "Run button-example (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/04_button_example/button-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare button runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run button-configurations-example (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/05_button_configurations_example/button-configurations-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare button-configurations runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run layout-absolute-example (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/06_layout_absolute_example/layout-absolute-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare layout-absolute runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
+          "label": "Run layout-grid-example (Windows via Wine)",
+          "type": "shell",
+          "command": "wine",
+          "args": [
+              "${workspaceFolder}/build/windows-mingw-w64/examples/07_layout_grid_example/layout-grid-example.exe"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["Prepare layout-grid runtime (Wine DLLs)"],
+          "presentation": {
+              "reveal": "always",
+              "panel": "shared"
+          },
+          "os": { "linux": true }
+      },
+      {
           "label": "Prepare painter runtime (Wine DLLs)",
           "type": "shell",
           "command": "bash",
@@ -223,6 +283,54 @@
           "args": [
               "-lc",
               "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/03_menu_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare button runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/04_button_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare button-configurations runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/05_button_configurations_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare layout-absolute runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/06_layout_absolute_example/"
+          ],
+          "problemMatcher": [],
+          "dependsOn": ["CMake Build (Docker Win)"],
+          "os": { "linux": true }
+      },
+      {
+          "label": "Prepare layout-grid runtime (Wine DLLs)",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+              "-lc",
+              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/07_layout_grid_example/"
           ],
           "problemMatcher": [],
           "dependsOn": ["CMake Build (Docker Win)"],

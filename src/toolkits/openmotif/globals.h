@@ -32,6 +32,12 @@ namespace motif
         native::app_wnd *owner = nullptr;
     };
 
+    struct motifbutton
+    {
+        Widget widget = nullptr;
+        native::button *owner = nullptr;
+    };
+
     extern XtAppContext app_instance;
     extern bool exit_requested;
 
@@ -41,6 +47,7 @@ namespace motif
     extern native::bindings<native::wnd *, motifgpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, motiffont *> font_bindings;
     extern native::bindings<uint32_t, motifmenu *> menu_bindings;
+    extern native::bindings<native::button *, motifbutton *> button_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
 }

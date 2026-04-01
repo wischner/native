@@ -69,4 +69,16 @@ namespace x11
 
     extern native::bindings<Window,   x11menu *> menubar_bindings;
     extern native::bindings<uint32_t, x11menu *> menu_bindings;
+
+    struct x11button
+    {
+        Window win = 0;
+        GC gc = nullptr;
+        native::button *owner = nullptr;
+        bool hover = false;
+        bool pressed = false;
+    };
+
+    extern native::bindings<native::button *, x11button *> button_bindings;
+    void handle_button_event(native::button *b, const XEvent &e);
 }

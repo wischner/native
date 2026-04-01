@@ -14,4 +14,5 @@ namespace x11
     native::bindings<uint32_t, x11font *> font_bindings;
     native::bindings<Window,   x11menu *> menubar_bindings;
     native::bindings<uint32_t, x11menu *> menu_bindings;
+    native::bindings<native::button *, x11button *> button_bindings;
 }

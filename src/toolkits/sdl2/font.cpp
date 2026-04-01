@@ -17,6 +17,13 @@
 
 namespace
 {
+    struct stock_font_def
+    {
+        font_role role;
+        int size;
+        const char *fallbacks[8];
+    };
+
     uint32_t next_id()
     {
         static uint32_t counter = 0;
@@ -73,6 +80,21 @@ namespace
         if (!path.empty())
             f = TTF_OpenFont(path.c_str(), size);
         return f;
+    }
+
+    TTF_Font *open_by_fallbacks(const char *const *fallbacks, int size, const char **chosen_pattern)
+    {
+        for (int i = 0; fallbacks[i]; ++i)
+        {
+            TTF_Font *f = open_by_pattern(fallbacks[i], size);
+            if (f)
+            {
+                if (chosen_pattern)
+                    *chosen_pattern = fallbacks[i];
+                return f;
+            }
+        }
+        return nullptr;
     }
 }
 
@@ -133,20 +155,21 @@ const font_t &font_t::stock(font_role role)
     {
         initialized = true;
 #ifdef HAVE_SDL2_TTF
-        struct { font_role role; const char *pattern; int size; } defs[] = {
-            { font_role::system,  "sans",      12 },
-            { font_role::fixed,   "monospace", 12 },
-            { font_role::title,   "sans:bold", 12 },
-            { font_role::small_,  "sans",      10 },
-            { font_role::control, "sans",      11 },
+        static const stock_font_def defs[] = {
+            { font_role::system, 12, { "Roboto", "Noto Sans", "Inter", "Segoe UI", "Helvetica Neue", "Arial", "sans", nullptr } },
+            { font_role::fixed,  12, { "Roboto Mono", "JetBrains Mono", "DejaVu Sans Mono", "monospace", nullptr } },
+            { font_role::title,  12, { "Roboto Medium", "Roboto", "Noto Sans", "Segoe UI", "sans", nullptr } },
+            { font_role::small_, 10, { "Roboto", "Inter", "Noto Sans", "Segoe UI", "Arial", "sans", nullptr } },
+            { font_role::control,11, { "Roboto", "Noto Sans", "Inter", "Segoe UI", "sans", nullptr } },
         };
-        for (auto &d : defs)
+        for (const auto &d : defs)
         {
-            TTF_Font *ttf = open_by_pattern(d.pattern, d.size);
+            const char *chosen_pattern = nullptr;
+            TTF_Font *ttf = open_by_fallbacks(d.fallbacks, d.size, &chosen_pattern);
             if (ttf)
             {
                 s[(int)d.role]._id = register_font(ttf);
-                s[(int)d.role]._spec.name = d.pattern;
+                s[(int)d.role]._spec.name = chosen_pattern ? chosen_pattern : "";
                 s[(int)d.role]._spec.size = d.size;
             }
         }

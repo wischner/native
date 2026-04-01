@@ -1,3 +1,7 @@
 add_subdirectory(01_app_example)
 add_subdirectory(02_painter_example)
 add_subdirectory(03_menu_example)
+add_subdirectory(04_button_example)
+add_subdirectory(05_button_configurations_example)
+add_subdirectory(06_layout_absolute_example)
+add_subdirectory(07_layout_grid_example)

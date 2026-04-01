@@ -115,7 +115,9 @@ namespace
             if (cache)
                 ensure_backbuffer(owner, widget, width, height);
 
-            owner->on_wnd_resize.emit(native::size(static_cast<native::dim>(width), static_cast<native::dim>(height)));
+            native::size s(static_cast<native::dim>(width), static_cast<native::dim>(height));
+            owner->on_native_resize(s);
+            owner->on_wnd_resize.emit(s);
             break;
         }
 

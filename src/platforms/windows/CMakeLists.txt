@@ -1,6 +1,7 @@
 # src/platform/windows/CMakeLists.txt
 
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/control_paint_backend.cpp
     ${CMAKE_CURRENT_LIST_DIR}/screen.cpp
     ${CMAKE_CURRENT_LIST_DIR}/wnd.cpp
     ${CMAKE_CURRENT_LIST_DIR}/app_wnd.cpp
@@ -12,6 +13,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/img.cpp
     ${CMAKE_CURRENT_LIST_DIR}/globals.cpp
     ${CMAKE_CURRENT_LIST_DIR}/menu.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/button.cpp
 )
 
 # Windows-specific libraries (user32 for windowing, gdi32 for graphics)

@@ -13,22 +13,6 @@ namespace win
 
     LRESULT CALLBACK RoutedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-    static std::wstring utf8_to_wide(const std::string &text)
-    {
-        if (text.empty())
-            return std::wstring();
-
-        const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-        if (size <= 0)
-            return std::wstring(text.begin(), text.end());
-
-        std::wstring wide(static_cast<std::size_t>(size), L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, &wide[0], size);
-        if (!wide.empty() && wide.back() == L'\0')
-            wide.pop_back();
-        return wide;
-    }
-
     void register_window_class()
     {
         static bool registered = false;

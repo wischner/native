@@ -1,0 +1,5 @@
+add_executable(layout-grid-example main.cpp)
+target_link_libraries(layout-grid-example PRIVATE native)
+if(MSVC)
+    set_target_properties(layout-grid-example PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+endif()

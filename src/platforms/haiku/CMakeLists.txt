@@ -1,5 +1,6 @@
 # Collect all the source files for the program
 set(SRC_FILES
+    control_paint_backend.cpp
     main.cpp
     globals.cpp
     app.cpp
@@ -12,6 +13,7 @@ set(SRC_FILES
     gpx_img.cpp
     img.cpp
     menu.cpp
+    button.cpp
 )
 # Create the executable for the main application
 target_sources(native PRIVATE ${SRC_FILES})

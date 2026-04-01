@@ -91,7 +91,7 @@ const font_t &font_t::stock(font_role role)
 
         NONCLIENTMETRICSA ncm = {};
         ncm.cbSize = sizeof(ncm);
-        SystemParametersInfoA(SPI_GETNONCLIENTMETRICSA, sizeof(ncm), &ncm, 0);
+        SystemParametersInfoA(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
 
         auto make = [](const LOGFONTA &lf) {
             font_t f;

@@ -17,6 +17,7 @@ namespace motif
     native::bindings<native::wnd *, motifgpx *> wnd_gpx_bindings;
     native::bindings<uint32_t, motiffont *> font_bindings;
     native::bindings<uint32_t, motifmenu *> menu_bindings;
+    native::bindings<native::button *, motifbutton *> button_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;
 }

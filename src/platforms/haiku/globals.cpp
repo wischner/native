@@ -19,4 +19,6 @@ namespace haiku
     native::bindings<uint32_t, haikumenu *> menu_bindings;
     // Bind: owner app_wnd* to menu handle.
     native::bindings<native::app_wnd *, haikumenu *> owner_menu_bindings;
+    // Bind: button owner pointer to native button handle.
+    native::bindings<native::button *, haikubutton *> button_bindings;
 }

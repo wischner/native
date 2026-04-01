@@ -37,6 +37,19 @@ namespace native
             if (!wnd)
                 continue;
 
+            if (auto *btn = dynamic_cast<native::button *>(wnd))
+            {
+                if (event.type == DestroyNotify || event.type == ClientMessage)
+                {
+                    // Let generic destruction flow handle lifecycle teardown.
+                }
+                else
+                {
+                    x11::handle_button_event(btn, event);
+                    continue;
+                }
+            }
+
             switch (event.type)
             {
             case Expose:
@@ -78,7 +91,10 @@ namespace native
             break;
 
             case ConfigureNotify:
-                wnd->on_wnd_resize.emit(size(event.xconfigure.width, event.xconfigure.height));
+            {
+                size s(event.xconfigure.width, event.xconfigure.height);
+                wnd->on_native_resize(s);
+                wnd->on_wnd_resize.emit(s);
                 wnd->on_wnd_move.emit(point(event.xconfigure.x, event.xconfigure.y));
                 // Resize menu bar if present
                 if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
@@ -117,6 +133,7 @@ namespace native
                     }
                 }
                 break;
+            }
 
             case MotionNotify:
                 wnd->on_mouse_move.emit(point(event.xmotion.x, event.xmotion.y));

@@ -1,0 +1,5 @@
+add_executable(button-example main.cpp)
+target_link_libraries(button-example PRIVATE native)
+if(MSVC)
+    set_target_properties(button-example PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+endif()

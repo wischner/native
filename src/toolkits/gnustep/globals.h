@@ -26,6 +26,12 @@ namespace gnustep
         native::app_wnd *owner = nullptr;
     };
 
+    struct gnustepbutton {
+        NSButton *ns_button = nil;
+        id target = nil;
+        native::button *owner = nullptr;
+    };
+
     extern NSApplication *global_app;
     extern bool app_initialized;
     extern bool exit_requested;
@@ -37,6 +43,7 @@ namespace gnustep
     extern native::bindings<native::wnd *, id> delegate_bindings;
     extern native::bindings<uint32_t, gnustepfont *> font_bindings;
     extern native::bindings<uint32_t, gnustepmenu *> menu_bindings;
+    extern native::bindings<native::button *, gnustepbutton *> button_bindings;
 
     void ensure_app_initialized();
     void request_main_loop_exit();

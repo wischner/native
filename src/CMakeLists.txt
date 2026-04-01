@@ -13,6 +13,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint.cpp
 )
 
 add_subdirectory(platforms)

@@ -32,9 +32,16 @@ namespace mac
         native::app_wnd *owner = nullptr;
     };
 
+    struct macbutton {
+        NSButton *ns_button = nil;
+        id target = nil;
+        native::button *owner = nullptr;
+    };
+
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, macgpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, macfont *> font_bindings;
     extern native::bindings<uint32_t, macmenu *> menu_bindings;
+    extern native::bindings<native::button *, macbutton *> button_bindings;
 }

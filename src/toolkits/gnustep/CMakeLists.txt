@@ -29,9 +29,11 @@ set(GNUSTEP_OBJCXX_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/button.mm
 )
 
 set(GNUSTEP_CPP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint_backend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
 )
 

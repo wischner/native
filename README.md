@@ -171,6 +171,45 @@ int program(int argc, char **argv)
 
 Menu items without an explicit ID are label-only entries (the first item in each `menu_items` group). Items with an ID fire `on_menu` when selected. Selecting **Exit** (ID 99) calls `destroy()` to close the window and end the app.
 
+## Button example
+
+Demonstrates creating a button control, attaching it to the main window once the window exists, and reacting to clicks through `on_click`.
+
+```cpp
+#include <native.h>
+
+class button_window : public native::app_wnd
+{
+public:
+    button_window()
+        : native::app_wnd("Button Example"),
+          _button("Click me", 20, 20, 120, 32)
+    {
+        on_wnd_create.connect(this, &button_window::on_create);
+        _button.on_click.connect(this, &button_window::on_button_click);
+    }
+
+private:
+    native::button _button;
+    int _click_count = 0;
+
+    bool on_create()
+    {
+        _button.set_parent(this);
+        _button.create();
+        _button.show();
+        return true;
+    }
+
+    bool on_button_click()
+    {
+        ++_click_count;
+        invalidate();
+        return true;
+    }
+};
+```
+
 ## Building
 
 Linux `X11`, `SDL2`, `OpenMotif`, and `GNUstep`, Windows `MinGW-w64`, and Haiku cross-builds can be driven through Docker from CMake so the required headers and tools come from known images instead of the host machine.

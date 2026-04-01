@@ -5,6 +5,7 @@
 #include <Application.h>
 #include <Window.h>
 #include <View.h>
+#include <Button.h>
 #include <native.h>
 #include <bindings.h>
 
@@ -35,10 +36,16 @@ namespace haiku
         std::set<int> item_ids;
     };
 
+    struct haikubutton {
+        BButton *button = nullptr;
+        native::button *owner = nullptr;
+    };
+
     extern BApplication *global_app;
     extern native::bindings<BWindow *, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, haikugpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, haikufont *> font_bindings;
     extern native::bindings<uint32_t, haikumenu *> menu_bindings;
     extern native::bindings<native::app_wnd *, haikumenu *> owner_menu_bindings;
+    extern native::bindings<native::button *, haikubutton *> button_bindings;
 }

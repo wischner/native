@@ -216,9 +216,11 @@ namespace
 
     NSWindow *window = [notification object];
     NSRect b = [[window contentView] bounds];
-    owner->on_wnd_resize.emit(native::size(
+    native::size s(
         static_cast<native::dim>(b.size.width),
-        static_cast<native::dim>(b.size.height)));
+        static_cast<native::dim>(b.size.height));
+    owner->on_native_resize(s);
+    owner->on_wnd_resize.emit(s);
 }
 
 - (void)windowDidMove:(NSNotification *)notification

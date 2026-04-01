@@ -119,7 +119,6 @@ namespace native
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p)
     {
-#ifdef HAVE_SDL2_TTF
         auto *cache = sdl::wnd_gpx_bindings.from_a(_wnd);
         if (!cache || !cache->renderer)
             return *this;
@@ -127,28 +126,35 @@ namespace native
         SDL_Renderer *renderer = cache->renderer;
         apply_sdl_state(renderer, this, cache);
 
+#ifdef HAVE_SDL2_TTF
         if (!font().valid())
-            return *this;
-
-        auto *fh = sdl::font_bindings.from_a(font().id());
-        if (!fh || !fh->ttf_font)
-            return *this;
-
-        SDL_Color color = {ink().r, ink().g, ink().b, ink().a};
-        SDL_Surface *surface = TTF_RenderText_Solid(fh->ttf_font, text.c_str(), color);
-        if (!surface)
-            return *this;
-
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-        if (texture)
         {
-            SDL_Rect dst_rect = {p.x, p.y, surface->w, surface->h};
-            SDL_RenderCopy(renderer, texture, nullptr, &dst_rect);
-            SDL_DestroyTexture(texture);
+            SDL_Color color = {ink().r, ink().g, ink().b, ink().a};
+            sdl::draw_text(renderer, text, p.x, p.y, color);
+            return *this;
         }
 
-        SDL_FreeSurface(surface);
+        auto *fh = sdl::font_bindings.from_a(font().id());
+        if (fh && fh->ttf_font)
+        {
+            SDL_Color color = {ink().r, ink().g, ink().b, ink().a};
+            SDL_Surface *surface = TTF_RenderText_Solid(fh->ttf_font, text.c_str(), color);
+            if (surface)
+            {
+                SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+                if (texture)
+                {
+                    SDL_Rect dst_rect = {p.x, p.y, surface->w, surface->h};
+                    SDL_RenderCopy(renderer, texture, nullptr, &dst_rect);
+                    SDL_DestroyTexture(texture);
+                }
+                SDL_FreeSurface(surface);
+                return *this;
+            }
+        }
 #endif
+        SDL_Color fallback = {ink().r, ink().g, ink().b, ink().a};
+        sdl::draw_text(renderer, text, p.x, p.y, fallback);
         return *this;
     }
 

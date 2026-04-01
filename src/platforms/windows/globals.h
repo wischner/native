@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <string>
 
 #include <native.h>
 #include <bindings.h>
@@ -34,8 +35,21 @@ namespace win
         native::app_wnd *owner = nullptr;
     };
 
+    struct winbutton
+    {
+        HWND hwnd = nullptr;
+        native::button *owner = nullptr;
+    };
+
     extern native::bindings<HWND, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, wingpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, winfont *> font_bindings;
     extern native::bindings<uint32_t, winmenu *> menu_bindings;
+    extern native::bindings<native::button *, winbutton *> button_bindings;
+
+    // Shared Win32 helpers used by platform backend files.
+    native::rgba rgba_from_sys_color(int idx);
+    std::wstring utf8_to_wide(const std::string &text);
+    RECT to_rect(const native::rect &r);
+    HWND hwnd_from_gpx(native::gpx &g);
 }

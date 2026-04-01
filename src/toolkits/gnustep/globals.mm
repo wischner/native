@@ -21,6 +21,7 @@ namespace gnustep
     native::bindings<native::wnd *, id> delegate_bindings;
     native::bindings<uint32_t, gnustepfont *> font_bindings;
     native::bindings<uint32_t, gnustepmenu *> menu_bindings;
+    native::bindings<native::button *, gnustepbutton *> button_bindings;
 
     void ensure_app_initialized()
     {

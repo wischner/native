@@ -18,6 +18,7 @@ if(NOT TARGET native)
 endif()
 
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint_backend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
@@ -28,6 +29,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
 )
 
 # Conditionally include directories if needed

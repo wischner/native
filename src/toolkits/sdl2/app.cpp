@@ -31,6 +31,8 @@ namespace native
         wnd_paint_event pe{r, g};
         wnd->on_wnd_paint.emit(pe);
 
+        sdl::render_buttons(wnd, g);
+
         // Render menu bar on top if present
         if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
         {
@@ -38,7 +40,7 @@ namespace native
             {
                 auto *sm = sdl::menu_bindings.from_a(aw->menu.id());
                 if (sm)
-                    sdl::render_menu(sm, cache->renderer, w, h);
+                    sdl::render_menu(sm, g, w, h);
             }
         }
 
@@ -73,12 +75,34 @@ namespace native
                 switch (event.type)
                 {
                 case SDL_MOUSEMOTION:
+                {
+                    if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+                    {
+                        if (aw->menu.id())
+                        {
+                            auto *sm = sdl::menu_bindings.from_a(aw->menu.id());
+                            int win_w = 0;
+                            int win_h = 0;
+                            SDL_Window *menu_sdl_win = sdl::wnd_bindings.from_b(wnd);
+                            if (menu_sdl_win)
+                                SDL_GetWindowSize(menu_sdl_win, &win_w, &win_h);
+                            if (sm && sdl::handle_menu_motion(sm, event.motion.x, event.motion.y, win_w))
+                            {
+                                if (auto *cache = sdl::wnd_gpx_bindings.from_a(wnd))
+                                    cache->invalidated = true;
+                            }
+                        }
+                    }
+                    sdl::handle_button_motion(wnd, event.motion.x, event.motion.y);
                     wnd->on_mouse_move.emit(point(event.motion.x, event.motion.y));
                     break;
+                }
 
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                 {
+                    auto *cache2 = sdl::wnd_gpx_bindings.from_a(wnd);
+
                     // Let the menu intercept down events first
                     if (event.type == SDL_MOUSEBUTTONDOWN)
                     {
@@ -87,20 +111,29 @@ namespace native
                             if (aw->menu.id())
                             {
                                 auto *sm = sdl::menu_bindings.from_a(aw->menu.id());
-                                auto *cache2 = sdl::wnd_gpx_bindings.from_a(wnd);
                                 int btn_win_w = 0, btn_win_h = 0;
                                 SDL_Window *btn_sdl_win = sdl::wnd_bindings.from_b(wnd);
                                 if (btn_sdl_win)
                                     SDL_GetWindowSize(btn_sdl_win, &btn_win_w, &btn_win_h);
-                                if (sm && sdl::handle_menu_click(sm, event.button.x, event.button.y,
-                                                                  cache2 ? cache2->renderer : nullptr,
-                                                                  btn_win_w))
+                                if (sm && sdl::handle_menu_click(sm, event.button.x, event.button.y, btn_win_w))
                                 {
                                     if (cache2) cache2->invalidated = true;
                                     break;
                                 }
                             }
                         }
+                    }
+
+                    if (sdl::handle_button_mouse(
+                            wnd,
+                            event.button.x,
+                            event.button.y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP))
+                    {
+                        if (cache2)
+                            cache2->invalidated = true;
+                        break;
                     }
 
                     mouse_button btn = mouse_button::none;
@@ -148,9 +181,11 @@ namespace native
                     case SDL_WINDOWEVENT_RESIZED:
                         if (auto *cache = sdl::wnd_gpx_bindings.from_a(wnd))
                             cache->invalidated = true;
-                        wnd->on_wnd_resize.emit(size(
-                            event.window.data1,
-                            event.window.data2));
+                    {
+                        size s(event.window.data1, event.window.data2);
+                        wnd->on_native_resize(s);
+                        wnd->on_wnd_resize.emit(s);
+                    }
                         break;
 
                     case SDL_WINDOWEVENT_MOVED:

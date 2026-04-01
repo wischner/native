@@ -1,9 +1,7 @@
 #include <string>
-#include <initializer_list>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <X11/Xresource.h>
 
 #include <native.h>
 #include "globals.h"
@@ -17,59 +15,20 @@ static int text_width_est(const std::string &s)
     return static_cast<int>(s.size()) * 7 + 16;
 }
 
-static unsigned long alloc_named_color_or(Display *dpy, int screen, const char *name, unsigned long fallback)
+static unsigned long alloc_rgba_or(Display *dpy, int screen, native::rgba color, unsigned long fallback)
 {
-    if (!dpy || !name || !*name)
+    if (!dpy)
         return fallback;
 
-    XColor exact{};
-    XColor def{};
+    XColor xc{};
+    xc.red = static_cast<unsigned short>(color.r) * 257;
+    xc.green = static_cast<unsigned short>(color.g) * 257;
+    xc.blue = static_cast<unsigned short>(color.b) * 257;
+
     Colormap cmap = DefaultColormap(dpy, screen);
-    if (XAllocNamedColor(dpy, cmap, name, &def, &exact))
-        return def.pixel;
+    if (XAllocColor(dpy, cmap, &xc))
+        return xc.pixel;
     return fallback;
-}
-
-static std::string app_instance_name()
-{
-    if (!native::app::argv || !native::app::argv[0] || !*native::app::argv[0])
-        return "native";
-
-    std::string full(native::app::argv[0]);
-    std::size_t slash = full.find_last_of('/');
-    if (slash != std::string::npos)
-        full = full.substr(slash + 1);
-
-    if (full.empty())
-        return "native";
-
-    return full;
-}
-
-static const char *resource_for(Display *dpy, const char *instance, const char *name)
-{
-    if (!dpy || !instance || !*instance || !name || !*name)
-        return nullptr;
-
-    const char *v = XGetDefault(dpy, instance, name);
-    return (v && *v) ? v : nullptr;
-}
-
-static const char *menu_resource(Display *dpy, std::initializer_list<const char *> names)
-{
-    const std::string app_name = app_instance_name();
-
-    for (const char *n : names)
-    {
-        if (const char *v = resource_for(dpy, app_name.c_str(), n))
-            return v;
-        if (const char *v = resource_for(dpy, "native", n))
-            return v;
-        if (const char *v = resource_for(dpy, "Native", n))
-            return v;
-    }
-
-    return nullptr;
 }
 
 static const int ITEM_H   = 20;
@@ -441,19 +400,19 @@ void main_menu::attach(app_wnd &owner)
     XGetWindowAttributes(dpy, main_win, &wa);
     int win_w = wa.width;
 
-    unsigned long fallback_bg = WhitePixel(dpy, screen);
-    unsigned long bar_bg = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuBackground", "background"}), fallback_bg);
-    unsigned long border_dark = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuBorderDark", "bottomShadowColor"}), BlackPixel(dpy, screen));
-    unsigned long border_light = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuBorderLight", "topShadowColor"}), WhitePixel(dpy, screen));
-    unsigned long text_fg = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuForeground", "foreground"}), BlackPixel(dpy, screen));
-    unsigned long select_bg = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuSelectBackground", "activeBackground"}), 0x000080UL);
-    unsigned long select_fg = x11::alloc_named_color_or(
-        dpy, screen, x11::menu_resource(dpy, {"menuSelectForeground", "activeForeground"}), WhitePixel(dpy, screen));
+    const auto palette = native::control_paint::native_palette();
+    unsigned long bar_bg = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_bar_bg, WhitePixel(dpy, screen));
+    unsigned long border_dark = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_popup_border, BlackPixel(dpy, screen));
+    unsigned long border_light = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_bar_line_top, WhitePixel(dpy, screen));
+    unsigned long text_fg = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_text, BlackPixel(dpy, screen));
+    unsigned long select_bg = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_hot_bg, BlackPixel(dpy, screen));
+    unsigned long select_fg = x11::alloc_rgba_or(
+        dpy, screen, palette.menu_hot_text, WhitePixel(dpy, screen));
 
     // Create the menu bar as a child window at the top
     Window bar = XCreateSimpleWindow(

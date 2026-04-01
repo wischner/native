@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <algorithm>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -33,6 +34,12 @@ namespace win
         }
     }
 
+    static native::rect layout_bounds_for(native::wnd *w)
+    {
+        native::size d = w->dimensions();
+        return native::rect(0, 0, d.w, d.h);
+    }
+
     LRESULT CALLBACK RoutedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         if (msg == WM_NCCREATE)
@@ -64,8 +71,12 @@ namespace win
             break;
 
         case WM_SIZE:
-            wnd->on_wnd_resize.emit(native::size(LOWORD(lParam), HIWORD(lParam)));
+        {
+            native::size s(LOWORD(lParam), HIWORD(lParam));
+            wnd->on_native_resize(s);
+            wnd->on_wnd_resize.emit(s);
             break;
+        }
 
         case WM_MOUSEMOVE:
             wnd->on_mouse_move.emit(native::point(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
@@ -138,11 +149,26 @@ namespace win
         }
 
         case WM_COMMAND:
-            if (HIWORD(wParam) == 0)
+            if (lParam != 0)
             {
-                // Menu item click
+                HWND control = reinterpret_cast<HWND>(lParam);
+                if (auto *child = win::wnd_bindings.from_a(control))
+                {
+                    if (auto *btn = dynamic_cast<native::button *>(child))
+                    {
+                        btn->on_click.emit();
+                        return 0;
+                    }
+                }
+            }
+            else if (HIWORD(wParam) == 0)
+            {
+                // Menu item click (lParam == 0).
                 if (auto *aw = dynamic_cast<native::app_wnd *>(wnd))
+                {
                     aw->on_menu.emit(static_cast<int>(LOWORD(wParam)));
+                    return 0;
+                }
             }
             return 0;
 
@@ -189,6 +215,15 @@ namespace native
 
     wnd::~wnd()
     {
+        if (_parent)
+        {
+            _parent->_children.erase(
+                std::remove(_parent->_children.begin(), _parent->_children.end(), this),
+                _parent->_children.end());
+            if (_parent->_layout)
+                _parent->_layout->remove_child(this);
+        }
+
         if (auto *cache = win::wnd_gpx_bindings.from_a(this))
         {
             if (cache->pen)
@@ -237,6 +272,9 @@ namespace native
                 SetWindowPos(hwnd, nullptr, 0, 0, s.w, s.h, SWP_NOMOVE | SWP_NOZORDER);
         }
 
+        if (_layout)
+            _layout->relayout(this, win::layout_bounds_for(this));
+
         return *this;
     }
 
@@ -256,14 +294,28 @@ namespace native
                 SetWindowPos(hwnd, nullptr, r.p.x, r.p.y, r.d.w, r.d.h, SWP_NOZORDER);
         }
 
+        if (_layout)
+            _layout->relayout(this, win::layout_bounds_for(this));
+
         return *this;
+    }
+
+    void wnd::on_native_resize(const size &s)
+    {
+        _bounds.d = s;
+        if (_layout)
+            _layout->relayout(this, win::layout_bounds_for(this));
     }
 
     void wnd::set_layout(std::unique_ptr<layout_manager> layout)
     {
         _layout = std::move(layout);
-        if (_layout && _created)
-            _layout->relayout(this, _bounds);
+        if (_layout)
+        {
+            for (auto *child : _children)
+                _layout->add_child(child);
+            _layout->relayout(this, win::layout_bounds_for(this));
+        }
     }
 
     layout_manager *wnd::layout() const
@@ -273,7 +325,36 @@ namespace native
 
     wnd &wnd::set_parent(wnd *p)
     {
+        if (_parent == p)
+            return *this;
+
+        wnd *old_parent = _parent;
+        if (old_parent)
+        {
+            old_parent->_children.erase(
+                std::remove(old_parent->_children.begin(), old_parent->_children.end(), this),
+                old_parent->_children.end());
+
+            if (old_parent->_layout)
+            {
+                old_parent->_layout->remove_child(this);
+                old_parent->_layout->relayout(old_parent, win::layout_bounds_for(old_parent));
+            }
+        }
+
         _parent = p;
+
+        if (_parent)
+        {
+            if (std::find(_parent->_children.begin(), _parent->_children.end(), this) == _parent->_children.end())
+                _parent->_children.push_back(this);
+
+            if (_parent->_layout)
+            {
+                _parent->_layout->add_child(this);
+                _parent->_layout->relayout(_parent, win::layout_bounds_for(_parent));
+            }
+        }
 
         if (_created && p && p->_created)
         {

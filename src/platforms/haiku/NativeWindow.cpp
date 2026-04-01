@@ -208,10 +208,11 @@ namespace haiku
     {
         if (_owner)
         {
-            _owner->on_wnd_resize.emit(
-                native::size(
-                    static_cast<native::dim>(new_width + 1.0f),
-                    static_cast<native::dim>(new_height + 1.0f)));
+            native::size s(
+                static_cast<native::dim>(new_width + 1.0f),
+                static_cast<native::dim>(new_height + 1.0f));
+            _owner->on_native_resize(s);
+            _owner->on_wnd_resize.emit(s);
         }
 
         BWindow::FrameResized(new_width, new_height);
