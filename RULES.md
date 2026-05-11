@@ -67,6 +67,7 @@ The top-level CMake project provides:
 These targets use the following Docker images:
 
 - X11: `wischner/gcc-x86_64-linux-x11`
+- GEMix: `wischner/gcc-x86_64-gemix`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - GNUstep: `wischner/gcc-x86_64-linux-gnustep`
@@ -89,6 +90,7 @@ cmake --build out --target docker-haiku
 
 - `out/` is the host-side CMake control tree.
 - `build/linux-x11/` is the Docker-produced X11 build tree.
+- `build/linux-gemix/` is the Docker-produced GEMix build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
 - `build/linux-openmotif/` is the Docker-produced OpenMotif build tree.
 - `build/linux-gnustep/` is the Docker-produced GNUstep build tree.

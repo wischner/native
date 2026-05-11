@@ -2,6 +2,8 @@ set(TOOLKIT "X11" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
 
 if(TOOLKIT STREQUAL "SDL2")
     add_subdirectory(sdl2)
+elseif(TOOLKIT STREQUAL "GEMIX")
+    add_subdirectory(gemix)
 elseif(TOOLKIT STREQUAL "MOTIF")
     add_subdirectory(openmotif)
 elseif(TOOLKIT STREQUAL "X11")

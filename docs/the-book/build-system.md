@@ -40,6 +40,9 @@ The repository uses separate build directories per backend:
 - `build/linux-x11/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
 
+- `build/linux-gemix/`
+  - toolkit build tree for the Linux backend configured with `TOOLKIT=GEMIX`
+
 - `build/linux-sdl2/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=SDL2`
 
@@ -76,6 +79,7 @@ toolchain and system headers.
 The images are:
 
 - `wischner/gcc-x86_64-linux-x11`
+- `wischner/gcc-x86_64-gemix`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-gnustep`
@@ -164,6 +168,7 @@ Today the repository includes:
 Outputs are produced inside backend-specific build trees:
 
 - `build/linux-x11/examples/...`
+- `build/linux-gemix/examples/...`
 - `build/linux-sdl2/examples/...`
 - `build/linux-openmotif/examples/...`
 - `build/linux-gnustep/examples/...`

@@ -227,6 +227,7 @@ cmake --build out --target docker-haiku
 The Docker-backed targets build:
 
 - `X11` into `build/linux-x11/`
+- `GEMix` into `build/linux-gemix/`
 - `SDL2` into `build/linux-sdl2/`
 - `OpenMotif` into `build/linux-openmotif/`
 - `GNUstep` into `build/linux-gnustep/`

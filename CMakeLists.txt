@@ -18,6 +18,7 @@ if(UNIX AND NOT APPLE)
 
     set(DOCKER_TAG "latest" CACHE STRING "Docker tag used for Linux toolkit build images")
     set(DOCKER_TAG_HAIKU "1.1.0" CACHE STRING "Docker tag used for the Haiku cross-build image")
+    set(DOCKER_IMAGE_GEMIX "wischner/gcc-x86_64-gemix:${DOCKER_TAG}" CACHE STRING "Docker image for GEMix builds")
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
@@ -72,6 +73,8 @@ if(UNIX AND NOT APPLE)
             )
         endfunction()
 
+        add_docker_cmake_build_target(docker-gemix build/linux-gemix ${DOCKER_IMAGE_GEMIX}
+            -DTOOLKIT=GEMIX)
         add_docker_cmake_build_target(docker-x11 build/linux-x11 ${DOCKER_IMAGE_X11}
             -DTOOLKIT=X11)
         add_docker_cmake_build_target(docker-sdl2 build/linux-sdl2 ${DOCKER_IMAGE_SDL2}

@@ -22,6 +22,16 @@
           "os": { "linux": true }
       },
       {
+          "label": "CMake Build (Docker GEMix)",
+          "type": "shell",
+          "command": "cmake",
+          "args": ["--build", "out", "--target", "docker-gemix"],
+          "problemMatcher": "$gcc",
+          "group": "build",
+          "dependsOn": ["CMake Configure (Docker Targets)"],
+          "os": { "linux": true }
+      },
+      {
           "label": "CMake Build (Docker SDL2)",
           "type": "shell",
           "command": "cmake",

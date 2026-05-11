@@ -128,6 +128,46 @@
             ]
         },
         {
+            "name": "Run menu-example (Linux, GEMix)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/03_menu_example/menu-example\"",
+            "preLaunchTask": "CMake Build (Docker GEMix)"
+        },
+        {
+            "name": "Run painter (Linux, GEMix)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/02_painter_example/painter-example\"",
+            "preLaunchTask": "CMake Build (Docker GEMix)"
+        },
+        {
+            "name": "Run button-example (Linux, GEMix)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/04_button_example/button-example\"",
+            "preLaunchTask": "CMake Build (Docker GEMix)"
+        },
+        {
+            "name": "Run layout-absolute-example (Linux, GEMix)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/06_layout_absolute_example/layout-absolute-example\"",
+            "preLaunchTask": "CMake Build (Docker GEMix)"
+        },
+        {
+            "name": "Run layout-grid-example (Linux, GEMix)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/07_layout_grid_example/layout-grid-example\"",
+            "preLaunchTask": "CMake Build (Docker GEMix)"
+        },
+        {
             "name": "Run menu-example (Linux, X11)",
             "type": "cppdbg",
             "request": "launch",
