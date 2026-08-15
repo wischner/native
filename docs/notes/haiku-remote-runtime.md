@@ -5,21 +5,19 @@ This note records the current Haiku workflow that is actually exercised.
 ## Current workflow
 
 - Build locally through Docker:
-  - `cmake -S . -B out`
-  - `cmake --build out --target docker-haiku`
+  - `cmake -S . -B build/cmake`
+  - `cmake --build build/cmake --target docker-haiku`
 - Copy the produced binaries to the Haiku machine over `scp`.
-- Run the binaries on the Haiku machine over `ssh`.
+- Debug the binaries on the Haiku machine through GDB over `ssh`.
 
-The VS Code tasks and launch entries include deploy-and-run workflows.
+The VS Code tasks and launch entry include VM start, deploy, and remote-debug
+workflows.
 
 ## What is verified
 
-- `app-example` builds in `build/haiku/examples/01_app_example/app-example`
-- `painter-example` builds in `build/haiku/examples/02_painter_example/painter-example`
-- both binaries were copied to:
-  - `/boot/home/Projects/native/run/`
-- both binaries were launched on the Haiku machine and stayed alive during a
-  short smoke test
+- `vision` builds in `build/haiku/src/vision`.
+- The binary is copied to `/boot/home/Projects/native/run/vision`.
+- The binary is launched under `/boot/system/bin/gdb` over SSH.
 
 ## Why this note exists
 

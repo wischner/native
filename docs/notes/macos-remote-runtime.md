@@ -20,28 +20,25 @@ The scripts are parameterized through environment variables:
 - `tools/macos-remote/sync.sh`
   - rsync source tree to macOS target
 - `tools/macos-remote/build.sh`
-  - sync + configure + build `Debug` on macOS (`build/macos-debug`)
-- `tools/macos-remote/run.sh [app|painter]`
-  - run chosen example on macOS over SSH
-- `tools/macos-remote/debug.sh [app|painter]`
-  - open remote `lldb` session for the chosen example
+  - sync + configure + build the `Debug` application bundle on macOS
+    (`build/macos-debug/src/vision.app`)
+- `tools/macos-remote/run.sh`
+  - run Vision on macOS over SSH
+- `tools/macos-remote/debug.sh`
+  - verify Developer Tools authorization and run Vision under remote `lldb`
 - `tools/macos-remote/smoke-test.sh`
   - build on macOS, verify binaries, clear/check quarantine xattr,
-    ad-hoc sign, and launch/kill both binaries for a short smoke test
+    ad-hoc sign, and launch/kill Vision for a short smoke test
 
 ## Why this avoids Gatekeeper "internet download" rejection
 
-Binaries are compiled on the Mac itself from synced source. They are not
-copied as prebuilt internet artifacts. The smoke test also verifies no
-`com.apple.quarantine` xattr remains on built binaries.
+The application bundle is compiled on the Mac itself from synced source. It is
+not copied as a prebuilt internet artifact. The smoke test also verifies that
+no `com.apple.quarantine` xattr remains on the bundle.
 
 ## VS Code tasks and launch
 
 - Tasks now use the script-backed labels:
-  - `Build (macOS leia)`
-  - `Run app-example (macOS leia)`
-  - `Run painter (macOS leia)`
-  - `Debug app-example (macOS leia, LLDB)`
-  - `Debug painter (macOS leia, LLDB)`
-  - `Smoke Test (macOS leia, no quarantine)`
-- Launch entries mirror these run/debug flows through SSH.
+  - `Build Vision Debug (macOS leia)`
+  - `Smoke Test Vision Debug (macOS leia)`
+- The launch entry builds and starts the remote LLDB session through SSH.

@@ -1,24 +1,26 @@
-add_library(native STATIC)
+if(APPLE)
+    # A macOS GUI program must be a bundle so LaunchServices treats it as a
+    # foreground application when LLDB starts it from a remote shell.
+    add_executable(vision MACOSX_BUNDLE
+        main.cpp
+    )
+    set_target_properties(vision PROPERTIES
+        MACOSX_BUNDLE_BUNDLE_NAME "Vision"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.wischner.native.vision"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+    )
+else()
+    add_executable(vision
+        main.cpp
+    )
+endif()
 
-target_include_directories(native 
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
+target_link_libraries(vision PRIVATE native)
 
-# Add generic native source files
-target_sources(native PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint.cpp
-)
-
-add_subdirectory(platforms)
-
-if(NOT WIN32 AND NOT HAIKU AND NOT APPLE)
-    add_subdirectory(toolkits)
+# Select the graphical Windows subsystem when using Microsoft tools.
+if(MSVC)
+    set_target_properties(vision PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS"
+    )
 endif()

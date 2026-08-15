@@ -8,7 +8,6 @@ source "${SCRIPT_DIR}/common.sh"
 rsync -az --delete \
     --exclude '.git/' \
     --exclude 'build/' \
-    --exclude 'out/' \
     --exclude '.DS_Store' \
     --exclude '.vscode/.ropeproject/' \
     -e "ssh -T -o RemoteCommand=none -o RequestTTY=no" \

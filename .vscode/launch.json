@@ -2,470 +2,130 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run menu-example (Linux, SDL2)",
+            "name": "Debug Vision (Linux X11, local)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/03_menu_example/menu-example",
-            "args": [],
-            "stopAtEntry": false,
+            "program": "${workspaceFolder}/build/linux-x11/src/vision",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
+            "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "externalConsole": false,
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/tools/linux-docker-debug.sh",
+                "pipeArgs": ["wischner/gcc-x86_64-linux-x11:latest"],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "CMake Build Debug (Docker X11)"
         },
         {
-            "name": "Run painter (Linux, SDL2)",
+            "name": "Debug Vision (Linux SDL2, local)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/02_painter_example/painter-example",
-            "args": [],
-            "stopAtEntry": false,
+            "program": "${workspaceFolder}/build/linux-sdl2/src/vision",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
+            "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "externalConsole": false,
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/tools/linux-docker-debug.sh",
+                "pipeArgs": ["wischner/gcc-x86_64-linux-sdl:latest"],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "CMake Build Debug (Docker SDL2)"
         },
         {
-            "name": "Run button-example (Linux, SDL2)",
+            "name": "Debug Vision (Linux GEMix, local)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/04_button_example/button-example",
-            "args": [],
-            "stopAtEntry": false,
+            "program": "${workspaceFolder}/build/linux-gemix/src/vision",
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
+            "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "externalConsole": false,
+            "environment": [
+                {"name": "GEM_VDI_WIDTH", "value": "904"},
+                {"name": "GEM_VDI_HEIGHT", "value": "900"},
+                {"name": "GEM_RASTA_FRAMEBUFFER", "value": "/tmp/rasta.fb"},
+                {"name": "GEM_RASTA_HOST", "value": "127.0.0.1"},
+                {"name": "GEM_RASTA_PORT", "value": "5000"},
+                {"name": "GEM_RASTA_SCALE", "value": "1"},
+                {"name": "GEM_RASTA_CURSOR", "value": "off"},
+                {"name": "GEM_RASTA_INVERSE", "value": "on"},
+                {"name": "LD_PRELOAD", "value": "/usr/lib/gcc/x86_64-linux-gnu/11/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/11/libubsan.so"},
+                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
+            ],
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/tools/gemix-debug-pipe.sh",
+                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest"],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "CMake Build Debug (Docker GEMix)"
         },
         {
-            "name": "Run button-configurations-example (Linux, SDL2)",
+            "name": "Debug Vision (OpenMotif, Tribblix CDE VM)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/05_button_configurations_example/button-configurations-example",
-            "args": [],
+            "program": "/export/home/tomaz/Projects/${workspaceFolderBasename}/build/tribblix-openmotif-debug/src/vision",
+            "cwd": "/export/home/tomaz/Projects/${workspaceFolderBasename}",
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "externalConsole": false,
+            "environment": [
+                {"name": "DISPLAY", "value": ":0"}
+            ],
+            "sourceFileMap": {
+                "/export/home/tomaz/Projects/native": "${workspaceFolder}"
+            },
+            "pipeTransport": {
+                "pipeProgram": "ssh",
+                "pipeArgs": ["-T", "tomaz@charlie"],
+                "debuggerPath": "/usr/bin/amd64/gdb"
+            },
+            "preLaunchTask": "Build Vision Debug (OpenMotif Tribblix CDE)"
         },
         {
-            "name": "Run layout-absolute-example (Linux, SDL2)",
+            "name": "Debug Vision (Windows, local Wine)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/06_layout_absolute_example/layout-absolute-example",
-            "args": [],
+            "program": "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
+            "cwd": "${workspaceFolder}/build/windows-mingw-w64/src",
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "miDebuggerPath": "${workspaceFolder}/tools/windows-gdb.sh",
+            "miDebuggerServerAddress": "localhost:31337",
+            "launchCompleteCommand": "exec-continue",
+            "externalConsole": false,
+            "preLaunchTask": "Start Vision Debug Server (Wine)"
         },
         {
-            "name": "Run layout-grid-example (Linux, SDL2)",
+            "name": "Debug Vision (Haiku VM)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-sdl2/examples/07_layout_grid_example/layout-grid-example",
-            "args": [],
+            "program": "/boot/home/Projects/${workspaceFolderBasename}/run/vision",
+            "cwd": "/boot/home/Projects/${workspaceFolderBasename}/run",
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker SDL2)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "externalConsole": false,
+            "sourceFileMap": {
+                "/home/tstih/data/wischner/native": "${workspaceFolder}"
+            },
+            "pipeTransport": {
+                "pipeProgram": "ssh",
+                "pipeArgs": ["-T", "user@192.168.122.90"],
+                "debuggerPath": "/boot/system/bin/gdb"
+            },
+            "preLaunchTask": "Deploy Vision Debug (Haiku)"
         },
         {
-            "name": "Run menu-example (Linux, GEMix)",
+            "name": "Debug Vision (macOS leia, LLDB)",
             "type": "node-terminal",
             "request": "launch",
+            "command": "exec \"${workspaceFolder}/tools/macos-remote/debug.sh\"",
             "cwd": "${workspaceFolder}",
-            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/03_menu_example/menu-example\"",
-            "preLaunchTask": "CMake Build (Docker GEMix)"
-        },
-        {
-            "name": "Run painter (Linux, GEMix)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/02_painter_example/painter-example\"",
-            "preLaunchTask": "CMake Build (Docker GEMix)"
-        },
-        {
-            "name": "Run button-example (Linux, GEMix)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/04_button_example/button-example\"",
-            "preLaunchTask": "CMake Build (Docker GEMix)"
-        },
-        {
-            "name": "Run layout-absolute-example (Linux, GEMix)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/06_layout_absolute_example/layout-absolute-example\"",
-            "preLaunchTask": "CMake Build (Docker GEMix)"
-        },
-        {
-            "name": "Run layout-grid-example (Linux, GEMix)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec \"${workspaceFolder}/tools/gemix-local-run.sh\" \"${workspaceFolder}/build/linux-gemix/examples/07_layout_grid_example/layout-grid-example\"",
-            "preLaunchTask": "CMake Build (Docker GEMix)"
-        },
-        {
-            "name": "Run menu-example (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/03_menu_example/menu-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run layout-absolute-example (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/06_layout_absolute_example/layout-absolute-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run layout-grid-example (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/07_layout_grid_example/layout-grid-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run painter (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/02_painter_example/painter-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run button-example (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/04_button_example/button-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run button-configurations-example (Linux, X11)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-x11/examples/05_button_configurations_example/button-configurations-example",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "CMake Build (Docker X11)",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Run menu-example (OpenMotif, CDE charlie)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./menu-example'",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy menu-example (OpenMotif charlie)"
-        },
-        {
-            "name": "Run painter (OpenMotif, CDE charlie)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./painter-example'",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy painter (OpenMotif charlie)"
-        },
-        {
-            "name": "Run app-example (OpenMotif, CDE charlie)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec ssh -tt tomaz@charlie 'cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./app-example'",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy app-example (OpenMotif charlie)"
-        },
-        {
-            "name": "Run menu-example (Linux, GNUstep)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/03_menu_example wischner/gcc-x86_64-linux-gnustep ./menu-example'",
-            "preLaunchTask": "CMake Build (Docker GNUstep)"
-        },
-        {
-            "name": "Run painter (Linux, GNUstep)",
-            "type": "node-terminal",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "command": "exec bash -lc 'XAUTH=${XAUTHORITY:-$HOME/.Xauthority}; exec docker run --rm -e DISPLAY=$DISPLAY -e XAUTHORITY=/tmp/.Xauthority -v \"$XAUTH\":/tmp/.Xauthority:ro -v /tmp/.X11-unix:/tmp/.X11-unix -v \"${workspaceFolder}\":/src -w /src/build/linux-gnustep/examples/02_painter_example wischner/gcc-x86_64-linux-gnustep ./painter-example'",
-            "preLaunchTask": "CMake Build (Docker GNUstep)"
-        },
-        {
-            "name": "Run painter (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/02_painter_example/painter-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare painter runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run menu-example (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/03_menu_example/menu-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare menu runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run button-example (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/04_button_example/button-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare button runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run button-configurations-example (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/05_button_configurations_example/button-configurations-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare button-configurations runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run layout-absolute-example (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/06_layout_absolute_example/layout-absolute-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare layout-absolute runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run layout-grid-example (Windows via Wine)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "wine \"${workspaceFolder}/build/windows-mingw-w64/examples/07_layout_grid_example/layout-grid-example.exe\"",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Prepare layout-grid runtime (Wine DLLs)"
-        },
-        {
-            "name": "Run menu-example (Haiku via SSH)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./menu-example'",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy menu-example to Haiku"
-        },
-        {
-            "name": "Run painter (Haiku via SSH)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec ssh user@192.168.122.90 'cd /boot/home/Projects/${workspaceFolderBasename}/run && ./painter-example'",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Deploy painter to Haiku"
-        },
-        {
-            "name": "Run menu-example (macOS leia)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" menu",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build (macOS leia)"
-        },
-        {
-            "name": "Run painter (macOS leia)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/run.sh\" painter",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build (macOS leia)"
-        },
-        {
-            "name": "Debug menu-example (macOS leia, LLDB)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" menu",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build (macOS leia)"
-        },
-        {
-            "name": "Debug painter (macOS leia, LLDB)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "exec bash \"${workspaceFolder}/tools/macos-remote/debug.sh\" painter",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build (macOS leia)"
-        }
-    ],
-    "compounds": [
-        {
-            "name": "Run on Linux SDL2",
-            "configurations": ["Run menu-example (Linux, SDL2)", "Run painter (Linux, SDL2)", "Run button-example (Linux, SDL2)", "Run button-configurations-example (Linux, SDL2)", "Run layout-absolute-example (Linux, SDL2)", "Run layout-grid-example (Linux, SDL2)"]
-        },
-        {
-            "name": "Run on Linux X11",
-            "configurations": ["Run menu-example (Linux, X11)", "Run painter (Linux, X11)", "Run button-example (Linux, X11)", "Run button-configurations-example (Linux, X11)", "Run layout-absolute-example (Linux, X11)", "Run layout-grid-example (Linux, X11)"]
-        },
-        {
-            "name": "Debug on Linux",
-            "configurations": ["Run menu-example (Linux, SDL2)"]
-        },
-        {
-            "name": "Run on CDE (charlie, OpenMotif)",
-            "configurations": ["Run menu-example (OpenMotif, CDE charlie)", "Run painter (OpenMotif, CDE charlie)", "Run app-example (OpenMotif, CDE charlie)"]
-        },
-        {
-            "name": "Run on Linux GNUstep",
-            "configurations": ["Run menu-example (Linux, GNUstep)", "Run painter (Linux, GNUstep)"]
-        },
-        {
-            "name": "Debug on Windows",
-            "configurations": ["Run menu-example (Windows via Wine)", "Run painter (Windows via Wine)", "Run button-example (Windows via Wine)", "Run button-configurations-example (Windows via Wine)", "Run layout-absolute-example (Windows via Wine)", "Run layout-grid-example (Windows via Wine)"]
-        },
-        {
-            "name": "Run on Haiku",
-            "configurations": ["Run menu-example (Haiku via SSH)", "Run painter (Haiku via SSH)"]
-        },
-        {
-            "name": "Run on macOS (leia)",
-            "configurations": ["Run menu-example (macOS leia)", "Run painter (macOS leia)"]
-        },
-        {
-            "name": "Debug on macOS (leia)",
-            "configurations": ["Debug menu-example (macOS leia, LLDB)"]
+            "preLaunchTask": "Build Vision Debug (macOS leia)"
         }
     ]
 }

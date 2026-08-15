@@ -1,5 +1,0 @@
-add_executable(layout-absolute-example main.cpp)
-target_link_libraries(layout-absolute-example PRIVATE native)
-if(MSVC)
-    set_target_properties(layout-absolute-example PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
-endif()

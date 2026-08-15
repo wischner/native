@@ -1,12 +1,68 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 project(native LANGUAGES CXX)
 
-# Set the default C++ standard for everything
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(CTest)
 
-find_program(OBJCXX_COMPILER NAMES g++ clang++)
-set(CMAKE_OBJCXX_COMPILER ${OBJCXX_COMPILER})
+# Objective-C++ must be enabled at the project scope because its sources
+# are attached to the native target from platform subdirectories.
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
+# Keep every configure and build artifact under the approved root build
+# directory. This check applies only when native is the top-level project.
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    get_filename_component(native_source_dir
+        "${CMAKE_SOURCE_DIR}" REALPATH)
+    get_filename_component(native_binary_dir
+        "${CMAKE_BINARY_DIR}" REALPATH)
+    set(native_build_prefix "${native_source_dir}/build/")
+    string(FIND
+        "${native_binary_dir}/"
+        "${native_build_prefix}"
+        native_build_prefix_position)
+    if(NOT native_build_prefix_position EQUAL 0)
+        message(FATAL_ERROR
+            "Build directory must be inside ${native_source_dir}/build")
+    endif()
+endif()
+
+# Use the C++ version required by the architectural standard.
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_OBJCXX_STANDARD 20)
+set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+set(CMAKE_OBJCXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(NATIVE_ENABLE_DEVELOPER_CHECKS
+    "Enable full GCC warnings and hosted debug sanitizers"
+    ON)
+
+# An interface target applies the same diagnostics to the library and to
+# every program that links it. Cross-builds keep warnings but omit hosted
+# sanitizers, which are not guaranteed in target runtimes.
+add_library(native_developer_options INTERFACE)
+if(NATIVE_ENABLE_DEVELOPER_CHECKS AND
+   CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(native_developer_options INTERFACE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-pedantic>
+        $<$<COMPILE_LANGUAGE:OBJCXX>:-Wall;-Wextra;-pedantic>
+    )
+
+    if(NOT CMAKE_CROSSCOMPILING)
+        target_compile_options(native_developer_options INTERFACE
+            $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CXX>>:-g>
+            $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CXX>>:-fsanitize=address,undefined>
+            $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:OBJCXX>>:-g>
+            $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:OBJCXX>>:-fsanitize=address,undefined>
+        )
+        target_link_options(native_developer_options INTERFACE
+            $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+        )
+    endif()
+endif()
 
 # Detect if we are building on Haiku
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
@@ -22,7 +78,6 @@ if(UNIX AND NOT APPLE)
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
-    set(DOCKER_IMAGE_GNUSTEP "wischner/gcc-x86_64-linux-gnustep:${DOCKER_TAG}" CACHE STRING "Docker image for GNUstep builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
 
@@ -81,8 +136,6 @@ if(UNIX AND NOT APPLE)
             -DTOOLKIT=SDL2)
         add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
             -DTOOLKIT=MOTIF)
-        add_docker_cmake_build_target(docker-gnustep build/linux-gnustep ${DOCKER_IMAGE_GNUSTEP}
-            -DTOOLKIT=GNUSTEP)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/toolchain-mingw.cmake)
         add_docker_cmake_build_target(docker-haiku build/haiku ${DOCKER_IMAGE_HAIKU}
@@ -90,6 +143,9 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
-# Add subdirectories
+# Build the library before programs that consume it.
+add_subdirectory(lib/native)
 add_subdirectory(src)
-add_subdirectory(examples)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

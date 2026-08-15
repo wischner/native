@@ -9,12 +9,8 @@ fi
 APP_PATH=$1
 shift || true
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-
 RASTA_BIN=${RASTA_BIN:-/home/tstih/data/tstih/rasta/bin/rasta}
 GEM_LIB_DIR=${GEM_LIB_DIR:-/home/tstih/data/triglav-os/gem/bin}
-GEM_RUNTIME_BIN_DIR=${GEM_RUNTIME_BIN_DIR:-$SCRIPT_DIR/../third_party/gemix/runtime/bin}
-GEM_RUNTIME_MOUNT_ROOT=${GEM_RUNTIME_MOUNT_ROOT:-/home/tstih/data/triglav-os/gem}
 GEMIX_APP_IMAGE=${GEMIX_APP_IMAGE:-wischner/gcc-x86_64-gemix:latest}
 GEMIX_RUN_MODE=${GEMIX_RUN_MODE:-docker}
 
@@ -41,11 +37,6 @@ fi
 
 if [[ ! -x "$APP_PATH" ]]; then
     echo "missing app binary: $APP_PATH" >&2
-    exit 1
-fi
-
-if [[ ! -d "$GEM_RUNTIME_BIN_DIR/fonts" ]]; then
-    echo "missing GEMix runtime fonts directory: $GEM_RUNTIME_BIN_DIR/fonts" >&2
     exit 1
 fi
 
@@ -95,7 +86,6 @@ else
         -u "$(id -u):$(id -g)" \
         -v "$PWD":"$PWD" \
         -v /tmp:/tmp \
-        -v "$GEM_RUNTIME_BIN_DIR":"$GEM_RUNTIME_MOUNT_ROOT/bin":ro \
         -e GEM_TRACE_AES="${GEM_TRACE_AES:-}" \
         -e GEM_TRACE_DRAW="${GEM_TRACE_DRAW:-}" \
         -e GEM_TRACE_HID="${GEM_TRACE_HID:-}" \

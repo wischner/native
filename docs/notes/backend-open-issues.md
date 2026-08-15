@@ -11,7 +11,6 @@ This note lists backend-level open issues that are real today.
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
 - Build-tested but not yet runtime-tested in the current workflow:
   - Linux OpenMotif
-  - Linux GNUstep
 - Implemented but not yet runtime-tested in the current workflow:
   - Apple
 - Still in progress:

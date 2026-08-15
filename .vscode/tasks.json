@@ -1,512 +1,197 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-      // Linux Docker-backed CMake targets
-      {
-          "label": "CMake Configure (Docker Targets)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["-S", ".", "-B", "out", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
-          "problemMatcher": [],
-          "group": "build",
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker X11)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-x11"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker GEMix)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-gemix"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker SDL2)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-sdl2"],
-          "problemMatcher": "$gcc",
-          "group": { "kind": "build", "isDefault": true },
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker OpenMotif)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-openmotif"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker GNUstep)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-gnustep"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "CMake Build (Docker Win)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-win"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-
-      // Remote runtime: OpenMotif on CDE machine (charlie)
-      {
-          "label": "Sync source (OpenMotif charlie)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "set -e; rsync -az --delete --exclude .git --exclude build --exclude out --exclude .claude \"$PWD/\" tomaz@charlie:~/Projects/${workspaceFolderBasename}/"
-          ],
-          "problemMatcher": [],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Build native (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "tomaz@charlie",
-              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; cd \"$ROOT\"; cmake -S . -B build/tribblix-openmotif -G \"Unix Makefiles\" -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=MOTIF; cmake --build build/tribblix-openmotif -j$(getconf NPROCESSORS_ONLN 2>/dev/null || echo 2)"
-          ],
-          "problemMatcher": "$gcc",
-          "dependsOn": ["Sync source (OpenMotif charlie)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Deploy menu-example (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "tomaz@charlie",
-              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/03_menu_example/menu-example\" \"$ROOT/run/menu-example\""
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Build native (OpenMotif charlie)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Deploy painter (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "tomaz@charlie",
-              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/02_painter_example/painter-example\" \"$ROOT/run/painter-example\""
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Build native (OpenMotif charlie)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Deploy app-example (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "tomaz@charlie",
-              "set -e; ROOT=\"$HOME/Projects/${workspaceFolderBasename}\"; mkdir -p \"$ROOT/run\"; cp \"$ROOT/build/tribblix-openmotif/examples/01_app_example/app-example\" \"$ROOT/run/app-example\""
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Build native (OpenMotif charlie)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run menu-example (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "-tt",
-              "tomaz@charlie",
-              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./menu-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Deploy menu-example (OpenMotif charlie)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run painter (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "-tt",
-              "tomaz@charlie",
-              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./painter-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Deploy painter (OpenMotif charlie)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run app-example (OpenMotif charlie)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "-tt",
-              "tomaz@charlie",
-              "cd \"$HOME/Projects/${workspaceFolderBasename}/run\" && export DISPLAY=${DISPLAY:-:0} && ./app-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Deploy app-example (OpenMotif charlie)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-
-      {
-          "label": "Run painter (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/02_painter_example/painter-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare painter runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run menu-example (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/03_menu_example/menu-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare menu runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run button-example (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/04_button_example/button-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare button runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run button-configurations-example (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/05_button_configurations_example/button-configurations-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare button-configurations runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run layout-absolute-example (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/06_layout_absolute_example/layout-absolute-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare layout-absolute runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run layout-grid-example (Windows via Wine)",
-          "type": "shell",
-          "command": "wine",
-          "args": [
-              "${workspaceFolder}/build/windows-mingw-w64/examples/07_layout_grid_example/layout-grid-example.exe"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Prepare layout-grid runtime (Wine DLLs)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare painter runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/02_painter_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare menu runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/03_menu_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare button runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/04_button_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare button-configurations runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/05_button_configurations_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare layout-absolute runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/06_layout_absolute_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare layout-grid runtime (Wine DLLs)",
-          "type": "shell",
-          "command": "bash",
-          "args": [
-              "-lc",
-              "docker run --rm -u $(id -u):$(id -g) -v \"$PWD\":/src -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/examples/07_layout_grid_example/"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Win)"],
-          "os": { "linux": true }
-      },
-
-      // Haiku
-      {
-          "label": "CMake Build (Docker Haiku)",
-          "type": "shell",
-          "command": "cmake",
-          "args": ["--build", "out", "--target", "docker-haiku"],
-          "problemMatcher": "$gcc",
-          "group": "build",
-          "dependsOn": ["CMake Configure (Docker Targets)"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Prepare Haiku run dir",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "user@192.168.122.90",
-              "mkdir -p /boot/home/Projects/${workspaceFolderBasename}/run"
-          ],
-          "problemMatcher": [],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Deploy menu-example to Haiku",
-          "type": "shell",
-          "command": "scp",
-          "args": [
-              "${workspaceFolder}/build/haiku/examples/03_menu_example/menu-example",
-              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/menu-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Haiku)", "Prepare Haiku run dir"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Deploy painter to Haiku",
-          "type": "shell",
-          "command": "scp",
-          "args": [
-              "${workspaceFolder}/build/haiku/examples/02_painter_example/painter-example",
-              "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/painter-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["CMake Build (Docker Haiku)", "Prepare Haiku run dir"],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run menu-example (Haiku)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "user@192.168.122.90",
-              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./menu-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Deploy menu-example to Haiku"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run painter (Haiku)",
-          "type": "shell",
-          "command": "ssh",
-          "args": [
-              "user@192.168.122.90",
-              "cd /boot/home/Projects/${workspaceFolderBasename}/run && ./painter-example"
-          ],
-          "problemMatcher": [],
-          "dependsOn": ["Deploy painter to Haiku"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-
-      // macOS remote (leia)
-      {
-          "label": "Sync to macOS (leia)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/sync.sh"],
-          "problemMatcher": [],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Build (macOS leia)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/build.sh"],
-          "problemMatcher": [],
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run menu-example (macOS leia)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/run.sh", "menu"],
-          "problemMatcher": [],
-          "dependsOn": ["Build (macOS leia)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Run painter (macOS leia)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/run.sh", "painter"],
-          "problemMatcher": [],
-          "dependsOn": ["Build (macOS leia)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Debug menu-example (macOS leia, LLDB)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/debug.sh", "menu"],
-          "problemMatcher": [],
-          "dependsOn": ["Build (macOS leia)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Debug painter (macOS leia, LLDB)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/debug.sh", "painter"],
-          "problemMatcher": [],
-          "dependsOn": ["Build (macOS leia)"],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      },
-      {
-          "label": "Smoke Test (macOS leia, no quarantine)",
-          "type": "shell",
-          "command": "bash",
-          "args": ["${workspaceFolder}/tools/macos-remote/smoke-test.sh"],
-          "problemMatcher": [],
-          "presentation": {
-              "reveal": "always",
-              "panel": "shared"
-          },
-          "os": { "linux": true }
-      }
-
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake Configure Debug (Docker Targets)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                ".",
+                "-B",
+                "build/cmake",
+                "-G",
+                "Unix Makefiles",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "CMake Build Debug (Docker GEMix)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-gemix"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker X11)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-x11"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker SDL2)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-sdl2"],
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker OpenMotif)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build/cmake",
+                "--target",
+                "docker-openmotif"
+            ],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker Windows)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-win"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker Haiku)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-haiku"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "Prepare Vision Debug Runtime (Wine DLLs)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "docker run --rm -u \"$(id -u):$(id -g)\" -v \"${workspaceFolder}:/src\" -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/src/"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "CMake Build Debug (Docker Windows)"
+        },
+        {
+            "label": "Start Vision Debug Server (Wine)",
+            "type": "process",
+            "command": "${workspaceFolder}/tools/wine-debug-server.sh",
+            "args": [
+                "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
+                "31337"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "wine",
+                "pattern": {
+                    "regexp": "^(?!)$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Starting Wine GDB proxy .*$",
+                    "endsPattern": "^Wine GDB proxy ready at localhost:31337\\.$"
+                }
+            },
+            "dependsOn": "Prepare Vision Debug Runtime (Wine DLLs)"
+        },
+        {
+            "label": "Start Debug Target (Tribblix CDE)",
+            "type": "process",
+            "command": "${workspaceFolder}/tools/kvm-ensure-running.sh",
+            "args": ["Tribblix-CDE", "tomaz@charlie"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Sync Source (OpenMotif Tribblix CDE)",
+            "type": "shell",
+            "command": "rsync",
+            "args": [
+                "-az",
+                "--delete",
+                "--exclude",
+                ".git",
+                "--exclude",
+                "build",
+                "${workspaceFolder}/",
+                "tomaz@charlie:~/Projects/${workspaceFolderBasename}/"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Start Debug Target (Tribblix CDE)"
+        },
+        {
+            "label": "Build Vision Debug (OpenMotif Tribblix CDE)",
+            "type": "process",
+            "command": "ssh",
+            "args": [
+                "tomaz@charlie",
+                "cd $HOME/Projects/${workspaceFolderBasename} && PKG_CONFIG_PATH=/usr/lib/amd64/pkgconfig cmake -S . -B build/tribblix-openmotif-debug -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=MOTIF -DNATIVE_ENABLE_DEVELOPER_CHECKS=OFF -DCMAKE_CXX_FLAGS='-m64 -Wall -Wextra -pedantic' -DCMAKE_EXE_LINKER_FLAGS=-m64 -DCMAKE_LIBRARY_PATH=/usr/lib/amd64 && cmake --build build/tribblix-openmotif-debug"
+            ],
+            "problemMatcher": "$gcc",
+            "dependsOn": "Sync Source (OpenMotif Tribblix CDE)"
+        },
+        {
+            "label": "Start Debug Target (Haiku)",
+            "type": "process",
+            "command": "${workspaceFolder}/tools/kvm-ensure-running.sh",
+            "args": ["Haiku", "user@192.168.122.90"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Prepare Vision Debug Directory (Haiku)",
+            "type": "shell",
+            "command": "ssh",
+            "args": [
+                "user@192.168.122.90",
+                "mkdir -p /boot/home/Projects/${workspaceFolderBasename}/run"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Start Debug Target (Haiku)"
+        },
+        {
+            "label": "Deploy Vision Debug (Haiku)",
+            "type": "shell",
+            "command": "scp",
+            "args": [
+                "${workspaceFolder}/build/haiku/src/vision",
+                "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/vision"
+            ],
+            "problemMatcher": [],
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "CMake Build Debug (Docker Haiku)",
+                "Prepare Vision Debug Directory (Haiku)"
+            ]
+        },
+        {
+            "label": "Build Vision Debug (macOS leia)",
+            "type": "process",
+            "command": "${workspaceFolder}/tools/macos-remote/build.sh",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Smoke Test Vision Debug (macOS leia)",
+            "type": "process",
+            "command": "${workspaceFolder}/tools/macos-remote/smoke-test.sh",
+            "problemMatcher": [],
+            "dependsOn": "Build Vision Debug (macOS leia)"
+        }
+    ]
 }

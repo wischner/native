@@ -18,7 +18,7 @@ What does not belong here:
 - normal example-running instructions
 - speculative porting notes for unfinished backends
 
-The normal maintained workflow belongs in `docs/the-book/`.
+The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 
 ## Current notes
 

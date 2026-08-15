@@ -5,18 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./common.sh
 source "${SCRIPT_DIR}/common.sh"
 
-kind="${1:-painter}"
-case "${kind}" in
-    painter)
-        exe="${REMOTE_PAINTER_EXE}"
-        ;;
-    menu)
-        exe="${REMOTE_MENU_EXE}"
-        ;;
-    *)
-        echo "Usage: $0 [painter|menu]" >&2
-        exit 2
-        ;;
-esac
-
-ssh_exec_tty "set -euo pipefail; cd '${REMOTE_BUILD_DIR}'; exec lldb '${exe}'"
+ssh_exec_tty \
+    "set -euo pipefail; \
+if ! /usr/sbin/DevToolsSecurity -status 2>&1 | grep -q enabled; then \
+  echo 'Remote LLDB permission is disabled.' >&2; \
+  echo 'Run once on the Mac: sudo /usr/sbin/DevToolsSecurity -enable' >&2; \
+  exit 1; \
+fi; \
+cd '${REMOTE_BUILD_DIR}'; \
+exec lldb -o run '${REMOTE_VISION_EXE}'"
