@@ -24,6 +24,7 @@ namespace linux::openmotif
     {
         Display *display;
         Font xfont;
+        XFontStruct *metrics;
         bool owned;
     };
 

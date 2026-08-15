@@ -52,6 +52,10 @@ the public library API and must not contain private library implementation.
 ## Build system rules
 
 - The build system entry point is `CMakeLists.txt`.
+- CMake toolchain files live in `scripts/cmake/`.
+- Developer automation lives in purpose-specific directories under
+  `scripts/`, such as `scripts/linux/`, `scripts/windows/`, and
+  `scripts/macos/remote/`.
 - Do not add a new top-level `Makefile` for normal project orchestration.
 - All builds must run through Docker-backed CMake targets.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
@@ -104,10 +108,14 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ### X11 backend
 
-- Files under `lib/native/toolkits/x11/` are for plain X11 code.
+- Files under `lib/native/toolkits/x11/` are for Xlib, Xt, and Athena code.
+- Use Athena widgets for standard controls and menus instead of emulating
+  their painting and input behavior with custom Xlib windows.
 - Do not include Motif headers in the X11 backend.
-- If a file only needs Xlib/Xutil/XRandR types, include only the matching X11 headers.
-- The Docker X11 image must be able to compile the X11 backend without OpenMotif installed.
+- If a file only needs Xlib/Xutil/XRandR types, include only the matching X11
+  headers.
+- The Docker X11 image must provide Xt and Athena, and must compile the X11
+  backend without OpenMotif installed.
 
 ### SDL2 backend
 
@@ -126,7 +134,7 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 - If resource lookup fails, fall back to explicit defaults:
   - paper = white
   - ink = black
-- Keep the plain X11 backend independent from Motif headers and libraries.
+- Keep the X11/Athena backend independent from Motif headers and libraries.
 
 ## Windows backend rules
 

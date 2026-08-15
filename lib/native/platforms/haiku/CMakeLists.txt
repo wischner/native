@@ -1,6 +1,6 @@
 # Collect all the source files for the program
 set(SRC_FILES
-    control_paint_backend.cpp
+    theme.cpp
     main.cpp
     globals.cpp
     app.cpp
@@ -12,6 +12,7 @@ set(SRC_FILES
     gpx_wnd.cpp
     gpx_img.cpp
     img.cpp
+    image_codec.cpp
     menu.cpp
     button.cpp
 )
@@ -28,9 +29,15 @@ find_library(HAIKU_LIB_TRACKER
     REQUIRED
 )
 
+find_library(HAIKU_LIB_TRANSLATION
+    NAMES translation
+    REQUIRED
+)
+
 # Link against the BeAPI and Tracker libraries.
 target_link_libraries(native
     PRIVATE
         ${HAIKU_LIB_BE}
         ${HAIKU_LIB_TRACKER}
+        ${HAIKU_LIB_TRANSLATION}
 )

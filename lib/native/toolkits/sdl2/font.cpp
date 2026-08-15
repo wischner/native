@@ -10,6 +10,7 @@
 #include <SDL2/SDL_ttf.h>
 #endif
 #include <cstdio>
+#include <algorithm>
 #include <string>
 
 #include <native.h>
@@ -180,9 +181,75 @@ const font_t &font_t::stock(font_role role) {
                 s[(int)d.role]._spec.size = d.size;
             }
         }
+#else
+        for (int index = 0; index < 5; ++index) {
+            s[index]._id = static_cast<std::uint32_t>(index + 1);
+        }
 #endif
+        for (int index = 0; index < 5; ++index) {
+            if (!s[index]._id) {
+                s[index]._id = 0x80000000U +
+                    static_cast<std::uint32_t>(index);
+            }
+        }
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    if (!_id)
+        return {};
+#ifdef HAVE_SDL2_TTF
+    auto *binding = linux::sdl2::font_bindings.object_from_handle(_id);
+    if (binding && binding->ttf_font) {
+        const int height = TTF_FontHeight(binding->ttf_font);
+        const int line_skip = TTF_FontLineSkip(binding->ttf_font);
+        int min_x = 0;
+        int max_x = 0;
+        int min_y = 0;
+        int max_y = 0;
+        int advance = 0;
+        TTF_GlyphMetrics(
+            binding->ttf_font,
+            static_cast<Uint16>('W'),
+            &min_x,
+            &max_x,
+            &min_y,
+            &max_y,
+            &advance);
+        return {
+            TTF_FontAscent(binding->ttf_font),
+            std::max(0, -TTF_FontDescent(binding->ttf_font)),
+            std::max(0, line_skip - height),
+            line_skip,
+            advance};
+    }
+#endif
+    return {7, 0, 0, 7, 6};
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    if (!_id)
+        return {};
+    const font_metrics metrics = get_metrics();
+#ifdef HAVE_SDL2_TTF
+    auto *binding = linux::sdl2::font_bindings.object_from_handle(_id);
+    if (binding && binding->ttf_font && !text.empty()) {
+        int width = 0;
+        int height = 0;
+        if (TTF_SizeUTF8(
+                binding->ttf_font,
+                text.c_str(),
+                &width,
+                &height) == 0) {
+            return {width, metrics.height, width};
+        }
+    }
+#endif
+    const int width = text.empty()
+        ? 0
+        : static_cast<int>(text.size()) * 6 - 1;
+    return {width, metrics.height, width};
 }
 
 } // namespace native

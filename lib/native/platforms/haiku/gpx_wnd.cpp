@@ -41,8 +41,8 @@ static void apply_bview_state(BView *view, native::gpx_wnd *self, haiku::haiku_g
     BRect clip_rect(
         self->get_clip().p.x,
         self->get_clip().p.y,
-        self->get_clip().x2(),
-        self->get_clip().y2());
+        self->get_clip().x2() - 1,
+        self->get_clip().y2() - 1);
     BRegion region(clip_rect);
     view->ConstrainClippingRegion(&region);
 }
@@ -98,6 +98,8 @@ namespace native
 
             haiku::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -129,7 +131,9 @@ namespace native
             rgb_color c = {color.r, color.g, color.b, color.a};
             view->SetHighColor(c);
 
-            BRect rect(_clip.p.x, _clip.p.y, _clip.x2(), _clip.y2());
+            BRect rect(
+                _clip.p.x, _clip.p.y,
+                _clip.x2() - 1, _clip.y2() - 1);
             view->FillRect(rect);
         });
 
@@ -159,7 +163,7 @@ namespace native
         with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
 
-            BRect rect(r.p.x, r.p.y, r.x2(), r.y2());
+            BRect rect(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
 
             if (filled)
                 view->FillRect(rect);
@@ -171,6 +175,8 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         auto *cache = haiku::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache || !cache->view)
             return *this;
@@ -181,7 +187,9 @@ namespace native
             auto *fh = haiku::font_bindings.object_from_handle(get_font().id());
             if (fh) view->SetFont(&fh->bfont);
 
-            view->DrawString(text.c_str(), BPoint(p.x, p.y));
+            view->DrawString(
+                text.c_str(),
+                BPoint(p.x, p.y + get_font_metrics().ascent));
         });
 
         return *this;
@@ -200,10 +208,17 @@ namespace native
             if (!bitmap.IsValid())
                 return;
 
-            std::memcpy(
-                bitmap.Bits(),
-                src.pixels(),
-                static_cast<std::size_t>(src.w()) * src.h() * 4);
+            auto *base = static_cast<std::uint8_t *>(bitmap.Bits());
+            for (int y = 0; y < src.h(); ++y) {
+                auto *row = base + y * bitmap.BytesPerRow();
+                for (int x = 0; x < src.w(); ++x) {
+                    const rgba pixel = src.pixels()[y * src.w() + x];
+                    row[x * 4] = pixel.b;
+                    row[x * 4 + 1] = pixel.g;
+                    row[x * 4 + 2] = pixel.r;
+                    row[x * 4 + 3] = pixel.a;
+                }
+            }
             view->DrawBitmap(&bitmap, BPoint(dst.x, dst.y));
         });
 

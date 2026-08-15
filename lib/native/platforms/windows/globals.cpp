@@ -50,8 +50,8 @@ namespace windows
         RECT rc{
             static_cast<LONG>(r.p.x),
             static_cast<LONG>(r.p.y),
-            static_cast<LONG>(r.x2() + 1),
-            static_cast<LONG>(r.y2() + 1)
+            static_cast<LONG>(r.x2()),
+            static_cast<LONG>(r.y2())
         };
         return rc;
     }

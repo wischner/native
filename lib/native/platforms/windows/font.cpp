@@ -6,6 +6,7 @@
 //
 
 #include <windows.h>
+#include <algorithm>
 #include <cstring>
 
 #include <native.h>
@@ -116,6 +117,59 @@ const font_t &font_t::stock(font_role role) {
         s[(int)font_role::fixed] = make(fixed);
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    if (!_id)
+        return {};
+    HDC dc = GetDC(nullptr);
+    if (!dc)
+        return {};
+    auto *binding = windows::font_bindings.object_from_handle(_id);
+    HFONT font = binding && binding->hfont
+        ? binding->hfont
+        : static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+    HGDIOBJ previous = SelectObject(dc, font);
+    TEXTMETRICW metrics = {};
+    const bool measured = GetTextMetricsW(dc, &metrics) != FALSE;
+    SelectObject(dc, previous);
+    ReleaseDC(nullptr, dc);
+    if (!measured)
+        return {};
+    return {
+        metrics.tmAscent,
+        metrics.tmDescent,
+        metrics.tmExternalLeading,
+        metrics.tmHeight + metrics.tmExternalLeading,
+        metrics.tmMaxCharWidth};
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    if (!_id)
+        return {};
+    const font_metrics metrics = get_metrics();
+    if (text.empty())
+        return {0, metrics.height, 0};
+    HDC dc = GetDC(nullptr);
+    if (!dc)
+        return {};
+    auto *binding = windows::font_bindings.object_from_handle(_id);
+    HFONT font = binding && binding->hfont
+        ? binding->hfont
+        : static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+    HGDIOBJ previous = SelectObject(dc, font);
+    const std::wstring wide = windows::utf8_to_wide(text);
+    SIZE extent = {};
+    const bool measured = GetTextExtentPoint32W(
+        dc,
+        wide.data(),
+        static_cast<int>(wide.size()),
+        &extent) != FALSE;
+    SelectObject(dc, previous);
+    ReleaseDC(nullptr, dc);
+    if (!measured)
+        return {};
+    return {extent.cx, metrics.height, extent.cx};
 }
 
 } // namespace native

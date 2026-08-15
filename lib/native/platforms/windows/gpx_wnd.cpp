@@ -6,6 +6,7 @@
 //
 
 #include <stdexcept>
+#include <vector>
 #include <windows.h>
 
 #include <native.h>
@@ -43,8 +44,8 @@ static void apply_gdi_state(HDC hdc, native::gpx_wnd *self, windows::win_gpx *ca
     HRGN rgn = CreateRectRgn(
         self->get_clip().p.x,
         self->get_clip().p.y,
-        self->get_clip().x2() + 1,
-        self->get_clip().y2() + 1);
+        self->get_clip().x2(),
+        self->get_clip().y2());
     SelectClipRgn(hdc, rgn);
     DeleteObject(rgn);
 }
@@ -60,6 +61,8 @@ namespace native
 
         if (!windows::wnd_gpx_bindings.object_from_handle(_wnd))
             windows::wnd_gpx_bindings.register_pair(_wnd, new windows::win_gpx());
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -92,7 +95,7 @@ namespace native
         COLORREF c = RGB(color.r, color.g, color.b);
         HBRUSH brush = CreateSolidBrush(c);
 
-        RECT rect = {_clip.p.x, _clip.p.y, _clip.x2() + 1, _clip.y2() + 1};
+        RECT rect = {_clip.p.x, _clip.p.y, _clip.x2(), _clip.y2()};
         FillRect(hdc, &rect, brush);
 
         DeleteObject(brush);
@@ -122,11 +125,11 @@ namespace native
         apply_gdi_state(hdc, this, cache);
 
         if (filled) {
-            RECT rect = {r.p.x, r.p.y, r.x2() + 1, r.y2() + 1};
+            RECT rect = {r.p.x, r.p.y, r.x2(), r.y2()};
             FillRect(hdc, &rect, cache->brush);
         }
         else {
-            Rectangle(hdc, r.p.x, r.p.y, r.x2() + 1, r.y2() + 1);
+            Rectangle(hdc, r.p.x, r.p.y, r.x2(), r.y2());
         }
 
         ReleaseDC(hwnd, hdc);
@@ -134,6 +137,8 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         HDC hdc = GetDC(hwnd);
         auto *cache = windows::wnd_gpx_bindings.object_from_handle(_wnd);
@@ -148,7 +153,13 @@ namespace native
         SetTextColor(hdc, RGB(c.r, c.g, c.b));
         SetBkMode(hdc, TRANSPARENT);
 
-        TextOutA(hdc, p.x, p.y, text.c_str(), text.length());
+        const std::wstring wide = windows::utf8_to_wide(text);
+        TextOutW(
+            hdc,
+            p.x,
+            p.y,
+            wide.data(),
+            static_cast<int>(wide.size()));
 
         ReleaseDC(hwnd, hdc);
         return *this;
@@ -170,12 +181,23 @@ namespace native
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        // Draw DIB directly
+        std::vector<std::uint8_t> bgra(
+            static_cast<std::size_t>(src.w()) * src.h() * 4);
+        for (std::size_t index = 0;
+             index < static_cast<std::size_t>(src.w()) * src.h();
+             ++index) {
+            bgra[index * 4] = src.pixels()[index].b;
+            bgra[index * 4 + 1] = src.pixels()[index].g;
+            bgra[index * 4 + 2] = src.pixels()[index].r;
+            bgra[index * 4 + 3] = src.pixels()[index].a;
+        }
+
+        // Draw DIB directly.
         StretchDIBits(
             hdc,
             dst.x, dst.y, src.w(), src.h(),
             0, 0, src.w(), src.h(),
-            src.pixels(),
+            bgra.data(),
             &bmi,
             DIB_RGB_COLORS,
             SRCCOPY);

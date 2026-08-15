@@ -4,6 +4,9 @@ This chapter expands Section 6 of the architectural standards. Native uses one
 portable drawing interface while allowing each backend to prepare, cache, and
 present graphics in the way its platform requires.
 
+For the application-facing operation list and complete window/image examples,
+see [Drawing Primitives](drawing-primitives.md).
+
 ## The `gpx` interface
 
 `gpx` is the abstract drawing interface visible to application code. It stores
@@ -24,6 +27,17 @@ graphics.set_ink(native::rgba(20, 40, 80, 255))
         .draw_line({10, 10}, {100, 60})
         .draw_rect({20, 20, 80, 40});
 ```
+
+The active font can be measured through the same context before drawing:
+
+```cpp
+const native::font_metrics line = graphics.get_font_metrics();
+const native::text_metrics run = graphics.measure_text("editable text");
+const native::text_metrics caret = graphics.measure_character(U'x');
+```
+
+`line.height` supplies line spacing, `run.width` supplies the painted run
+bounds, and `caret.advance` supplies cursor movement.
 
 An implementation can map these operations to a native graphics API or to
 portable image-buffer drawing. Native handles and cached drawing objects stay
@@ -99,6 +113,22 @@ reference as callback-scoped is therefore required on every backend.
 created context, so callers may use the returned reference while the image
 remains alive. The context still borrows its target and must not outlive the
 image.
+
+Images can be decoded from PNG or JPEG files and memory, painted through
+`get_gpx()`, and encoded again:
+
+```cpp
+native::img icon = native::img::load("icon.png");
+icon.get_gpx().set_ink({220, 40, 40, 255})
+              .draw_rect({1, 1, 12, 12});
+icon.save("edited.jpg", 92);
+
+std::vector<std::uint8_t> png =
+    icon.encode(native::image_format::png);
+```
+
+PNG retains alpha. JPEG output uses the requested quality from 1 through 100
+and has no alpha channel.
 
 ## Invalid rectangles and clipping
 

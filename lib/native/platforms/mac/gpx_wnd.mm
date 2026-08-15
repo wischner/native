@@ -21,19 +21,22 @@ static void apply_cocoa_state(
 
     CGContextRef cg_context = (CGContextRef)[context CGContext];
 
-    // Set stroke color if changed
-    if (cache->current_fg != self->get_ink()) {
-        native::rgba c = self->get_ink();
-        CGContextSetRGBStrokeColor(cg_context, c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0);
-        CGContextSetRGBFillColor(cg_context, c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0);
-        cache->current_fg = self->get_ink();
-    }
-
-    // Set line width if changed
-    if (cache->current_thickness != self->get_pen()) {
-        CGContextSetLineWidth(cg_context, self->get_pen());
-        cache->current_thickness = self->get_pen();
-    }
+    native::rgba c = self->get_ink();
+    CGContextSetRGBStrokeColor(
+        cg_context,
+        c.r / 255.0,
+        c.g / 255.0,
+        c.b / 255.0,
+        c.a / 255.0);
+    CGContextSetRGBFillColor(
+        cg_context,
+        c.r / 255.0,
+        c.g / 255.0,
+        c.b / 255.0,
+        c.a / 255.0);
+    CGContextSetLineWidth(cg_context, self->get_pen());
+    cache->current_fg = self->get_ink();
+    cache->current_thickness = self->get_pen();
 
     // Set clip rectangle
     CGRect clip_rect = CGRectMake(
@@ -60,6 +63,8 @@ namespace native
             cache->view = [nswin contentView];
             mac::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -91,6 +96,8 @@ namespace native
 
         NSGraphicsContext *context = [NSGraphicsContext currentContext];
         CGContextRef cg_context = (CGContextRef)[context CGContext];
+        CGContextSaveGState(cg_context);
+        apply_cocoa_state(context, this, cache);
 
         // Set fill color
         CGContextSetRGBFillColor(
@@ -103,6 +110,7 @@ namespace native
         // Fill rectangle
         CGRect rect = CGRectMake(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
         CGContextFillRect(cg_context, rect);
+        CGContextRestoreGState(cg_context);
 
         [view unlockFocus];
         [view setNeedsDisplay:YES];
@@ -118,14 +126,16 @@ namespace native
         [view lockFocus];
 
         NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        apply_cocoa_state(context, this, cache);
         CGContextRef cg_context = (CGContextRef)[context CGContext];
+        CGContextSaveGState(cg_context);
+        apply_cocoa_state(context, this, cache);
 
         // Draw line
         CGContextBeginPath(cg_context);
         CGContextMoveToPoint(cg_context, from.x, from.y);
         CGContextAddLineToPoint(cg_context, to.x, to.y);
         CGContextStrokePath(cg_context);
+        CGContextRestoreGState(cg_context);
 
         [view unlockFocus];
         [view setNeedsDisplay:YES];
@@ -141,8 +151,9 @@ namespace native
         [view lockFocus];
 
         NSGraphicsContext *context = [NSGraphicsContext currentContext];
-        apply_cocoa_state(context, this, cache);
         CGContextRef cg_context = (CGContextRef)[context CGContext];
+        CGContextSaveGState(cg_context);
+        apply_cocoa_state(context, this, cache);
 
         CGRect rect = CGRectMake(r.p.x, r.p.y, r.d.w, r.d.h);
 
@@ -150,6 +161,7 @@ namespace native
             CGContextFillRect(cg_context, rect);
         else
             CGContextStrokeRect(cg_context, rect);
+        CGContextRestoreGState(cg_context);
 
         [view unlockFocus];
         [view setNeedsDisplay:YES];
@@ -157,12 +169,19 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         auto *cache = mac::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache || !cache->view)
             return *this;
 
         NSView *view = cache->view;
         [view lockFocus];
+
+        NSGraphicsContext *context = [NSGraphicsContext currentContext];
+        CGContextRef cg_context = (CGContextRef)[context CGContext];
+        CGContextSaveGState(cg_context);
+        apply_cocoa_state(context, this, cache);
 
         NSString *ns_text = [NSString stringWithUTF8String:text.c_str()];
 
@@ -181,6 +200,7 @@ namespace native
         };
 
         [ns_text drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attributes];
+        CGContextRestoreGState(cg_context);
 
         [view unlockFocus];
         [view setNeedsDisplay:YES];
@@ -195,26 +215,44 @@ namespace native
         NSView *view = cache->view;
         [view lockFocus];
 
-        // Create CGImage from RGBA pixel data
+        // Create a straight-alpha CGImage from Native RGBA pixel data.
         CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
-        CGContextRef bitmap_context = CGBitmapContextCreate(
-            const_cast<rgba *>(src.pixels()),
-            src.w(), src.h(), 8, src.w() * 4,
-            color_space,
-            kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-
-        CGImageRef cg_image = CGBitmapContextCreateImage(bitmap_context);
+        CGDataProviderRef provider = CGDataProviderCreateWithData(
+            nullptr,
+            src.pixels(),
+            static_cast<std::size_t>(src.w()) * src.h() * sizeof(rgba),
+            nullptr);
+        CGImageRef cg_image = provider
+            ? CGImageCreate(
+                  src.w(), src.h(), 8, 32, src.w() * sizeof(rgba),
+                  color_space,
+                  static_cast<CGBitmapInfo>(kCGImageAlphaLast) |
+                      static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big),
+                  provider,
+                  nullptr,
+                  false,
+                  kCGRenderingIntentDefault)
+            : nullptr;
+        if (provider)
+            CGDataProviderRelease(provider);
+        if (!cg_image) {
+            CGColorSpaceRelease(color_space);
+            [view unlockFocus];
+            return *this;
+        }
 
         NSGraphicsContext *context = [NSGraphicsContext currentContext];
         CGContextRef cg_context = (CGContextRef)[context CGContext];
+        CGContextSaveGState(cg_context);
+        apply_cocoa_state(context, this, cache);
 
         // Draw image
         CGRect rect = CGRectMake(dst.x, dst.y, src.w(), src.h());
         CGContextDrawImage(cg_context, rect, cg_image);
+        CGContextRestoreGState(cg_context);
 
         // Cleanup
         CGImageRelease(cg_image);
-        CGContextRelease(bitmap_context);
         CGColorSpaceRelease(color_space);
 
         [view unlockFocus];

@@ -3,6 +3,17 @@ project(native LANGUAGES CXX)
 
 include(CTest)
 
+# build/cmake is the dependency-free host control tree for Docker targets.
+# Backend libraries and programs are configured in their own build trees
+# inside the selected images.
+set(native_docker_control_default OFF)
+if(CMAKE_BINARY_DIR STREQUAL "${CMAKE_SOURCE_DIR}/build/cmake")
+    set(native_docker_control_default ON)
+endif()
+option(NATIVE_DOCKER_CONTROL_ONLY
+    "Configure only the host-side Docker orchestration targets"
+    ${native_docker_control_default})
+
 # Objective-C++ must be enabled at the project scope because its sources
 # are attached to the native target from platform subdirectories.
 if(APPLE)
@@ -137,10 +148,14 @@ if(UNIX AND NOT APPLE)
         add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
             -DTOOLKIT=MOTIF)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
-            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/toolchain-mingw.cmake)
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-mingw.cmake)
         add_docker_cmake_build_target(docker-haiku build/haiku ${DOCKER_IMAGE_HAIKU}
-            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/toolchain-haiku.cmake)
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-haiku.cmake)
     endif()
+endif()
+
+if(NATIVE_DOCKER_CONTROL_ONLY)
+    return()
 endif()
 
 # Build the library before programs that consume it.

@@ -4,11 +4,15 @@ This chapter expands Section 7 of the architectural standards. Custom drawing
 that represents a familiar control should use the public `native::theme`
 facade instead of copying the appearance of one operating system.
 
+For a table of the available control parts, state fields, and application
+examples, see [Drawing Primitives](drawing-primitives.md#themed-control-primitives).
+
 ## Semantic drawing
 
 The theme API describes what is being drawn rather than how one toolkit draws
-it. Its primitives include button faces, frames and labels, menu bars and menu
-items, popup frames, and list items.
+it. Its primitives include complete buttons, menu bars and menu items, popup
+frames, and list items. The backend decides how each primitive is decomposed
+for its native painter.
 
 Interaction is also expressed semantically:
 
@@ -26,16 +30,16 @@ widths, widget classes, or theme-part identifiers.
 
 ## Borrowed graphics context
 
-A theme object wraps a borrowed `gpx &`:
+A theme object is created by the active backend around a borrowed `gpx &`:
 
 ```cpp
 bool handle_paint(native::wnd_paint_event event) {
-    native::theme painter(event.g);
+    auto painter = native::theme::create(event.g);
     native::theme::state state;
     state.hot = pointer_inside;
     state.pressed = button_down;
 
-    painter.draw_button(
+    painter->draw_button(
         native::rect(20, 20, 120, 32),
         "Continue",
         state);
@@ -43,7 +47,8 @@ bool handle_paint(native::wnd_paint_event event) {
 }
 ```
 
-The theme object does not own the context. When it is constructed around a
+The returned object implements the abstract `theme` interface for the active
+platform or toolkit and does not own the context. When it is created around a
 paint-event context, both are callback-scoped and must not be stored.
 
 ## Native rendering first
@@ -63,7 +68,8 @@ A suitable native primitive is not always available. It may be unable to draw
 into an image, the toolkit may not expose the requested part, or the selected
 backend may emulate that control.
 
-In that case, the backend uses portable `gpx` operations. The fallback must:
+In that case, the backend implementation uses portable `gpx` operations. The
+fallback remains in that platform or toolkit directory and must:
 
 - Support the same semantic states.
 - Remain legible and usable.
@@ -103,7 +109,7 @@ need backend-specific repair code after drawing a theme primitive.
 
 Adding a public primitive changes the cross-platform contract. The work is:
 
-1. Add the semantic operation and any portable state to the shared interface.
+1. Add the semantic operation and any portable state to the abstract interface.
 2. Define behavior for every state combination that the operation accepts.
 3. Implement native drawing where the backend can support the target.
 4. Implement or reuse a portable `gpx` fallback everywhere else.

@@ -7,10 +7,9 @@
 
 #pragma once
 
-#include <string>
 #include <vector>
-#include <utility>
 
+#include <X11/Intrinsic.h>
 #include <X11/Xlib.h>
 
 #include <native.h>
@@ -18,9 +17,13 @@
 
 namespace linux::x11
 {
-    // Xlib callbacks carry handles, so process-wide registries recover
+    // Xt callbacks carry widgets, so process-wide registries recover
     // the corresponding C++ objects during event dispatch.
-    extern native::bindings<Window, native::wnd *> wnd_bindings;
+    extern XtAppContext app_instance;
+    extern bool exit_requested;
+    extern native::bindings<Widget, native::wnd *> wnd_bindings;
+    extern native::bindings<Widget, native::wnd *> shell_bindings;
+    extern native::bindings<Widget, native::wnd *> main_wnd_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
 
@@ -29,6 +32,7 @@ namespace linux::x11
     {
         Display *display;
         Font xfont;
+        XFontStruct *metrics;
         bool owned;  // if true, XUnloadFont on destruction
     };
 
@@ -50,50 +54,29 @@ namespace linux::x11
     extern native::bindings<native::wnd *, x11_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, x11_font *> font_bindings;
 
-    static constexpr int menu_bar_height = 20;
-
-    struct x11_menu {
-        Window bar_win   = 0;
-        Window popup_win = 0;
-        GC     gc        = nullptr;
+    // Carries a portable menu command into an Athena callback.
+    struct xaw_menu_callback
+    {
         native::app_wnd *owner = nullptr;
-        unsigned long bar_bg = 0xD4D0C8UL;
-        unsigned long border_light = 0;
-        unsigned long border_dark = 0;
-        unsigned long text_fg = 0;
-        unsigned long select_bg = 0x000080UL;
-        unsigned long select_fg = 0;
-        struct top_entry {
-            std::string title;
-            std::vector<std::pair<int, std::string>> items;
-            int x0 = 0, x1 = 0;
-        };
-        std::vector<top_entry> tops;
-        int open_idx = -1;
-        int hover_top = -1;
-        int hover_item = -1;
+        int item_id = 0;
     };
 
-    // Translate an X event targeting an emulated menu bar or popup.
-    void handle_menu_bar_event(x11_menu *menu, const XEvent &event);
-
-    extern native::bindings<Window,   x11_menu *> menu_bar_bindings;
-    extern native::bindings<uint32_t, x11_menu *> menu_bindings;
-
-    struct x11_button
+    struct xaw_menu
     {
-        Window win = 0;
-        GC gc = nullptr;
+        Widget menu_bar = nullptr;
+        native::app_wnd *owner = nullptr;
+        std::vector<xaw_menu_callback *> callbacks;
+    };
+
+    extern native::bindings<uint32_t, xaw_menu *> menu_bindings;
+
+    struct xaw_button
+    {
+        Widget widget = nullptr;
         native::button *owner = nullptr;
-        bool hover = false;
-        bool pressed = false;
     };
 
     extern native::bindings<
         native::button *,
-        x11_button *> button_bindings;
-    // Translate an X event targeting an emulated button.
-    void handle_button_event(
-        native::button *button,
-        const XEvent &event);
+        xaw_button *> button_bindings;
 }

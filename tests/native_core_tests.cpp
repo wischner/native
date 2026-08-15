@@ -8,19 +8,26 @@
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 
-#include <native/control_paint.h>
 #include <native/geometry.h>
 #include <native/signal.h>
+#include <native/theme.h>
 #include <bindings.h>
 
 namespace
 {
     static_assert(
-        std::is_same_v<native::theme, native::control_paint>,
-        "theme must expose the portable control painter");
+        std::is_abstract_v<native::theme>,
+        "theme must remain a backend-implemented interface");
+    static_assert(
+        std::is_same_v<
+            decltype(native::theme::create(std::declval<native::gpx &>())),
+            std::unique_ptr<native::theme>>,
+        "theme factory must return the abstract interface");
 
     int failure_count = 0;
 

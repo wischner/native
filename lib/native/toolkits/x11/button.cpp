@@ -1,208 +1,99 @@
 //
-// Implements the X11 button-control backend.
+// Implements X11 buttons with the Athena Command widget. Athena owns the
+// button appearance, pointer state, keyboard translations, and activation.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
 
 #include <stdexcept>
-#include <utility>
 
-#include <X11/Xlib.h>
+#include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
+#include <X11/Xaw/Command.h>
+#include <X11/Xaw/Form.h>
 
 #include <native.h>
 
 #include "globals.h"
 
-namespace linux::x11
+namespace
 {
-    static void ensure_button_backbuffer(native::button *owner, int w, int h) {
-        if (!owner || !cached_display)
-            return;
-
-        auto *cache = wnd_gpx_bindings.object_from_handle(owner);
-        Window win = wnd_bindings.handle_from_object(owner);
-        if (!cache || !win || !cache->backbuffer)
-            return;
-
-        if (cache->buf_w == w && cache->buf_h == h)
-            return;
-
-        int screen = DefaultScreen(cached_display);
-        XFreePixmap(cached_display, cache->backbuffer);
-        cache->backbuffer = XCreatePixmap(
-            cached_display, win,
-            static_cast<unsigned int>(w),
-            static_cast<unsigned int>(h),
-            DefaultDepth(cached_display, screen));
-        cache->buf_w = w;
-        cache->buf_h = h;
+    void button_activate(
+        Widget,
+        XtPointer client_data,
+        XtPointer) {
+        auto *owner = static_cast<native::button *>(client_data);
+        if (owner)
+            owner->on_click.emit();
     }
-
-    static void draw_button(x11_button *b) {
-        if (!b || !cached_display || !b->win || !b->gc || !b->owner)
-            return;
-
-        XWindowAttributes attrs;
-        XGetWindowAttributes(cached_display, b->win, &attrs);
-
-        const int w = attrs.width;
-        const int h = attrs.height;
-        ensure_button_backbuffer(b->owner, w, h);
-
-        auto &g = b->owner->get_gpx();
-        g.set_clip(native::rect(0, 0,
-                                static_cast<native::dim>(w),
-                                static_cast<native::dim>(h)));
-
-        native::control_paint painter(g);
-        native::control_paint::state st;
-        st.hot = b->hover;
-        st.pressed = b->pressed;
-        painter.draw_button(native::rect(0, 0,
-                                         static_cast<native::dim>(w),
-                                         static_cast<native::dim>(h)),
-                            b->owner->get_text(),
-                            st);
-
-        auto *cache = wnd_gpx_bindings.object_from_handle(b->owner);
-        if (cache && cache->backbuffer && cache->gc) {
-            XCopyArea(cached_display,
-                      cache->backbuffer,
-                      b->win,
-                      cache->gc,
-                      0, 0,
-                      static_cast<unsigned int>(w),
-                      static_cast<unsigned int>(h),
-                      0, 0);
-        }
-
-        XFlush(cached_display);
-    }
-
-    void handle_button_event(native::button *b, const XEvent &e) {
-        auto *h = button_bindings.object_from_handle(b);
-        if (!h)
-            return;
-
-        switch (e.type) {
-        case Expose:
-            if (e.xexpose.count == 0)
-                draw_button(h);
-            break;
-
-        case ConfigureNotify:
-            draw_button(h);
-            break;
-
-        case EnterNotify:
-            h->hover = true;
-            draw_button(h);
-            break;
-
-        case LeaveNotify:
-            h->hover = false;
-            draw_button(h);
-            break;
-
-        case ButtonPress:
-            if (e.xbutton.button == Button1) {
-                h->pressed = true;
-                draw_button(h);
-            }
-            break;
-
-        case ButtonRelease:
-            if (e.xbutton.button == Button1) {
-                const bool was_pressed = h->pressed;
-                h->pressed = false;
-                draw_button(h);
-
-                if (was_pressed) {
-                    XWindowAttributes attrs;
-                    XGetWindowAttributes(cached_display, h->win, &attrs);
-                    if (e.xbutton.x >= 0 && e.xbutton.y >= 0 &&
-                        e.xbutton.x < attrs.width && e.xbutton.y < attrs.height) {
-                        b->on_click.emit();
-                    }
-                }
-            }
-            break;
-
-        default:
-            break;
-        }
-    }
-} // namespace linux::x11
+}
 
 namespace native
 {
     void button::apply_text() {
         auto *binding =
             linux::x11::button_bindings.object_from_handle(this);
-        if (!binding || !binding->win)
+        if (!binding || !binding->widget)
             throw std::runtime_error(
-                "X11: Missing button window binding.");
+                "X11/Athena: Missing button widget binding.");
 
-        invalidate();
+        XtVaSetValues(
+            binding->widget,
+            XtNlabel, _text.c_str(),
+            nullptr);
     }
 
     void button::create() const {
         if (_created)
             return;
 
-        if (!linux::x11::cached_display)
-            throw std::runtime_error("X11: button requires an active display.");
-
-        wnd *p = get_parent();
-        if (!p)
-            throw std::runtime_error("X11: button requires a parent window.");
-        if (!p->get_created())
+        wnd *parent = get_parent();
+        if (!parent)
             throw std::runtime_error(
-                "X11: button parent is not created.");
+                "X11/Athena: button requires a parent window.");
+        if (!parent->get_created())
+            throw std::runtime_error(
+                "X11/Athena: button parent is not created.");
 
-        Window parent_win = linux::x11::wnd_bindings.handle_from_object(p);
-        if (!parent_win)
-            throw std::runtime_error("X11: button parent is not created.");
+        Widget parent_widget =
+            linux::x11::wnd_bindings.handle_from_object(parent);
+        if (!parent_widget)
+            throw std::runtime_error(
+                "X11/Athena: button parent has no widget.");
 
-        int screen = DefaultScreen(linux::x11::cached_display);
-        Window btn = XCreateSimpleWindow(
-            linux::x11::cached_display,
-            parent_win,
-            _bounds.p.x,
-            _bounds.p.y,
-            _bounds.d.w,
-            _bounds.d.h,
-            1,
-            BlackPixel(linux::x11::cached_display, screen),
-            WhitePixel(linux::x11::cached_display, screen));
-
-        if (!btn)
-            throw std::runtime_error("X11: Failed to create button window.");
-
-        XSelectInput(linux::x11::cached_display, btn,
-                     ExposureMask | StructureNotifyMask |
-                     EnterWindowMask | LeaveWindowMask |
-                     ButtonPressMask | ButtonReleaseMask);
+        Widget widget = XtVaCreateWidget(
+            "button",
+            commandWidgetClass,
+            parent_widget,
+            XtNhorizDistance, _bounds.p.x,
+            XtNvertDistance, _bounds.p.y,
+            XtNwidth, _bounds.d.w,
+            XtNheight, _bounds.d.h,
+            XtNlabel, _text.c_str(),
+            XtNleft, XtChainLeft,
+            XtNright, XtChainLeft,
+            XtNtop, XtChainTop,
+            XtNbottom, XtChainTop,
+            XtNresizable, True,
+            nullptr);
+        if (!widget)
+            throw std::runtime_error(
+                "X11/Athena: Failed to create Command widget.");
 
         auto *self = const_cast<button *>(this);
-        linux::x11::wnd_bindings.register_pair(btn, self);
+        XtAddCallback(
+            widget,
+            XtNcallback,
+            button_activate,
+            self);
 
-        auto *h = new linux::x11::x11_button();
-        h->win = btn;
-        h->gc = XCreateGC(linux::x11::cached_display, btn, 0, nullptr);
-        h->owner = self;
+        linux::x11::wnd_bindings.register_pair(widget, self);
 
-        XSetWindowBackground(
-            linux::x11::cached_display,
-            btn,
-            WhitePixel(linux::x11::cached_display, screen));
-        XSetWindowBorder(
-            linux::x11::cached_display,
-            btn,
-            BlackPixel(linux::x11::cached_display, screen));
-
-        linux::x11::button_bindings.register_pair(self, h);
+        auto *binding = new linux::x11::xaw_button();
+        binding->widget = widget;
+        binding->owner = self;
+        linux::x11::button_bindings.register_pair(self, binding);
 
         _created = true;
         self->on_wnd_create.emit();
@@ -210,14 +101,17 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("X11: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "X11/Athena: Cannot show button before creation.");
 
-        auto *h = linux::x11::button_bindings.object_from_handle(const_cast<button *>(this));
-        if (!linux::x11::cached_display || !h || !h->win)
-            throw std::runtime_error("X11: Missing button window binding.");
+        auto *binding = linux::x11::button_bindings
+                            .object_from_handle(
+                                const_cast<button *>(this));
+        if (!binding || !binding->widget)
+            throw std::runtime_error(
+                "X11/Athena: Missing button widget binding.");
 
-        XMapWindow(linux::x11::cached_display, h->win);
-        XFlush(linux::x11::cached_display);
+        XtManageChild(binding->widget);
     }
 
     void button::destroy() const {
@@ -225,19 +119,18 @@ namespace native
             return;
 
         auto *self = const_cast<button *>(this);
-        auto *h = linux::x11::button_bindings.object_from_handle(self);
+        auto *binding =
+            linux::x11::button_bindings.object_from_handle(self);
         self->on_native_destroy();
 
-        if (h) {
-            if (h->gc && linux::x11::cached_display)
-                XFreeGC(linux::x11::cached_display, h->gc);
-            if (h->win) {
-                if (linux::x11::cached_display)
-                    XDestroyWindow(linux::x11::cached_display, h->win);
-                linux::x11::wnd_bindings.unregister_by_handle(h->win);
+        if (binding) {
+            if (binding->widget) {
+                linux::x11::wnd_bindings.unregister_by_handle(
+                    binding->widget);
+                XtDestroyWidget(binding->widget);
             }
             linux::x11::button_bindings.unregister_by_handle(self);
-            delete h;
+            delete binding;
         }
     }
 } // namespace native

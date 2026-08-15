@@ -1,7 +1,7 @@
 # lib/native/platforms/windows/CMakeLists.txt
 
 target_sources(native PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/control_paint_backend.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/theme.cpp
     ${CMAKE_CURRENT_LIST_DIR}/screen.cpp
     ${CMAKE_CURRENT_LIST_DIR}/wnd.cpp
     ${CMAKE_CURRENT_LIST_DIR}/app_wnd.cpp
@@ -11,6 +11,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/gpx_wnd.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gpx_img.cpp
     ${CMAKE_CURRENT_LIST_DIR}/img.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/image_codec.cpp
     ${CMAKE_CURRENT_LIST_DIR}/globals.cpp
     ${CMAKE_CURRENT_LIST_DIR}/menu.cpp
     ${CMAKE_CURRENT_LIST_DIR}/button.cpp
@@ -21,4 +22,6 @@ target_link_libraries(native PRIVATE
     user32
     gdi32
     shell32
+    ole32
+    gdiplus
 )

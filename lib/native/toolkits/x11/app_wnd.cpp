@@ -1,115 +1,510 @@
 //
-// Implements the X11 application-window backend.
+// Implements the X11 application window with Xt and Athena containers.
+// The Athena form remains a drawable surface while also parenting native
+// child controls.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
 
 #include <stdexcept>
-#include <X11/Xlib.h>
+#include <string>
+
+#include <X11/Intrinsic.h>
+#include <X11/Shell.h>
+#include <X11/StringDefs.h>
+#include <X11/Xaw/Form.h>
 
 #include <native.h>
-#include "bindings.h"
+
 #include "globals.h"
+
+namespace
+{
+    // Publish both the ICCCM and EWMH title properties. Some modern
+    // window managers prefer _NET_WM_NAME and do not display Xt's
+    // legacy WM_NAME value by itself.
+    void apply_shell_title(
+        Widget shell,
+        const std::string &title) {
+        XtVaSetValues(
+            shell,
+            XtNtitle, title.c_str(),
+            XtNiconName, title.c_str(),
+            nullptr);
+
+        if (!XtIsRealized(shell))
+            return;
+
+        Display *display = XtDisplay(shell);
+        Window window = XtWindow(shell);
+        XStoreName(display, window, title.c_str());
+        XSetIconName(display, window, title.c_str());
+
+        Atom utf8_string = XInternAtom(
+            display,
+            "UTF8_STRING",
+            False);
+        Atom net_wm_name = XInternAtom(
+            display,
+            "_NET_WM_NAME",
+            False);
+        Atom net_wm_icon_name = XInternAtom(
+            display,
+            "_NET_WM_ICON_NAME",
+            False);
+        const auto *title_bytes =
+            reinterpret_cast<const unsigned char *>(
+                title.data());
+        const int title_length =
+            static_cast<int>(title.size());
+
+        XChangeProperty(
+            display,
+            window,
+            net_wm_name,
+            utf8_string,
+            8,
+            PropModeReplace,
+            title_bytes,
+            title_length);
+        XChangeProperty(
+            display,
+            window,
+            net_wm_icon_name,
+            utf8_string,
+            8,
+            PropModeReplace,
+            title_bytes,
+            title_length);
+    }
+
+    native::mouse_button decode_button(unsigned int button) {
+        switch (button) {
+        case Button1: return native::mouse_button::left;
+        case Button2: return native::mouse_button::middle;
+        case Button3: return native::mouse_button::right;
+        default: return native::mouse_button::none;
+        }
+    }
+
+    void ensure_backbuffer(
+        native::wnd *owner,
+        Widget canvas,
+        int width,
+        int height) {
+        if (!owner || !canvas ||
+            !linux::x11::cached_display ||
+            width <= 0 || height <= 0)
+            return;
+
+        auto *cache =
+            linux::x11::wnd_gpx_bindings.object_from_handle(owner);
+        if (!cache)
+            return;
+
+        if (cache->backbuffer &&
+            cache->buf_w == width &&
+            cache->buf_h == height)
+            return;
+
+        if (cache->backbuffer) {
+            XFreePixmap(
+                linux::x11::cached_display,
+                cache->backbuffer);
+        }
+
+        cache->backbuffer = XCreatePixmap(
+            linux::x11::cached_display,
+            XtWindow(canvas),
+            static_cast<unsigned int>(width),
+            static_cast<unsigned int>(height),
+            DefaultDepthOfScreen(XtScreen(canvas)));
+        cache->buf_w = width;
+        cache->buf_h = height;
+    }
+
+    void handle_canvas_event(
+        Widget widget,
+        XtPointer client_data,
+        XEvent *event,
+        Boolean *) {
+        auto *owner = static_cast<native::app_wnd *>(client_data);
+        if (!owner || !event)
+            return;
+
+        switch (event->type) {
+        case Expose:
+        {
+            if (event->xexpose.count != 0)
+                return;
+
+            auto &g = owner->get_gpx();
+            auto *cache = linux::x11::wnd_gpx_bindings
+                              .object_from_handle(owner);
+
+            int width = cache ? cache->buf_w : 0;
+            int height = cache ? cache->buf_h : 0;
+            if (width <= 0 || height <= 0) {
+                Dimension widget_width = 0;
+                Dimension widget_height = 0;
+                XtVaGetValues(
+                    widget,
+                    XtNwidth, &widget_width,
+                    XtNheight, &widget_height,
+                    nullptr);
+                width = static_cast<int>(widget_width);
+                height = static_cast<int>(widget_height);
+            }
+
+            native::rect invalid(
+                0,
+                0,
+                static_cast<native::dim>(width),
+                static_cast<native::dim>(height));
+            g.set_clip(invalid);
+            g.clear(g.get_paper());
+
+            native::wnd_paint_event paint_event(invalid, g);
+            owner->on_wnd_paint.emit(paint_event);
+
+            cache = linux::x11::wnd_gpx_bindings
+                        .object_from_handle(owner);
+            if (cache && cache->gc && cache->backbuffer) {
+                XCopyArea(
+                    linux::x11::cached_display,
+                    cache->backbuffer,
+                    XtWindow(widget),
+                    cache->gc,
+                    0,
+                    0,
+                    static_cast<unsigned int>(cache->buf_w),
+                    static_cast<unsigned int>(cache->buf_h),
+                    0,
+                    0);
+                XFlush(linux::x11::cached_display);
+            }
+            break;
+        }
+
+        case ConfigureNotify:
+        {
+            const int width = event->xconfigure.width;
+            const int height = event->xconfigure.height;
+            ensure_backbuffer(owner, widget, width, height);
+
+            native::size dimensions(
+                static_cast<native::dim>(width),
+                static_cast<native::dim>(height));
+            owner->on_native_resize(dimensions);
+            owner->on_wnd_resize.emit(dimensions);
+            break;
+        }
+
+        case MotionNotify:
+            owner->on_mouse_move.emit(
+                native::point(
+                    event->xmotion.x,
+                    event->xmotion.y));
+            break;
+
+        case ButtonPress:
+        case ButtonRelease:
+        {
+            if (event->xbutton.button == Button4 ||
+                event->xbutton.button == Button5) {
+                owner->on_mouse_wheel.emit(
+                    native::mouse_wheel_event(
+                        native::point(
+                            event->xbutton.x,
+                            event->xbutton.y),
+                        static_cast<native::coord>(
+                            event->xbutton.button == Button4
+                                ? 1
+                                : -1),
+                        native::wheel_direction::vertical));
+                return;
+            }
+
+            native::mouse_button button =
+                decode_button(event->xbutton.button);
+            if (button == native::mouse_button::none)
+                return;
+
+            owner->on_mouse_click.emit(
+                native::mouse_event(
+                    button,
+                    event->type == ButtonPress
+                        ? native::mouse_action::press
+                        : native::mouse_action::release,
+                    native::point(
+                        event->xbutton.x,
+                        event->xbutton.y)));
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+
+    void handle_shell_event(
+        Widget,
+        XtPointer client_data,
+        XEvent *event,
+        Boolean *) {
+        auto *owner = static_cast<native::app_wnd *>(client_data);
+        if (!owner || !event)
+            return;
+
+        if (event->type == ConfigureNotify) {
+            native::point position(
+                event->xconfigure.x,
+                event->xconfigure.y);
+            owner->on_native_move(position);
+            owner->on_wnd_move.emit(position);
+        }
+        else if (event->type == ClientMessage &&
+                 event->xclient.data.l[0] ==
+                     static_cast<long>(
+                         linux::x11::wm_delete_window_atom)) {
+            owner->destroy();
+        }
+    }
+} // namespace
 
 namespace native
 {
     void app_wnd::apply_title() {
-        Display *display = linux::x11::cached_display;
-        Window window = linux::x11::wnd_bindings.handle_from_object(this);
-        if (!display || !window)
+        Widget shell =
+            linux::x11::shell_bindings.handle_from_object(this);
+        if (!shell)
             throw std::runtime_error(
-                "X11: Missing window binding for app_wnd.");
+                "X11/Athena: Missing shell binding for app_wnd.");
 
-        XStoreName(display, window, _title.c_str());
-        XFlush(display);
+        apply_shell_title(shell, _title);
+        if (XtIsRealized(shell))
+            XFlush(XtDisplay(shell));
     }
 
     void app_wnd::create() const {
         if (_created)
             return;
 
-        if (!linux::x11::cached_display) {
-            linux::x11::cached_display = XOpenDisplay(nullptr);
-            if (!linux::x11::cached_display)
-                throw std::runtime_error("X11: Failed to open display.");
+        Widget shell = nullptr;
+        Display *probe_display = linux::x11::cached_display;
+
+        if (!linux::x11::app_instance) {
+            XtSetLanguageProc(nullptr, nullptr, nullptr);
+
+            int argc = app::argc;
+            char **argv = app::argv;
+
+            shell = XtVaAppInitialize(
+                &linux::x11::app_instance,
+                const_cast<char *>("Native"),
+                nullptr,
+                0,
+                &argc,
+                argv,
+                nullptr,
+                nullptr);
+            if (!shell)
+                throw std::runtime_error(
+                    "X11/Athena: Failed to initialize Xt shell.");
+
+            if (probe_display && probe_display != XtDisplay(shell))
+                XCloseDisplay(probe_display);
+            linux::x11::cached_display = XtDisplay(shell);
+        }
+        else {
+            shell = XtVaAppCreateShell(
+                const_cast<char *>("native"),
+                const_cast<char *>("Native"),
+                applicationShellWidgetClass,
+                linux::x11::cached_display,
+                nullptr);
+            if (!shell)
+                throw std::runtime_error(
+                    "X11/Athena: Failed to create top-level shell.");
         }
 
-        int screen = DefaultScreen(linux::x11::cached_display);
-        Window root = RootWindow(linux::x11::cached_display, screen);
+        XtVaSetValues(
+            shell,
+            XtNx, _bounds.p.x,
+            XtNy, _bounds.p.y,
+            XtNwidth, _bounds.d.w,
+            XtNheight, _bounds.d.h,
+            XtNtitle, _title.c_str(),
+            nullptr);
 
-        Window main_wnd = XCreateSimpleWindow(
+        Widget main_window = XtVaCreateManagedWidget(
+            "main_window",
+            formWidgetClass,
+            shell,
+            XtNwidth, _bounds.d.w,
+            XtNheight, _bounds.d.h,
+            XtNborderWidth, 0,
+            XtNdefaultDistance, 0,
+            nullptr);
+        if (!main_window)
+            throw std::runtime_error(
+                "X11/Athena: Failed to create main container.");
+
+        auto *self = const_cast<app_wnd *>(this);
+        linux::x11::shell_bindings.register_pair(shell, self);
+        linux::x11::main_wnd_bindings.register_pair(
+            main_window,
+            self);
+
+        // Create the menu first so the Form can anchor the drawing
+        // surface immediately below the Athena menu bar.
+        self->menu.attach(*self);
+
+        Widget menu_bar = nullptr;
+        if (self->menu.id()) {
+            auto *native_menu = linux::x11::menu_bindings
+                                    .object_from_handle(
+                                        self->menu.id());
+            if (native_menu)
+                menu_bar = native_menu->menu_bar;
+        }
+
+        Dimension menu_height = 0;
+        if (menu_bar) {
+            XtVaGetValues(
+                menu_bar,
+                XtNheight, &menu_height,
+                nullptr);
+        }
+
+        const int canvas_height =
+            _bounds.d.h > menu_height
+                ? static_cast<int>(_bounds.d.h - menu_height)
+                : 1;
+
+        Widget canvas = nullptr;
+        if (menu_bar) {
+            canvas = XtVaCreateManagedWidget(
+                "canvas",
+                formWidgetClass,
+                main_window,
+                XtNfromVert, menu_bar,
+                XtNvertDistance, 0,
+                XtNhorizDistance, 0,
+                XtNwidth, _bounds.d.w,
+                XtNheight, canvas_height,
+                XtNborderWidth, 0,
+                XtNdefaultDistance, 0,
+                XtNleft, XtChainLeft,
+                XtNright, XtChainRight,
+                XtNtop, XtChainTop,
+                XtNbottom, XtChainBottom,
+                XtNresizable, False,
+                nullptr);
+        }
+        else {
+            canvas = XtVaCreateManagedWidget(
+                "canvas",
+                formWidgetClass,
+                main_window,
+                XtNhorizDistance, 0,
+                XtNvertDistance, 0,
+                XtNwidth, _bounds.d.w,
+                XtNheight, _bounds.d.h,
+                XtNborderWidth, 0,
+                XtNdefaultDistance, 0,
+                XtNleft, XtChainLeft,
+                XtNright, XtChainRight,
+                XtNtop, XtChainTop,
+                XtNbottom, XtChainBottom,
+                XtNresizable, False,
+                nullptr);
+        }
+        if (!canvas)
+            throw std::runtime_error(
+                "X11/Athena: Failed to create drawing surface.");
+
+        XtAddEventHandler(
+            canvas,
+            ExposureMask |
+                StructureNotifyMask |
+                PointerMotionMask |
+                ButtonPressMask |
+                ButtonReleaseMask,
+            False,
+            handle_canvas_event,
+            self);
+        XtAddEventHandler(
+            shell,
+            StructureNotifyMask,
+            True,
+            handle_shell_event,
+            self);
+
+        linux::x11::wnd_bindings.register_pair(canvas, self);
+
+        _created = true;
+        self->on_wnd_create.emit();
+    }
+
+    void app_wnd::show() const {
+        if (!_created)
+            throw std::runtime_error(
+                "X11/Athena: Cannot show window before creation.");
+
+        auto *self = const_cast<app_wnd *>(this);
+        Widget shell =
+            linux::x11::shell_bindings.handle_from_object(self);
+        Widget canvas =
+            linux::x11::wnd_bindings.handle_from_object(self);
+        if (!shell || !canvas)
+            throw std::runtime_error(
+                "X11/Athena: Missing application widget binding.");
+
+        XtRealizeWidget(shell);
+        linux::x11::cached_display = XtDisplay(shell);
+        apply_shell_title(shell, _title);
+
+        // Expose notifications repaint from the library backbuffer.
+        XSetWindowBackgroundPixmap(
             linux::x11::cached_display,
-            root,
-            _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h,
-            1,
-            BlackPixel(linux::x11::cached_display, screen),
-            WhitePixel(linux::x11::cached_display, screen));
+            XtWindow(canvas),
+            None);
 
-        if (!main_wnd)
-            throw std::runtime_error("X11: Failed to create main window.");
-
-        // Suppress the server-side background paint so XClearArea only
-        // generates Expose events without blanking the window to white.
-        // The backbuffer XCopyArea fills the window instead.
-        XSetWindowBackgroundPixmap(linux::x11::cached_display, main_wnd, None);
-
-        // Set window title
-        XStoreName(linux::x11::cached_display, main_wnd, _title.c_str());
-
-        // Subscribe to events
-        XSelectInput(linux::x11::cached_display, main_wnd,
-                     ExposureMask | StructureNotifyMask | ButtonPressMask |
-                         ButtonReleaseMask | PointerMotionMask | KeyPressMask | KeyReleaseMask);
-
-        // Handle WM_DELETE_WINDOW
         linux::x11::wm_delete_window_atom = XInternAtom(
             linux::x11::cached_display,
             "WM_DELETE_WINDOW",
             False);
         XSetWMProtocols(
             linux::x11::cached_display,
-            main_wnd,
+            XtWindow(shell),
             &linux::x11::wm_delete_window_atom,
             1);
 
-        // Register in window binding registry
-        linux::x11::wnd_bindings.register_pair(main_wnd, const_cast<app_wnd *>(this));
-
-        // Mark as created
-        _created = true;
-
-        // Attach menu (if any was configured before create())
-        const_cast<app_wnd *>(this)->menu.attach(*const_cast<app_wnd *>(this));
-
-        // Notify creation
-        const_cast<app_wnd *>(this)->on_wnd_create.emit();
+        XMapRaised(
+            linux::x11::cached_display,
+            XtWindow(shell));
+        XFlush(linux::x11::cached_display);
+        invalidate();
     }
 
     void app_wnd::destroy() const {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
-        Window win = linux::x11::wnd_bindings.handle_from_object(self);
+        auto *self = const_cast<app_wnd *>(this);
+        Widget shell =
+            linux::x11::shell_bindings.handle_from_object(self);
         self->on_native_destroy();
-        if (win) {
-            XDestroyWindow(linux::x11::cached_display, win);
-            linux::x11::wnd_bindings.unregister_by_object(self);
-        }
+
+        linux::x11::wnd_bindings.unregister_by_object(self);
+        linux::x11::main_wnd_bindings.unregister_by_object(self);
+        linux::x11::shell_bindings.unregister_by_object(self);
+
+        if (shell)
+            XtDestroyWidget(shell);
+        if (self == app::main_wnd())
+            linux::x11::exit_requested = true;
     }
-
-    void app_wnd::show() const {
-        if (!_created)
-            throw std::runtime_error("X11: Cannot show window before it's created.");
-
-        Window main_wnd = linux::x11::wnd_bindings.handle_from_object(const_cast<app_wnd *>(this));
-        if (!linux::x11::cached_display || !main_wnd)
-            throw std::runtime_error(
-                "X11: Missing window binding for app_wnd.");
-
-        XMapWindow(linux::x11::cached_display, main_wnd);
-        XFlush(linux::x11::cached_display);
-    }
-
 } // namespace native

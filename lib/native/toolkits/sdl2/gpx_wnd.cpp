@@ -62,6 +62,8 @@ namespace native
                 cache->renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);
             linux::sdl2::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -137,6 +139,8 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         auto *cache = linux::sdl2::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache || !cache->renderer)
             return *this;
@@ -154,7 +158,8 @@ namespace native
         auto *fh = linux::sdl2::font_bindings.object_from_handle(get_font().id());
         if (fh && fh->ttf_font) {
             SDL_Color color = {get_ink().r, get_ink().g, get_ink().b, get_ink().a};
-            SDL_Surface *surface = TTF_RenderText_Solid(fh->ttf_font, text.c_str(), color);
+            SDL_Surface *surface = TTF_RenderUTF8_Solid(
+                fh->ttf_font, text.c_str(), color);
             if (surface) {
                 SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
                 if (texture) {

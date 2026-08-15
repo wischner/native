@@ -54,8 +54,11 @@ The common build requirements are CMake 3.20 or newer and a GCC
 toolchain with C++20 support. A direct Linux build also needs
 `pkg-config` and the development packages for the chosen backend:
 
-- X11 uses Xlib, Xrandr, and pixman.
+- X11 uses Xlib, Xrandr, pixman, Xt, and
+  [Athena Widgets (Xaw)](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html).
 - SDL2 uses SDL2; SDL2_ttf is optional and enables system font loading.
+- Linux graphics targets use libpng and libjpeg for PNG/JPEG image I/O;
+  Windows, Haiku, and macOS use their native codec services.
 - OpenMotif uses Xlib, Xt, and Motif.
 
 Configure a direct debug build under the root `build/` directory. GCC

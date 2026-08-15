@@ -49,4 +49,16 @@ namespace native
         return font_t::stock(font_role::system);
     }
 
+    font_metrics gpx::get_font_metrics() const {
+        return get_font().get_metrics();
+    }
+
+    text_metrics gpx::measure_text(const std::string &text) const {
+        return get_font().measure_text(text);
+    }
+
+    text_metrics gpx::measure_character(char32_t character) const {
+        return get_font().measure_character(character);
+    }
+
 } // namespace native

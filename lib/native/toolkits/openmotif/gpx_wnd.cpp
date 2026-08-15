@@ -15,6 +15,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../platforms/linux/x_image.h"
 
 namespace
 {
@@ -79,6 +80,21 @@ namespace
                 JoinMiter);
             cache->current_thickness = self->get_pen();
         }
+
+        const native::rect clip = self->get_clip();
+        XRectangle xclip = {
+            static_cast<short>(clip.p.x),
+            static_cast<short>(clip.p.y),
+            static_cast<unsigned short>(clip.d.w),
+            static_cast<unsigned short>(clip.d.h)};
+        XSetClipRectangles(
+            linux::openmotif::cached_display,
+            cache->gc,
+            0,
+            0,
+            &xclip,
+            1,
+            Unsorted);
     }
 } // namespace
 
@@ -129,6 +145,8 @@ namespace native
 
             linux::openmotif::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -226,6 +244,8 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
         Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
@@ -237,29 +257,22 @@ namespace native
         if (fh && fh->xfont)
             XSetFont(linux::openmotif::cached_display, cache->gc, fh->xfont);
 
+        const int baseline = p.y + get_font_metrics().ascent;
         XDrawString(linux::openmotif::cached_display, cache->backbuffer, cache->gc,
-                    p.x, p.y, text.c_str(), text.length());
+                    p.x, baseline, text.c_str(), text.length());
         return *this;
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
         auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        if (!cache || !cache->backbuffer)
+        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
+        apply_gc(canvas, this, cache);
         Display *display = linux::openmotif::cached_display;
-        const int screen = DefaultScreen(display);
-        XImage *ximg = XCreateImage(
-            display,
-            DefaultVisual(display, screen),
-            DefaultDepth(display, screen),
-            ZPixmap,
-            0,
-            reinterpret_cast<char *>(const_cast<rgba *>(src.pixels())),
-            src.w(),
-            src.h(),
-            32,
-            0);
+        XImage *ximg = detail::x_image_from_rgba(
+            display, src.pixels(), src.w(), src.h());
 
         XPutImage(
             linux::openmotif::cached_display,

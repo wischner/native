@@ -10,7 +10,6 @@
 #pragma once
 
 #include "native/app.h"
-#include "native/control_paint.h"
 #include "native/events.h"
 #include "native/font.h"
 #include "native/geometry.h"
@@ -19,4 +18,5 @@
 #include "native/menu.h"
 #include "native/screen.h"
 #include "native/signal.h"
+#include "native/theme.h"
 #include "native/wnd.h"

@@ -154,6 +154,22 @@ Use concrete contexts for different drawing targets:
 - Backend handles, renderers, buffers, and cached drawing objects remain in
   private bindings.
 
+Both context types implement the complete `gpx` contract on every backend.
+Their initial clip is the complete target bounds; paint dispatch replaces a
+window context's clip with the invalid region. Selecting an explicit font must
+affect drawing and measurement in the same way for both targets.
+`draw_text()` interprets its position as the top-left of the text line; native
+APIs that accept a baseline must add the selected font's ascent internally.
+
+`img` owns pixels in top-to-bottom RGBA order and provides PNG and JPEG file
+and memory I/O. Decoding detects the format from the encoded signature rather
+than a filename. Encoding selects the format explicitly for memory output and
+from `.png`, `.jpg`, or `.jpeg` for file output. PNG preserves RGBA data; JPEG
+discards alpha and decodes as opaque. Backends use operating-system codecs
+where those are part of the platform and use shared image libraries where the
+window system has no codec service. Codec handles and foreign-library types
+must remain below the public API.
+
 A native expose or paint event must be translated into one synchronous
 `on_wnd_paint` emission on the UI thread. The `wnd_paint_event` contains the
 invalid rectangle and a borrowed `gpx &` whose concrete context is `gpx_wnd`.
@@ -167,10 +183,13 @@ window destruction.
 
 ## 7. Custom Drawing
 
-Use the public `theme` drawing facade when custom controls or visuals must
-match the active platform. It accepts a borrowed `gpx &` and exposes the same
-semantic primitives and states on every backend, including common button,
-menu, selection, border, text, hot, pressed, selected, and disabled states.
+Use the public abstract `theme` interface when custom controls or visuals must
+match the active platform. `theme::create()` asks the active backend for a
+short-lived implementation around a borrowed `gpx &`. The interface exposes
+the same semantic primitives and states on every backend, including common
+button, menu, selection, border, text, hot, pressed, selected, and disabled
+states. Appearance logic must live in the platform or toolkit implementation,
+not in the backend-neutral library root.
 
 Theme rendering follows these rules:
 
@@ -252,3 +271,88 @@ Exactly one detected screen must be primary.
 without native queries. Returned pointers remain valid until the next
 `detect()`. No displays produce an empty snapshot; detection failures throw
 `std::runtime_error`.
+
+## 10. Fonts
+
+Fonts belong to one of two categories: stock fonts supplied by the active
+platform or toolkit, and portable TrueType fonts supplied by the application.
+The distinction is part of the public contract. A backend must not silently
+replace a portable font with a stock font or treat an arbitrary platform font
+as portable.
+
+Stock fonts provide the native look and feel. At minimum, every backend must
+provide semantic roles for:
+
+- the general system font;
+- the system fixed-pitch font;
+- the system icon-label font;
+- title text;
+- small secondary text; and
+- controls and menus.
+
+These roles are requests for meaning, not for a particular family name. A
+backend obtains the closest corresponding font from the operating system,
+desktop, or toolkit and may map several roles to the same native font when no
+distinct role exists. Stock fonts are therefore expected to differ between
+backends and machines. They are process-owned, returned as borrowed
+references, and must remain valid for the lifetime of the initialized backend.
+Application code must not destroy or modify them.
+
+All non-stock fonts are portable TrueType fonts. The application identifies
+the exact font resource and face rather than only naming a locally installed
+family. Every backend must render from those same font bytes. It may use a
+native TrueType implementation when that implementation preserves the
+portable behavior; otherwise it must use a shared font library. It must not
+search host-installed fonts, substitute another family, or fall back to a
+stock font when the requested resource cannot be loaded.
+
+The public font API must provide functions that enumerate fonts installed on
+the current system. Enumeration returns portable descriptions such as family,
+style, weight, and available face names; it must not expose platform handles
+or toolkit types. The result is inherently machine-specific and is intended
+for font pickers and other discovery interfaces. Selecting an enumerated font
+does not make it portable: applications that require identical rendering must
+still supply the exact TrueType resource.
+
+Portable fonts must be creatable from either a file or an in-memory byte
+buffer. Both creation paths have the same face-selection, sizing, validation,
+and rendering behavior. File creation reads the resource during creation and
+must not depend on the file remaining open afterward. Memory creation copies
+or otherwise owns the bytes needed for the complete lifetime of the font; it
+must never retain a borrowed pointer to application memory. Collections must
+allow an explicit face index in both creation paths.
+
+For a portable font, the following behavior must be backend-independent:
+
+- UTF-8 decoding and missing-glyph handling;
+- face selection, size, weight, and style;
+- glyph advances, kerning, line metrics, and text bounds; and
+- the placement and alpha coverage produced by `gpx::draw_text()` for the same
+  text, font data, graphics state, and scale.
+
+Every font exposes editor-oriented measurements without requiring a drawing
+operation. `font_metrics` reports positive ascent, descent, leading, total
+line height, and maximum character advance in pixels. `text_metrics` reports
+the visible width, line height, and cursor advance of a UTF-8 string.
+`measure_character()` accepts one Unicode scalar value; surrogate values and
+values above `U+10FFFF` are invalid. An empty string has zero width and advance
+but retains the selected font's line height.
+
+The same measurements are available through `gpx`, where they always use the
+currently selected font. This is the canonical path for editor layout: line
+spacing comes from `get_font_metrics()`, cursor movement comes from
+`measure_character().advance`, and selection or run bounds come from
+`measure_text()`. A backend must use the same native face and shaping or
+rasterization path for measurement that it uses for `draw_text()`.
+
+Malformed data, an unsupported TrueType face, an invalid face index, or an
+invalid size produces an invalid `font_t`; drawing with an invalid explicitly
+selected font is a no-op. Failure must be observable through `valid()` and
+must not change the selected font or leak a partially created native resource.
+
+`font_t` owns non-stock font registrations and remains move-only. Its public
+description contains only portable values; parsed font data, rasterizer state,
+and native handles remain in private shared or backend bindings. Moving a font
+preserves its opaque identifier and rendering behavior. Destroying it releases
+all associated registrations and cached glyph resources. A `gpx` borrows its
+selected font, so that font must outlive every drawing operation that uses it.

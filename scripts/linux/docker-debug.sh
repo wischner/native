@@ -19,7 +19,7 @@ if (( ${#DEBUGGER_COMMAND[@]} == 1 )); then
 fi
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/.." && pwd)
+WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/../.." && pwd)
 DOCKER_ARGS=(
     run --rm -i
     --network host

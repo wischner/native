@@ -29,6 +29,10 @@ Backend builds are performed inside Docker so that the required compilers and
 system development packages come from known images rather than the host
 machine.
 
+The X11 image provides Xlib, Xrandr, pixman, Xt, and Athena Widgets (Xaw).
+The host-side control tree does not require those backend development
+packages.
+
 ## Clone the repository
 
 ```bash

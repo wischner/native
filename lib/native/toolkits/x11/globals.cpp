@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <X11/Intrinsic.h>
 #include <X11/Xlib.h>
 
 #include <native.h>
@@ -14,12 +15,15 @@
 
 namespace linux::x11
 {
-    native::bindings<Window, native::wnd *> wnd_bindings;
+    XtAppContext app_instance = nullptr;
+    bool exit_requested = false;
+    native::bindings<Widget, native::wnd *> wnd_bindings;
+    native::bindings<Widget, native::wnd *> shell_bindings;
+    native::bindings<Widget, native::wnd *> main_wnd_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;
     native::bindings<native::wnd *, x11_gpx *> wnd_gpx_bindings;
     native::bindings<uint32_t, x11_font *> font_bindings;
-    native::bindings<Window,   x11_menu *> menu_bar_bindings;
-    native::bindings<uint32_t, x11_menu *> menu_bindings;
-    native::bindings<native::button *, x11_button *> button_bindings;
+    native::bindings<uint32_t, xaw_menu *> menu_bindings;
+    native::bindings<native::button *, xaw_button *> button_bindings;
 }

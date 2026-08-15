@@ -6,6 +6,7 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#include <cmath>
 #include <native.h>
 #include "globals.h"
 
@@ -106,6 +107,40 @@ const font_t &font_t::stock(font_role role) {
         init(font_role::control, [NSFont menuFontOfSize:0]);
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    if (!_id)
+        return {};
+    auto *binding = mac::font_bindings.object_from_handle(_id);
+    NSFont *font = binding && binding->ns_font
+        ? binding->ns_font
+        : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+    const int ascent = static_cast<int>(std::ceil([font ascender]));
+    const int descent = static_cast<int>(std::ceil(-[font descender]));
+    const int leading = static_cast<int>(std::ceil([font leading]));
+    return {
+        ascent,
+        descent,
+        leading,
+        ascent + descent + leading,
+        static_cast<int>(std::ceil([font maximumAdvancement].width))};
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    if (!_id)
+        return {};
+    auto *binding = mac::font_bindings.object_from_handle(_id);
+    NSFont *font = binding && binding->ns_font
+        ? binding->ns_font
+        : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+    NSString *value = [NSString stringWithUTF8String:text.c_str()];
+    if (!value)
+        return {};
+    NSDictionary *attributes = @{NSFontAttributeName: font};
+    const NSSize measured = [value sizeWithAttributes:attributes];
+    const int width = static_cast<int>(std::ceil(measured.width));
+    return {width, get_metrics().height, width};
 }
 
 } // namespace native

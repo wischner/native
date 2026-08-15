@@ -6,6 +6,8 @@
 //
 
 #include <X11/Xlib.h>
+#include <algorithm>
+#include <climits>
 #include <initializer_list>
 
 #include <native.h>
@@ -26,6 +28,8 @@ namespace
         if (f) {
             if (f->owned && f->display && f->xfont)
                 XUnloadFont(f->display, f->xfont);
+            if (f->metrics)
+                XFreeFontInfo(nullptr, f->metrics, 1);
             delete f;
         }
         linux::x11::font_bindings.unregister_by_handle(id);
@@ -35,15 +39,34 @@ namespace
         auto *h = new linux::x11::x11_font();
         h->display = display;
         h->xfont   = xfont;
+        h->metrics = display && xfont ? XQueryFont(display, xfont) : nullptr;
         h->owned   = owned;
         uint32_t id = next_id();
         linux::x11::font_bindings.register_pair(id, h);
         return id;
     }
 
+    Font load_if_available(Display *display, const char *name) {
+        int match_count = 0;
+        char **matches = XListFonts(
+            display,
+            name,
+            1,
+            &match_count);
+        if (!matches || match_count == 0) {
+            if (matches)
+                XFreeFontNames(matches);
+            return 0;
+        }
+
+        Font font = XLoadFont(display, matches[0]);
+        XFreeFontNames(matches);
+        return font;
+    }
+
     Font try_load(Display *display, std::initializer_list<const char *> names) {
         for (const char *name : names) {
-            Font f = XLoadFont(display, name);
+            Font f = load_if_available(display, name);
             if (f) return f;
         }
         return 0;
@@ -82,7 +105,7 @@ font_t font_t::create(const font_spec &spec) {
 
     Font xfont = spec.name.empty()
         ? try_load(display, { "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*", "fixed" })
-        : XLoadFont(display, spec.name.c_str());
+        : load_if_available(display, spec.name.c_str());
 
     if (!xfont) return f;
     f._id = register_font(display, xfont, true);
@@ -100,7 +123,9 @@ const font_t &font_t::stock(font_role role) {
         if (!display) return s[(int)role];
 
         const char *x_font = XGetDefault(display, "*", "font");
-        Font system_f = x_font ? XLoadFont(display, x_font) : 0;
+        Font system_f = x_font
+            ? load_if_available(display, x_font)
+            : 0;
         if (!system_f)
             system_f = try_load(display, {
                 "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*",
@@ -130,6 +155,45 @@ const font_t &font_t::stock(font_role role) {
         s[(int)font_role::control]._spec.name = s[(int)font_role::system]._spec.name;
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    auto *binding = linux::x11::font_bindings.object_from_handle(_id);
+    if (!binding || !binding->metrics)
+        return {};
+    const XFontStruct *font = binding->metrics;
+    const font_metrics result{
+        font->ascent,
+        font->descent,
+        0,
+        font->ascent + font->descent,
+        font->max_bounds.width};
+    return result;
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    auto *binding = linux::x11::font_bindings.object_from_handle(_id);
+    if (!binding || !binding->metrics)
+        return {};
+    XFontStruct *font = binding->metrics;
+    int direction = 0;
+    int ascent = 0;
+    int descent = 0;
+    XCharStruct extent = {};
+    XTextExtents(
+        font,
+        text.data(),
+        static_cast<int>(std::min<std::size_t>(text.size(), INT_MAX)),
+        &direction,
+        &ascent,
+        &descent,
+        &extent);
+    const int advance = extent.width;
+    const int width = std::max(
+        advance,
+        static_cast<int>(extent.rbearing) - extent.lbearing);
+    const int height = font->ascent + font->descent;
+    return {width, height, advance};
 }
 
 } // namespace native

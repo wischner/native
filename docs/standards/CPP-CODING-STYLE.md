@@ -25,6 +25,8 @@ the tree.
   dependency files, static libraries, maps, listings, and temporary
   build products.
 - `docs/` contains project notes and design documents.
+- `scripts/` contains toolchains and developer automation organized by
+  purpose or target platform.
 - `tests/` contains automated tests.
 - `tests/data/` contains data files used by tests.
 

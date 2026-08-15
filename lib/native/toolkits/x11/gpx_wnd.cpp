@@ -7,21 +7,26 @@
 
 #include <stdexcept>
 
+#include <X11/Intrinsic.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
 #include <native.h>
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../platforms/linux/x_image.h"
 
-// Apply ink and pen to the cached GC only when they have changed.
-// No GC-level clip is set — the full backbuffer is always repainted,
-// so clipping at the GC level would only cause artifacts on XCopyArea.
+// Apply portable drawing state to the cached X11 graphics context.
 static void apply_gc(Display *display, linux::x11::x11_gpx *cache, native::gpx_wnd *self) {
     if (!cache || !cache->gc) return;
 
     if (cache->current_fg != self->get_ink()) {
-        XSetForeground(display, cache->gc, self->get_ink());
+        XSetForeground(
+            display,
+            cache->gc,
+            native::detail::x_pixel(
+                DefaultVisual(display, DefaultScreen(display)),
+                self->get_ink()));
         cache->current_fg = self->get_ink();
     }
 
@@ -29,6 +34,14 @@ static void apply_gc(Display *display, linux::x11::x11_gpx *cache, native::gpx_w
         XSetLineAttributes(display, cache->gc, self->get_pen(), LineSolid, CapButt, JoinMiter);
         cache->current_thickness = self->get_pen();
     }
+
+    const native::rect clip = self->get_clip();
+    XRectangle xclip = {
+        static_cast<short>(clip.p.x),
+        static_cast<short>(clip.p.y),
+        static_cast<unsigned short>(clip.d.w),
+        static_cast<unsigned short>(clip.d.h)};
+    XSetClipRectangles(display, cache->gc, 0, 0, &xclip, 1, Unsorted);
 }
 
 namespace native
@@ -42,7 +55,12 @@ namespace native
         auto *cache = linux::x11::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache) {
             Display *display = linux::x11::cached_display;
-            Window win = linux::x11::wnd_bindings.handle_from_object(_wnd);
+            Widget widget =
+                linux::x11::wnd_bindings.handle_from_object(_wnd);
+            if (!widget || !XtIsRealized(widget))
+                throw std::runtime_error(
+                    "X11/Athena: Drawing widget is not realized.");
+            Window win = XtWindow(widget);
             int screen = DefaultScreen(display);
 
             // Get the actual current window size.
@@ -64,6 +82,8 @@ namespace native
 
             linux::x11::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
+        const size dimensions = window->get_dimensions();
+        _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
 
     gpx_wnd::~gpx_wnd() {
@@ -97,7 +117,12 @@ namespace native
         auto *cache = linux::x11::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache || !cache->backbuffer) return *this;
 
-        XSetForeground(display, cache->gc, color);
+        XSetForeground(
+            display,
+            cache->gc,
+            detail::x_pixel(
+                DefaultVisual(display, DefaultScreen(display)),
+                color));
         cache->current_fg = color; // keep cache in sync so apply_gc re-sets ink on next draw
         XFillRectangle(display, cache->backbuffer, cache->gc,
                        _clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
@@ -132,6 +157,8 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         Display *display = linux::x11::cached_display;
         auto *cache = linux::x11::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache || !cache->backbuffer) return *this;
@@ -142,8 +169,9 @@ namespace native
         if (fh && fh->xfont)
             XSetFont(display, cache->gc, fh->xfont);
 
+        const int baseline = p.y + get_font_metrics().ascent;
         XDrawString(display, cache->backbuffer, cache->gc,
-                    p.x, p.y, text.c_str(), text.length());
+                    p.x, baseline, text.c_str(), text.length());
         return *this;
     }
 
@@ -154,12 +182,8 @@ namespace native
 
         apply_gc(display, cache, this);
 
-        XImage *ximg = XCreateImage(display,
-                                    DefaultVisual(display, DefaultScreen(display)),
-                                    DefaultDepth(display, DefaultScreen(display)),
-                                    ZPixmap, 0,
-                                    reinterpret_cast<char *>(const_cast<rgba *>(src.pixels())),
-                                    src.w(), src.h(), 32, 0);
+        XImage *ximg = detail::x_image_from_rgba(
+            display, src.pixels(), src.w(), src.h());
 
         XPutImage(display, cache->backbuffer, cache->gc,
                   ximg, 0, 0, dst.x, dst.y, src.w(), src.h());

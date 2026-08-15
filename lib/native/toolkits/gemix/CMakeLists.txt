@@ -6,7 +6,7 @@ pkg_check_modules(GEMIX_AES REQUIRED gemix-aes)
 pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi)
 
 target_sources(native PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint_backend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp

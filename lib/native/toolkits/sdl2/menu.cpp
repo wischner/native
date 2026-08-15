@@ -60,8 +60,8 @@ void render_menu(
     int /*win_h*/) {
     if (!m) return;
 
-    native::control_paint cp(g);
-    cp.draw_menu_bar(native::rect(
+    auto painter = native::theme::create(g);
+    painter->draw_menu_bar(native::rect(
         0,
         0,
         static_cast<native::dim>(win_w),
@@ -69,10 +69,10 @@ void render_menu(
 
     for (int i = 0; i < static_cast<int>(m->tops.size()); ++i) {
         auto &top = m->tops[i];
-        native::control_paint::state st;
+        native::theme::state st;
         st.selected = (m->open_idx == i);
         st.hot = (m->hover_top == i);
-        cp.draw_menu_title(
+        painter->draw_menu_title(
             native::rect(
                 top.x0,
                 1,
@@ -86,15 +86,17 @@ void render_menu(
     if (m->open_idx >= 0 && m->open_idx < static_cast<int>(m->tops.size())) {
         auto &top   = m->tops[m->open_idx];
         int popup_h = static_cast<int>(top.items.size()) * menu_item_height + 2;
-        cp.draw_popup_frame(native::rect(m->popup_x, m->popup_y,
-                                         static_cast<native::dim>(popup_width),
-                                         static_cast<native::dim>(popup_h)));
+        painter->draw_popup_frame(native::rect(
+            m->popup_x,
+            m->popup_y,
+            static_cast<native::dim>(popup_width),
+            static_cast<native::dim>(popup_h)));
 
         for (int i = 0; i < static_cast<int>(top.items.size()); ++i) {
-            native::control_paint::state st;
+            native::theme::state st;
             st.selected = (m->hover_item == i);
             st.hot = (m->hover_item == i);
-            cp.draw_menu_item(native::rect(m->popup_x + 1, m->popup_y + 1 + i * menu_item_height,
+            painter->draw_menu_item(native::rect(m->popup_x + 1, m->popup_y + 1 + i * menu_item_height,
                                            static_cast<native::dim>(popup_width - 2),
                                            static_cast<native::dim>(menu_item_height)),
                               top.items[i].second,

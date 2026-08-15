@@ -12,7 +12,7 @@
             "externalConsole": false,
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/tools/linux-docker-debug.sh",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
                 "pipeArgs": ["wischner/gcc-x86_64-linux-x11:latest"],
                 "debuggerPath": "/usr/bin/gdb"
             },
@@ -29,7 +29,7 @@
             "externalConsole": false,
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/tools/linux-docker-debug.sh",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
                 "pipeArgs": ["wischner/gcc-x86_64-linux-sdl:latest"],
                 "debuggerPath": "/usr/bin/gdb"
             },
@@ -58,7 +58,7 @@
             ],
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/tools/gemix-debug-pipe.sh",
+                "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
                 "pipeArgs": ["wischner/gcc-x86_64-gemix:latest"],
                 "debuggerPath": "/usr/bin/gdb"
             },
@@ -94,7 +94,7 @@
             "cwd": "${workspaceFolder}/build/windows-mingw-w64/src",
             "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "${workspaceFolder}/tools/windows-gdb.sh",
+            "miDebuggerPath": "${workspaceFolder}/scripts/windows/gdb.sh",
             "miDebuggerServerAddress": "localhost:31337",
             "launchCompleteCommand": "exec-continue",
             "externalConsole": false,
@@ -123,7 +123,7 @@
             "name": "Debug Vision (macOS leia, LLDB)",
             "type": "node-terminal",
             "request": "launch",
-            "command": "exec \"${workspaceFolder}/tools/macos-remote/debug.sh\"",
+            "command": "exec \"${workspaceFolder}/scripts/macos/remote/debug.sh\"",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build Vision Debug (macOS leia)"
         }

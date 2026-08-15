@@ -98,7 +98,7 @@ namespace linux::sdl2
         if (!owner)
             return;
 
-        native::control_paint cp(g);
+        auto painter = native::theme::create(g);
         for (auto *btn : g_buttons) {
             auto *h = button_bindings.object_from_handle(btn);
             if (!h || h->parent != owner || !h->visible)
@@ -106,10 +106,10 @@ namespace linux::sdl2
 
             h->bounds = btn->get_bounds();
 
-            native::control_paint::state st;
+            native::theme::state st;
             st.hot = h->hover;
             st.pressed = h->pressed;
-            cp.draw_button(h->bounds, h->label, st);
+            painter->draw_button(h->bounds, h->label, st);
         }
     }
 } // namespace linux::sdl2

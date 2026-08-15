@@ -13,6 +13,24 @@
 
 namespace native
 {
+    // Describes vertical and horizontal metrics for a font face.
+    struct font_metrics
+    {
+        int ascent = 0;
+        int descent = 0;
+        int leading = 0;
+        int height = 0;
+        int max_advance = 0;
+    };
+
+    // Describes the layout size and cursor advance of text.
+    struct text_metrics
+    {
+        int width = 0;
+        int height = 0;
+        int advance = 0;
+    };
+
     // Identifies the semantic purpose of a stock font.
     enum class font_role
     {
@@ -86,6 +104,15 @@ namespace native
 
         // Return the process-lifetime stock font for a semantic role.
         static const font_t &stock(font_role role);
+
+        // Return this face's editor-oriented font metrics.
+        font_metrics get_metrics() const;
+
+        // Measure a UTF-8 string without drawing it.
+        text_metrics measure_text(const std::string &text) const;
+
+        // Measure one Unicode character without drawing it.
+        text_metrics measure_character(char32_t character) const;
 
     private:
         std::uint32_t _id = 0;

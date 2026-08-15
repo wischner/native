@@ -7,6 +7,7 @@
 
 #include <Font.h>
 #include <algorithm>
+#include <cmath>
 
 #include <native.h>
 #include "globals.h"
@@ -97,6 +98,39 @@ const font_t &font_t::stock(font_role role) {
         s[(int)font_role::small_]._id = register_font(small);
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    if (!_id)
+        return {};
+    auto *binding = haiku::font_bindings.object_from_handle(_id);
+    const BFont *font = binding ? &binding->bfont : be_plain_font;
+    if (!font)
+        return {};
+    font_height height = {};
+    font->GetHeight(&height);
+    const int ascent = static_cast<int>(std::ceil(height.ascent));
+    const int descent = static_cast<int>(std::ceil(height.descent));
+    const int leading = static_cast<int>(std::ceil(height.leading));
+    return {
+        ascent,
+        descent,
+        leading,
+        ascent + descent + leading,
+        static_cast<int>(std::ceil(font->StringWidth("W")))};
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    if (!_id)
+        return {};
+    auto *binding = haiku::font_bindings.object_from_handle(_id);
+    const BFont *font = binding ? &binding->bfont : be_plain_font;
+    const font_metrics metrics = get_metrics();
+    if (!font)
+        return {};
+    const int width = static_cast<int>(std::ceil(
+        font->StringWidth(text.c_str(), static_cast<int32>(text.size()))));
+    return {width, metrics.height, width};
 }
 
 } // namespace native

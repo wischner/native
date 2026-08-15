@@ -17,16 +17,16 @@ The scripts are parameterized through environment variables:
 
 ## Scripts
 
-- `tools/macos-remote/sync.sh`
+- `scripts/macos/remote/sync.sh`
   - rsync source tree to macOS target
-- `tools/macos-remote/build.sh`
+- `scripts/macos/remote/build.sh`
   - sync + configure + build the `Debug` application bundle on macOS
     (`build/macos-debug/src/vision.app`)
-- `tools/macos-remote/run.sh`
+- `scripts/macos/remote/run.sh`
   - run Vision on macOS over SSH
-- `tools/macos-remote/debug.sh`
+- `scripts/macos/remote/debug.sh`
   - verify Developer Tools authorization and run Vision under remote `lldb`
-- `tools/macos-remote/smoke-test.sh`
+- `scripts/macos/remote/smoke-test.sh`
   - build on macOS, verify binaries, clear/check quarantine xattr,
     ad-hoc sign, and launch/kill Vision for a short smoke test
 

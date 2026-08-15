@@ -60,15 +60,19 @@ the same commit.
    Native theme primitives, semantic control states, and portable fallbacks.
    Expands Architecture Section 7.
 
-10. [Patterns: application entry and main loop](book-of-native/patterns-application.md)
+10. [Drawing primitives](book-of-native/drawing-primitives.md)
+    Application reference for window and image graphics, PNG/JPEG I/O, text
+    measurement, and themed control drawing.
+
+11. [Patterns: application entry and main loop](book-of-native/patterns-application.md)
     Portable startup through `program()`, `app::run()`, and backend launchers.
     Expands Architecture Section 8.
 
-11. [Patterns: screens and virtual desktops](book-of-native/patterns-screens.md)
+12. [Patterns: screens and virtual desktops](book-of-native/patterns-screens.md)
     Snapshot lifetime, work areas, primary selection, and backend detection.
     Expands Architecture Section 9.
 
-12. [Feature matrix](book-of-native/feature-matrix.md)
+13. [Feature matrix](book-of-native/feature-matrix.md)
     Per-backend feature and test status for what is implemented now.
 
 For a tutorial organized around complete programs, see

@@ -7,6 +7,8 @@
 
 #include <Xm/Xm.h>
 #include <X11/Xlib.h>
+#include <algorithm>
+#include <climits>
 #include <initializer_list>
 
 #include <native.h>
@@ -26,6 +28,8 @@ namespace
         if (f) {
             if (f->owned && f->display && f->xfont)
                 XUnloadFont(f->display, f->xfont);
+            if (f->metrics)
+                XFreeFontInfo(nullptr, f->metrics, 1);
             delete f;
         }
         linux::openmotif::font_bindings.unregister_by_handle(id);
@@ -35,6 +39,7 @@ namespace
         auto *h = new linux::openmotif::motif_font();
         h->display = display;
         h->xfont   = xfont;
+        h->metrics = display && xfont ? XQueryFont(display, xfont) : nullptr;
         h->owned   = owned;
         uint32_t id = next_id();
         linux::openmotif::font_bindings.register_pair(id, h);
@@ -128,6 +133,45 @@ const font_t &font_t::stock(font_role role) {
         s[(int)font_role::control]._spec.name = s[(int)font_role::system]._spec.name;
     }
     return s[(int)role];
+}
+
+font_metrics font_t::get_metrics() const {
+    auto *binding = linux::openmotif::font_bindings.object_from_handle(_id);
+    if (!binding || !binding->metrics)
+        return {};
+    const XFontStruct *font = binding->metrics;
+    const font_metrics result{
+        font->ascent,
+        font->descent,
+        0,
+        font->ascent + font->descent,
+        font->max_bounds.width};
+    return result;
+}
+
+text_metrics font_t::measure_text(const std::string &text) const {
+    auto *binding = linux::openmotif::font_bindings.object_from_handle(_id);
+    if (!binding || !binding->metrics)
+        return {};
+    XFontStruct *font = binding->metrics;
+    int direction = 0;
+    int ascent = 0;
+    int descent = 0;
+    XCharStruct extent = {};
+    XTextExtents(
+        font,
+        text.data(),
+        static_cast<int>(std::min<std::size_t>(text.size(), INT_MAX)),
+        &direction,
+        &ascent,
+        &descent,
+        &extent);
+    const int advance = extent.width;
+    const int width = std::max(
+        advance,
+        static_cast<int>(extent.rbearing) - extent.lbearing);
+    const int height = font->ascent + font->descent;
+    return {width, height, advance};
 }
 
 } // namespace native

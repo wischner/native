@@ -93,7 +93,7 @@
         {
             "label": "Start Vision Debug Server (Wine)",
             "type": "process",
-            "command": "${workspaceFolder}/tools/wine-debug-server.sh",
+            "command": "${workspaceFolder}/scripts/windows/wine-debug-server.sh",
             "args": [
                 "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
                 "31337"
@@ -115,7 +115,7 @@
         {
             "label": "Start Debug Target (Tribblix CDE)",
             "type": "process",
-            "command": "${workspaceFolder}/tools/kvm-ensure-running.sh",
+            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
             "args": ["Tribblix-CDE", "tomaz@charlie"],
             "problemMatcher": []
         },
@@ -150,7 +150,7 @@
         {
             "label": "Start Debug Target (Haiku)",
             "type": "process",
-            "command": "${workspaceFolder}/tools/kvm-ensure-running.sh",
+            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
             "args": ["Haiku", "user@192.168.122.90"],
             "problemMatcher": []
         },
@@ -183,13 +183,13 @@
         {
             "label": "Build Vision Debug (macOS leia)",
             "type": "process",
-            "command": "${workspaceFolder}/tools/macos-remote/build.sh",
+            "command": "${workspaceFolder}/scripts/macos/remote/build.sh",
             "problemMatcher": "$gcc"
         },
         {
             "label": "Smoke Test Vision Debug (macOS leia)",
             "type": "process",
-            "command": "${workspaceFolder}/tools/macos-remote/smoke-test.sh",
+            "command": "${workspaceFolder}/scripts/macos/remote/smoke-test.sh",
             "problemMatcher": [],
             "dependsOn": "Build Vision Debug (macOS leia)"
         }

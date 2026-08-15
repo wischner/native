@@ -166,7 +166,7 @@ namespace native
                     binding->button->Window(),
                     [&](BWindow *) {
                         binding->button->Invalidate(BRect(
-                            r.p.x, r.p.y, r.x2(), r.y2()));
+                            r.p.x, r.p.y, r.x2() - 1, r.y2() - 1));
                     });
             }
             return const_cast<wnd &>(*this);
@@ -179,7 +179,8 @@ namespace native
             if (!view)
                 return;
 
-            BRect rect(r.p.x, r.p.y, r.x2(), r.y2());
+            BRect rect(
+                r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
             view->Invalidate(rect);
         });
 

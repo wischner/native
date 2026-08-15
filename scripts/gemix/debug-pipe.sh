@@ -19,7 +19,7 @@ if (( ${#DEBUGGER_COMMAND[@]} == 1 )); then
 fi
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/.." && pwd)
+WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/../.." && pwd)
 
 RASTA_BIN=${RASTA_BIN:-/home/tstih/data/tstih/rasta/bin/rasta}
 RASTA_WIDTH=${RASTA_WIDTH:-900}

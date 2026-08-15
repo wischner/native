@@ -31,7 +31,6 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/control_paint.cpp
 )
 
 add_subdirectory(platforms)

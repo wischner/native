@@ -33,8 +33,8 @@ namespace
 
             native::gpx_wnd g(owner, native::point(work.p.x, work.p.y));
             g.set_clip(button->get_bounds());
-            native::control_paint painter(g);
-            painter.draw_button(button->get_bounds(), button->get_text());
+            auto painter = native::theme::create(g);
+            painter->draw_button(button->get_bounds(), button->get_text());
         }
     }
 

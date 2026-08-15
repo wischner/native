@@ -9,6 +9,8 @@
 
 #include <native.h>
 
+#include "globals.h"
+
 namespace
 {
     uint32_t next_font_id() {
@@ -61,5 +63,26 @@ namespace native
         }
 
         return fonts[static_cast<int>(role)];
+    }
+
+    font_metrics font_t::get_metrics() const {
+        if (!_id)
+            return {};
+        if (!linux::gemix::ensure_runtime())
+            return {};
+        return {
+            linux::gemix::runtime.char_h,
+            0,
+            0,
+            linux::gemix::runtime.char_h,
+            linux::gemix::runtime.char_w};
+    }
+
+    text_metrics font_t::measure_text(const std::string &text) const {
+        if (!_id)
+            return {};
+        const font_metrics metrics = get_metrics();
+        const int width = static_cast<int>(text.size()) * metrics.max_advance;
+        return {width, metrics.height, width};
     }
 }

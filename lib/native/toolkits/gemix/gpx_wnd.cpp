@@ -111,18 +111,27 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+        if (_font && !_font->valid())
+            return *this;
         rect r(_clip.p.x + _offset.x, _clip.p.y + _offset.y, _clip.d.w, _clip.d.h);
         clip_to_vdi(r);
         vst_color(linux::gemix::runtime.vdi_handle, gem_color(get_ink()));
         v_gtext(linux::gemix::runtime.vdi_handle,
                 static_cast<WORD>(p.x + _offset.x),
-                static_cast<WORD>(p.y + _offset.y),
+                static_cast<WORD>(
+                    p.y + _offset.y + get_font_metrics().ascent),
                 reinterpret_cast<const BYTE *>(text.c_str()));
         vs_clip(linux::gemix::runtime.vdi_handle, 0, nullptr);
         return *this;
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
+        rect clip(
+            _clip.p.x + _offset.x,
+            _clip.p.y + _offset.y,
+            _clip.d.w,
+            _clip.d.h);
+        clip_to_vdi(clip);
         MFDB src_mfdb{};
         MFDB dst_mfdb{};
         src_mfdb.fd_addr = const_cast<rgba *>(src.pixels());
@@ -141,6 +150,7 @@ namespace native
             static_cast<WORD>(dst.x + _offset.x + src.w() - 1),
             static_cast<WORD>(dst.y + _offset.y + src.h() - 1)};
         vro_cpyfm(linux::gemix::runtime.vdi_handle, S_ONLY, pxy, &src_mfdb, &dst_mfdb);
+        vs_clip(linux::gemix::runtime.vdi_handle, 0, nullptr);
         return *this;
     }
 }
