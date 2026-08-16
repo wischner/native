@@ -97,7 +97,9 @@ namespace native
                     : nullptr;
         if (new_window) {
             with_locked_window(new_window, [&](BWindow *locked) {
-                locked->AddChild(control);
+                BView *content = haiku::content_view(locked);
+                if (content)
+                    content->AddChild(control);
             });
         }
     }

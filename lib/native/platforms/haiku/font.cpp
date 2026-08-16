@@ -6,6 +6,7 @@
 //
 
 #include <Font.h>
+#include <Application.h>
 #include <algorithm>
 #include <cmath>
 
@@ -74,6 +75,31 @@ namespace native
     const font_t &font_t::stock(font_role role) {
         static font_t s[6];
         static bool initialized = false;
+        if (!be_app) {
+            static font_t fallback[6];
+            static bool fallback_initialized = false;
+            if (!fallback_initialized) {
+                fallback_initialized = true;
+                constexpr int sizes[] = {13, 13, 13, 14, 11, 13};
+                for (const auto &description : enumerate_installed()) {
+                    bool valid = true;
+                    for (int index = 0; index < 6; ++index) {
+                        fallback[index] = from_file(
+                            description.path,
+                            sizes[index],
+                            description.face_index);
+                        valid = valid && fallback[index].valid();
+                    }
+                    if (!valid)
+                        continue;
+                    for (auto &font : fallback)
+                        font._spec.source = font_source::stock;
+                    break;
+                }
+            }
+            return fallback[(int)role];
+        }
+
         if (!initialized) {
             initialized = true;
 

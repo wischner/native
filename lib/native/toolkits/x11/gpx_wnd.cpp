@@ -141,6 +141,13 @@ namespace native
             cache->gc,
             detail::x_pixel(
                 DefaultVisual(display, DefaultScreen(display)), color));
+        XRectangle clip = {
+            static_cast<short>(_clip.p.x),
+            static_cast<short>(_clip.p.y),
+            static_cast<unsigned short>(_clip.d.w),
+            static_cast<unsigned short>(_clip.d.h)};
+        XSetClipRectangles(
+            display, cache->gc, 0, 0, &clip, 1, Unsorted);
         cache->current_fg = color; // keep cache in sync so apply_gc
                                    // re-sets ink on next draw
         XFillRectangle(display,

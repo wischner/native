@@ -46,14 +46,12 @@ namespace native
                     static_cast<float>(_bounds.p.x + _bounds.d.w - 1),
                     static_cast<float>(_bounds.p.y + _bounds.d.h - 1));
 
-        const window_look look =
-            get_modal() ? B_MODAL_WINDOW_LOOK
-                        : get_owner() ? B_FLOATING_WINDOW_LOOK
-                                      : B_TITLED_WINDOW_LOOK;
-        const window_feel feel =
-            get_modal() ? B_MODAL_SUBSET_WINDOW_FEEL
-                        : get_owner() ? B_FLOATING_SUBSET_WINDOW_FEEL
-                                      : B_NORMAL_WINDOW_FEEL;
+        const window_look look = get_modal()
+                                     ? B_MODAL_WINDOW_LOOK
+                                     : B_TITLED_WINDOW_LOOK;
+        const window_feel feel = get_modal()
+                                     ? B_MODAL_SUBSET_WINDOW_FEEL
+                                     : B_NORMAL_WINDOW_FEEL;
         auto *window = new haiku::native_window(
             const_cast<app_wnd *>(this),
             frame,
@@ -61,7 +59,7 @@ namespace native
             look,
             feel);
 
-        if (app_wnd *owner = get_owner()) {
+        if (app_wnd *owner = get_modal() ? get_owner() : nullptr) {
             BWindow *owner_window =
                 haiku::wnd_bindings.handle_from_object(owner);
             if (owner_window)
@@ -110,10 +108,13 @@ namespace native
 
         if (win) {
             haiku::wnd_bindings.unregister_by_object(self);
-            if (win->Lock())
-                win->Quit();
-            else
+            if (win->IsLocked()) {
                 win->PostMessage(B_QUIT_REQUESTED);
+            } else if (win->Lock()) {
+                win->Quit();
+            } else {
+                win->PostMessage(B_QUIT_REQUESTED);
+            }
         }
 
         if (get_modal() && owner && owner_window) {

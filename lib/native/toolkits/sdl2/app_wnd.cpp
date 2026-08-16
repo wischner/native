@@ -12,10 +12,28 @@
 #ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
 #endif
-#include <stdexcept>
 #include <algorithm>
+#include <cstdlib>
+#include <stdexcept>
 
 #include "globals.h"
+#include "window_position.h"
+
+#ifdef HAVE_SDL2_TTF
+namespace
+{
+    bool ttf_initialized = false;
+
+    // Shut SDL_ttf down after function-static font objects release their
+    // TTF_Font handles during normal process teardown.
+    void shutdown_ttf() {
+        if (!ttf_initialized)
+            return;
+        TTF_Quit();
+        ttf_initialized = false;
+    }
+} // namespace
+#endif
 
 namespace native
 {
@@ -43,33 +61,30 @@ namespace native
                 SDL_GetError());
 
 #ifdef HAVE_SDL2_TTF
-        if (initialize_runtime && TTF_Init() != 0) {
-            SDL_QuitSubSystem(SDL_INIT_VIDEO);
-            throw std::runtime_error(
-                std::string("SDL2: Failed to initialize TTF: ") +
-                TTF_GetError());
+        if (!ttf_initialized) {
+            if (TTF_Init() != 0) {
+                SDL_QuitSubSystem(SDL_INIT_VIDEO);
+                throw std::runtime_error(
+                    std::string("SDL2: Failed to initialize TTF: ") +
+                    TTF_GetError());
+            }
+            ttf_initialized = true;
+            std::atexit(shutdown_ttf);
         }
 #endif
 
-        const bool use_default_position =
-            (_bounds.p.x == 100 && _bounds.p.y == 100);
-        const int window_x =
-            use_default_position ? SDL_WINDOWPOS_CENTERED : _bounds.p.x;
-        const int window_y =
-            use_default_position ? SDL_WINDOWPOS_CENTERED : _bounds.p.y;
+        const point position =
+            linux::sdl2::constrain_window_position(
+                nullptr, _bounds.p, _bounds.d);
 
         SDL_Window *window = SDL_CreateWindow(_title.c_str(),
-                                              window_x,
-                                              window_y,
+                                              position.x,
+                                              position.y,
                                               _bounds.d.w,
                                               _bounds.d.h,
                                               SDL_WINDOW_HIDDEN);
 
         if (!window) {
-#ifdef HAVE_SDL2_TTF
-            if (initialize_runtime)
-                TTF_Quit();
-#endif
             const std::string error = SDL_GetError();
             if (initialize_runtime)
                 SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -80,10 +95,15 @@ namespace native
         if (!linux::sdl2::main_window)
             linux::sdl2::main_window = window;
 
+        auto *self = const_cast<app_wnd *>(this);
+        int actual_x = 0;
+        int actual_y = 0;
+        SDL_GetWindowPosition(window, &actual_x, &actual_y);
+        self->on_native_move(point(actual_x, actual_y));
+
         linux::sdl2::wnd_bindings.register_pair(
-            window, const_cast<app_wnd *>(this));
-        linux::sdl2::windows.push_back(
-            const_cast<app_wnd *>(this));
+            window, self);
+        linux::sdl2::windows.push_back(self);
 
 #if SDL_VERSION_ATLEAST(2, 0, 5)
         if (get_modal()) {
@@ -99,9 +119,8 @@ namespace native
 
         _created = true;
 
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_wnd_create.emit();
+        self->menu.attach(*self);
+        self->on_wnd_create.emit();
     }
 
     void app_wnd::show() const {
@@ -117,6 +136,17 @@ namespace native
                 "SDL2: Missing SDL_Window binding for app_wnd.");
 
         SDL_ShowWindow(window);
+        int current_x = 0;
+        int current_y = 0;
+        SDL_GetWindowPosition(window, &current_x, &current_y);
+        const point current(current_x, current_y);
+        const point position =
+            linux::sdl2::constrain_window_position(
+                window, current, get_dimensions());
+        if (position.x != current.x || position.y != current.y) {
+            SDL_SetWindowPosition(window, position.x, position.y);
+            const_cast<app_wnd *>(this)->on_native_move(position);
+        }
         if (get_modal()) {
             SDL_RaiseWindow(window);
 #if SDL_VERSION_ATLEAST(2, 0, 5)
@@ -165,10 +195,11 @@ namespace native
 
         if (!linux::sdl2::windows.empty())
             return;
-#ifdef HAVE_SDL2_TTF
-        TTF_Quit();
-#endif
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        // SDL_QuitSubSystem leaves process-global platform services
+        // (including SDL's Linux DBus connection) alive. The last
+        // Native window owns the complete SDL runtime, so release it
+        // completely and allow a later window to initialize it again.
+        SDL_Quit();
     }
 
 } // namespace native

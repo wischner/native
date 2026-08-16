@@ -148,6 +148,7 @@ The root layout owns the nested grid. Both layouts borrow their control
 pointers. The window still owns every `native::button`, so controls outlive
 the layouts that reference them.
 
-This exhausts the former runnable examples. Return to the
-[manual contents](../PROGRAMMING-NATIVE.md) or continue with the internal
-[Book of Native](../BOOK-OF-NATIVE.md) for implementation details.
+The next chapters cover the controls and services added after the original
+runnable examples.
+
+Next: [Selection controls](08-selection-controls.md).

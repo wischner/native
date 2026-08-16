@@ -30,22 +30,18 @@ namespace
                             static_cast<native::dim>(h));
     }
 
-    void draw_buttons(native::app_wnd *owner,
-                      const native::rect &work) {
+    void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
         for (auto *button : linux::gemix::buttons) {
             if (!button || !button->get_parent() ||
                 button->get_parent() != owner)
                 continue;
 
-            native::gpx_wnd g(owner, native::point(work.p.x, work.p.y));
-            g.set_clip(button->get_bounds());
-            auto painter = native::theme::create(g);
+            auto painter = native::theme::create(graphics);
             painter->draw_button(button->get_bounds(),
                                  button->get_text());
         }
 
-        native::gpx_wnd g(owner, native::point(work.p.x, work.p.y));
-        auto painter = native::theme::create(g);
+        auto painter = native::theme::create(graphics);
         for (auto *control : linux::gemix::checks) {
             if (!control || control->get_parent() != owner)
                 continue;
@@ -69,6 +65,7 @@ namespace
                                control->get_items(),
                                control->get_selected_index());
         }
+        linux::gemix::render_text_edits(owner, graphics);
     }
 
     void paint_window(native::app_wnd *owner,
@@ -95,17 +92,21 @@ namespace
                 piece = piece.intersect(*clip);
 
             if (piece.w() > 0 && piece.h() > 0) {
+                const native::rect local_piece(
+                    piece.p.x - work.p.x,
+                    piece.p.y - work.p.y,
+                    piece.d.w,
+                    piece.d.h);
                 native::gpx_wnd g(owner,
                                   native::point(work.p.x, work.p.y));
-                g.set_clip(native::rect(0, 0, work.d.w, work.d.h));
-                g.set_paper(native::rgba(0, 0, 0, 255));
-                g.set_ink(native::rgba(255, 255, 255, 255));
+                g.set_clip(local_piece);
+                g.set_paper(native::rgba(255, 255, 255, 255));
+                g.set_ink(native::rgba(0, 0, 0, 255));
                 g.clear(g.get_paper());
-                native::wnd_paint_event e(
-                    native::rect(0, 0, work.d.w, work.d.h), g);
+                native::wnd_paint_event e(local_piece, g);
                 owner->on_wnd_paint.emit(e);
-                draw_buttons(owner, work);
-                v_updwk(linux::gemix::runtime.vdi_handle);
+                g.set_clip(local_piece);
+                draw_controls(owner, g);
             }
 
             wind_get(handle,
@@ -116,6 +117,7 @@ namespace
                      &box.g_h);
         }
 
+        v_updwk(linux::gemix::runtime.vdi_handle);
         wind_update(END_UPDATE);
     }
 
@@ -188,7 +190,8 @@ namespace
 
 namespace linux::gemix
 {
-    void request_repaint(native::wnd *target) {
+    void request_repaint(native::wnd *target,
+                         const native::rect *area) {
         native::wnd *root = target;
 
         while (root && root->get_parent())
@@ -198,7 +201,19 @@ namespace linux::gemix
         if (!owner)
             return;
 
-        paint_window(owner, nullptr);
+        if (!area) {
+            paint_window(owner, nullptr);
+            return;
+        }
+
+        const WORD handle = wnd_bindings.handle_from_object(owner);
+        const native::rect work = work_rect_for_handle(handle);
+        const native::rect screen_area(
+            area->p.x + work.p.x,
+            area->p.y + work.p.y,
+            area->d.w,
+            area->d.h);
+        paint_window(owner, &screen_area);
     }
 } // namespace linux::gemix
 
@@ -233,7 +248,8 @@ namespace native
         }
 
         while (!linux::gemix::runtime.shutdown_requested) {
-            WORD events = evnt_multi(MU_MESAG | MU_KEYBD | MU_TIMER,
+            WORD events = evnt_multi(MU_MESAG | MU_KEYBD | MU_BUTTON |
+                                         MU_TIMER,
                                      1,
                                      1,
                                      1,
@@ -266,10 +282,16 @@ namespace native
                     work_rect_for_handle(pointer_handle);
                 const point local(mx - work.p.x, my - work.p.y);
 
-                if (mx != prev_mx || my != prev_my)
+                if (mx != prev_mx || my != prev_my) {
+                    linux::gemix::update_text_edit_cursor(
+                        pointer_window, local);
                     pointer_window->on_mouse_move.emit(local);
+                }
 
                 if ((prev_mb & 1) == 0 && (mb & 1) != 0) {
+                    linux::gemix::active_window = pointer_window;
+                    linux::gemix::focus_text_edit(pointer_window,
+                                                  local);
                     pointer_window->on_mouse_click.emit(mouse_event(
                         mouse_button::left,
                         mouse_action::press,
@@ -294,24 +316,25 @@ namespace native
                 raise_active_modal(pointer_window);
             }
 
+            if (!pointer_window &&
+                (mx != prev_mx || my != prev_my)) {
+                linux::gemix::update_text_edit_cursor(nullptr,
+                                                      point());
+            }
+
             prev_mx = mx;
             prev_my = my;
             prev_mb = mb;
 
             if ((events & MU_KEYBD) != 0) {
-                WORD top_handle = 0;
-                WORD unused_a = 0;
-                WORD unused_b = 0;
-                WORD unused_c = 0;
-                wind_get(0,
-                         WF_TOP,
-                         &top_handle,
-                         &unused_a,
-                         &unused_b,
-                         &unused_c);
-                app_wnd *top = window_from_handle(top_handle);
+                app_wnd *top = linux::gemix::active_window
+                                   ? linux::gemix::active_window
+                                   : app::main_wnd();
                 if (top && !top->get_input_enabled()) {
                     raise_active_modal(top);
+                } else if (top && linux::gemix::handle_text_edit_key(
+                                      top, ks, kr)) {
+                    // The focused editor consumed this key packet.
                 } else if (top && (kr & 0xff) == 27) {
                     top->destroy();
                 }
@@ -357,10 +380,12 @@ namespace native
                     break;
 
                 case WM_TOPPED:
-                    if (target && target->get_input_enabled())
+                    if (target && target->get_input_enabled()) {
                         wind_set(msg[3], WF_TOP, 0, 0, 0, 0);
-                    else if (target)
+                        linux::gemix::active_window = target;
+                    } else if (target) {
                         raise_active_modal(target);
+                    }
                     break;
 
                 case WM_FULLED: {

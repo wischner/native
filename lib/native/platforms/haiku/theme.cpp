@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <Alignment.h>
+#include <Application.h>
 #include <ControlLook.h>
 #include <Font.h>
 #include <InterfaceDefs.h>
@@ -109,6 +110,21 @@ namespace
 
         metrics defaults() const override {
             metrics m;
+            if (!be_app) {
+                const native::font_t &font = native::font_t::stock(
+                    native::font_role::control);
+                const native::font_metrics font_metrics =
+                    font.get_metrics();
+                const int height = std::max(1, font_metrics.height);
+                m.menu_bar_height = std::max(20, height + 8);
+                m.menu_item_height = std::max(18, height + 4);
+                m.popup_width =
+                    font.measure_text("MMMMMMMMMMMMMMMMMMMM").width +
+                    16;
+                m.text_padding_x = 8;
+                m.list_item_height = height + 2;
+                return m;
+            }
             font_height height{};
             be_plain_font->GetHeight(&height);
             const int text_height = std::max(
@@ -121,11 +137,36 @@ namespace
                                 "MMMMMMMMMMMMMMMMMMMM")) +
                             16;
             m.text_padding_x = 8;
+            m.list_item_height = text_height + 2;
             return m;
         }
 
         palette native_palette() const override {
             palette p;
+            if (!be_app) {
+                p.button_bg = native::rgba(216, 216, 216, 255);
+                p.button_border = native::rgba(80, 80, 80, 255);
+                p.button_highlight = native::rgba(255, 255, 255, 255);
+                p.button_shadow = native::rgba(150, 150, 150, 255);
+                p.button_text = native::rgba(0, 0, 0, 255);
+                p.button_disabled_text =
+                    native::rgba(130, 130, 130, 255);
+                p.button_hot_bg = native::rgba(225, 225, 225, 255);
+                p.button_hot_text = p.button_text;
+                p.button_pressed_bg =
+                    native::rgba(190, 190, 190, 255);
+                p.button_pressed_text = p.button_text;
+                p.menu_bar_bg = p.button_bg;
+                p.menu_bar_line_top = p.button_highlight;
+                p.menu_bar_line_bottom = p.button_shadow;
+                p.menu_text = p.button_text;
+                p.menu_disabled_text = p.button_disabled_text;
+                p.menu_hot_bg = native::rgba(60, 120, 210, 255);
+                p.menu_hot_text = native::rgba(255, 255, 255, 255);
+                p.menu_popup_bg = p.button_bg;
+                p.menu_popup_border = p.button_border;
+                return p;
+            }
             p.button_bg =
                 from_native(ui_color(B_CONTROL_BACKGROUND_COLOR));
             p.button_border =
@@ -261,13 +302,7 @@ namespace
                 const BRect frame(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
                 view->SetHighColor(ui_color(B_LIST_BACKGROUND_COLOR));
                 view->FillRect(frame);
-                view->SetHighColor(ui_color(B_CONTROL_BORDER_COLOR));
-                view->StrokeRect(frame);
-
-                const native::rect content(r.p.x + 1,
-                                           r.p.y + 1,
-                                           r.d.w > 2 ? r.d.w - 2 : 0,
-                                           r.d.h > 2 ? r.d.h - 2 : 0);
+                const native::rect content = r;
                 const int item_height =
                     std::max(1, defaults().list_item_height);
                 for (std::size_t i = 0; i < items.size(); ++i) {
@@ -294,8 +329,49 @@ namespace
                                  r, items, selected_index, s);
         }
 
+        theme &draw_text_edit_frame(
+            const native::rect &r,
+            const state &s) override {
+            const bool painted = with_view(_g, [&](BView *view) {
+                const BRect update(
+                    r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
+                BRect content(update);
+                view->SetHighColor(
+                    s.disabled
+                        ? ui_color(B_CONTROL_BACKGROUND_COLOR)
+                        : ui_color(B_DOCUMENT_BACKGROUND_COLOR));
+                view->FillRect(content);
+                be_control_look->DrawTextControlBorder(
+                    view,
+                    content,
+                    update,
+                    ui_color(B_CONTROL_BACKGROUND_COLOR),
+                    flags_from(s));
+            });
+            if (painted)
+                return *this;
+            const palette p = native_palette();
+            _g.set_pen(1)
+                .set_ink(s.disabled ? p.button_bg : p.menu_popup_bg)
+                .draw_rect(r, true)
+                .set_ink(p.button_border)
+                .draw_rect(r, false);
+            return *this;
+        }
+
     private:
         int baseline(const native::rect &r) const {
+            if (!be_app) {
+                const native::font_metrics metrics =
+                    native::font_t::stock(native::font_role::control)
+                        .get_metrics();
+                return r.p.y +
+                       std::max(0,
+                                (static_cast<int>(r.d.h) -
+                                 metrics.height) /
+                                    2) +
+                       metrics.ascent;
+            }
             font_height height{};
             be_plain_font->GetHeight(&height);
             return r.p.y +
@@ -304,9 +380,20 @@ namespace
                        height.ascent);
         }
 
+        int text_top(const native::rect &r) const {
+            const native::font_metrics metrics =
+                native::font_t::stock(native::font_role::control)
+                    .get_metrics();
+            return r.p.y +
+                   std::max(0,
+                            (static_cast<int>(r.d.h) -
+                             metrics.height) /
+                                2);
+        }
+
         native::rect indicator_bounds(const native::rect &r) const {
             const int side =
-                std::max(7, std::min(14, static_cast<int>(r.d.h) - 2));
+                std::max(7, std::min(16, static_cast<int>(r.d.h) - 2));
             return native::rect(
                 r.p.x + 2,
                 r.p.y +
@@ -404,7 +491,7 @@ namespace
                                   : p.button_text)
                 .draw_text(
                     text,
-                    native::point(indicator.x2() + 5, baseline(r)));
+                    native::point(indicator.x2() + 5, text_top(r)));
             return *this;
         }
 
@@ -413,8 +500,9 @@ namespace
                               const std::string &text,
                               const state &s) const {
             const rgb_color background =
-                ui_color(s.selected ? B_LIST_SELECTED_BACKGROUND_COLOR
-                                    : B_LIST_BACKGROUND_COLOR);
+                ui_color(s.selected
+                             ? B_LIST_SELECTED_BACKGROUND_COLOR
+                             : B_LIST_BACKGROUND_COLOR);
             const rgb_color foreground =
                 s.disabled
                     ? tint_color(ui_color(B_LIST_ITEM_TEXT_COLOR),
@@ -448,7 +536,7 @@ namespace
                 .draw_text(
                     text,
                     native::point(r.p.x + defaults().text_padding_x,
-                                  baseline(r)));
+                                  text_top(r)));
             return *this;
         }
 
@@ -459,12 +547,10 @@ namespace
             saved_state saved(_g);
             const palette p = native_palette();
             _g.set_pen(1).set_ink(p.menu_popup_bg).draw_rect(r, true);
-            _g.set_ink(p.button_shadow).draw_rect(r, false);
-            if (r.d.w <= 2 || r.d.h <= 2)
+            if (r.d.w == 0 || r.d.h == 0)
                 return *this;
 
-            const native::rect content(
-                r.p.x + 1, r.p.y + 1, r.d.w - 2, r.d.h - 2);
+            const native::rect content = r;
             _g.set_clip(_g.get_clip().intersect(content));
             const int item_height =
                 std::max(1, defaults().list_item_height);
@@ -498,10 +584,10 @@ namespace
                           : (s.hot ? p.button_hot_bg : p.button_bg);
             _g.set_pen(1).set_ink(background).draw_rect(r, true);
             _g.set_ink(p.button_border).draw_rect(r, false);
-            const int width = static_cast<int>(
-                be_plain_font->StringWidth(text.c_str()));
-            _g.set_font(
-                native::font_t::stock(native::font_role::control));
+            const native::font_t &font =
+                native::font_t::stock(native::font_role::control);
+            const int width = font.measure_text(text).width;
+            _g.set_font(font);
             _g.set_ink(s.disabled ? p.button_disabled_text
                                   : p.button_text)
                 .draw_text(
@@ -511,7 +597,7 @@ namespace
                             std::max(0,
                                      (static_cast<int>(r.d.w) - width) /
                                          2),
-                        baseline(r)));
+                        text_top(r)));
             return *this;
         }
 
@@ -586,7 +672,7 @@ namespace
                 .draw_text(
                     text,
                     native::point(r.p.x + defaults().text_padding_x,
-                                  baseline(r)));
+                                  text_top(r)));
             return *this;
         }
 

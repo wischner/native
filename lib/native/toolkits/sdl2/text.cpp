@@ -210,7 +210,7 @@ namespace linux::sdl2
             linux::sdl2::font_bindings.object_from_handle(
                 native::font_t::stock(native::font_role::control).id());
         if (font_handle && font_handle->ttf_font) {
-            SDL_Surface *surface = TTF_RenderUTF8_Solid(
+            SDL_Surface *surface = TTF_RenderUTF8_Blended(
                 font_handle->ttf_font, text.c_str(), color);
             if (surface) {
                 SDL_Texture *texture =

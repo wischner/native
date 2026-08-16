@@ -171,7 +171,8 @@ namespace native
             SDL_Color color = {
                 get_ink().r, get_ink().g, get_ink().b, get_ink().a};
             SDL_Surface *surface =
-                TTF_RenderUTF8_Solid(fh->ttf_font, text.c_str(), color);
+                TTF_RenderUTF8_Blended(
+                    fh->ttf_font, text.c_str(), color);
             if (surface) {
                 SDL_Texture *texture =
                     SDL_CreateTextureFromSurface(renderer, surface);

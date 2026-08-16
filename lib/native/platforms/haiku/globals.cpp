@@ -9,6 +9,8 @@
 #include <CheckBox.h>
 #include <ListView.h>
 #include <RadioButton.h>
+#include <ScrollView.h>
+#include <TextView.h>
 #include <View.h>
 #include <native.h>
 #include <bindings.h>
@@ -35,8 +37,14 @@ namespace haiku
     native::bindings<native::check *, haiku_check *> check_bindings;
     native::bindings<native::radio *, haiku_radio *> radio_bindings;
     native::bindings<native::list *, haiku_list *> list_bindings;
+    native::bindings<native::text_edit *, haiku_text_edit *>
+        text_edit_bindings;
     native::bindings<native::file_dialog *, haiku_file_dialog *>
         file_dialog_bindings;
+
+    BView *content_view(BWindow *window) {
+        return window ? window->ChildAt(0) : nullptr;
+    }
 
     BView *view_from_control(native::wnd *control) {
         if (auto *button = dynamic_cast<native::button *>(control)) {
@@ -54,6 +62,16 @@ namespace haiku
         if (auto *list = dynamic_cast<native::list *>(control)) {
             auto *binding = list_bindings.object_from_handle(list);
             return binding ? binding->view : nullptr;
+        }
+        if (auto *editor =
+                dynamic_cast<native::text_edit *>(control)) {
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
+            if (!binding)
+                return nullptr;
+            return binding->scroll
+                       ? static_cast<BView *>(binding->scroll)
+                       : static_cast<BView *>(binding->view);
         }
         return nullptr;
     }

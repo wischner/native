@@ -6,8 +6,12 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <cstdlib>
+#include <cstdint>
 #include <iostream>
 #include <string>
+
+#include <SDL2/SDL.h>
 
 #include <native.h>
 
@@ -88,11 +92,151 @@ namespace
         palette.destroy();
         owner.destroy();
     }
+
+    // Exercise the SDL system clipboard and emulated editor through
+    // their public contracts while the dummy video service is live.
+    void test_clipboard_and_text_edit() {
+        native::app_wnd owner(
+            "Editors", native::rect(10, 10, 320, 200));
+        owner.create();
+
+        native::img image(2, 1);
+        image.pixels()[0] = native::rgba(10, 20, 30, 40);
+        image.pixels()[1] = native::rgba(50, 60, 70, 255);
+        native::clipboard output = native::clipboard::open_write();
+        output.write_text("clip\ntext").write_image(image).commit();
+        native::clipboard input = native::clipboard::open_read();
+        expect(input.has(native::clipboard_format::text) &&
+                   input.has(native::clipboard_format::image) &&
+                   input.read_text() == "clip\ntext",
+               "clipboard preserves a multi-format UTF-8 snapshot");
+        std::uint8_t text_slice[4] = {};
+        expect(output.get_committed() &&
+                   input.size(native::clipboard_format::text) == 9 &&
+                   input.read(native::clipboard_format::text,
+                              5,
+                              text_slice,
+                              sizeof(text_slice)) == 4 &&
+                   std::string(
+                       reinterpret_cast<const char *>(text_slice),
+                       sizeof(text_slice)) == "text",
+               "clipboard exposes committed state and bounded reads");
+        native::img copied_image = input.read_image();
+        expect(copied_image.w() == 2 && copied_image.h() == 1 &&
+                   static_cast<std::uint32_t>(
+                       copied_image.pixels()[0]) ==
+                       static_cast<std::uint32_t>(image.pixels()[0]),
+               "clipboard PNG round trip preserves RGBA pixels");
+
+        native::clipboard empty_output = native::clipboard::open_write();
+        empty_output.write_text("").commit();
+        native::clipboard empty_input = native::clipboard::open_read();
+        expect(empty_input.has(native::clipboard_format::text) &&
+                   empty_input.read_text().empty(),
+               "clipboard preserves an advertised empty text value");
+
+        native::text_edit source("Copy me");
+        source.set_parent(&owner);
+        source.create();
+        source.show();
+        source.select_all();
+        expect(source.copy(),
+               "direct editor copy publishes the current selection");
+
+        native::text_edit target;
+        target.set_parent(&owner);
+        target.set_validator([](const std::string &text) {
+            return text != "Rejected";
+        });
+        int changes = 0;
+        target.on_change.connect([&](const std::string &) {
+            ++changes;
+            return false;
+        });
+        target.create();
+        target.show();
+        expect(target.paste() && target.get_text() == "Copy me" &&
+                   changes == 1,
+               "direct editor paste validates, changes, and emits");
+
+        native::clipboard rejected = native::clipboard::open_write();
+        rejected.write_text("Rejected").commit();
+        target.select_all();
+        expect(!target.paste() && target.get_text() == "Copy me" &&
+                   changes == 1,
+               "live validation rejects pasted complete values");
+
+        target.destroy();
+        source.destroy();
+        owner.destroy();
+    }
+
+    // Exercise fallback chooser cancellation without a desktop helper.
+    void test_unavailable_file_dialogs() {
+        native::app_wnd owner(
+            "File panels", native::rect(10, 10, 320, 200));
+        native::open_file_dialog open(owner);
+        native::save_file_dialog save(owner);
+
+        const char *old_path_value = std::getenv("PATH");
+        const bool had_path = old_path_value != nullptr;
+        const std::string old_path = had_path ? old_path_value : "";
+        setenv("PATH", "/native/no-file-choosers", 1);
+
+        int cancelled = 0;
+        open.on_modal_close.connect(
+            [&](native::dialog_result result) {
+                if (result == native::dialog_result::cancelled)
+                    ++cancelled;
+                return false;
+            });
+        save.on_modal_close.connect(
+            [&](native::dialog_result result) {
+                if (result == native::dialog_result::cancelled)
+                    ++cancelled;
+                return false;
+            });
+
+        owner.create();
+        SDL_Event quit{};
+        quit.type = SDL_QUIT;
+        SDL_PushEvent(&quit);
+        open.create();
+        open.show();
+        save.create();
+        save.show();
+
+        expect(cancelled == 2 &&
+                   !open.get_created() &&
+                   !save.get_created() &&
+                   owner.get_input_enabled(),
+               "fallback file choosers cancel without throwing");
+
+        owner.destroy();
+        if (had_path)
+            setenv("PATH", old_path.c_str(), 1);
+        else
+            unsetenv("PATH");
+    }
+
+    // Keep an explicitly off-screen SDL window's title area reachable.
+    void test_window_placement() {
+        native::app_wnd window(
+            "Placement", native::rect(-500, -500, 160, 120));
+        window.create();
+        expect(window.get_position().x >= 0 &&
+                   window.get_position().y >= 32,
+               "SDL constrains top-level placement to its work area");
+        window.destroy();
+    }
 } // namespace
 
 int main() {
     try {
         test_modal_stack();
+        test_clipboard_and_text_edit();
+        test_unavailable_file_dialogs();
+        test_window_placement();
     } catch (const std::exception &error) {
         std::cerr << "FAILED: unexpected exception: " << error.what()
                   << '\n';

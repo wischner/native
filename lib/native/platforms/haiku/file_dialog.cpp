@@ -8,6 +8,8 @@
 
 #include "file_dialog_common.h"
 
+#include <algorithm>
+#include <cctype>
 #include <fnmatch.h>
 #include <memory>
 #include <stdexcept>
@@ -91,9 +93,29 @@ namespace
             if (entry.IsDirectory())
                 return true;
 
+            std::string name = reference->name;
+            std::transform(name.begin(),
+                           name.end(),
+                           name.begin(),
+                           [](unsigned char value) {
+                               return static_cast<char>(
+                                   std::tolower(value));
+                           });
             for (const std::string &pattern : patterns_) {
-                if (fnmatch(pattern.c_str(), reference->name, 0) == 0)
+                std::string folded_pattern = pattern;
+                std::transform(
+                    folded_pattern.begin(),
+                    folded_pattern.end(),
+                    folded_pattern.begin(),
+                    [](unsigned char value) {
+                        return static_cast<char>(
+                            std::tolower(value));
+                    });
+                if (fnmatch(folded_pattern.c_str(),
+                            name.c_str(),
+                            0) == 0) {
                     return true;
+                }
             }
             return patterns_.empty();
         }
@@ -177,9 +199,22 @@ namespace
         if (!haiku::global_app)
             throw std::runtime_error(
                 "Haiku: A file panel requires BApplication.");
-        if (dialog_handler.Looper())
-            dialog_handler.Looper()->RemoveHandler(&dialog_handler);
+
+        if (BLooper *old_looper = dialog_handler.Looper()) {
+            if (!old_looper->Lock())
+                throw std::runtime_error(
+                    "Haiku: Unable to lock the old file-panel "
+                    "message looper.");
+            old_looper->RemoveHandler(&dialog_handler);
+            old_looper->Unlock();
+        }
+
+        if (!haiku::global_app->Lock())
+            throw std::runtime_error(
+                "Haiku: Unable to lock BApplication for a file "
+                "panel.");
         haiku::global_app->AddHandler(&dialog_handler);
+        haiku::global_app->Unlock();
     }
 
     // Set the panel directory from either a folder or file path.
@@ -229,7 +264,7 @@ namespace haiku
             save ? B_SAVE_PANEL : B_OPEN_PANEL,
             &target,
             nullptr,
-            B_FILE_NODE,
+            B_FILE_NODE | B_SYMLINK_NODE,
             allow_multiple,
             &message,
             state->filter,

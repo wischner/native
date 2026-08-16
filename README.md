@@ -29,6 +29,8 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, path, and filter model
+- **Clipboard and text editing**: Typed UTF-8/image clipboard transactions,
+  native or emulated single-line/multiline editors, and live validation
 - **Minimal and modern C++**: Clean code, few dependencies
 - **Educational**: Open development process, detailed documentation in chapters
 - **Consistent lowercase API**: Naming inspired by the C++ standard library
@@ -59,13 +61,15 @@ toolchain with C++20 support. A direct Linux build also needs
 
 - X11 uses Xlib, Xrandr, pixman, Xt, and
   [Athena Widgets (Xaw)](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html).
-- SDL2 uses SDL2; SDL2_ttf is optional and enables system font loading.
+- SDL2 uses SDL2 and Xlib on Linux; SDL2_ttf is optional and enables system
+  font loading. Xlib supplies image clipboard formats missing from SDL2.
 - Linux graphics targets use libpng and libjpeg for PNG/JPEG image I/O;
   Windows, Haiku, and macOS use their native codec services.
 - OpenMotif uses Xlib, Xt, and Motif.
 - File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
-  OpenMotif, and GEMix. X11/Athena and SDL2 require either Zenity or KDialog at
-  runtime because neither toolkit includes a file chooser.
+  OpenMotif, and GEMix. X11/Athena prefers Zenity or KDialog and otherwise uses
+  its Xaw browser. SDL2 likewise prefers Zenity or KDialog and otherwise uses
+  its built-in SDL chooser.
 - Portable TrueType/OpenType fonts use the vendored `stb_truetype`
   rasterizer, so file- and memory-backed fonts have the same metrics
   and pixels on every backend.

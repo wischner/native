@@ -66,14 +66,27 @@ namespace native
                               : nullptr;
         const DWORD extended_style =
             get_modal() ? WS_EX_DLGMODALFRAME : 0;
+        const DWORD style = WS_OVERLAPPEDWINDOW;
+        RECT framed_bounds = {
+            0, 0, _bounds.d.w, _bounds.d.h};
+        if (!AdjustWindowRectEx(
+                &framed_bounds,
+                style,
+                !menu.tops().empty(),
+                extended_style)) {
+            throw std::runtime_error(
+                "Windows: Failed to calculate the window frame.");
+        }
         HWND hwnd = CreateWindowExW(extended_style,
                                     windows::class_name,
                                     title_w.c_str(),
-                                    WS_OVERLAPPEDWINDOW,
+                                    style,
                                     _bounds.p.x,
                                     _bounds.p.y,
-                                    _bounds.d.w,
-                                    _bounds.d.h,
+                                    framed_bounds.right -
+                                        framed_bounds.left,
+                                    framed_bounds.bottom -
+                                        framed_bounds.top,
                                     owner_hwnd,
                                     nullptr,
                                     GetModuleHandle(nullptr),

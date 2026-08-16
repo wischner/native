@@ -60,6 +60,13 @@ namespace linux::openmotif
         native::button *owner = nullptr;
     };
 
+    struct motif_text_edit
+    {
+        Widget widget = nullptr;
+        bool multiline = false;
+        bool suppress = false;
+    };
+
     // Owns the Motif widgets used by one file-dialog session.
     struct motif_file_dialog
     {
@@ -80,6 +87,8 @@ namespace linux::openmotif
     extern native::bindings<uint32_t, motif_menu *> menu_bindings;
     extern native::bindings<native::button *, motif_button *>
         button_bindings;
+    extern native::bindings<native::text_edit *, motif_text_edit *>
+        text_edit_bindings;
     extern native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     extern Display *cached_display;

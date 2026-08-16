@@ -7,9 +7,8 @@
 
 #include <native/save_file_dialog.h>
 
-#include <stdexcept>
-
 #include "../../platforms/linux/file_dialog_process.h"
+#include "file_dialog_fallback.h"
 
 namespace native
 {
@@ -23,6 +22,16 @@ namespace native
                                              get_suggested_name(),
                                              get_confirm_overwrite());
             if (response.outcome ==
+                linux::file_dialog_outcome::unavailable) {
+                response = linux::sdl2::show_file_dialog_fallback(
+                    *this,
+                    true,
+                    false,
+                    get_suggested_name(),
+                    get_default_extension(),
+                    get_confirm_overwrite());
+            }
+            if (response.outcome ==
                     linux::file_dialog_outcome::accepted &&
                 !response.paths.empty()) {
                 response.paths.front() = linux::add_default_extension(
@@ -32,13 +41,6 @@ namespace native
             } else {
                 const_cast<save_file_dialog *>(this)
                     ->on_native_cancel();
-            }
-
-            if (response.outcome ==
-                linux::file_dialog_outcome::unavailable) {
-                throw std::runtime_error(
-                    "SDL2: Install Zenity or KDialog to show file "
-                    "dialogs.");
             }
         } catch (...) {
             const_cast<save_file_dialog *>(this)->on_native_cancel();

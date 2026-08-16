@@ -93,4 +93,8 @@ Calling `destroy()` on the main application window releases its native
 resource. Backends use that destruction to leave the event loop when no main
 window remains.
 
+Menu commands named Open and Save do not imply a file-selector API. Connect
+those commands to the standard `open_file_dialog` and `save_file_dialog`
+objects described in Chapter 9.
+
 Next: [Buttons and control lifecycle](04-buttons.md).

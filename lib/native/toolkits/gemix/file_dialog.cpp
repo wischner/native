@@ -23,12 +23,20 @@ namespace
     constexpr std::size_t path_capacity = 1024;
     constexpr std::size_t name_capacity = 256;
 
-    // Select the first wildcard accepted by the AES file selector.
+    // AES exposes one wildcard at a time. Prefer an unrestricted filter
+    // when the portable dialog offers one, so callers can still reach files
+    // outside the first typed filter.
     std::string first_pattern(const native::file_dialog &dialog) {
         const auto &filters = dialog.get_filters();
+        for (const auto &filter : filters) {
+            for (const std::string &pattern : filter.patterns) {
+                if (pattern == "*" || pattern == "*.*")
+                    return "*";
+            }
+        }
         if (!filters.empty() && !filters.front().patterns.empty())
             return filters.front().patterns.front();
-        return "*.*";
+        return "*";
     }
 
     // Copy portable text into a fixed AES buffer with termination.
@@ -47,7 +55,6 @@ namespace
     std::string prepare_path(const native::file_dialog &dialog,
                              std::string &selection) {
         std::string path = dialog.get_initial_path();
-        std::replace(path.begin(), path.end(), '/', '\\');
         const std::string pattern = first_pattern(dialog);
         if (path.empty())
             return pattern;
@@ -55,7 +62,7 @@ namespace
             path.find('?') != std::string::npos)
             return path;
 
-        const std::size_t separator = path.find_last_of('\\');
+        const std::size_t separator = path.find_last_of("/\\");
         const std::size_t dot = path.find_last_of('.');
         if (dot != std::string::npos &&
             (separator == std::string::npos || dot > separator)) {
@@ -64,8 +71,8 @@ namespace
                                         : separator + 1);
             path.erase(separator == std::string::npos ? 0
                                                       : separator + 1);
-        } else if (path.back() != '\\') {
-            path.push_back('\\');
+        } else if (path.back() != '/' && path.back() != '\\') {
+            path.push_back('/');
         }
         path += pattern;
         return path;

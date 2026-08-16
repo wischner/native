@@ -22,10 +22,13 @@ namespace linux::sdl2
     native::bindings<native::check *, sdl2_check *> check_bindings;
     native::bindings<native::radio *, sdl2_radio *> radio_bindings;
     native::bindings<native::list *, sdl2_list *> list_bindings;
+    native::bindings<native::text_edit *, sdl2_text_edit *>
+        text_edit_bindings;
     std::vector<native::check *> checks;
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
     std::vector<native::button *> buttons;
+    std::vector<native::text_edit *> text_edits;
     std::vector<native::app_wnd *> windows;
 #ifdef HAVE_SDL2_TTF
     native::bindings<uint32_t, sdl2_font *> font_bindings;

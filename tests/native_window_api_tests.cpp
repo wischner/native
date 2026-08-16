@@ -44,6 +44,9 @@ namespace
                                     native::open_file_dialog>);
     static_assert(std::is_base_of_v<native::file_dialog,
                                     native::save_file_dialog>);
+    static_assert(std::is_base_of_v<native::wnd, native::text_edit>);
+    static_assert(!std::is_copy_constructible_v<native::clipboard>);
+    static_assert(std::is_move_constructible_v<native::clipboard>);
 
     int failure_count = 0;
 
@@ -302,6 +305,44 @@ namespace
                "list selection follows an item removed before it");
     }
 
+    // Verify editor modes, cached values, and complete-value validation
+    // without creating a backend widget.
+    void test_text_edit_properties() {
+        native::text_edit single("123");
+        int changes = 0;
+        single.on_change.connect([&](const std::string &) {
+            ++changes;
+            return false;
+        });
+        single.set_validator([](const std::string &text) {
+            return text.size() <= 4;
+        });
+        expect(single.validate("1234") &&
+                   !single.validate("12345") &&
+                   !single.validate("one\ntwo") &&
+                   !single.validate(std::string("a\0b", 3)),
+               "single-line editors validate complete proposed values");
+        expect(single.on_native_text("1234") &&
+                   !single.on_native_text("12345") &&
+                   single.get_text() == "1234" && changes == 1,
+               "rejected native edits preserve cached editor text");
+        single.set_text("12");
+        expect(single.get_text() == "12" && changes == 1,
+               "programmatic editor changes do not emit on_change");
+        single.set_read_only(true);
+        expect(single.get_read_only() &&
+                   !single.on_native_text("13") &&
+                   single.get_text() == "12" && changes == 1,
+               "read-only editors reject native changes");
+
+        native::text_edit multiline(
+            "one\ntwo", native::text_edit_mode::multi_line);
+        expect(multiline.get_mode() ==
+                       native::text_edit_mode::multi_line &&
+                   multiline.validate("three\nfour"),
+               "multiline editors accept portable line feeds");
+    }
+
     // Verify screen queries use only the current normalized snapshot.
     void test_screen_snapshot() {
         expect(native::screen::count() == 0,
@@ -359,6 +400,8 @@ namespace
             native::rect(0, 0, 80, 20), "Radio", selected);
         painter->draw_list(
             native::rect(0, 0, 80, 40), {"First", "Second"}, 1);
+        painter->draw_text_edit_frame(
+            native::rect(0, 0, 80, 24), selected);
         expect(graphics.painted,
                "theme paints a portable graphics target");
     }
@@ -595,6 +638,7 @@ int main() {
     test_owned_window_lifetime();
     test_file_dialog_properties();
     test_selection_controls();
+    test_text_edit_properties();
     test_screen_snapshot();
     test_theme_factory();
     test_portable_fonts();

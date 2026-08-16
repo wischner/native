@@ -18,16 +18,19 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/check.cpp
     ${CMAKE_CURRENT_LIST_DIR}/radio.cpp
     ${CMAKE_CURRENT_LIST_DIR}/list.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/clipboard.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_LIST_DIR}/file_dialog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/save_file_dialog.cpp
 )
 
-# Windows-specific libraries (user32 for windowing, gdi32 for graphics)
+# Windows windowing, graphics, registry, shell, COM, and codec libraries.
 target_link_libraries(native PRIVATE
     user32
     gdi32
     msimg32
+    advapi32
     shell32
     ole32
     gdiplus

@@ -49,6 +49,16 @@ namespace mac
         native::button *owner = nullptr;
     };
 
+    // Owns the AppKit objects used by one text editor.
+    struct mac_text_edit
+    {
+        NSTextField *field = nil;
+        NSScrollView *scroll = nil;
+        NSTextView *text_view = nil;
+        id delegate = nil;
+        bool suppress = false;
+    };
+
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, id> delegate_bindings;
@@ -57,6 +67,8 @@ namespace mac
     extern native::bindings<uint32_t, mac_menu *> menu_bindings;
     extern native::bindings<native::button *, mac_button *>
         button_bindings;
+    extern native::bindings<native::text_edit *, mac_text_edit *>
+        text_edit_bindings;
 
     struct mac_check
     {

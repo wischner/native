@@ -21,6 +21,8 @@ namespace windows
     native::bindings<uint32_t, win_font *> font_bindings;
     native::bindings<uint32_t, win_menu *> menu_bindings;
     native::bindings<native::button *, win_button *> button_bindings;
+    native::bindings<native::text_edit *, win_text_edit *>
+        text_edit_bindings;
 
     native::rgba rgba_from_sys_color(int idx) {
         const COLORREF c = GetSysColor(idx);
@@ -89,5 +91,15 @@ namespace windows
         if (!gw)
             return nullptr;
         return wnd_bindings.handle_from_object(gw->window());
+    }
+
+    HFONT control_font() {
+        const native::font_t &font = native::font_t::stock(
+            native::font_role::control);
+        win_font *binding = font_bindings.object_from_handle(font.id());
+        return binding && binding->hfont
+                   ? binding->hfont
+                   : static_cast<HFONT>(
+                         GetStockObject(DEFAULT_GUI_FONT));
     }
 } // namespace windows

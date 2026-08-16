@@ -74,8 +74,13 @@ namespace native
         return const_cast<wnd &>(*this);
     }
 
-    wnd &wnd::invalidate(const rect &) const {
-        return invalidate();
+    wnd &wnd::invalidate(const rect &area) const {
+        if (auto *parent = get_parent())
+            parent->invalidate(area);
+        else
+            linux::gemix::request_repaint(
+                const_cast<wnd *>(this), &area);
+        return const_cast<wnd &>(*this);
     }
 
     gpx &wnd::get_gpx() const {

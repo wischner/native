@@ -10,143 +10,105 @@
 #include <algorithm>
 #include <memory>
 
-#include <X11/StringDefs.h>
 #include <Xm/DrawP.h>
+#include <Xm/List.h>
+#include <Xm/PushB.h>
+#include <Xm/ToggleB.h>
 #include <Xm/Xm.h>
 
 #include <native.h>
 #include <native/theme.h>
 
-#include "../../gpx_wnd.h"
 #include "../emulated_theme.h"
 #include "globals.h"
+#include "theme_support.h"
 
 namespace
 {
-    struct motif_target
+    struct motif_indicator_target
     {
-        Widget widget = nullptr;
-        linux::openmotif::motif_gpx *cache = nullptr;
+        linux::openmotif::theme_target drawing;
+        Pixel background = 0;
+        Pixel foreground = 0;
+        Pixel top = 0;
+        Pixel bottom = 0;
+        Pixel select = 0;
+        Dimension size = 16;
+        Dimension shadow = 1;
+        XtEnum indicator = XmINDICATOR_FILL;
     };
-
-    motif_target target_from(native::gpx &g) {
-        auto *window_gpx = dynamic_cast<native::gpx_wnd *>(&g);
-        if (!window_gpx)
-            return {};
-        native::wnd *window = window_gpx->window();
-        return {
-            linux::openmotif::wnd_bindings.handle_from_object(window),
-            linux::openmotif::wnd_gpx_bindings.object_from_handle(
-                window)};
-    }
-
-    native::rgba pixel_color(Widget widget, Pixel pixel) {
-        if (!widget || !linux::openmotif::cached_display)
-            return native::rgba(0, 0, 0, 255);
-        Colormap colormap = DefaultColormapOfScreen(XtScreen(widget));
-        XtVaGetValues(widget, XtNcolormap, &colormap, nullptr);
-        XColor color{};
-        color.pixel = pixel;
-        XQueryColor(linux::openmotif::cached_display, colormap, &color);
-        return native::rgba(static_cast<std::uint8_t>(color.red >> 8),
-                            static_cast<std::uint8_t>(color.green >> 8),
-                            static_cast<std::uint8_t>(color.blue >> 8),
-                            255);
-    }
-
-    XFontStruct *query_control_font() {
-        const auto &font =
-            native::font_t::stock(native::font_role::control);
-        auto *binding =
-            linux::openmotif::font_bindings.object_from_handle(
-                font.id());
-        if (!binding || !binding->xfont ||
-            !linux::openmotif::cached_display)
-            return nullptr;
-        return XQueryFont(linux::openmotif::cached_display,
-                          binding->xfont);
-    }
 
     class motif_theme final : public linux::emulated_theme
     {
     public:
         explicit motif_theme(native::gpx &g)
-            : emulated_theme(g) {}
+            : emulated_theme(g)
+            , _button_probe(nullptr)
+            , _check_probe(nullptr)
+            , _radio_probe(nullptr)
+            , _list_probe(nullptr) {}
+
+        ~motif_theme() override {
+            if (_list_probe)
+                XtDestroyWidget(_list_probe);
+            if (_radio_probe)
+                XtDestroyWidget(_radio_probe);
+            if (_check_probe)
+                XtDestroyWidget(_check_probe);
+            if (_button_probe)
+                XtDestroyWidget(_button_probe);
+        }
 
         metrics defaults() const override {
             metrics m;
             m.menu_bar_height = 24;
             m.menu_item_height = 20;
             m.popup_width = 180;
-            m.text_padding_x = 8;
+            m.text_padding_x = 3;
+            m.list_item_height = text_height() + 2;
             return m;
         }
 
         palette native_palette() const override {
-            palette p;
-            p.button_bg = native::rgba(212, 208, 200, 255);
-            p.button_border = native::rgba(64, 64, 64, 255);
-            p.button_highlight = native::rgba(255, 255, 255, 255);
-            p.button_shadow = native::rgba(96, 96, 96, 255);
-            p.button_text = native::rgba(0, 0, 0, 255);
-            p.button_disabled_text = native::rgba(128, 128, 128, 255);
-            p.button_hot_bg = native::rgba(224, 224, 224, 255);
-            p.button_hot_text = p.button_text;
-            p.button_pressed_bg = native::rgba(176, 176, 176, 255);
-            p.button_pressed_text = p.button_text;
-            p.menu_bar_bg = p.button_bg;
-            p.menu_bar_line_top = p.button_highlight;
-            p.menu_bar_line_bottom = p.button_shadow;
-            p.menu_text = p.button_text;
-            p.menu_disabled_text = p.button_disabled_text;
-            p.menu_hot_bg = native::rgba(0, 0, 128, 255);
-            p.menu_hot_text = native::rgba(255, 255, 255, 255);
-            p.menu_popup_bg = p.button_bg;
-            p.menu_popup_border = p.button_border;
-
-            motif_target target = target_from(_g);
-            if (!target.widget)
-                return p;
-
-            Pixel background = 0;
-            Pixel foreground = 0;
-            Pixel top_shadow = 0;
-            Pixel bottom_shadow = 0;
-            Pixel highlight = 0;
-            XtVaGetValues(target.widget,
-                          XmNbackground,
-                          &background,
-                          XmNforeground,
-                          &foreground,
-                          XmNtopShadowColor,
-                          &top_shadow,
-                          XmNbottomShadowColor,
-                          &bottom_shadow,
-                          XmNhighlightColor,
-                          &highlight,
-                          nullptr);
-            p.button_bg = pixel_color(target.widget, background);
-            p.button_text = pixel_color(target.widget, foreground);
-            p.button_highlight = pixel_color(target.widget, top_shadow);
-            p.button_shadow = pixel_color(target.widget, bottom_shadow);
-            p.button_border = p.button_shadow;
-            p.button_hot_bg = pixel_color(target.widget, highlight);
-            p.button_hot_text = p.button_text;
-            p.button_pressed_bg = p.button_shadow;
-            p.menu_bar_bg = p.button_bg;
-            p.menu_bar_line_top = p.button_highlight;
-            p.menu_bar_line_bottom = p.button_shadow;
-            p.menu_text = p.button_text;
-            p.menu_popup_bg = p.button_bg;
-            p.menu_popup_border = p.button_shadow;
-            return p;
+            Widget reference =
+                linux::openmotif::theme_reference_widget(_g);
+            Widget button = button_probe(reference);
+            Widget list = list_probe(reference);
+            return linux::openmotif::theme_palette(
+                reference, button, list);
         }
 
         theme &draw_button(const native::rect &r,
                            const std::string &text,
                            const state &s) override {
-            emulated_theme::draw_button(r, text, s);
-            draw_shadow(r, s.pressed ? XmSHADOW_IN : XmSHADOW_OUT, 2);
+            saved_state saved(_g);
+            const palette colors = native_palette();
+            const native::rgba background =
+                s.pressed ? colors.button_pressed_bg
+                          : colors.button_bg;
+            const native::rgba foreground =
+                s.disabled ? colors.button_disabled_text
+                           : colors.button_text;
+            Widget probe = button_probe(
+                linux::openmotif::theme_reference_widget(_g));
+            _g.set_pen(1).set_ink(background).draw_rect(r, true);
+            draw_shadow(r,
+                        s.pressed ? XmSHADOW_IN : XmSHADOW_OUT,
+                        shadow_thickness(probe, 2),
+                        probe);
+            _g.set_font(
+                native::font_t::stock(native::font_role::control));
+            _g.set_clip(_g.get_clip().intersect(r));
+            _g.set_ink(foreground)
+                .draw_text(
+                    text,
+                    native::point(
+                        r.p.x +
+                            std::max(0,
+                                     (static_cast<int>(r.d.w) -
+                                      text_width(text)) /
+                                         2),
+                        text_y(r)));
             return *this;
         }
 
@@ -165,16 +127,55 @@ namespace
         theme &draw_check(const native::rect &r,
                           const std::string &text,
                           const state &s) override {
-            emulated_theme::draw_check(r, text, s);
-            draw_check_indicator(r, s);
+            motif_indicator_target target;
+            if (!get_indicator_target(false, target))
+                return emulated_theme::draw_check(r, text, s);
+
+            saved_state saved(_g);
+            palette colors = native_palette();
+            colors.button_bg = linux::openmotif::theme_pixel_color(
+                target.drawing.widget, target.background);
+            colors.button_text = linux::openmotif::theme_pixel_color(
+                target.drawing.widget, target.foreground);
+            colors.button_disabled_text =
+                linux::openmotif::theme_pixel_color(
+                    target.drawing.widget, target.bottom);
+            const native::rect area = indicator_bounds(
+                r, static_cast<int>(target.size), 5);
+            const native::rect indicator = check_bounds(area);
+            _g.set_pen(1)
+                .set_ink(colors.button_bg)
+                .draw_rect(r, true);
+            draw_check_indicator(target, indicator, s);
+            draw_control_label(
+                r, area.x2() + 5, text, s, colors);
             return *this;
         }
 
         theme &draw_radio(const native::rect &r,
                           const std::string &text,
                           const state &s) override {
-            emulated_theme::draw_radio(r, text, s);
-            draw_radio_indicator(r, s);
+            motif_indicator_target target;
+            if (!get_indicator_target(true, target))
+                return emulated_theme::draw_radio(r, text, s);
+
+            saved_state saved(_g);
+            palette colors = native_palette();
+            colors.button_bg = linux::openmotif::theme_pixel_color(
+                target.drawing.widget, target.background);
+            colors.button_text = linux::openmotif::theme_pixel_color(
+                target.drawing.widget, target.foreground);
+            colors.button_disabled_text =
+                linux::openmotif::theme_pixel_color(
+                    target.drawing.widget, target.bottom);
+            const native::rect indicator = indicator_bounds(
+                r, static_cast<int>(target.size), 7);
+            _g.set_pen(1)
+                .set_ink(colors.button_bg)
+                .draw_rect(r, true);
+            draw_radio_indicator(target, indicator, s);
+            draw_control_label(
+                r, indicator.x2() + 5, text, s, colors);
             return *this;
         }
 
@@ -182,14 +183,83 @@ namespace
                          const std::vector<std::string> &items,
                          int selected_index,
                          const state &s) override {
-            emulated_theme::draw_list(r, items, selected_index, s);
+            saved_state saved(_g);
+            Widget probe = list_probe(
+                linux::openmotif::theme_reference_widget(_g));
+            Dimension margin_width = 0;
+            Dimension margin_height = 0;
+            Dimension highlight = 0;
+            Dimension spacing = 0;
+            if (probe) {
+                XtVaGetValues(probe,
+                              XmNmarginWidth,
+                              &margin_width,
+                              XmNmarginHeight,
+                              &margin_height,
+                              XmNhighlightThickness,
+                              &highlight,
+                              XmNlistSpacing,
+                              &spacing,
+                              nullptr);
+            }
+            const int shadow = shadow_thickness(probe, 2);
+            const palette colors = native_palette();
+            _g.set_pen(1)
+                .set_ink(colors.menu_popup_bg)
+                .draw_rect(r, true);
+            draw_shadow(
+                r,
+                XmSHADOW_IN,
+                shadow,
+                probe);
+            const int inset_x = shadow + highlight + margin_width;
+            const int inset_y = shadow + highlight + margin_height;
+            if (static_cast<int>(r.d.w) <= inset_x * 2 ||
+                static_cast<int>(r.d.h) <= inset_y * 2) {
+                return *this;
+            }
+            const native::rect content(
+                r.p.x + inset_x,
+                r.p.y + inset_y,
+                r.d.w - inset_x * 2,
+                r.d.h - inset_y * 2);
+            _g.set_clip(_g.get_clip().intersect(content));
+            const int item_height = std::max(
+                1,
+                defaults().list_item_height +
+                    static_cast<int>(spacing));
+            for (std::size_t index = 0; index < items.size(); ++index) {
+                const int y = content.p.y +
+                              static_cast<int>(index) * item_height;
+                if (y >= content.y2())
+                    break;
+                state item_state = s;
+                item_state.selected =
+                    static_cast<int>(index) == selected_index;
+                draw_list_item(
+                    native::rect(
+                        content.p.x,
+                        y,
+                        content.d.w,
+                        std::min(item_height, content.y2() - y)),
+                    items[index],
+                    item_state);
+            }
+            return *this;
+        }
+
+        theme &draw_text_edit_frame(
+            const native::rect &r,
+            const state &s) override {
+            emulated_theme::draw_text_edit_frame(r, s);
             draw_shadow(r, XmSHADOW_IN, 2);
             return *this;
         }
 
     protected:
         int text_width(const std::string &text) const override {
-            XFontStruct *font = query_control_font();
+            XFontStruct *font =
+                linux::openmotif::theme_control_font();
             if (!font)
                 return static_cast<int>(text.size()) * 7;
             const int width = XTextWidth(
@@ -199,122 +269,216 @@ namespace
         }
 
         int text_height() const override {
-            XFontStruct *font = query_control_font();
+            XFontStruct *font =
+                linux::openmotif::theme_control_font();
             if (!font)
                 return 8;
             const int height =
-                std::max(1, font->ascent - font->descent);
+                std::max(1, font->ascent + font->descent);
             XFreeFontInfo(nullptr, font, 1);
             return height;
         }
 
-        bool text_uses_baseline() const override {
-            return true;
+    private:
+        unsigned int shadow_thickness(
+            Widget widget, unsigned int fallback) const {
+            if (!widget)
+                return fallback;
+            Dimension result = fallback;
+            XtVaGetValues(widget,
+                          XmNshadowThickness,
+                          &result,
+                          nullptr);
+            return std::max(1U, static_cast<unsigned int>(result));
         }
 
-    private:
         native::rect indicator_bounds(const native::rect &r,
+                                      int preferred,
                                       int minimum) const {
             const int side = std::max(
-                minimum, std::min(15, static_cast<int>(r.d.h) - 4));
+                minimum,
+                std::min(preferred, static_cast<int>(r.d.h) - 4));
             return native::rect(
-                r.p.x + 2,
+                r.p.x + 3,
                 r.p.y +
                     std::max(0, (static_cast<int>(r.d.h) - side) / 2),
                 side,
                 side);
         }
 
-        bool get_indicator_target(motif_target &target,
-                                  Pixel &background,
-                                  Pixel &foreground,
-                                  Pixel &top,
-                                  Pixel &bottom) const {
-            target = target_from(_g);
-            if (!target.widget || !target.cache ||
-                !target.cache->backbuffer ||
+        native::rect check_bounds(const native::rect &area) const {
+            const int side = static_cast<int>(area.d.w);
+            const int edge = std::max(
+                1, side - 3 - std::max(0, (side - 10) / 10));
+            const int delta = (side - edge) / 2;
+            return native::rect(area.p.x + delta,
+                                area.p.y + delta,
+                                edge,
+                                edge);
+        }
+
+        bool get_indicator_target(
+            bool radio, motif_indicator_target &target) const {
+            target.drawing =
+                linux::openmotif::theme_target_from(_g);
+            if (!target.drawing.widget || !target.drawing.cache ||
+                !target.drawing.cache->backbuffer ||
                 !linux::openmotif::cached_display) {
                 return false;
             }
-            XtVaGetValues(target.widget,
+            Widget probe = toggle_probe(target.drawing.widget, radio);
+            if (!probe)
+                return false;
+            XtVaGetValues(probe,
                           XmNbackground,
-                          &background,
+                          &target.background,
                           XmNforeground,
-                          &foreground,
+                          &target.foreground,
                           XmNtopShadowColor,
-                          &top,
+                          &target.top,
                           XmNbottomShadowColor,
-                          &bottom,
+                          &target.bottom,
+                          XmNselectColor,
+                          &target.select,
+                          XmNindicatorSize,
+                          &target.size,
+                          XmNdetailShadowThickness,
+                          &target.shadow,
+                          XmNindicatorOn,
+                          &target.indicator,
                           nullptr);
             return true;
         }
 
-        GC create_gc(const motif_target &target, Pixel color) const {
-            XGCValues values{};
-            values.foreground = color;
-            return XCreateGC(linux::openmotif::cached_display,
-                             target.cache->backbuffer,
-                             GCForeground,
-                             &values);
+        Widget toggle_probe(Widget parent, bool radio) const {
+            Widget &probe = radio ? _radio_probe : _check_probe;
+            if (!probe) {
+                probe = XtVaCreateWidget(
+                    const_cast<char *>(radio ? "radio" : "check"),
+                    xmToggleButtonWidgetClass,
+                    parent,
+                    XmNindicatorType,
+                    radio ? XmONE_OF_MANY : XmN_OF_MANY,
+                    nullptr);
+            }
+            return probe;
         }
 
-        void draw_check_indicator(const native::rect &r,
-                                  const state &s) {
-            motif_target target;
-            Pixel background = 0;
-            Pixel foreground = 0;
-            Pixel top = 0;
-            Pixel bottom = 0;
-            if (!get_indicator_target(
-                    target, background, foreground, top, bottom)) {
-                return;
+        Widget button_probe(Widget parent) const {
+            if (!_button_probe && parent) {
+                _button_probe = XtVaCreateWidget(
+                    const_cast<char *>("button"),
+                    xmPushButtonWidgetClass,
+                    parent,
+                    nullptr);
             }
-            const native::rect indicator = indicator_bounds(r, 5);
-            GC gc = create_gc(target, s.disabled ? bottom : foreground);
-            XmeDrawIndicator(linux::openmotif::cached_display,
-                             target.cache->backbuffer,
-                             gc,
-                             indicator.p.x,
-                             indicator.p.y,
-                             indicator.d.w,
-                             indicator.d.h,
-                             2,
-                             s.selected ? XmINDICATOR_CHECK_BOX
-                                        : XmINDICATOR_3D_BOX);
-            XFreeGC(linux::openmotif::cached_display, gc);
-            (void)background;
-            (void)top;
+            return _button_probe;
         }
 
-        void draw_radio_indicator(const native::rect &r,
-                                  const state &s) {
-            motif_target target;
-            Pixel background = 0;
-            Pixel foreground = 0;
-            Pixel top = 0;
-            Pixel bottom = 0;
-            if (!get_indicator_target(
-                    target, background, foreground, top, bottom)) {
-                return;
+        Widget list_probe(Widget parent) const {
+            if (!_list_probe && parent) {
+                _list_probe = XtVaCreateWidget(
+                    const_cast<char *>("list"),
+                    xmListWidgetClass,
+                    parent,
+                    nullptr);
             }
-            const native::rect indicator = indicator_bounds(r, 7);
-            GC top_gc = create_gc(target, top);
-            GC bottom_gc = create_gc(target, bottom);
-            GC center_gc = create_gc(
-                target,
-                s.selected ? (s.disabled ? bottom : foreground)
-                           : background);
-            XmeDrawDiamond(linux::openmotif::cached_display,
-                           target.cache->backbuffer,
+            return _list_probe;
+        }
+
+        void draw_check_indicator(
+            const motif_indicator_target &target,
+            const native::rect &indicator,
+            const state &s) {
+            const Pixel top = s.selected ? target.bottom : target.top;
+            const Pixel bottom =
+                s.selected ? target.top : target.bottom;
+            const Pixel fill = s.selected ? target.select
+                                          : target.background;
+            const unsigned int shadow = std::max(
+                1U, static_cast<unsigned int>(target.shadow));
+            GC top_gc = linux::openmotif::theme_gc(
+                target.drawing, top, _g.get_clip());
+            GC bottom_gc = linux::openmotif::theme_gc(
+                target.drawing, bottom, _g.get_clip());
+            GC fill_gc = linux::openmotif::theme_gc(
+                target.drawing, fill, _g.get_clip());
+            XmeDrawShadows(linux::openmotif::cached_display,
+                           target.drawing.cache->backbuffer,
                            top_gc,
                            bottom_gc,
-                           center_gc,
                            indicator.p.x,
                            indicator.p.y,
                            indicator.d.w,
                            indicator.d.h,
-                           2,
-                           2);
+                           shadow,
+                           XmSHADOW_OUT);
+            if (indicator.d.w > shadow * 2 &&
+                indicator.d.h > shadow * 2) {
+                XFillRectangle(
+                    linux::openmotif::cached_display,
+                    target.drawing.cache->backbuffer,
+                    fill_gc,
+                    indicator.p.x + shadow,
+                    indicator.p.y + shadow,
+                    indicator.d.w - shadow * 2,
+                    indicator.d.h - shadow * 2);
+            }
+            if (s.selected &&
+                (target.indicator &
+                 (XmINDICATOR_CHECK_GLYPH |
+                  XmINDICATOR_CROSS_GLYPH))) {
+                const Pixel glyph =
+                    s.disabled ? target.bottom : target.foreground;
+                GC glyph_gc = linux::openmotif::theme_gc(
+                    target.drawing, glyph, _g.get_clip());
+                XmeDrawIndicator(
+                    linux::openmotif::cached_display,
+                    target.drawing.cache->backbuffer,
+                    glyph_gc,
+                    indicator.p.x,
+                    indicator.p.y,
+                    indicator.d.w,
+                    indicator.d.h,
+                    shadow,
+                    target.indicator);
+                XFreeGC(linux::openmotif::cached_display, glyph_gc);
+            }
+            XFreeGC(linux::openmotif::cached_display, fill_gc);
+            XFreeGC(linux::openmotif::cached_display, bottom_gc);
+            XFreeGC(linux::openmotif::cached_display, top_gc);
+        }
+
+        void draw_radio_indicator(
+            const motif_indicator_target &target,
+            const native::rect &indicator,
+            const state &s) {
+            const Pixel top = s.selected ? target.bottom : target.top;
+            const Pixel bottom =
+                s.selected ? target.top : target.bottom;
+            GC top_gc = linux::openmotif::theme_gc(
+                target.drawing, top, _g.get_clip());
+            GC bottom_gc = linux::openmotif::theme_gc(
+                target.drawing, bottom, _g.get_clip());
+            GC center_gc = linux::openmotif::theme_gc(
+                target.drawing,
+                s.selected
+                    ? (s.disabled ? target.bottom : target.select)
+                    : target.background,
+                _g.get_clip());
+            XmeDrawDiamond(
+                linux::openmotif::cached_display,
+                target.drawing.cache->backbuffer,
+                top_gc,
+                bottom_gc,
+                center_gc,
+                indicator.p.x,
+                indicator.p.y,
+                indicator.d.w,
+                indicator.d.h,
+                std::max(
+                    1U, static_cast<unsigned int>(target.shadow)),
+                1);
             XFreeGC(linux::openmotif::cached_display, center_gc);
             XFreeGC(linux::openmotif::cached_display, bottom_gc);
             XFreeGC(linux::openmotif::cached_display, top_gc);
@@ -322,8 +486,10 @@ namespace
 
         void draw_shadow(const native::rect &r,
                          unsigned int shadow_type,
-                         unsigned int thickness) {
-            motif_target target = target_from(_g);
+                         unsigned int thickness,
+                         Widget resource_widget = nullptr) {
+            linux::openmotif::theme_target target =
+                linux::openmotif::theme_target_from(_g);
             if (!target.widget || !target.cache ||
                 !target.cache->backbuffer ||
                 !linux::openmotif::cached_display || !r.d.w || !r.d.h)
@@ -331,23 +497,17 @@ namespace
 
             Pixel top = 0;
             Pixel bottom = 0;
-            XtVaGetValues(target.widget,
+            XtVaGetValues(resource_widget ? resource_widget
+                                          : target.widget,
                           XmNtopShadowColor,
                           &top,
                           XmNbottomShadowColor,
                           &bottom,
                           nullptr);
-            XGCValues values{};
-            values.foreground = top;
-            GC top_gc = XCreateGC(linux::openmotif::cached_display,
-                                  target.cache->backbuffer,
-                                  GCForeground,
-                                  &values);
-            values.foreground = bottom;
-            GC bottom_gc = XCreateGC(linux::openmotif::cached_display,
-                                     target.cache->backbuffer,
-                                     GCForeground,
-                                     &values);
+            GC top_gc = linux::openmotif::theme_gc(
+                target, top, _g.get_clip());
+            GC bottom_gc = linux::openmotif::theme_gc(
+                target, bottom, _g.get_clip());
             XmeDrawShadows(linux::openmotif::cached_display,
                            target.cache->backbuffer,
                            top_gc,
@@ -361,6 +521,11 @@ namespace
             XFreeGC(linux::openmotif::cached_display, top_gc);
             XFreeGC(linux::openmotif::cached_display, bottom_gc);
         }
+
+        mutable Widget _button_probe;
+        mutable Widget _check_probe;
+        mutable Widget _radio_probe;
+        mutable Widget _list_probe;
     };
 } // namespace
 

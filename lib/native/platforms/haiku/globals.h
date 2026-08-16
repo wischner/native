@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <set>
 #include <string>
 
@@ -21,11 +22,17 @@ class BMenuBar;
 class BCheckBox;
 class BRadioButton;
 class BListView;
+class BTextView;
+class BScrollView;
 class BFilePanel;
 class BRefFilter;
 
 namespace haiku
 {
+    inline constexpr std::uint32_t button_message = 'nbtn';
+    inline constexpr const char *control_owner_field =
+        "native_control_owner";
+
     // BeAPI callbacks carry objects, so process-wide registries
     // recover the corresponding C++ objects during event dispatch.
     // Platform handle for a font_t — copies a BFont value.
@@ -93,13 +100,24 @@ namespace haiku
         BListView *view = nullptr;
     };
 
+    struct haiku_text_edit
+    {
+        BTextView *view = nullptr;
+        BScrollView *scroll = nullptr;
+    };
+
     extern native::bindings<native::check *, haiku_check *>
         check_bindings;
     extern native::bindings<native::radio *, haiku_radio *>
         radio_bindings;
     extern native::bindings<native::list *, haiku_list *> list_bindings;
+    extern native::bindings<native::text_edit *, haiku_text_edit *>
+        text_edit_bindings;
     extern native::bindings<native::file_dialog *, haiku_file_dialog *>
         file_dialog_bindings;
+
+    // Return the root content view owned by a Native application window.
+    BView *content_view(BWindow *window);
 
     // Return the BView used by any public child control.
     BView *view_from_control(native::wnd *control);

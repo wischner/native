@@ -27,4 +27,6 @@ namespace linux::x11
     native::bindings<uint32_t, xaw_menu *> menu_bindings;
     native::bindings<native::button *, xaw_button *> button_bindings;
     native::bindings<native::list *, xaw_list *> list_bindings;
+    native::bindings<native::text_edit *, xaw_text_edit *>
+        text_edit_bindings;
 } // namespace linux::x11

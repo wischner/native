@@ -10,12 +10,82 @@
 #include <bindings.h>
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <vector>
 
 #include "globals.h"
+#include "window_position.h"
 
 namespace native
 {
+    // Recheck decorations after the compositor has presented a window.
+    static void keep_window_reachable(native::wnd *owner) {
+        SDL_Window *window =
+            linux::sdl2::wnd_bindings.handle_from_object(owner);
+        if (!window)
+            return;
+
+        int x = 0;
+        int y = 0;
+        SDL_GetWindowPosition(window, &x, &y);
+        const point current(x, y);
+        const point position =
+            linux::sdl2::constrain_window_position(
+                window, current, owner->get_dimensions());
+        if (position.x == current.x && position.y == current.y)
+            return;
+
+        SDL_SetWindowPosition(window, position.x, position.y);
+        owner->on_native_move(position);
+    }
+
+    // Return the logical content origin below an emulated menu bar.
+    static int content_origin_y(native::wnd *window) {
+        auto *application_window =
+            dynamic_cast<native::app_wnd *>(window);
+        return application_window && application_window->menu.id()
+                   ? linux::sdl2::menu_bar_height
+                   : 0;
+    }
+
+    // Recover the modal window which blocks input to this owner branch.
+    static app_wnd *blocking_modal(app_wnd *window) {
+        if (!window)
+            return nullptr;
+
+        app_wnd *branch = window;
+        app_wnd *active = nullptr;
+        for (app_wnd *ancestor = window; ancestor;
+             branch = ancestor, ancestor = ancestor->get_owner()) {
+            app_wnd *candidate = ancestor->get_active_modal();
+            if (candidate && candidate != branch) {
+                active = candidate;
+                break;
+            }
+        }
+        while (active && active->get_active_modal())
+            active = active->get_active_modal();
+        return active;
+    }
+
+    // Keep native modality visible even on window managers which do not
+    // enforce SDL_SetWindowModalFor stacking by themselves.
+    static void raise_blocking_modal(native::wnd *window) {
+        auto *application_window =
+            dynamic_cast<native::app_wnd *>(window);
+        app_wnd *modal = blocking_modal(application_window);
+        SDL_Window *modal_window = modal
+            ? linux::sdl2::wnd_bindings.handle_from_object(modal)
+            : nullptr;
+        if (!modal_window)
+            return;
+
+        SDL_RaiseWindow(modal_window);
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+        SDL_SetWindowInputFocus(modal_window);
+#endif
+    }
+
     static void render_window_if_needed(native::wnd *wnd) {
         if (!wnd)
             return;
@@ -30,26 +100,43 @@ namespace native
         if (cache && !cache->invalidated)
             return;
 
-        int w = 0, h = 0;
+        int w = 0;
+        int h = 0;
         SDL_GetWindowSize(sdl_win, &w, &h);
-        rect r(0, 0, static_cast<dim>(w), static_cast<dim>(h));
-        auto &g = wnd->get_gpx().set_clip(r);
+        const int content_y = content_origin_y(wnd);
+        const int content_height = std::max(1, h - content_y);
+        rect content_bounds(
+            0,
+            0,
+            static_cast<dim>(w),
+            static_cast<dim>(content_height));
+        auto &g = wnd->get_gpx();
         cache = linux::sdl2::wnd_gpx_bindings.object_from_handle(wnd);
         if (!cache || !cache->renderer)
             return;
 
+        SDL_Rect viewport = {0, content_y, w, content_height};
+        SDL_RenderSetViewport(cache->renderer, &viewport);
+        g.set_clip(content_bounds);
         g.clear(rgba(255, 255, 255, 255));
-        wnd_paint_event pe{r, g};
+        wnd_paint_event pe{content_bounds, g};
         wnd->on_wnd_paint.emit(pe);
 
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
         linux::sdl2::render_radios(wnd, g);
         linux::sdl2::render_lists(wnd, g);
+        linux::sdl2::render_text_edits(wnd, g);
 
-        // Render menu bar on top if present
+        SDL_RenderSetViewport(cache->renderer, nullptr);
+
+        // Render the menu in physical window coordinates above content.
         if (auto *aw = dynamic_cast<native::app_wnd *>(wnd)) {
             if (aw->menu.id()) {
+                g.set_clip(rect(0,
+                                0,
+                                static_cast<dim>(w),
+                                static_cast<dim>(h)));
                 auto *sm =
                     linux::sdl2::menu_bindings.object_from_handle(
                         aw->menu.id());
@@ -76,6 +163,7 @@ namespace native
         bool running = true;
 
         while (running) {
+            linux::sdl2::x11_clipboard::service();
             while (SDL_PollEvent(&event)) {
                 // Handle quit before window lookup — it has no
                 // windowID.
@@ -97,11 +185,30 @@ namespace native
 
                 if (is_input_event(event.type) &&
                     !wnd->get_input_enabled()) {
+                    raise_blocking_modal(wnd);
+                    continue;
+                }
+                if (event.type == SDL_WINDOWEVENT &&
+                    event.window.event ==
+                        SDL_WINDOWEVENT_FOCUS_GAINED &&
+                    !wnd->get_input_enabled()) {
+                    raise_blocking_modal(wnd);
                     continue;
                 }
 
                 switch (event.type) {
+                case SDL_KEYDOWN:
+                    linux::sdl2::handle_text_edit_key(wnd, event.key);
+                    break;
+
+                case SDL_TEXTINPUT:
+                    linux::sdl2::handle_text_edit_input(
+                        wnd, event.text.text);
+                    break;
+
                 case SDL_MOUSEMOTION: {
+                    const int logical_y =
+                        event.motion.y - content_origin_y(wnd);
                     if (auto *aw =
                             dynamic_cast<native::app_wnd *>(wnd)) {
                         if (aw->menu.id()) {
@@ -129,21 +236,38 @@ namespace native
                             }
                         }
                     }
+                    if (logical_y < 0)
+                        break;
                     linux::sdl2::handle_button_motion(
-                        wnd, event.motion.x, event.motion.y);
+                        wnd, event.motion.x, logical_y);
                     linux::sdl2::handle_check_motion(
-                        wnd, event.motion.x, event.motion.y);
+                        wnd, event.motion.x, logical_y);
                     linux::sdl2::handle_radio_motion(
-                        wnd, event.motion.x, event.motion.y);
+                        wnd, event.motion.x, logical_y);
+                    linux::sdl2::handle_text_edit_motion(
+                        wnd, event.motion.x, logical_y);
                     wnd->on_mouse_move.emit(
-                        point(event.motion.x, event.motion.y));
+                        point(event.motion.x, logical_y));
                     break;
                 }
 
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP: {
-                    auto *cache2 = linux::sdl2::wnd_gpx_bindings
-                                       .object_from_handle(wnd);
+                    const int logical_y =
+                        event.button.y - content_origin_y(wnd);
+
+                    // A control callback is allowed to close its window.
+                    // Never retain renderer state across callback dispatch:
+                    // app_wnd::destroy() releases that cache immediately.
+                    const auto invalidate_live_window = [wnd]() {
+                        if (!wnd || !wnd->get_created())
+                            return;
+                        auto *cache =
+                            linux::sdl2::wnd_gpx_bindings
+                                .object_from_handle(wnd);
+                        if (cache)
+                            cache->invalidated = true;
+                    };
 
                     // Let the menu intercept down events first
                     if (event.type == SDL_MOUSEBUTTONDOWN) {
@@ -167,44 +291,54 @@ namespace native
                                         event.button.x,
                                         event.button.y,
                                         btn_win_w)) {
-                                    if (cache2)
-                                        cache2->invalidated = true;
+                                    invalidate_live_window();
                                     break;
                                 }
                             }
                         }
+
+                    }
+
+                    if (logical_y < 0)
+                        break;
+
+                    if (linux::sdl2::handle_text_edit_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN)) {
+                        invalidate_live_window();
+                        break;
                     }
 
                     if (linux::sdl2::handle_button_mouse(
                             wnd,
                             event.button.x,
-                            event.button.y,
+                            logical_y,
                             event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP)) {
-                        if (cache2)
-                            cache2->invalidated = true;
+                        invalidate_live_window();
                         break;
                     }
 
                     if (linux::sdl2::handle_check_mouse(
                             wnd,
                             event.button.x,
-                            event.button.y,
+                            logical_y,
                             event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP) ||
                         linux::sdl2::handle_radio_mouse(
                             wnd,
                             event.button.x,
-                            event.button.y,
+                            logical_y,
                             event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP) ||
                         linux::sdl2::handle_list_mouse(
                             wnd,
                             event.button.x,
-                            event.button.y,
+                            logical_y,
                             event.type == SDL_MOUSEBUTTONUP)) {
-                        if (cache2)
-                            cache2->invalidated = true;
+                        invalidate_live_window();
                         break;
                     }
 
@@ -229,7 +363,7 @@ namespace native
                         mouse_event me(
                             btn,
                             act,
-                            point(event.button.x, event.button.y));
+                            point(event.button.x, logical_y));
                         wnd->on_mouse_click.emit(me);
                     }
                     break;
@@ -258,9 +392,14 @@ namespace native
                         break;
 
                     case SDL_WINDOWEVENT_EXPOSED:
+                        keep_window_reachable(wnd);
                         if (auto *cache = linux::sdl2::wnd_gpx_bindings
                                               .object_from_handle(wnd))
                             cache->invalidated = true;
+                        break;
+
+                    case SDL_WINDOWEVENT_SHOWN:
+                        keep_window_reachable(wnd);
                         break;
 
                     case SDL_WINDOWEVENT_RESIZED:
@@ -269,7 +408,10 @@ namespace native
                             cache->invalidated = true;
                         {
                             size s(event.window.data1,
-                                   event.window.data2);
+                                   std::max(
+                                       1,
+                                       event.window.data2 -
+                                           content_origin_y(wnd)));
                             wnd->on_native_resize(s);
                             wnd->on_wnd_resize.emit(s);
                         }
@@ -304,6 +446,7 @@ namespace native
             SDL_Delay(1);
         }
 
+        linux::sdl2::x11_clipboard::shutdown();
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
         return 0;
     }

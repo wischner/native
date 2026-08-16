@@ -37,6 +37,9 @@ if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
 
     add_test(NAME native_modal_runtime_tests
         COMMAND native_modal_runtime_tests)
+    set(native_lsan_options
+        "suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-suppressions.txt")
     set_tests_properties(native_modal_runtime_tests PROPERTIES
-        ENVIRONMENT "SDL_VIDEODRIVER=dummy")
+        ENVIRONMENT
+            "SDL_VIDEODRIVER=dummy;LSAN_OPTIONS=${native_lsan_options}")
 endif()

@@ -18,17 +18,20 @@ The base class owns or records only portable state:
 Derived classes add properties and signals specific to one kind of window.
 `app_wnd`, for example, adds a title, menu, and menu-command signal. `button`
 adds its text and activation signal. `check` and `radio` add selection state,
-while `list` adds an item model and single-selection signal.
+while `list` adds an item model and single-selection signal. `text_edit` adds
+single-line or multiline UTF-8 editing, read-only state, live validation, and
+selection-aware clipboard commands.
 
 `owned_wnd` adds a separate top-level owner relationship. Its public concrete
 bases are `modeless_wnd` and `modal_wnd`; neither is a control or a layout
 child.
 
 These controls are real `wnd` subclasses. Backends use native widgets where
-the platform supplies them: Athena Toggle/List, Motif ToggleButton/List,
-Win32 BUTTON/LISTBOX, Haiku BCheckBox/BRadioButton/BListView, and AppKit
-NSButton/NSTableView. SDL2 and GEMix integrate equivalent controls into their
-toolkit-owned drawing and input paths.
+the platform supplies them: Athena Toggle/List/AsciiText, Motif
+ToggleButton/List/Text, Win32 BUTTON/LISTBOX/EDIT, Haiku
+BCheckBox/BRadioButton/BListView/BTextView, and AppKit
+NSButton/NSTableView/NSTextField/NSTextView. SDL2 and GEMix integrate
+equivalent controls into their toolkit-owned drawing and input paths.
 
 Native window handles, widgets, views, renderers, device contexts, and toolkit
 callbacks never belong in these public classes. Backends keep them in private
@@ -240,14 +243,15 @@ their native event dispatch. Both forms produce the same signal and result.
 The backend selection follows native facilities: Windows Common Item Dialogs,
 AppKit `NSOpenPanel`/`NSSavePanel`, Haiku `BFilePanel`, Motif
 `XmFileSelectionBox`, and GEM AES `fsel_input`. Athena and SDL2 do not include
-a standard chooser, so those Linux backends invoke Zenity or KDialog directly
-without a shell. If neither desktop chooser is installed, `show()` cancels the
-modal session and reports that runtime requirement with an exception.
+a standard chooser, so those Linux backends first invoke Zenity or KDialog
+directly without a shell. If neither is installed, X11 presents a browser made
+entirely from Athena widgets, while SDL2 presents its self-contained browser.
+Both fallbacks keep the owner blocked until they accept or cancel.
 
-Some older standard selectors expose fewer options. Motif and GEM return one
-path even when multiple selection was requested. AppKit and Haiku retain their
-standard overwrite safeguards even if confirmation was disabled. These are
-conservative native degradations, not separate public behavior.
+Some selectors expose fewer options. The Xaw fallback, Motif, and GEM return
+one path even when multiple selection was requested. AppKit and Haiku retain
+their standard overwrite safeguards even if confirmation was disabled. These
+are conservative native degradations, not separate public behavior.
 
 ## Layout ownership and geometry
 

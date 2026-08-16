@@ -53,6 +53,10 @@ namespace native
             throw std::runtime_error(
                 "Windows: Failed to create check.");
         windows::wnd_bindings.register_pair(h, self);
+        SendMessageW(h,
+                     WM_SETFONT,
+                     reinterpret_cast<WPARAM>(windows::control_font()),
+                     TRUE);
         SendMessageW(
             h, BM_SETCHECK, _checked ? BST_CHECKED : BST_UNCHECKED, 0);
         _created = true;

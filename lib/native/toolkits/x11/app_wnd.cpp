@@ -19,6 +19,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "window_position.h"
 
 namespace
 {
@@ -156,6 +157,12 @@ namespace
             cache =
                 linux::x11::wnd_gpx_bindings.object_from_handle(owner);
             if (cache && cache->gc && cache->backbuffer) {
+                // Drawing operations retain their last logical clip in
+                // the shared GC. Presentation must copy the complete
+                // backbuffer, independently of that drawing state.
+                XSetClipMask(linux::x11::cached_display,
+                             cache->gc,
+                             None);
                 XCopyArea(linux::x11::cached_display,
                           cache->backbuffer,
                           XtWindow(widget),
@@ -180,6 +187,7 @@ namespace
                                     static_cast<native::dim>(height));
             owner->on_native_resize(dimensions);
             owner->on_wnd_resize.emit(dimensions);
+            owner->invalidate();
             break;
         }
 
@@ -223,7 +231,25 @@ namespace
         }
     }
 
-    void handle_shell_event(Widget,
+    // Move a shell only when its preferred frame would be unreachable.
+    void keep_shell_reachable(native::app_wnd *owner, Widget shell) {
+        const native::point current = owner->get_position();
+        const native::point position =
+            linux::x11::constrain_shell_position(
+                shell, current, owner->get_dimensions());
+        if (position.x == current.x && position.y == current.y)
+            return;
+
+        XtVaSetValues(shell,
+                      XtNx,
+                      position.x,
+                      XtNy,
+                      position.y,
+                      nullptr);
+        owner->on_native_move(position);
+    }
+
+    void handle_shell_event(Widget widget,
                             XtPointer client_data,
                             XEvent *event,
                             Boolean *) {
@@ -232,10 +258,33 @@ namespace
             return;
 
         if (event->type == ConfigureNotify) {
-            native::point position(event->xconfigure.x,
-                                   event->xconfigure.y);
+            Position root_x = event->xconfigure.x;
+            Position root_y = event->xconfigure.y;
+            if (XtIsRealized(widget)) {
+                XtTranslateCoords(
+                    widget, 0, 0, &root_x, &root_y);
+            }
+            native::point position(root_x, root_y);
             owner->on_native_move(position);
             owner->on_wnd_move.emit(position);
+            keep_shell_reachable(owner, widget);
+        } else if (event->type == MapNotify) {
+            keep_shell_reachable(owner, widget);
+            // A transient shell is not focusable until the server has
+            // made it viewable. Focusing earlier raises BadMatch under
+            // asynchronous window managers.
+            if (owner->get_modal()) {
+                XSetInputFocus(event->xmap.display,
+                               event->xmap.window,
+                               RevertToParent,
+                               CurrentTime);
+            }
+        } else if (event->type == PropertyNotify &&
+                   event->xproperty.atom == XInternAtom(
+                       event->xproperty.display,
+                       "_NET_FRAME_EXTENTS",
+                       True)) {
+            keep_shell_reachable(owner, widget);
         } else if (event->type == ClientMessage &&
                    event->xclient.data.l[0] ==
                        static_cast<long>(
@@ -291,16 +340,30 @@ namespace native
         } else if (app_wnd *owner = get_owner()) {
             Widget owner_shell =
                 linux::x11::shell_bindings.handle_from_object(owner);
-            shell = XtVaCreatePopupShell(
-                const_cast<char *>("native"),
-                transientShellWidgetClass,
-                owner_shell,
-                XtNtransientFor,
-                owner_shell,
-                nullptr);
+            if (get_modal()) {
+                shell = XtVaCreatePopupShell(
+                    const_cast<char *>("native"),
+                    transientShellWidgetClass,
+                    owner_shell,
+                    XtNtransientFor,
+                    owner_shell,
+                    nullptr);
+            } else {
+                // ICCCM transient and window-group hints both permit a
+                // window manager to keep an owned shell above its
+                // leader. Modeless ownership is therefore maintained by
+                // the portable owner graph, while the native shell stays
+                // an independently stackable top-level window.
+                shell = XtVaAppCreateShell(
+                    const_cast<char *>("native"),
+                    const_cast<char *>("Native"),
+                    topLevelShellWidgetClass,
+                    linux::x11::cached_display,
+                    nullptr);
+            }
             if (!shell)
                 throw std::runtime_error(
-                    "X11/Athena: Failed to create transient shell.");
+                    "X11/Athena: Failed to create owned shell.");
         } else {
             shell = XtVaAppCreateShell(const_cast<char *>("native"),
                                        const_cast<char *>("Native"),
@@ -312,11 +375,14 @@ namespace native
                     "X11/Athena: Failed to create top-level shell.");
         }
 
+        const point position =
+            linux::x11::constrain_shell_position(
+                shell, _bounds.p, _bounds.d);
         XtVaSetValues(shell,
                       XtNx,
-                      _bounds.p.x,
+                      position.x,
                       XtNy,
-                      _bounds.p.y,
+                      position.y,
                       XtNwidth,
                       _bounds.d.w,
                       XtNheight,
@@ -437,8 +503,11 @@ namespace native
                           False,
                           handle_canvas_event,
                           self);
-        XtAddEventHandler(
-            shell, StructureNotifyMask, True, handle_shell_event, self);
+        XtAddEventHandler(shell,
+                          StructureNotifyMask | PropertyChangeMask,
+                          True,
+                          handle_shell_event,
+                          self);
 
         linux::x11::wnd_bindings.register_pair(canvas, self);
 
@@ -463,6 +532,8 @@ namespace native
         XtRealizeWidget(shell);
         linux::x11::cached_display = XtDisplay(shell);
         apply_shell_title(shell, _title);
+        linux::x11::request_frame_extents(shell);
+        keep_shell_reachable(self, shell);
 
         // Expose notifications repaint from the library backbuffer.
         XSetWindowBackgroundPixmap(
@@ -480,12 +551,6 @@ namespace native
                     get_modal() ? XtGrabExclusive : XtGrabNone);
         else
             XMapRaised(linux::x11::cached_display, XtWindow(shell));
-        if (get_modal()) {
-            XSetInputFocus(linux::x11::cached_display,
-                           XtWindow(shell),
-                           RevertToParent,
-                           CurrentTime);
-        }
         XFlush(linux::x11::cached_display);
         invalidate();
     }

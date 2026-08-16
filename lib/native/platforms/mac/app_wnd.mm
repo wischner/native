@@ -64,14 +64,16 @@ namespace native
             throw std::runtime_error(
                 "macOS: Missing NSWindow binding for app_wnd.");
 
-        if (app_wnd *owner = get_owner()) {
+        if (app_wnd *owner = get_modal() ? get_owner() : nullptr) {
             NSWindow *owner_window =
                 mac::wnd_bindings.handle_from_object(owner);
-            if (owner_window && [win parentWindow] != owner_window)
-                [owner_window addChildWindow:win
-                                      ordered:NSWindowAbove];
-            if (get_modal())
-                [win setLevel:NSModalPanelWindowLevel];
+            if (owner_window && [win sheetParent] != owner_window)
+                [owner_window beginSheet:win
+                       completionHandler:nil];
+        } else {
+            if ([win sheetParent])
+                [[win sheetParent] endSheet:win];
+            [win setLevel:NSNormalWindowLevel];
         }
 
         [win makeKeyAndOrderFront:nil];
@@ -94,7 +96,9 @@ namespace native
         mac::delegate_bindings.unregister_by_handle(self);
 
         if (win) {
-            if ([win parentWindow])
+            if ([win sheetParent])
+                [[win sheetParent] endSheet:win];
+            else if ([win parentWindow])
                 [[win parentWindow] removeChildWindow:win];
             [win setDelegate:nil];
             mac::wnd_bindings.unregister_by_object(self);

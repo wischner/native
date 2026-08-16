@@ -87,4 +87,14 @@ namespace linux::x11
     };
 
     extern native::bindings<native::list *, xaw_list *> list_bindings;
+
+    struct xaw_text_edit
+    {
+        Widget widget = nullptr;
+        Widget source = nullptr;
+        bool suppress = false;
+    };
+
+    extern native::bindings<native::text_edit *, xaw_text_edit *>
+        text_edit_bindings;
 } // namespace linux::x11

@@ -6,6 +6,9 @@
 //
 
 #include <X11/Xlib.h>
+#include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
+#include <X11/Xaw/Command.h>
 #include <algorithm>
 #include <climits>
 #include <initializer_list>
@@ -73,6 +76,50 @@ namespace
         }
         return 0;
     }
+
+    // Read the actual Xaw Label font so custom theme primitives use
+    // exactly the same core font as native Command, Toggle, and List
+    // widgets under the current resource database.
+    Font xaw_control_font(Font fallback) {
+        native::app_wnd *main_window = native::app::main_wnd();
+        Widget parent = main_window
+            ? linux::x11::wnd_bindings.handle_from_object(main_window)
+            : nullptr;
+        if (!parent)
+            return fallback;
+
+        WidgetList children = nullptr;
+        Cardinal child_count = 0;
+        XtVaGetValues(parent,
+                      XtNchildren,
+                      &children,
+                      XtNnumChildren,
+                      &child_count,
+                      nullptr);
+        Widget probe = nullptr;
+        for (Cardinal index = 0; index < child_count; ++index) {
+            if (XtIsSubclass(children[index], commandWidgetClass)) {
+                probe = children[index];
+                break;
+            }
+        }
+        const bool owns_probe = !probe;
+        if (!probe) {
+            probe = XtVaCreateWidget("font_probe",
+                                     commandWidgetClass,
+                                     parent,
+                                     nullptr);
+        }
+        if (!probe)
+            return fallback;
+
+        XFontStruct *font = nullptr;
+        XtVaGetValues(probe, XtNfont, &font, nullptr);
+        const Font result = font ? font->fid : fallback;
+        if (owns_probe)
+            XtDestroyWidget(probe);
+        return result;
+    }
 } // namespace
 
 namespace native
@@ -108,12 +155,34 @@ namespace native
     const font_t &font_t::stock(font_role role) {
         static font_t s[6];
         static bool initialized = false;
+        Display *display = linux::x11::cached_display;
+        if (!display) {
+            static font_t fallback[6];
+            static bool fallback_initialized = false;
+            if (!fallback_initialized) {
+                fallback_initialized = true;
+                constexpr int sizes[] = {13, 13, 13, 14, 11, 13};
+                for (const auto &description : enumerate_installed()) {
+                    bool valid = true;
+                    for (int index = 0; index < 6; ++index) {
+                        fallback[index] = from_file(
+                            description.path,
+                            sizes[index],
+                            description.face_index);
+                        valid = valid && fallback[index].valid();
+                    }
+                    if (!valid)
+                        continue;
+                    for (auto &font : fallback)
+                        font._spec.source = font_source::stock;
+                    break;
+                }
+            }
+            return fallback[(int)role];
+        }
+
         if (!initialized) {
             initialized = true;
-
-            Display *display = linux::x11::cached_display;
-            if (!display)
-                return s[(int)role];
 
             const char *x_font = XGetDefault(display, "*", "font");
             Font system_f =
@@ -130,6 +199,7 @@ namespace native
                                     {"-misc-fixed-medium-r-normal--13-"
                                      "120-75-75-c-70-iso8859-1",
                                      "fixed"});
+            const Font control_f = xaw_control_font(system_f);
 
             // X11 has no separate role concept; title/small/control
             // share the system font. Stock fonts are not owned; the X
@@ -139,13 +209,13 @@ namespace native
             s[(int)font_role::fixed]._id =
                 register_font(display, fixed_f, false);
             s[(int)font_role::icon_label]._id =
-                register_font(display, system_f, false);
+                register_font(display, control_f, false);
             s[(int)font_role::title]._id =
                 register_font(display, system_f, false);
-        s[(int)font_role::small]._id =
+            s[(int)font_role::small]._id =
                 register_font(display, system_f, false);
             s[(int)font_role::control]._id =
-                register_font(display, system_f, false);
+                register_font(display, control_f, false);
 
             s[(int)font_role::system]._spec.family =
                 x_font ? x_font : "fixed";
@@ -153,13 +223,13 @@ namespace native
                 "-misc-fixed-medium-r-normal--13-120-75-75-c-70-"
                 "iso8859-1";
             s[(int)font_role::icon_label]._spec.family =
-                s[(int)font_role::system]._spec.family;
+                "Xaw default";
             s[(int)font_role::title]._spec.family =
                 s[(int)font_role::system]._spec.family;
-        s[(int)font_role::small]._spec.family =
+            s[(int)font_role::small]._spec.family =
                 s[(int)font_role::system]._spec.family;
             s[(int)font_role::control]._spec.family =
-                s[(int)font_role::system]._spec.family;
+                "Xaw default";
             for (auto &font : s)
                 font._spec.source = font_source::stock;
         }

@@ -1,0 +1,5 @@
+# libdbus retains one process-global allocation after SDL_Quit. SDL's
+# dummy video driver still initializes that Linux service, so exclude
+# the external library allocation while retaining leak checks for all
+# Native and SDL-owned stack frames.
+leak:libdbus-1.so

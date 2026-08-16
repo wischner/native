@@ -73,6 +73,10 @@ namespace native
         BWindow *w = parent(self);
         native_radio_view *v = nullptr;
         locked(w, [&] {
+            BView *content = haiku::content_view(w);
+            if (!content)
+                return;
+
             v = new native_radio_view(BRect(_bounds.p.x,
                                             _bounds.p.y,
                                             _bounds.x2() - 1,
@@ -80,7 +84,7 @@ namespace native
                                       _text.c_str(),
                                       self);
             v->SetValue(_selected ? B_CONTROL_ON : B_CONTROL_OFF);
-            w->AddChild(v);
+            content->AddChild(v);
         });
         if (!v)
             throw std::runtime_error("Haiku: Failed to create radio.");

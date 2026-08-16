@@ -6,6 +6,7 @@
 //
 
 #include <Xm/Xm.h>
+#include <Xm/PushB.h>
 #include <X11/Xlib.h>
 #include <algorithm>
 #include <climits>
@@ -74,6 +75,44 @@ namespace
         }
         return 0;
     }
+
+    // Resolve the first core font in Motif's active default font list so
+    // custom theme text matches native labels under X resources.
+    Font motif_control_font(Font fallback) {
+        native::app_wnd *main_window = native::app::main_wnd();
+        Widget parent = main_window
+            ? linux::openmotif::wnd_bindings.handle_from_object(
+                  main_window)
+            : nullptr;
+        if (!parent)
+            return fallback;
+
+        Widget probe = XtVaCreateWidget("font_probe",
+                                        xmPushButtonWidgetClass,
+                                        parent,
+                                        nullptr);
+        if (!probe)
+            return fallback;
+
+        XmFontList font_list = nullptr;
+        XtVaGetValues(probe, XmNfontList, &font_list, nullptr);
+        Font result = fallback;
+        XmFontContext context = nullptr;
+        if (font_list && XmFontListInitFontContext(
+                             &context, font_list)) {
+            XmFontListEntry entry = XmFontListNextEntry(context);
+            if (entry) {
+                XmFontType type = XmFONT_IS_FONT;
+                XtPointer value = XmFontListEntryGetFont(entry, &type);
+                if (type == XmFONT_IS_FONT && value) {
+                    result = static_cast<XFontStruct *>(value)->fid;
+                }
+            }
+            XmFontListFreeFontContext(context);
+        }
+        XtDestroyWidget(probe);
+        return result;
+    }
 } // namespace
 
 namespace native
@@ -109,12 +148,34 @@ namespace native
     const font_t &font_t::stock(font_role role) {
         static font_t s[6];
         static bool initialized = false;
+        Display *display = linux::openmotif::cached_display;
+        if (!display) {
+            static font_t fallback[6];
+            static bool fallback_initialized = false;
+            if (!fallback_initialized) {
+                fallback_initialized = true;
+                constexpr int sizes[] = {13, 13, 13, 14, 11, 13};
+                for (const auto &description : enumerate_installed()) {
+                    bool valid = true;
+                    for (int index = 0; index < 6; ++index) {
+                        fallback[index] = from_file(
+                            description.path,
+                            sizes[index],
+                            description.face_index);
+                        valid = valid && fallback[index].valid();
+                    }
+                    if (!valid)
+                        continue;
+                    for (auto &font : fallback)
+                        font._spec.source = font_source::stock;
+                    break;
+                }
+            }
+            return fallback[(int)role];
+        }
+
         if (!initialized) {
             initialized = true;
-
-            Display *display = linux::openmotif::cached_display;
-            if (!display)
-                return s[(int)role];
 
             const char *x_font = XGetDefault(display, "*", "font");
             Font system_f =
@@ -131,19 +192,20 @@ namespace native
                                     {"-misc-fixed-medium-r-normal--13-"
                                      "120-75-75-c-70-iso8859-1",
                                      "fixed"});
+            const Font control_f = motif_control_font(system_f);
 
             s[(int)font_role::system]._id =
                 register_font(display, system_f, false);
             s[(int)font_role::fixed]._id =
                 register_font(display, fixed_f, false);
             s[(int)font_role::icon_label]._id =
-                register_font(display, system_f, false);
+                register_font(display, control_f, false);
             s[(int)font_role::title]._id =
                 register_font(display, system_f, false);
-        s[(int)font_role::small]._id =
+            s[(int)font_role::small]._id =
                 register_font(display, system_f, false);
             s[(int)font_role::control]._id =
-                register_font(display, system_f, false);
+                register_font(display, control_f, false);
 
             s[(int)font_role::system]._spec.family =
                 x_font ? x_font : "fixed";
@@ -151,13 +213,13 @@ namespace native
                 "-misc-fixed-medium-r-normal--13-120-75-75-c-70-"
                 "iso8859-1";
             s[(int)font_role::icon_label]._spec.family =
-                s[(int)font_role::system]._spec.family;
+                "Motif default";
             s[(int)font_role::title]._spec.family =
                 s[(int)font_role::system]._spec.family;
-        s[(int)font_role::small]._spec.family =
+            s[(int)font_role::small]._spec.family =
                 s[(int)font_role::system]._spec.family;
             s[(int)font_role::control]._spec.family =
-                s[(int)font_role::system]._spec.family;
+                "Motif default";
             for (auto &font : s)
                 font._spec.source = font_source::stock;
         }

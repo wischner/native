@@ -38,6 +38,7 @@ namespace linux
         _g.set_pen(1).set_ink(background).draw_rect(bounds, true);
         draw_bevel(bounds, element_state.pressed, colors);
         _g.set_font(native::font_t::stock(native::font_role::control));
+        _g.set_clip(_g.get_clip().intersect(bounds));
         _g.set_ink(foreground)
             .draw_text(text,
                        native::point(
@@ -236,11 +237,20 @@ namespace linux
         return *this;
     }
 
+    native::theme &emulated_theme::draw_text_edit_frame(
+        const native::rect &bounds,
+        const state &element_state) {
+        saved_state saved(_g);
+        const palette colors = native_palette();
+        const native::rgba background = element_state.disabled
+                                            ? colors.button_bg
+                                            : colors.menu_popup_bg;
+        _g.set_pen(1).set_ink(background).draw_rect(bounds, true);
+        draw_bevel(bounds, true, colors);
+        return *this;
+    }
+
     int emulated_theme::text_y(const native::rect &bounds) const {
-        if (text_uses_baseline()) {
-            return bounds.p.y +
-                   (static_cast<int>(bounds.d.h) + text_height()) / 2;
-        }
         return bounds.p.y +
                std::max(0,
                         (static_cast<int>(bounds.d.h) - text_height()) /
@@ -298,6 +308,7 @@ namespace linux
                                             const state &element_state,
                                             const palette &colors) {
         _g.set_font(native::font_t::stock(native::font_role::control));
+        _g.set_clip(_g.get_clip().intersect(bounds));
         _g.set_ink(element_state.disabled ? colors.button_disabled_text
                                           : colors.button_text)
             .draw_text(text,
@@ -325,6 +336,7 @@ namespace linux
 
         _g.set_pen(1).set_ink(background).draw_rect(bounds, true);
         _g.set_font(native::font_t::stock(native::font_role::control));
+        _g.set_clip(_g.get_clip().intersect(bounds));
         _g.set_ink(foreground)
             .draw_text(
                 text,

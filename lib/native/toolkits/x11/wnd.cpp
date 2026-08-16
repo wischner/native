@@ -17,6 +17,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "window_position.h"
 
 namespace native
 {
@@ -27,8 +28,15 @@ namespace native
             linux::x11::wnd_bindings.handle_from_object(this);
 
         if (shell) {
-            XtVaSetValues(
-                shell, XtNx, _bounds.p.x, XtNy, _bounds.p.y, nullptr);
+            const point position =
+                linux::x11::constrain_shell_position(
+                    shell, _bounds.p, _bounds.d);
+            XtVaSetValues(shell,
+                          XtNx,
+                          position.x,
+                          XtNy,
+                          position.y,
+                          nullptr);
         } else if (widget) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
@@ -52,6 +60,15 @@ namespace native
                           XtNheight,
                           _bounds.d.h,
                           nullptr);
+            const point position =
+                linux::x11::constrain_shell_position(
+                    shell, _bounds.p, _bounds.d);
+            XtVaSetValues(shell,
+                          XtNx,
+                          position.x,
+                          XtNy,
+                          position.y,
+                          nullptr);
         } else if (widget) {
             XtVaSetValues(widget,
                           XtNwidth,
@@ -69,11 +86,14 @@ namespace native
             linux::x11::wnd_bindings.handle_from_object(this);
 
         if (shell) {
+            const point position =
+                linux::x11::constrain_shell_position(
+                    shell, _bounds.p, _bounds.d);
             XtVaSetValues(shell,
                           XtNx,
-                          _bounds.p.x,
+                          position.x,
                           XtNy,
-                          _bounds.p.y,
+                          position.y,
                           XtNwidth,
                           _bounds.d.w,
                           XtNheight,

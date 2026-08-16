@@ -10,6 +10,7 @@
 #include <interface/View.h>
 #include <Application.h>
 #include <AppDefs.h>
+#include <InterfaceDefs.h>
 
 #include <native.h>
 
@@ -37,7 +38,7 @@ namespace
                     B_WILL_DRAW | B_FRAME_EVENTS)
             , _owner(owner)
             , _pressed_button(native::mouse_button::none) {
-            SetViewColor(B_TRANSPARENT_COLOR);
+            SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
         }
 
         void Draw(BRect update_rect) override {
@@ -51,7 +52,12 @@ namespace
                 static_cast<native::dim>(update_rect.Height() + 1));
 
             auto &g = _owner->get_gpx().set_clip(r);
-            g.clear(native::rgba(255, 255, 255, 255));
+            const rgb_color background =
+                ui_color(B_PANEL_BACKGROUND_COLOR);
+            g.clear(native::rgba(background.red,
+                                 background.green,
+                                 background.blue,
+                                 background.alpha));
 
             native::wnd_paint_event e{r, g};
             _owner->on_wnd_paint.emit(e);
@@ -147,6 +153,22 @@ namespace haiku
     }
 
     void native_window::MessageReceived(BMessage *message) {
+        if (message && message->what == haiku::button_message) {
+            void *pointer = nullptr;
+            if (message->FindPointer(haiku::control_owner_field,
+                                     &pointer) == B_OK) {
+                auto *owner = static_cast<native::button *>(pointer);
+                auto *binding =
+                    haiku::button_bindings.object_from_handle(owner);
+                if (binding && binding->button &&
+                    binding->button->Window() == this &&
+                    owner->get_input_enabled()) {
+                    owner->on_click.emit();
+                }
+            }
+            return;
+        }
+
         // Check if this is a menu item message for our owner.
         if (message && _owner && _owner->get_input_enabled()) {
             auto *hm =

@@ -83,7 +83,12 @@ namespace native
                                                        _bounds.d.w,
                                                        _bounds.d.h)];
         [btn setTitle:to_nsstring(_text)];
-        [btn setBezelStyle:NSBezelStylePush];
+        [btn setButtonType:NSButtonTypeMomentaryPushIn];
+        [btn setBezelStyle:NSBezelStyleRounded];
+        [btn setControlSize:NSControlSizeRegular];
+        [btn setFont:[NSFont systemFontOfSize:
+                             [NSFont systemFontSizeForControlSize:
+                                         NSControlSizeRegular]]];
 
         mac_button_target *target = [[mac_button_target alloc] init];
         target->_owner = const_cast<button *>(this);

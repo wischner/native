@@ -114,6 +114,9 @@ namespace
                 linux::openmotif::wnd_gpx_bindings.object_from_handle(
                     owner);
             if (cache && cache->gc && cache->backbuffer) {
+                XSetClipMask(linux::openmotif::cached_display,
+                             cache->gc,
+                             None);
                 XCopyArea(linux::openmotif::cached_display,
                           cache->backbuffer,
                           XtWindow(widget),
@@ -207,6 +210,14 @@ namespace
         if (owner)
             owner->destroy();
     }
+
+    // Release an owned shell after the Xt callback that closed it has
+    // returned to the application context.
+    void destroy_owned_shell(XtPointer client_data, XtIntervalId *) {
+        Widget shell = static_cast<Widget>(client_data);
+        if (shell)
+            XtDestroyWidget(shell);
+    }
 } // namespace
 
 namespace native
@@ -252,16 +263,24 @@ namespace native
         } else if (app_wnd *owner = get_owner()) {
             Widget owner_shell = linux::openmotif::shell_bindings
                                      .handle_from_object(owner);
-            shell = XtVaCreatePopupShell(
-                const_cast<char *>("native"),
-                transientShellWidgetClass,
-                owner_shell,
-                XtNtransientFor,
-                owner_shell,
-                nullptr);
+            if (get_modal()) {
+                shell = XtVaCreatePopupShell(
+                    const_cast<char *>("native"),
+                    transientShellWidgetClass,
+                    owner_shell,
+                    XtNtransientFor,
+                    owner_shell,
+                    nullptr);
+            } else {
+                shell = XtVaCreatePopupShell(
+                    const_cast<char *>("native"),
+                    topLevelShellWidgetClass,
+                    owner_shell,
+                    nullptr);
+            }
             if (!shell)
                 throw std::runtime_error(
-                    "Motif: Failed to create transient shell.");
+                    "Motif: Failed to create owned shell.");
         } else {
             shell = XtVaAppCreateShell(const_cast<char *>("native"),
                                        const_cast<char *>("Native"),
@@ -376,12 +395,6 @@ namespace native
         else
             XMapRaised(linux::openmotif::cached_display,
                        XtWindow(shell));
-        if (get_modal()) {
-            XSetInputFocus(linux::openmotif::cached_display,
-                           XtWindow(shell),
-                           RevertToParent,
-                           CurrentTime);
-        }
         XFlush(linux::openmotif::cached_display);
         invalidate();
     }
@@ -401,9 +414,20 @@ namespace native
         linux::openmotif::shell_bindings.unregister_by_object(self);
 
         if (shell) {
-            if (get_owner())
+            if (owner) {
                 XtPopdown(shell);
-            XtDestroyWidget(shell);
+                if (linux::openmotif::app_instance) {
+                    XtAppAddTimeOut(
+                        linux::openmotif::app_instance,
+                        0,
+                        destroy_owned_shell,
+                        static_cast<XtPointer>(shell));
+                } else {
+                    XtDestroyWidget(shell);
+                }
+            } else {
+                XtDestroyWidget(shell);
+            }
         }
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()

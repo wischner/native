@@ -50,14 +50,16 @@ namespace linux
                          int selected_index,
                          const state &element_state) override;
 
+        theme &draw_text_edit_frame(
+            const native::rect &bounds,
+            const state &element_state) override;
+
     protected:
         virtual int text_width(const std::string &text) const = 0;
         virtual int text_height() const = 0;
-        virtual bool text_uses_baseline() const = 0;
 
         int text_y(const native::rect &bounds) const;
 
-    private:
         class saved_state
         {
         public:
@@ -73,18 +75,19 @@ namespace linux
             native::rect _clip;
         };
 
+        void draw_control_label(const native::rect &bounds,
+                                int x,
+                                const std::string &text,
+                                const state &element_state,
+                                const palette &colors);
+
+    private:
         void draw_bevel(const native::rect &bounds,
                         bool inset,
                         const palette &colors);
 
         void draw_indicator_box(const native::rect &bounds,
                                 bool inset,
-                                const palette &colors);
-
-        void draw_control_label(const native::rect &bounds,
-                                int x,
-                                const std::string &text,
-                                const state &element_state,
                                 const palette &colors);
 
         theme &draw_menu_entry(const native::rect &bounds,

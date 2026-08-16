@@ -72,6 +72,10 @@ namespace native
         h->hwnd = hwnd;
         h->owner = self;
         windows::button_bindings.register_pair(self, h);
+        SendMessageW(hwnd,
+                     WM_SETFONT,
+                     reinterpret_cast<WPARAM>(windows::control_font()),
+                     TRUE);
 
         _created = true;
         self->on_wnd_create.emit();

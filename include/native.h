@@ -13,6 +13,7 @@
 #include "native/app_wnd.h"
 #include "native/button.h"
 #include "native/check.h"
+#include "native/clipboard.h"
 #include "native/events.h"
 #include "native/file_dialog.h"
 #include "native/font.h"
@@ -30,4 +31,5 @@
 #include "native/save_file_dialog.h"
 #include "native/signal.h"
 #include "native/theme.h"
+#include "native/text_edit.h"
 #include "native/wnd.h"

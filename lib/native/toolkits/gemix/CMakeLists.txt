@@ -21,6 +21,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/clipboard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp

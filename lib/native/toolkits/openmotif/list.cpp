@@ -76,6 +76,8 @@ namespace native
                                     _bounds.d.h,
                                     XmNselectionPolicy,
                                     XmBROWSE_SELECT,
+                                    XmNlistSizePolicy,
+                                    XmCONSTANT,
                                     nullptr);
         if (!w)
             throw std::runtime_error("Motif: Failed to create list.");
@@ -83,6 +85,12 @@ namespace native
         linux::openmotif::wnd_bindings.register_pair(w, self);
         XtAddCallback(w, XmNbrowseSelectionCallback, changed, self);
         replace(w, _items);
+        XtVaSetValues(w,
+                      XmNwidth,
+                      _bounds.d.w,
+                      XmNheight,
+                      _bounds.d.h,
+                      nullptr);
         if (_selected_index >= 0)
             XmListSelectPos(w, _selected_index + 1, False);
         _created = true;

@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #import <AppKit/AppKit.h>
+#include <algorithm>
 #include <stdexcept>
 #include <native.h>
 #include <native/list.h>
@@ -91,22 +92,34 @@ namespace native
                                      _bounds.d.w,
                                      _bounds.d.h)];
         [s setHasVerticalScroller:YES];
-        [s setBorderType:NSBezelBorder];
+        [s setAutohidesScrollers:YES];
+        [s setBorderType:NSLineBorder];
         NSTableView *t = [[NSTableView alloc]
             initWithFrame:NSMakeRect(0, 0, _bounds.d.w, _bounds.d.h)];
         NSTableColumn *c =
             [[NSTableColumn alloc] initWithIdentifier:@"native_item"];
-        [c setWidth:_bounds.d.w];
+        [c setWidth:std::max(1, static_cast<int>(_bounds.d.w) - 2)];
+        [c setResizingMask:NSTableColumnAutoresizingMask];
         [t addTableColumn:c];
         [c release];
         [t setHeaderView:nil];
         [t setAllowsMultipleSelection:NO];
+        [t setAllowsEmptySelection:YES];
+        [t setSelectionHighlightStyle:
+               NSTableViewSelectionHighlightStyleRegular];
+        [t setIntercellSpacing:NSZeroSize];
+        [t setColumnAutoresizingStyle:
+               NSTableViewLastColumnOnlyAutoresizingStyle];
+        [t setGridStyleMask:NSTableViewGridNone];
+        [t setUsesAlternatingRowBackgroundColors:NO];
+        [t setBackgroundColor:[NSColor textBackgroundColor]];
         native_list_adapter *a = [[native_list_adapter alloc] init];
         a->_owner = self;
         a->_suppress = YES;
         [t setDataSource:a];
         [t setDelegate:a];
         [s setDocumentView:t];
+        [t sizeLastColumnToFit];
         [parent(self) addSubview:s];
         [t reloadData];
         if (_selected_index >= 0)

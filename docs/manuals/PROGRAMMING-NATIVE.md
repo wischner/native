@@ -2,12 +2,14 @@
 
 This manual teaches application programming with the `native` C++ user
 interface library. It starts with the smallest possible window and then
-introduces painting, input events, menus, controls, and layouts.
+introduces painting, input events, menus, controls, layouts, independent
+windows, system dialogs, graphics, fonts, images, clipboard access, and text
+editing.
 
-The chapters are based on the former runnable examples. Each chapter keeps
-the complete program that demonstrated its subject, so the examples remain
-available as maintained documentation while the repository itself builds only
-the `vision` application.
+The first chapters preserve the former runnable examples as maintained
+documentation while the repository itself builds only the `vision`
+application. Later chapters cover the expanded API with complete programs,
+focused snippets, and backend deployment instructions.
 
 ## How a native program is organized
 
@@ -32,6 +34,11 @@ controls.
 5. [Configuring controls](programming-native/05-configuring-controls.md)
 6. [Absolute layout](programming-native/06-absolute-layout.md)
 7. [Grid and nested layout](programming-native/07-grid-layout.md)
+8. [Selection controls](programming-native/08-selection-controls.md)
+9. [Owned windows and file dialogs](programming-native/09-owned-windows-and-dialogs.md)
+10. [Graphics, images, fonts, and themes](programming-native/10-graphics-images-fonts-themes.md)
+11. [Clipboard and text editing](programming-native/11-clipboard-and-text-editing.md)
+12. [Building, linking, and distributing](programming-native/12-building-and-distributing.md)
 
 ## Building the repository program
 
@@ -47,7 +54,9 @@ cmake --build build/linux-x11
 
 The application is produced as `build/linux-x11/src/vision`. Other backends
 use the same source program and place their result in the corresponding build
-tree.
+tree. Chapter 12 gives the exact configure command, link libraries, build
+dependencies, and deployment requirements for every supported platform and
+Linux toolkit.
 
 ## Conventions used in the chapters
 
@@ -59,5 +68,8 @@ tree.
 - State changes that affect painting call `invalidate()` to request a repaint.
 - Paint handlers draw only through the `gpx` object carried by the paint
   event.
+- Portable strings are UTF-8. Text editors normalize line endings to `\n`.
+- Backend headers and handles never enter application code. Include
+  `<native.h>` and link the CMake target `native`.
 
 Continue with [Your first application](programming-native/01-first-application.md).

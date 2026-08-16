@@ -24,11 +24,9 @@ namespace native
 
         linux::openmotif::exit_requested = false;
 
-        while (!linux::openmotif::exit_requested) {
-            XEvent event;
-            XtAppNextEvent(linux::openmotif::app_instance, &event);
-            XtDispatchEvent(&event);
-        }
+        while (!linux::openmotif::exit_requested)
+            XtAppProcessEvent(linux::openmotif::app_instance,
+                              XtIMAll);
 
         linux::openmotif::wnd_bindings.clear();
         linux::openmotif::shell_bindings.clear();

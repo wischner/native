@@ -70,11 +70,7 @@ namespace
 
         int text_height() const override {
             return std::max(
-                1, static_cast<int>(linux::gemix::runtime.char_h / 2));
-        }
-
-        bool text_uses_baseline() const override {
-            return true;
+                1, static_cast<int>(linux::gemix::runtime.char_h));
         }
     };
 } // namespace

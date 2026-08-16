@@ -10,6 +10,7 @@
 #import <Cocoa/Cocoa.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include <native.h>
@@ -99,6 +100,11 @@ namespace
                 std::max(20, static_cast<int>(height) + 6);
             m.popup_width = 200;
             m.text_padding_x = 8;
+            NSTableView *table =
+                [[NSTableView alloc] initWithFrame:NSZeroRect];
+            m.list_item_height = std::max(
+                1, static_cast<int>(std::ceil([table rowHeight])));
+            [table release];
             return m;
         }
 
@@ -142,8 +148,13 @@ namespace
                     [NSString stringWithUTF8String:text.c_str()];
                 NSButtonCell *cell =
                     [[NSButtonCell alloc] initTextCell:label];
-                [cell setBezelStyle:NSBezelStylePush];
+                [cell setBezelStyle:NSBezelStyleRounded];
                 [cell setButtonType:NSButtonTypeMomentaryPushIn];
+                [cell setControlSize:NSControlSizeRegular];
+                [cell setFont:[NSFont systemFontOfSize:
+                                      [NSFont
+                                          systemFontSizeForControlSize:
+                                              NSControlSizeRegular]]];
                 [cell setEnabled:s.disabled ? NO : YES];
                 [cell setHighlighted:s.pressed ? YES : NO];
                 [cell
@@ -226,7 +237,13 @@ namespace
                 [[NSColor textBackgroundColor] setFill];
                 NSRectFill(NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h));
                 [[NSColor gridColor] setStroke];
-                NSFrameRect(NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h));
+                NSBezierPath *frame = [NSBezierPath bezierPathWithRect:
+                    NSMakeRect(r.p.x + 0.5,
+                               r.p.y + 0.5,
+                               std::max(0, static_cast<int>(r.d.w) - 1),
+                               std::max(0, static_cast<int>(r.d.h) - 1))];
+                [frame setLineWidth:1.0];
+                [frame stroke];
 
                 const native::rect content(r.p.x + 1,
                                            r.p.y + 1,
@@ -255,6 +272,30 @@ namespace
             return painted ? *this
                            : draw_list_fallback(
                                  r, items, selected_index, s);
+        }
+
+        theme &draw_text_edit_frame(
+            const native::rect &r,
+            const state &s) override {
+            const bool painted = with_view(_g, [&](NSView *view) {
+                NSTextFieldCell *cell =
+                    [[NSTextFieldCell alloc] initTextCell:@""];
+                [cell setBezeled:YES];
+                [cell setEditable:s.disabled ? NO : YES];
+                [cell drawWithFrame:NSMakeRect(
+                                        r.p.x, r.p.y, r.d.w, r.d.h)
+                              inView:view];
+                [cell release];
+            });
+            if (painted)
+                return *this;
+            const palette p = native_palette();
+            _g.set_pen(1)
+                .set_ink(s.disabled ? p.button_bg : p.menu_popup_bg)
+                .draw_rect(r, true)
+                .set_ink(p.button_border)
+                .draw_rect(r, false);
+            return *this;
         }
 
     private:
@@ -369,25 +410,30 @@ namespace
                               const std::string &text,
                               const state &s) const {
             NSColor *background =
-                s.selected ? [NSColor selectedContentBackgroundColor]
-                           : [NSColor textBackgroundColor];
+                s.selected
+                    ? (s.hot
+                           ? [NSColor selectedContentBackgroundColor]
+                           : [NSColor
+                                 unemphasizedSelectedContentBackgroundColor])
+                    : [NSColor textBackgroundColor];
             NSColor *foreground =
                 s.disabled
                     ? [NSColor disabledControlTextColor]
-                    : (s.selected ? [NSColor selectedControlTextColor]
-                                  : [NSColor textColor]);
+                    : (s.selected && s.hot
+                           ? [NSColor alternateSelectedControlTextColor]
+                           : [NSColor controlTextColor]);
             [background setFill];
             NSRectFill(NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h));
             NSDictionary *attributes = @{
                 NSForegroundColorAttributeName : foreground,
-                NSFontAttributeName : [NSFont systemFontOfSize:0]
+                NSFontAttributeName : [NSFont controlContentFontOfSize:0]
             };
             NSString *label =
                 [NSString stringWithUTF8String:text.c_str()];
             const CGFloat height =
                 [label sizeWithAttributes:attributes].height;
             [label drawAtPoint:NSMakePoint(
-                                   r.p.x + defaults().text_padding_x,
+                                   r.p.x + 2,
                                    r.p.y +
                                        std::max(
                                            0.0,

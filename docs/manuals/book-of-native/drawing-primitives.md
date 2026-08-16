@@ -337,6 +337,7 @@ default state.
 | `draw_check(bounds, text, state)` | A complete check; `state.selected` is checked |
 | `draw_radio(bounds, text, state)` | A complete radio; `state.selected` is chosen |
 | `draw_list(bounds, items, selected_index, state)` | A framed single-selection list |
+| `draw_text_edit_frame(bounds, state)` | An empty text-edit frame; `state.selected` is focused |
 
 The caller supplies the rectangles. `defaults()` returns backend-selected
 values for menu height, item height, popup width, and horizontal text padding.

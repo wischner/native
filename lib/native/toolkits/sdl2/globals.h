@@ -17,6 +17,15 @@
 
 namespace linux::sdl2
 {
+    namespace x11_clipboard
+    {
+        // Serve pending foreign X11 clipboard selection requests.
+        void service();
+
+        // Release the foreign X11 clipboard connection.
+        void shutdown();
+    } // namespace x11_clipboard
+
     // SDL events carry handles, so process-wide registries
     // recover the corresponding C++ objects during event dispatch.
 #ifdef HAVE_SDL2_TTF
@@ -103,6 +112,19 @@ namespace linux::sdl2
         bool visible = false;
     };
 
+    struct sdl2_text_edit
+    {
+        native::wnd *parent = nullptr;
+        native::rect bounds = {};
+        std::size_t cursor = 0;
+        std::size_t anchor = 0;
+        std::size_t first_line = 0;
+        int horizontal_scroll = 0;
+        bool visible = false;
+        bool focused = false;
+        bool mouse_selecting = false;
+    };
+
     // Render an emulated menu bar and open popup.
     void render_menu(sdl2_menu *menu,
                      native::gpx &graphics,
@@ -149,6 +171,21 @@ namespace linux::sdl2
     // Render every visible emulated list owned by a window.
     void render_lists(native::wnd *, native::gpx &);
 
+    // Focus or position an emulated editor from a mouse press.
+    bool handle_text_edit_mouse(native::wnd *, int, int, bool);
+
+    // Extend an active pointer selection in an emulated editor.
+    bool handle_text_edit_motion(native::wnd *, int, int);
+
+    // Apply navigation or an editing shortcut to the focused editor.
+    bool handle_text_edit_key(native::wnd *, const SDL_KeyboardEvent &);
+
+    // Insert one SDL UTF-8 text-input payload into the focused editor.
+    bool handle_text_edit_input(native::wnd *, const char *);
+
+    // Render every visible emulated editor owned by a window.
+    void render_text_edits(native::wnd *, native::gpx &);
+
     // Return the rendered width of text in the active control font.
     int text_width(const std::string &text);
 
@@ -173,10 +210,13 @@ namespace linux::sdl2
     extern native::bindings<native::radio *, sdl2_radio *>
         radio_bindings;
     extern native::bindings<native::list *, sdl2_list *> list_bindings;
+    extern native::bindings<native::text_edit *, sdl2_text_edit *>
+        text_edit_bindings;
     extern std::vector<native::check *> checks;
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
     extern std::vector<native::button *> buttons;
+    extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::app_wnd *> windows;
 #ifdef HAVE_SDL2_TTF
     extern native::bindings<uint32_t, sdl2_font *> font_bindings;

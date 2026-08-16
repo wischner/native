@@ -18,6 +18,8 @@ set(SRC_FILES
     check.cpp
     radio.cpp
     list.cpp
+    clipboard.cpp
+    text_edit.cpp
     file_dialog.cpp
     open_file_dialog.cpp
     save_file_dialog.cpp

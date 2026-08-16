@@ -78,5 +78,8 @@ docker run --rm -i \
     -u "$(id -u):$(id -g)" \
     -v "${WORKSPACE_DIR}:${WORKSPACE_DIR}" \
     -v /tmp:/tmp \
+    -e GEM_RESOURCE_DIR="${GEM_RESOURCE_DIR:-/opt/gemix/share/gem}" \
+    -e GEM_RASTA_CURSOR="${RASTA_CURSOR}" \
+    -e GEM_RASTA_INVERSE="${RASTA_INVERSE}" \
     -w "${WORKSPACE_DIR}" \
     "${IMAGE}" "${DEBUGGER_COMMAND[@]}"

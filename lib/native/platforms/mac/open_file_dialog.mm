@@ -49,6 +49,9 @@ namespace native
             dialog->on_native_cancel();
             throw;
         }
+        if (mac::global_app)
+            [mac::global_app activateIgnoringOtherApps:YES];
+        [owner_window makeKeyAndOrderFront:nil];
         [panel beginSheetModalForWindow:owner_window
                      completionHandler:^(NSModalResponse response) {
             native::file_dialog *active =

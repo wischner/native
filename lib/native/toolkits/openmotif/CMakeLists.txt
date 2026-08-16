@@ -19,6 +19,7 @@ endif()
 
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/theme_support.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
@@ -33,6 +34,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/clipboard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp

@@ -114,5 +114,7 @@ containing the invalid rectangle and a borrowed graphics context.
 
 The graphics context supports colors, lines, rectangles, text, images, fonts,
 and clipping. Never retain the event's graphics reference beyond the handler.
+Chapter 10 expands these operations with memory images, PNG/JPEG codecs, font
+creation and measurement, and native-look theme primitives.
 
 Next: [Menus and commands](03-menus-and-commands.md).

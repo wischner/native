@@ -3,6 +3,9 @@ if(APPLE)
     # foreground application when LLDB starts it from a remote shell.
     add_executable(vision MACOSX_BUNDLE
         main.cpp
+        vision_services.cpp
+        vision_window.cpp
+        vision_windows.cpp
     )
     set_target_properties(vision PROPERTIES
         MACOSX_BUNDLE_BUNDLE_NAME "Vision"
@@ -13,6 +16,9 @@ if(APPLE)
 else()
     add_executable(vision
         main.cpp
+        vision_services.cpp
+        vision_window.cpp
+        vision_windows.cpp
     )
 endif()
 

@@ -160,6 +160,14 @@ namespace native
                                  int selected_index,
                                  const state &element_state) = 0;
 
+        // Draw an empty editable-text frame in its default state.
+        theme &draw_text_edit_frame(const rect &bounds);
+
+        // Draw an empty editable-text frame; state.selected is focus.
+        virtual theme &draw_text_edit_frame(
+            const rect &bounds,
+            const state &element_state) = 0;
+
     protected:
         // Construct a theme that borrows its destination context.
         explicit theme(gpx &painter);

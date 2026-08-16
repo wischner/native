@@ -96,6 +96,10 @@ namespace native
         BWindow *w = parent(self);
         native_list_view *v = nullptr;
         locked(w, [&] {
+            BView *content = haiku::content_view(w);
+            if (!content)
+                return;
+
             v = new native_list_view(BRect(_bounds.p.x,
                                            _bounds.p.y,
                                            _bounds.x2() - 1,
@@ -107,7 +111,7 @@ namespace native
                 v->Select(_selected_index);
                 v->_suppress = false;
             }
-            w->AddChild(v);
+            content->AddChild(v);
         });
         if (!v)
             throw std::runtime_error("Haiku: Failed to create list.");

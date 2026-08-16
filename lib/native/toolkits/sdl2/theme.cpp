@@ -273,6 +273,18 @@ namespace
             return *this;
         }
 
+        theme &draw_text_edit_frame(
+            const native::rect &r,
+            const state &s) override {
+            state_guard guard(_g);
+            const palette p = native_palette();
+            _g.set_pen(1)
+                .set_ink(s.disabled ? p.button_bg : p.menu_popup_bg)
+                .draw_rect(r, true);
+            draw_bevel(r, true, p);
+            return *this;
+        }
+
     private:
         native::rect indicator_bounds(const native::rect &r) const {
             const int side =

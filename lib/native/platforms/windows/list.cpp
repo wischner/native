@@ -64,6 +64,10 @@ namespace native
         if (!h)
             throw std::runtime_error("Windows: Failed to create list.");
         windows::wnd_bindings.register_pair(h, self);
+        SendMessageW(h,
+                     WM_SETFONT,
+                     reinterpret_cast<WPARAM>(windows::control_font()),
+                     TRUE);
         add_items(h, _items);
         SendMessageW(
             h, LB_SETCURSEL, static_cast<WPARAM>(_selected_index), 0);

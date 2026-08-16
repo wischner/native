@@ -18,6 +18,24 @@
 
 namespace windows
 {
+    static void app_window_frame_size(HWND hwnd,
+                                      LONG &width,
+                                      LONG &height) {
+        RECT client = {0, 0, width, height};
+        const DWORD style = static_cast<DWORD>(
+            GetWindowLongPtrW(hwnd, GWL_STYLE));
+        const DWORD extended_style = static_cast<DWORD>(
+            GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+        if (AdjustWindowRectEx(
+                &client,
+                style,
+                GetMenu(hwnd) != nullptr,
+                extended_style)) {
+            width = client.right - client.left;
+            height = client.bottom - client.top;
+        }
+    }
+
     static bool is_user_input_message(UINT message) {
         return (message >= WM_KEYFIRST && message <= WM_KEYLAST) ||
                (message >= WM_MOUSEFIRST &&
@@ -73,7 +91,7 @@ namespace windows
         }
 
         if (!wnd)
-            return DefWindowProc(hwnd, message, wparam, lparam);
+            return DefWindowProcW(hwnd, message, wparam, lparam);
 
         if (!wnd->get_input_enabled() &&
             is_user_input_message(message)) {
@@ -84,6 +102,14 @@ namespace windows
         case WM_MOVE: {
             native::point position(GET_X_LPARAM(lparam),
                                    GET_Y_LPARAM(lparam));
+            if (dynamic_cast<native::app_wnd *>(wnd)) {
+                RECT bounds = {};
+                if (GetWindowRect(hwnd, &bounds)) {
+                    position = native::point(
+                        static_cast<native::coord>(bounds.left),
+                        static_cast<native::coord>(bounds.top));
+                }
+            }
             wnd->on_native_move(position);
             wnd->on_wnd_move.emit(position);
             break;
@@ -209,6 +235,12 @@ namespace windows
                         }
                         return 0;
                     }
+                    if (auto *editor =
+                            dynamic_cast<native::text_edit *>(child)) {
+                        if (HIWORD(wparam) == EN_CHANGE)
+                            windows::handle_text_edit_change(editor);
+                        return 0;
+                    }
                 }
             } else if (HIWORD(wparam) == 0) {
                 // Menu item click (lparam == 0).
@@ -237,7 +269,7 @@ namespace windows
             break;
         }
 
-        return DefWindowProc(hwnd, message, wparam, lparam);
+        return DefWindowProcW(hwnd, message, wparam, lparam);
     }
 } // namespace windows
 
@@ -259,12 +291,16 @@ namespace native
     void wnd::apply_dimensions() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(this);
         if (hwnd) {
+            LONG width = _bounds.d.w;
+            LONG height = _bounds.d.h;
+            if (dynamic_cast<app_wnd *>(this))
+                windows::app_window_frame_size(hwnd, width, height);
             SetWindowPos(hwnd,
                          nullptr,
                          0,
                          0,
-                         _bounds.d.w,
-                         _bounds.d.h,
+                         width,
+                         height,
                          SWP_NOMOVE | SWP_NOZORDER);
         }
     }
@@ -272,12 +308,16 @@ namespace native
     void wnd::apply_bounds() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(this);
         if (hwnd) {
+            LONG width = _bounds.d.w;
+            LONG height = _bounds.d.h;
+            if (dynamic_cast<app_wnd *>(this))
+                windows::app_window_frame_size(hwnd, width, height);
             SetWindowPos(hwnd,
                          nullptr,
                          _bounds.p.x,
                          _bounds.p.y,
-                         _bounds.d.w,
-                         _bounds.d.h,
+                         width,
+                         height,
                          SWP_NOZORDER);
         }
     }

@@ -11,6 +11,8 @@
 #include <Message.h>
 #include <Window.h>
 
+#include <algorithm>
+
 #include <native.h>
 #include <native/menu.h>
 #include "globals.h"
@@ -20,6 +22,31 @@ namespace
     uint32_t next_id() {
         static uint32_t c = 0;
         return ++c;
+    }
+
+    void restore_content(BWindow *window) {
+        BView *content = haiku::content_view(window);
+        if (!content)
+            return;
+        const BRect bounds = window->Bounds();
+        content->MoveTo(bounds.LeftTop());
+        content->ResizeTo(bounds.Width(), bounds.Height());
+    }
+
+    void reserve_menu_area(BWindow *window, BMenuBar *bar) {
+        BView *content = haiku::content_view(window);
+        if (!content || !bar)
+            return;
+        const BRect bounds = window->Bounds();
+        float width = 0.0f;
+        float height = 0.0f;
+        bar->GetPreferredSize(&width, &height);
+        bar->MoveTo(bounds.LeftTop());
+        bar->ResizeTo(bounds.Width(), height);
+        const float content_top = bar->Frame().bottom + 1.0f;
+        content->MoveTo(bounds.left, content_top);
+        content->ResizeTo(
+            bounds.Width(), std::max(0.0f, bounds.bottom - content_top));
     }
 } // namespace
 
@@ -47,6 +74,7 @@ namespace native
                     if (m->bar->Window() == window) {
                         m->bar->RemoveSelf();
                         delete m->bar;
+                        restore_content(window);
                     }
                     window->Unlock();
                 }
@@ -70,12 +98,18 @@ namespace native
         if (!win->Lock())
             return;
 
+        BView *content = haiku::content_view(win);
+        if (!content) {
+            win->Unlock();
+            return;
+        }
+
         BRect bounds = win->Bounds();
         BMenuBar *bar = new BMenuBar(BRect(0, 0, bounds.Width(), 0),
                                      "menu_bar",
                                      B_FOLLOW_LEFT_RIGHT | B_FOLLOW_TOP,
                                      B_ITEMS_IN_ROW,
-                                     false);
+                                     true);
 
         auto *h = new haiku::haiku_menu();
         h->owner = &owner;
@@ -93,6 +127,7 @@ namespace native
         }
 
         win->AddChild(bar);
+        reserve_menu_area(win, bar);
         bar->SetTargetForItems(win);
 
         win->Unlock();

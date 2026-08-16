@@ -135,6 +135,9 @@ Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
 must update cached bounds and relayout children. Backend resize notifications
 must update the cache and layout without requesting the same resize again.
+Requested top-level screen coordinates are preferences. A backend must keep
+the native title area within a detected work area, even when the requested
+window is taller than that work area.
 
 Top-level ownership is a second relationship and must never be represented by
 `wnd::set_parent()`. An `owned_wnd` borrows an `app_wnd` owner but remains a
@@ -181,9 +184,13 @@ Backends must use the operating system or toolkit file selector when one
 exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
 Motif `FileSelectionBox`, and GEM AES file selector are the standard paths.
 Toolkits without a chooser, including Athena and SDL2, may delegate to an
-installed desktop chooser rather than implement a custom selector. Unsupported
+installed desktop chooser. A backend fallback must be composed from that
+toolkit's native controls rather than custom-painted substitutes. Unsupported
 native options may degrade conservatively: an older single-selection chooser
 may return one path, and a platform may keep mandatory overwrite confirmation.
+If neither a delegated chooser nor a native-control fallback is available, the
+panel must complete as cancelled and restore its owner's input state; runtime
+capability absence is not an exception.
 
 System panels may complete synchronously or asynchronously. Portable code must
 observe `on_modal_close` and read paths after an accepted result instead of
@@ -197,15 +204,16 @@ event translation with identical public behavior. Add each new window type to
 every supported backend and keep all platform differences below the public API.
 
 Interactive controls are windows, not theme drawings. `button`, `check`,
-`radio`, and `list` must use the platform or toolkit's native control when one
-exists. A backend without a widget set may emulate the control through its own
-theme and event loop. Programmatic property setters update cached/native state
-without emitting user-action signals; backend-originated changes update the
-cache and emit the corresponding signal. Sibling `radio` controls are mutually
-exclusive, and `list` is single-selection with `-1` representing no selection.
-Keep every control in its own same-named public, common, and backend source
-file. Do not collect unrelated controls into a `controls` module or add a
-`_box` suffix to the `check`, `radio`, or `list` type names.
+`radio`, `list`, and `text_edit` must use the platform or toolkit's native
+control when one exists. A backend without a widget set may emulate the
+control through its own theme and event loop. Programmatic property setters
+update cached/native state without emitting user-action signals;
+backend-originated changes update the cache and emit the corresponding signal.
+Sibling `radio` controls are mutually exclusive, and `list` is
+single-selection with `-1` representing no selection. Keep every control in
+its own same-named public, common, and backend source file. Do not collect
+unrelated controls into a `controls` module or add a `_box` suffix to the
+`check`, `radio`, or `list` type names.
 
 ## 6. Painting in Windows
 
@@ -254,9 +262,10 @@ Use the public abstract `theme` interface when custom controls or visuals must
 match the active platform. `theme::create()` asks the active backend for a
 short-lived implementation around a borrowed `gpx &`. The interface exposes
 the same semantic primitives and states on every backend, including common
-button, check, radio, list, menu, selection, border, text, hot, pressed,
-selected, and disabled states. Appearance logic must live in the platform or
-toolkit implementation, not in the backend-neutral library root.
+button, check, radio, list, editable-text frame, menu, selection, border,
+text, hot, pressed, selected, and disabled states. Appearance logic must live
+in the platform or toolkit implementation, not in the backend-neutral library
+root.
 
 Theme rendering follows these rules:
 
@@ -424,3 +433,154 @@ and native handles remain in private shared or backend bindings. Moving a font
 preserves its opaque identifier and rendering behavior. Destroying it releases
 all associated registrations and cached glyph resources. A `gpx` borrows its
 selected font, so that font must outlive every drawing operation that uses it.
+
+## 11. Clipboard
+
+`clipboard` is the portable, process-facing stream for exchanging data with
+the system clipboard. It must be declared in `include/native/clipboard.h`,
+implemented at the common and backend levels, and included by `<native.h>`.
+Its public interface contains only Native and standard C++ types. Native
+clipboard handles, atoms, pasteboards, messages, locks, and retained provider
+objects belong in private backend bindings.
+
+A clipboard stream is opened for either reading or writing and is move-only.
+A read stream represents one consistent snapshot of the advertised system
+formats. A write stream stages one or more representations and publishes them
+only when explicitly committed. Destroying an uncommitted write stream must
+leave the previous system clipboard unchanged. This transaction boundary is
+required because many systems replace every existing representation when new
+clipboard content is published.
+
+The stream is typed rather than an unstructured sequence of native bytes. It
+must enumerate available `clipboard_format` values, report whether a format is
+present, and provide typed read and write operations. The minimum portable
+formats are:
+
+- `text`, represented publicly as valid UTF-8. Backends convert native Unicode
+  encodings and platform line endings at the boundary. Portable text uses
+  `\n`; an embedded null is not portable clipboard text and must be rejected.
+- `image`, represented publicly as an owned `img` in top-to-bottom RGBA order.
+  Alpha must be preserved whenever the native clipboard supports it. A backend
+  may publish PNG and a native bitmap representation together to maximize
+  interoperability, but both describe the same image.
+
+Reading an unavailable format is a normal condition and must be distinguishable
+from a backend failure. Malformed external data, invalid UTF-8, impossible
+dimensions, integer overflow, and unreasonable allocation sizes must be
+rejected before constructing a public value. A failed read or commit must not
+leak a native resource or leave a clipboard lock held. Convenience operations
+may transfer a complete string or image, while the underlying stream must also
+permit bounded byte transfer so large or future formats do not require an
+additional unbounded copy.
+
+One clipboard item may advertise several formats. Format preference is
+deterministic: text readers prefer the system's Unicode representation, and
+image readers prefer a lossless representation with alpha before falling back
+to another native bitmap representation. Backends must not return an arbitrary
+format based on enumeration order. Unknown native formats may be ignored; a
+future portable custom-data API must identify them with stable MIME-like names
+rather than platform numeric identifiers.
+
+Clipboard access belongs on the UI thread unless a backend explicitly
+documents a safe marshaling path. A native lock or borrowed data pointer must
+never remain live while an application signal or callback runs. Read data is
+copied into portable ownership before returning to application code. For a
+system with delayed rendering or selection ownership, the backend retains a
+portable copy of committed representations until ownership is lost or the
+application shuts down.
+
+Backends use the standard system mechanism:
+
+- Windows uses the system clipboard and publishes interoperable Unicode text
+  and bitmap/image formats.
+- macOS uses the general AppKit pasteboard.
+- Haiku uses `BClipboard` and Translation Kit-compatible image data.
+- X11 toolkits implement the `CLIPBOARD` selection, advertise `TARGETS`, and
+  serve Unicode text and image targets. The `PRIMARY` selection is separate
+  and must not silently replace the portable clipboard.
+- SDL2 may use SDL's clipboard support where it is complete and must use the
+  active platform service or a suitable foreign library for unsupported image
+  transfer.
+- GEM uses the AES scrap mechanism, publishes conventional `SCRAP.TXT` and
+  monochrome `SCRAP.IMG`, and may additionally publish `SCRAP.PNG` to retain
+  the portable RGBA representation. Reads prefer the lossless PNG form and
+  fall back to the standard IMG form.
+
+X11 selection conversion and other asynchronous native APIs must integrate
+with the existing backend event dispatcher. They must not start a second
+portable event loop. If acquisition cannot complete immediately, the backend
+may complete the read through a clipboard signal or callback, but synchronous
+and asynchronous backends must expose the same snapshot, format preference,
+ownership, and error rules.
+
+Every control for which clipboard operations are meaningful must use this
+shared service rather than calling a backend clipboard API directly. Text-edit
+controls must implement copy, cut, and paste for the current selection, use the
+platform's conventional keyboard shortcuts, and preserve Unicode text. Copy is
+allowed for a read-only control; cut and paste are not. Cut removes the selected
+content only after the clipboard commit succeeds, and paste changes the control
+only after input has been validated. Image editors and image-selection controls
+must similarly copy and paste the portable `img` representation. Programmatic
+clipboard operations must follow the same change-signal rules as the
+corresponding programmatic control edits.
+
+Tests must cover Unicode text, line-ending conversion, empty and unavailable
+formats, RGBA image round trips, alpha preservation, multi-format commits,
+failed commits preserving old content, ownership loss, and control-level
+copy/cut/paste behavior. Each hosted backend also needs an integration test
+that writes through one clipboard object and reads the resulting system data
+through another.
+
+## 12. Text editing
+
+`text_edit` is the portable editable-text window and is declared in
+`include/native/text_edit.h`. It is a `wnd`, participates in the normal child
+window lifecycle and layout, and uses a native text control whenever the
+active system or toolkit supplies one. Its public state contains only UTF-8
+text, an immutable editing mode, read-only state, and a portable validator.
+Native text buffers, delegates, callback records, selection positions, and
+emulated cursor state remain in backend bindings.
+
+The construction-time `text_edit_mode` is either `single_line` or
+`multi_line`. Single-line values contain no line breaks. Multiline values use
+only `\n`; carriage returns are native boundary details and never enter the
+portable cache. Both modes require canonical scalar-value UTF-8 without an
+embedded null. Text returned by `get_text()` is the last accepted complete
+value, not a borrowed native buffer.
+
+An optional `text_validator` receives the complete proposed UTF-8 value for
+every user-originated insertion, deletion, replacement, and paste. It returns
+true to accept that value and false to reject it. A backend with a pre-change
+hook rejects the native edit before it is applied. A backend with only a
+post-change notification restores the last accepted cache before application
+signals run. The validator is synchronous on the UI thread, should be fast and
+side-effect-free, and must never receive malformed or mode-incompatible text.
+Installing a validator that rejects the current value is an error.
+
+`set_text()` validates and applies a programmatic value without emitting
+`on_change`. A validated user or native edit updates the portable cache first
+and then emits `on_change` once with the complete new value. Rejected edits do
+not change the cache and do not emit. Read-only state disables insertion,
+deletion, cut, and paste, while selection and copy remain available.
+
+Selection and clipboard behavior is consistent across backends. `copy()`,
+`cut()`, `paste()`, and `select_all()` expose direct operations. The native or
+emulated key dispatcher routes the platform's conventional Ctrl/Command
+shortcuts through those same operations, so keyboard paste cannot bypass
+validation. A clipboard failure is not reported as a text change. Cursor and
+selection offsets may use a backend's native units privately, but conversion
+to the portable cache must preserve complete Unicode scalar boundaries.
+
+Backend controls are selected as follows:
+
+- Windows uses the standard `EDIT` control.
+- macOS uses `NSTextField` and scrollable `NSTextView` controls.
+- Haiku uses `BTextView`, with a `BScrollView` for multiline editing.
+- X11/Athena uses `AsciiText`, and OpenMotif uses `XmTextField`/`XmText`.
+- SDL2 and GEMix keep cursor, selection, focus, and scrolling in private
+  bindings and draw through their backend-owned native-look facilities.
+
+Tests must cover both modes, Unicode cursor boundaries, selection replacement,
+read-only behavior, programmatic and native change-signal rules, live
+validation of typing and paste, direct clipboard functions, standard keyboard
+shortcuts, and rejected-edit cache preservation.

@@ -14,6 +14,7 @@
 #include "bindings.h"
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "window_position.h"
 
 namespace
 {
@@ -70,7 +71,9 @@ namespace
                update_bounds<native::radio>(
                    window, bounds, linux::sdl2::radio_bindings) ||
                update_bounds<native::list>(
-                   window, bounds, linux::sdl2::list_bindings);
+                   window, bounds, linux::sdl2::list_bindings) ||
+               update_bounds<native::text_edit>(
+                   window, bounds, linux::sdl2::text_edit_bindings);
     }
 
     bool update_control_parent(native::wnd *window,
@@ -82,7 +85,9 @@ namespace
                update_parent<native::radio>(
                    window, parent, linux::sdl2::radio_bindings) ||
                update_parent<native::list>(
-                   window, parent, linux::sdl2::list_bindings);
+                   window, parent, linux::sdl2::list_bindings) ||
+               update_parent<native::text_edit>(
+                   window, parent, linux::sdl2::text_edit_bindings);
     }
 
     native::wnd *emulated_parent(native::wnd *window) {
@@ -95,8 +100,11 @@ namespace
         if (auto *parent = control_parent<native::radio>(
                 window, linux::sdl2::radio_bindings))
             return parent;
-        return control_parent<native::list>(window,
-                                            linux::sdl2::list_bindings);
+        if (auto *parent = control_parent<native::list>(
+                window, linux::sdl2::list_bindings))
+            return parent;
+        return control_parent<native::text_edit>(
+            window, linux::sdl2::text_edit_bindings);
     }
 } // namespace
 
@@ -109,7 +117,10 @@ namespace native
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);
         if (window) {
-            SDL_SetWindowPosition(window, _bounds.p.x, _bounds.p.y);
+            const point position =
+                linux::sdl2::constrain_window_position(
+                    window, _bounds.p, _bounds.d);
+            SDL_SetWindowPosition(window, position.x, position.y);
         }
     }
 
@@ -121,6 +132,10 @@ namespace native
             linux::sdl2::wnd_bindings.handle_from_object(this);
         if (window) {
             SDL_SetWindowSize(window, _bounds.d.w, _bounds.d.h);
+            const point position =
+                linux::sdl2::constrain_window_position(
+                    window, _bounds.p, _bounds.d);
+            SDL_SetWindowPosition(window, position.x, position.y);
         }
     }
 
@@ -131,8 +146,11 @@ namespace native
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);
         if (window) {
-            SDL_SetWindowPosition(window, _bounds.p.x, _bounds.p.y);
             SDL_SetWindowSize(window, _bounds.d.w, _bounds.d.h);
+            const point position =
+                linux::sdl2::constrain_window_position(
+                    window, _bounds.p, _bounds.d);
+            SDL_SetWindowPosition(window, position.x, position.y);
         }
     }
 

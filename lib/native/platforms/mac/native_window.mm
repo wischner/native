@@ -55,7 +55,9 @@ using namespace native;
 }
 
 - (BOOL)windowShouldClose:(id)sender {
-    (void)sender;
+    NSWindow *window = static_cast<NSWindow *>(sender);
+    if ([window sheetParent])
+        [[window sheetParent] endSheet:window];
     if (_owner)
         _owner->on_native_destroy();
     return YES;

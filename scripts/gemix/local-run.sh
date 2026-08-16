@@ -13,6 +13,8 @@ RASTA_BIN=${RASTA_BIN:-/home/tstih/data/tstih/rasta/bin/rasta}
 GEM_LIB_DIR=${GEM_LIB_DIR:-/home/tstih/data/triglav-os/gem/bin}
 GEMIX_APP_IMAGE=${GEMIX_APP_IMAGE:-wischner/gcc-x86_64-gemix:latest}
 GEMIX_RUN_MODE=${GEMIX_RUN_MODE:-docker}
+SANITIZER_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/11/libasan.so
+SANITIZER_PRELOAD+=:/usr/lib/gcc/x86_64-linux-gnu/11/libubsan.so
 
 RASTA_WIDTH=${RASTA_WIDTH:-900}
 RASTA_HEIGHT=${RASTA_HEIGHT:-900}
@@ -27,7 +29,8 @@ RASTA_INVERSE=${RASTA_INVERSE:-on}
 EFFECTIVE_RASTA_WIDTH=$RASTA_WIDTH
 if (( RASTA_BPP == 1 )) && (( RASTA_WIDTH % 8 != 0 )); then
     EFFECTIVE_RASTA_WIDTH=$(( ((RASTA_WIDTH + 7) / 8) * 8 ))
-    echo "adjusting GEMix+rasta width from $RASTA_WIDTH to $EFFECTIVE_RASTA_WIDTH for 1bpp byte alignment." >&2
+    echo "adjusting GEMix+rasta width from $RASTA_WIDTH to" \
+        "$EFFECTIVE_RASTA_WIDTH for 1bpp byte alignment." >&2
 fi
 
 if [[ ! -x "$RASTA_BIN" ]]; then
@@ -77,6 +80,7 @@ if [[ "$GEMIX_RUN_MODE" == "host" ]]; then
     export GEM_RASTA_SCALE="$RASTA_SCALE"
     export GEM_RASTA_CURSOR="$RASTA_CURSOR"
     export GEM_RASTA_INVERSE="$RASTA_INVERSE"
+    export GEM_RESOURCE_DIR="${GEM_RESOURCE_DIR:-$GEM_LIB_DIR/gemix/share/gem}"
     export LD_LIBRARY_PATH="$GEM_LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     LD_LIBRARY_PATH="$GEM_LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
         "$APP_PATH" "$@"
@@ -89,7 +93,18 @@ else
         -e GEM_TRACE_AES="${GEM_TRACE_AES:-}" \
         -e GEM_TRACE_DRAW="${GEM_TRACE_DRAW:-}" \
         -e GEM_TRACE_HID="${GEM_TRACE_HID:-}" \
+        -e GEM_RESOURCE_DIR="${GEM_RESOURCE_DIR:-/opt/gemix/share/gem}" \
+        -e GEM_VDI_WIDTH="$EFFECTIVE_RASTA_WIDTH" \
+        -e GEM_VDI_HEIGHT="$RASTA_HEIGHT" \
+        -e GEM_RASTA_FRAMEBUFFER="$RASTA_FB" \
+        -e GEM_RASTA_HOST="$RASTA_HOST" \
+        -e GEM_RASTA_PORT="$RASTA_PORT" \
+        -e GEM_RASTA_SCALE="$RASTA_SCALE" \
+        -e GEM_RASTA_CURSOR="$RASTA_CURSOR" \
+        -e GEM_RASTA_INVERSE="$RASTA_INVERSE" \
+        -e LD_PRELOAD="$SANITIZER_PRELOAD" \
+        -e ASAN_OPTIONS=detect_leaks=0 \
         -w "$PWD" \
         "$GEMIX_APP_IMAGE" \
-        bash -lc "export GEM_VDI_WIDTH=$EFFECTIVE_RASTA_WIDTH; export GEM_VDI_HEIGHT=$RASTA_HEIGHT; export GEM_RASTA_FRAMEBUFFER='$RASTA_FB'; export GEM_RASTA_HOST='$RASTA_HOST'; export GEM_RASTA_PORT=$RASTA_PORT; export GEM_RASTA_SCALE=$RASTA_SCALE; export GEM_RASTA_CURSOR='$RASTA_CURSOR'; export GEM_RASTA_INVERSE='$RASTA_INVERSE'; export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/11/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/11/libubsan.so; export ASAN_OPTIONS=detect_leaks=0; exec \"$APP_PATH\" \"$@\""
+        bash -lc 'exec "$@"' bash "$APP_PATH" "$@"
 fi

@@ -19,6 +19,8 @@ namespace mac
     native::bindings<uint32_t, mac_font *> font_bindings;
     native::bindings<uint32_t, mac_menu *> menu_bindings;
     native::bindings<native::button *, mac_button *> button_bindings;
+    native::bindings<native::text_edit *, mac_text_edit *>
+        text_edit_bindings;
     native::bindings<native::check *, mac_check *> check_bindings;
     native::bindings<native::radio *, mac_radio *> radio_bindings;
     native::bindings<native::list *, mac_list *> list_bindings;
@@ -41,6 +43,16 @@ namespace mac
         if (auto *list = dynamic_cast<native::list *>(control)) {
             auto *binding = list_bindings.object_from_handle(list);
             return binding ? binding->scroll : nil;
+        }
+        if (auto *editor =
+                dynamic_cast<native::text_edit *>(control)) {
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
+            if (!binding)
+                return nil;
+            return binding->scroll
+                       ? static_cast<NSView *>(binding->scroll)
+                       : static_cast<NSView *>(binding->field);
         }
         return nil;
     }

@@ -32,6 +32,8 @@ namespace
              dialog.get_filters()) {
             for (const std::string &pattern : filter.patterns) {
                 std::string extension = pattern;
+                if (extension == "*" || extension == "*.*")
+                    return @[];
                 if (extension.rfind("*.", 0) == 0)
                     extension.erase(0, 2);
                 else if (!extension.empty() &&

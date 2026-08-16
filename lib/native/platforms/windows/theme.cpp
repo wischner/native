@@ -46,7 +46,7 @@ namespace
     };
 
     void select_control_font(HDC hdc) {
-        SelectObject(hdc, GetStockObject(DEFAULT_GUI_FONT));
+        SelectObject(hdc, windows::control_font());
     }
 
     void apply_clip(HDC hdc, native::gpx &g) {
@@ -274,6 +274,39 @@ namespace
                                items[i],
                                item_state);
             }
+            return *this;
+        }
+
+        theme &draw_text_edit_frame(
+            const native::rect &r,
+            const state &s) override {
+            saved_state saved(_g);
+            HWND hwnd = windows::hwnd_from_gpx(_g);
+            if (hwnd) {
+                HDC hdc = GetDC(hwnd);
+                if (hdc) {
+                    apply_clip(hdc, _g);
+                    RECT bounds = windows::to_rect(r);
+                    FillRect(hdc,
+                             &bounds,
+                             GetSysColorBrush(
+                                 s.disabled ? COLOR_BTNFACE
+                                            : COLOR_WINDOW));
+                    DrawEdge(hdc,
+                             &bounds,
+                             EDGE_SUNKEN,
+                             BF_RECT);
+                    SelectClipRgn(hdc, nullptr);
+                    ReleaseDC(hwnd, hdc);
+                    return *this;
+                }
+            }
+            const palette p = native_palette();
+            _g.set_pen(1)
+                .set_ink(s.disabled ? p.button_bg : p.menu_popup_bg)
+                .draw_rect(r, true)
+                .set_ink(p.button_shadow)
+                .draw_rect(r, false);
             return *this;
         }
 

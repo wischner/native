@@ -52,7 +52,7 @@
                 {"name": "GEM_RASTA_PORT", "value": "5000"},
                 {"name": "GEM_RASTA_SCALE", "value": "1"},
                 {"name": "GEM_RASTA_CURSOR", "value": "off"},
-                {"name": "GEM_RASTA_INVERSE", "value": "on"},
+                {"name": "GEM_RASTA_INVERSE", "value": "off"},
                 {"name": "LD_PRELOAD", "value": "/usr/lib/gcc/x86_64-linux-gnu/11/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/11/libubsan.so"},
                 {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
             ],

@@ -84,4 +84,7 @@ The C++ window owns `_button`. The parent relationship maintained by
 `set_parent()` is non-owning and is used for backend creation, layout, and
 event routing.
 
+The same lifecycle applies to the selection controls in Chapter 8 and the
+text-edit controls in Chapter 11.
+
 Next: [Configuring controls](05-configuring-controls.md).

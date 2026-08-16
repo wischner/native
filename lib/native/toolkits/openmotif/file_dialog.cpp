@@ -281,17 +281,15 @@ namespace
         dialog->on_native_cancel();
     }
 
-    // Build the initial Motif directory mask from portable state.
+    // Build an inclusive initial Motif directory mask. Motif exposes
+    // its filter field directly, so users can narrow this after the
+    // selector opens; starting with only the first portable pattern
+    // incorrectly hid every other filter group.
     std::string directory_mask(const native::file_dialog &dialog) {
         std::string mask = dialog.get_initial_path();
         if (!mask.empty() && mask.back() != '/')
             mask.push_back('/');
-
-        const auto &filters = dialog.get_filters();
-        if (!filters.empty() && !filters.front().patterns.empty())
-            mask += filters.front().patterns.front();
-        else
-            mask += "*";
+        mask += "*";
         return mask;
     }
 } // namespace

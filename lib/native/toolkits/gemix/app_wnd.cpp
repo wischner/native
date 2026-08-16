@@ -79,6 +79,8 @@ namespace native
         WORD h = 0;
         wind_get(handle, WF_CURRXYWH, &x, &y, &w, &h);
         const_cast<app_wnd *>(this)->_bounds = rect(x, y, w, h);
+        linux::gemix::active_window =
+            const_cast<app_wnd *>(this);
         if (get_modal())
             wind_set(handle, WF_TOP, 0, 0, 0, 0);
         invalidate();
@@ -103,6 +105,14 @@ namespace native
                         linux::gemix::windows.end(),
                         self),
             linux::gemix::windows.end());
+
+        if (linux::gemix::active_window == self) {
+            linux::gemix::active_window = owner
+                ? owner
+                : (linux::gemix::windows.empty()
+                       ? nullptr
+                       : linux::gemix::windows.back());
+        }
 
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()

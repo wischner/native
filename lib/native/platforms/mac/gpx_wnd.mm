@@ -8,6 +8,7 @@
 #include "gpx_wnd.h"
 
 #include <stdexcept>
+#include <vector>
 
 #import <Cocoa/Cocoa.h>
 
@@ -209,12 +210,30 @@ namespace native
         if (!cache)
             return *this;
 
-        // Create a straight-alpha CGImage from Native RGBA pixel data.
+        // Core Graphics bitmap contexts require premultiplied color.
+        // Portable images deliberately store straight RGBA, so convert
+        // before asking AppKit to composite the result.
+        std::vector<rgba> pixels(
+            static_cast<std::size_t>(src.w()) * src.h());
+        for (std::size_t index = 0; index < pixels.size(); ++index) {
+            const rgba source = src.pixels()[index];
+            pixels[index] = rgba(
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned>(source.r) * source.a + 127U) /
+                    255U),
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned>(source.g) * source.a + 127U) /
+                    255U),
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned>(source.b) * source.a + 127U) /
+                    255U),
+                source.a);
+        }
         CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
         CGDataProviderRef provider = CGDataProviderCreateWithData(
             nullptr,
-            src.pixels(),
-            static_cast<std::size_t>(src.w()) * src.h() * sizeof(rgba),
+            pixels.data(),
+            pixels.size() * sizeof(rgba),
             nullptr);
         CGImageRef cg_image =
             provider ? CGImageCreate(src.w(),
@@ -224,7 +243,7 @@ namespace native
                                      src.w() * sizeof(rgba),
                                      color_space,
                                      static_cast<CGBitmapInfo>(
-                                         kCGImageAlphaLast) |
+                                         kCGImageAlphaPremultipliedLast) |
                                          static_cast<CGBitmapInfo>(
                                              kCGBitmapByteOrder32Big),
                                      provider,
@@ -246,9 +265,16 @@ namespace native
             return *this;
         }
 
-        const CGRect area =
-            CGRectMake(dst.x, dst.y, src.w(), src.h());
-        CGContextDrawImage(cg_context, area, cg_image);
+        NSImage *image = [[NSImage alloc]
+            initWithCGImage:cg_image
+                       size:NSMakeSize(src.w(), src.h())];
+        [image drawInRect:NSMakeRect(dst.x, dst.y, src.w(), src.h())
+                 fromRect:NSZeroRect
+                operation:NSCompositingOperationSourceOver
+                 fraction:1.0
+           respectFlipped:YES
+                    hints:nil];
+        [image release];
         CGContextRestoreGState(cg_context);
 
         // Cleanup

@@ -51,4 +51,8 @@ namespace native
                             int selected_index) {
         return draw_list(bounds, items, selected_index, state{});
     }
+
+    theme &theme::draw_text_edit_frame(const rect &bounds) {
+        return draw_text_edit_frame(bounds, state{});
+    }
 } // namespace native

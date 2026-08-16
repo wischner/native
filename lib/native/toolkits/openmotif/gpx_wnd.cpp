@@ -200,6 +200,9 @@ namespace native
         XSetForeground(linux::openmotif::cached_display,
                        cache->gc,
                        rgba_to_pixel(canvas, color));
+        XSetClipMask(linux::openmotif::cached_display,
+                     cache->gc,
+                     None);
         XFillRectangle(linux::openmotif::cached_display,
                        cache->backbuffer,
                        cache->gc,

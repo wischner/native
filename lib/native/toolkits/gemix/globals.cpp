@@ -15,7 +15,11 @@ namespace linux::gemix
     std::vector<native::check *> checks;
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
+    std::vector<native::text_edit *> text_edits;
+    native::bindings<native::text_edit *, gem_text_edit *>
+        text_edit_bindings;
     std::vector<native::app_wnd *> windows;
+    native::app_wnd *active_window = nullptr;
     std::unordered_map<native::app_wnd *, menu_state> menu_states;
 
     bool ensure_runtime() {
@@ -36,6 +40,20 @@ namespace linux::gemix
             appl_exit();
             runtime.appl_id = -1;
             return false;
+        }
+
+        WORD distances[5] = {};
+        WORD maximum_width = 0;
+        if (vqt_fontinfo(runtime.vdi_handle,
+                         nullptr,
+                         nullptr,
+                         distances,
+                         &maximum_width,
+                         nullptr)) {
+            if (maximum_width > 0)
+                runtime.char_w = maximum_width;
+            if (distances[3] > 0)
+                runtime.char_h = distances[3];
         }
 
         runtime.initialized = true;
@@ -61,7 +79,10 @@ namespace linux::gemix
         checks.clear();
         radios.clear();
         lists.clear();
+        text_edits.clear();
+        text_edit_bindings.clear();
         windows.clear();
+        active_window = nullptr;
         menu_states.clear();
     }
 

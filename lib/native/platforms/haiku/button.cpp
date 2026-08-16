@@ -33,25 +33,6 @@ namespace
             window->Unlock();
     }
 
-    class native_button : public BButton
-    {
-    public:
-        native_button(BRect frame,
-                      const char *name,
-                      const char *label,
-                      native::button *owner)
-            : BButton(frame, name, label, new BMessage('nbtn'))
-            , _owner(owner) {}
-
-        status_t Invoke(BMessage *message = nullptr) override {
-            if (_owner)
-                _owner->on_click.emit();
-            return BButton::Invoke(message);
-        }
-
-    private:
-        native::button *_owner;
-    };
 } // namespace
 
 namespace native
@@ -86,17 +67,25 @@ namespace native
 
         auto *self = const_cast<button *>(this);
 
-        native_button *btn = nullptr;
+        BButton *btn = nullptr;
         with_locked_window(window, [&](BWindow *locked_window) {
+            BView *content = haiku::content_view(locked_window);
+            if (!content)
+                return;
+
             BRect frame(
                 static_cast<float>(_bounds.p.x),
                 static_cast<float>(_bounds.p.y),
                 static_cast<float>(_bounds.p.x + _bounds.d.w - 1),
                 static_cast<float>(_bounds.p.y + _bounds.d.h - 1));
 
-            btn = new native_button(
-                frame, "native_button", _text.c_str(), self);
-            locked_window->AddChild(btn);
+            BMessage *message = new BMessage(haiku::button_message);
+            message->AddPointer(haiku::control_owner_field, self);
+            btn = new BButton(frame,
+                              "native_button",
+                              _text.c_str(),
+                              message);
+            content->AddChild(btn);
         });
 
         if (!btn)

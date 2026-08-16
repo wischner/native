@@ -51,12 +51,25 @@ namespace windows
         native::button *owner = nullptr;
     };
 
+    // Stores the subclass state for one Win32 EDIT control.
+    struct win_text_edit
+    {
+        HWND hwnd = nullptr;
+        WNDPROC original_proc = nullptr;
+        bool suppress = false;
+    };
+
     extern native::bindings<HWND, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, win_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, win_font *> font_bindings;
     extern native::bindings<uint32_t, win_menu *> menu_bindings;
     extern native::bindings<native::button *, win_button *>
         button_bindings;
+    extern native::bindings<native::text_edit *, win_text_edit *>
+        text_edit_bindings;
+
+    // Validate and cache one EN_CHANGE notification.
+    void handle_text_edit_change(native::text_edit *editor);
 
     // Route Win32 messages to the C++ window registered for a handle.
     LRESULT CALLBACK routed_wnd_proc(HWND hwnd,
@@ -78,4 +91,8 @@ namespace windows
 
     // Resolve the native window handle behind a graphics context.
     HWND hwnd_from_gpx(native::gpx &g);
+
+    // Return the same system-selected font used by native controls and
+    // theme painters.
+    HFONT control_font();
 } // namespace windows

@@ -64,7 +64,7 @@ namespace native
             // Render text to surface.
             SDL_Color color = {_ink.r, _ink.g, _ink.b, _ink.a};
             SDL_Surface *surface =
-                TTF_RenderUTF8_Solid(font, text.c_str(), color);
+                TTF_RenderUTF8_Blended(font, text.c_str(), color);
             if (!surface)
                 return *this;
 

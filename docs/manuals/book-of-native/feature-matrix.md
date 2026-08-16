@@ -34,11 +34,11 @@ Legend:
 | `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Independent owned `modeless_wnd` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
-| Owner-blocking, focus-taking `modal_wnd` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Owner-blocking, focus-taking `modal_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Nested modal stack and `dialog_result` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
-| Standard `open_file_dialog` | Desktop chooser (build tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
-| Standard `save_file_dialog` | Desktop chooser (build tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
+| Standard `open_file_dialog` | Desktop/Xaw (tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
+| Standard `save_file_dialog` | Desktop/Xaw (tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
 | Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -46,6 +46,12 @@ Legend:
 | Native/emulated `check` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Lossless RGBA image clipboard | PNG selection (build tested) | X11 PNG (build tested), fallback (tested) | PNG selection (build tested) | AES PNG plus standard IMG scrap (build tested) | PNG/DIBV5 (build tested) | PNG MIME (build tested) | PNG/TIFF (untested) | WIP |
+| Native/emulated single-line `text_edit` | Athena (build tested) | Yes (tested) | Motif (build tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
+| Native/emulated multiline `text_edit` | Athena (build tested) | Yes (build tested) | Motif (build tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextView (untested) | WIP |
+| Live complete-value validation | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Direct and keyboard copy/cut/paste | Yes (build tested) | Direct tested, keys build tested | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | `vision` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
 | `vision` runtime | Yes (tested) | Yes (tested) | Yes (tested) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
 
@@ -72,6 +78,7 @@ Legend:
 | Themed check/radio drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed complete-list and list-item drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Themed editable-text frame drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 
 ## Notes
 
@@ -84,16 +91,23 @@ Legend:
   modality in its multi-window AES event dispatcher.
 - `open_file_dialog` and `save_file_dialog` adapt every native chooser to the
   same `modal_wnd` session and `dialog_result` contract. Windows, AppKit,
-  Haiku, Motif, and GEM use their standard panels. Athena and SDL2 use Zenity
-  or KDialog because those toolkits do not provide a file chooser.
-- Motif and GEM file selection is single-path. AppKit and Haiku preserve their
-  native overwrite safeguards. These older or mandatory native behaviors are
-  conservative reductions of optional public settings.
+  Haiku, Motif, and GEM use their standard panels. Athena prefers Zenity or
+  KDialog and falls back to an Xaw browser. SDL2 prefers the same desktop
+  helpers and falls back to a self-contained SDL browser.
+- The Xaw fallback, Motif, and GEM file selection are single-path. AppKit and
+  Haiku preserve their native overwrite safeguards. These older or mandatory
+  native behaviors are conservative reductions of optional public settings.
 - OpenMotif uses `XmToggleButton` and `XmList`; Windows uses BUTTON and LISTBOX;
   Haiku uses `BCheckBox`, `BRadioButton`, and `BListView`; macOS uses `NSButton`
   and `NSTableView`.
 - GEMix owns the event handling and native-look emulation for its `check`,
   `radio`, and `list` windows.
+- Text editors use Athena `AsciiText`, Motif `XmTextField`/`XmText`, Win32
+  `EDIT`, Haiku `BTextView`, and AppKit `NSTextField`/`NSTextView`. SDL2 and
+  GEMix keep their editor state in their own event and paint backends.
+- SDL2 supplements SDL's text clipboard with an X11 `CLIPBOARD` selection
+  provider for Unicode text and PNG. Its non-X11 fallback retains PNG only for
+  the current process when the active SDL platform exposes no image format.
 - SDL2 uses `SDL2_ttf` for native stock faces when it is available and a
   built-in bitmap stock-font fallback otherwise. Portable file/memory fonts
   always use the shared byte-backed rasterizer.

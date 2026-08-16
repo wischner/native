@@ -5,7 +5,9 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <cstring>
 #include <stdexcept>
+#include <vector>
 #include <windows.h>
 
 #include <native.h>
@@ -134,7 +136,10 @@ namespace native
             RECT rect = {r.p.x, r.p.y, r.x2(), r.y2()};
             FillRect(hdc, &rect, cache->brush);
         } else {
+            HGDIOBJ previous_brush = SelectObject(
+                hdc, GetStockObject(NULL_BRUSH));
             Rectangle(hdc, r.p.x, r.p.y, r.x2(), r.y2());
+            SelectObject(hdc, previous_brush);
         }
 
         ReleaseDC(hwnd, hdc);
@@ -184,17 +189,9 @@ namespace native
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        void *dib_pixels = nullptr;
-        HBITMAP bitmap = CreateDIBSection(
-            hdc, &bmi, DIB_RGB_COLORS, &dib_pixels, nullptr, 0);
-        if (!bitmap || !dib_pixels) {
-            if (bitmap)
-                DeleteObject(bitmap);
-            ReleaseDC(hwnd, hdc);
-            return *this;
-        }
-
-        auto *bgra = static_cast<std::uint8_t *>(dib_pixels);
+        std::vector<std::uint8_t> bgra(
+            static_cast<std::size_t>(src.w()) * src.h() * 4);
+        bool opaque = true;
         for (std::size_t index = 0;
              index < static_cast<std::size_t>(src.w()) * src.h();
              ++index) {
@@ -209,25 +206,58 @@ namespace native
                 (static_cast<unsigned>(pixel.r) * pixel.a + 127U) /
                 255U);
             bgra[index * 4 + 3] = pixel.a;
+            if (pixel.a != 255)
+                opaque = false;
         }
-
-        HDC memory_dc = CreateCompatibleDC(hdc);
-        HGDIOBJ previous = SelectObject(memory_dc, bitmap);
-        BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-        AlphaBlend(hdc,
-                   dst.x,
-                   dst.y,
-                   src.w(),
-                   src.h(),
-                   memory_dc,
-                   0,
-                   0,
-                   src.w(),
-                   src.h(),
-                   blend);
-        SelectObject(memory_dc, previous);
-        DeleteDC(memory_dc);
-        DeleteObject(bitmap);
+        if (opaque) {
+            StretchDIBits(hdc,
+                          dst.x,
+                          dst.y,
+                          src.w(),
+                          src.h(),
+                          0,
+                          0,
+                          src.w(),
+                          src.h(),
+                          bgra.data(),
+                          &bmi,
+                          DIB_RGB_COLORS,
+                          SRCCOPY);
+        } else {
+            void *dib_pixels = nullptr;
+            HBITMAP bitmap = CreateDIBSection(
+                hdc,
+                &bmi,
+                DIB_RGB_COLORS,
+                &dib_pixels,
+                nullptr,
+                0);
+            if (!bitmap || !dib_pixels) {
+                if (bitmap)
+                    DeleteObject(bitmap);
+                ReleaseDC(hwnd, hdc);
+                return *this;
+            }
+            std::memcpy(dib_pixels, bgra.data(), bgra.size());
+            HDC memory_dc = CreateCompatibleDC(hdc);
+            HGDIOBJ previous = SelectObject(memory_dc, bitmap);
+            BLENDFUNCTION blend = {
+                AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+            AlphaBlend(hdc,
+                       dst.x,
+                       dst.y,
+                       src.w(),
+                       src.h(),
+                       memory_dc,
+                       0,
+                       0,
+                       src.w(),
+                       src.h(),
+                       blend);
+            SelectObject(memory_dc, previous);
+            DeleteDC(memory_dc);
+            DeleteObject(bitmap);
+        }
 
         ReleaseDC(hwnd, hdc);
         return *this;
