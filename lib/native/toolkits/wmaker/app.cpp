@@ -1,0 +1,40 @@
+//
+// Implements the application event loop through the WINGs dispatcher.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#include <stdexcept>
+
+#include <native/app.h>
+
+#include "globals.h"
+
+namespace native
+{
+    int app::main_loop() {
+        if (!linux::wmaker::initialized || !linux::wmaker::screen ||
+            !linux::wmaker::display) {
+            throw std::runtime_error(
+                "Window Maker/WINGs: no application screen.");
+        }
+
+        linux::wmaker::exit_requested = false;
+        while (!linux::wmaker::exit_requested) {
+            XEvent event = {};
+            WMNextEvent(linux::wmaker::display, &event);
+            WMHandleEvent(&event);
+            linux::wmaker::dispatch_deferred();
+        }
+
+        linux::wmaker::wnd_bindings.clear();
+        linux::wmaker::window_bindings.clear();
+        linux::wmaker::graphics_bindings.clear();
+        linux::wmaker::screen = nullptr;
+        linux::wmaker::display = nullptr;
+        linux::wmaker::initialized = false;
+        WMReleaseApplication();
+        return 0;
+    }
+} // namespace native

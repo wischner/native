@@ -7,6 +7,8 @@ This note lists backend-level open issues that are real today.
 - Runtime-tested in the current workflow:
   - Linux X11
   - Linux SDL2
+  - Linux OPEN LOOK/XView under `olwm` in Xephyr
+  - Linux Window Maker/WINGs under Window Maker in Xephyr
   - MS Windows binaries built with MinGW and run through Wine
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
 - Build-tested but not yet runtime-tested in the current workflow:

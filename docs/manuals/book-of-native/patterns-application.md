@@ -130,7 +130,9 @@ must not store it beyond the active run or delete it.
 
 The backend implements `app::main_loop()` because event acquisition is native:
 Windows dispatches messages, X11 reads X events, SDL pumps SDL events, and
-other toolkits have equivalent mechanisms.
+other toolkits have equivalent mechanisms. Window Maker passes X events to
+`WMHandleEvent` and drains portable callbacks only after WINGs returns, so an
+application callback can safely destroy the widget that emitted it.
 
 Despite those differences, every backend loop must:
 

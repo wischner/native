@@ -9,15 +9,35 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include <SDL2/SDL.h>
 
 #include <native.h>
 
+namespace linux::sdl2
+{
+    bool handle_text_edit_mouse(
+        native::wnd *parent, int x, int y, bool pressed);
+    bool handle_text_edit_key(
+        native::wnd *parent, const SDL_KeyboardEvent &event);
+} // namespace linux::sdl2
+
 namespace
 {
     int failure_count = 0;
+
+    // Send one key press through the SDL editor event adapter.
+    bool send_editor_key(native::wnd *parent,
+                         SDL_Keycode key,
+                         SDL_Keymod modifiers = KMOD_NONE) {
+        SDL_KeyboardEvent event = {};
+        event.type = SDL_KEYDOWN;
+        event.keysym.sym = key;
+        event.keysym.mod = static_cast<Uint16>(modifiers);
+        return linux::sdl2::handle_text_edit_key(parent, event);
+    }
 
     // Record a failed condition without stopping cleanup checks.
     void expect(bool condition, const std::string &description) {
@@ -104,17 +124,19 @@ namespace
         image.pixels()[0] = native::rgba(10, 20, 30, 40);
         image.pixels()[1] = native::rgba(50, 60, 70, 255);
         native::clipboard output = native::clipboard::open_write();
-        output.write_text("clip\ntext").write_image(image).commit();
+        output.write_text("clip \xc3\xa6\ntext")
+            .write_image(image)
+            .commit();
         native::clipboard input = native::clipboard::open_read();
         expect(input.has(native::clipboard_format::text) &&
                    input.has(native::clipboard_format::image) &&
-                   input.read_text() == "clip\ntext",
+                   input.read_text() == "clip \xc3\xa6\ntext",
                "clipboard preserves a multi-format UTF-8 snapshot");
         std::uint8_t text_slice[4] = {};
         expect(output.get_committed() &&
-                   input.size(native::clipboard_format::text) == 9 &&
+                   input.size(native::clipboard_format::text) == 12 &&
                    input.read(native::clipboard_format::text,
-                              5,
+                              8,
                               text_slice,
                               sizeof(text_slice)) == 4 &&
                    std::string(
@@ -128,17 +150,57 @@ namespace
                        static_cast<std::uint32_t>(image.pixels()[0]),
                "clipboard PNG round trip preserves RGBA pixels");
 
-        native::clipboard empty_output = native::clipboard::open_write();
+        SDL_SetClipboardText("one\r\ntwo\rthree");
+        native::clipboard native_lines =
+            native::clipboard::open_read();
+        expect(native_lines.read_text() == "one\ntwo\nthree" &&
+                   !native_lines.has(
+                       native::clipboard_format::image),
+               "clipboard normalizes lines and observes ownership "
+               "loss");
+
+        native::clipboard previous = native::clipboard::open_write();
+        previous.write_text("preserved").commit();
+        bool failed_commit = false;
+        try {
+            native::clipboard invalid =
+                native::clipboard::open_write();
+            invalid.commit();
+        } catch (const std::logic_error &) {
+            failed_commit = true;
+        }
+        expect(failed_commit &&
+                   native::clipboard::open_read().read_text() ==
+                       "preserved",
+               "a rejected commit preserves prior clipboard data");
+
+        {
+            native::clipboard abandoned =
+                native::clipboard::open_write();
+            abandoned.write_text("discarded");
+        }
+        expect(native::clipboard::open_read().read_text() ==
+                   "preserved",
+               "an abandoned write leaves the clipboard unchanged");
+
+        native::clipboard empty_output =
+            native::clipboard::open_write();
         empty_output.write_text("").commit();
         native::clipboard empty_input = native::clipboard::open_read();
         expect(empty_input.has(native::clipboard_format::text) &&
-                   empty_input.read_text().empty(),
+                   empty_input.read_text().empty() &&
+                   !empty_input.has(native::clipboard_format::image),
                "clipboard preserves an advertised empty text value");
 
-        native::text_edit source("Copy me");
+        native::text_edit source("Copy \xc3\xa6");
         source.set_parent(&owner);
         source.create();
         source.show();
+        int source_changes = 0;
+        source.on_change.connect([&](const std::string &) {
+            ++source_changes;
+            return false;
+        });
         source.select_all();
         expect(source.copy(),
                "direct editor copy publishes the current selection");
@@ -155,23 +217,58 @@ namespace
         });
         target.create();
         target.show();
-        expect(target.paste() && target.get_text() == "Copy me" &&
+        expect(target.paste() && target.get_text() == "Copy \xc3\xa6" &&
                    changes == 1,
                "direct editor paste validates, changes, and emits");
+
+        source.select_all();
+        expect(source.cut() && source.get_text().empty() &&
+                   source_changes == 1,
+               "direct editor cut commits before removing selection");
+        source.set_read_only(true);
+        source.select_all();
+        expect(!source.cut() && !source.paste() &&
+                   source_changes == 1,
+               "read-only editors reject cut and paste");
 
         native::clipboard rejected = native::clipboard::open_write();
         rejected.write_text("Rejected").commit();
         target.select_all();
-        expect(!target.paste() && target.get_text() == "Copy me" &&
+        expect(!target.paste() &&
+                   target.get_text() == "Copy \xc3\xa6" &&
                    changes == 1,
                "live validation rejects pasted complete values");
 
+        native::text_edit keyboard(
+            "A\xc3\xa6" "B",
+            native::text_edit_mode::single_line,
+            native::rect(0, 60, 180, 28));
+        keyboard.set_parent(&owner);
+        keyboard.create();
+        keyboard.show();
+        expect(linux::sdl2::handle_text_edit_mouse(
+                   &owner, 170, 70, true) &&
+                   linux::sdl2::handle_text_edit_mouse(
+                       &owner, 170, 70, false),
+               "pointer input focuses the SDL editor");
+        expect(send_editor_key(&owner, SDLK_LEFT) &&
+                   send_editor_key(&owner, SDLK_BACKSPACE) &&
+                   keyboard.get_text() == "AB",
+               "keyboard navigation deletes a complete UTF-8 scalar");
+        expect(send_editor_key(&owner, SDLK_a, KMOD_CTRL) &&
+                   send_editor_key(&owner, SDLK_x, KMOD_CTRL) &&
+                   keyboard.get_text().empty() &&
+                   send_editor_key(&owner, SDLK_v, KMOD_CTRL) &&
+                   keyboard.get_text() == "AB",
+               "standard select, cut, and paste shortcuts are routed");
+
+        keyboard.destroy();
         target.destroy();
         source.destroy();
         owner.destroy();
     }
 
-    // Exercise fallback chooser cancellation without a desktop helper.
+    // Exercise chooser cancellation without a desktop helper.
     void test_unavailable_file_dialogs() {
         native::app_wnd owner(
             "File panels", native::rect(10, 10, 320, 200));
@@ -198,9 +295,6 @@ namespace
             });
 
         owner.create();
-        SDL_Event quit{};
-        quit.type = SDL_QUIT;
-        SDL_PushEvent(&quit);
         open.create();
         open.show();
         save.create();
@@ -210,7 +304,7 @@ namespace
                    !open.get_created() &&
                    !save.get_created() &&
                    owner.get_input_enabled(),
-               "fallback file choosers cancel without throwing");
+               "unavailable file choosers cancel without throwing");
 
         owner.destroy();
         if (had_path)

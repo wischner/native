@@ -6,6 +6,7 @@
 //
 
 #include <X11/Intrinsic.h>
+#include <X11/Shell.h>
 #include <X11/Xlib.h>
 
 #include <native.h>
@@ -29,4 +30,15 @@ namespace linux::x11
     native::bindings<native::list *, xaw_list *> list_bindings;
     native::bindings<native::text_edit *, xaw_text_edit *>
         text_edit_bindings;
+    native::bindings<
+        const native::file_dialog *, xaw_file_dialog *>
+        file_dialog_bindings;
+
+    xaw_file_dialog::~xaw_file_dialog() {
+        if (!shell)
+            return;
+        if (XtIsRealized(shell))
+            XtPopdown(shell);
+        XtDestroyWidget(shell);
+    }
 } // namespace linux::x11

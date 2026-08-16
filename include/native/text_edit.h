@@ -1,6 +1,7 @@
 //
-// Declares the portable native or emulated text editor with single-line
-// and multiline modes, live validation, selection, and clipboard actions.
+// Declares the portable native or emulated text editor with
+// single-line and multiline modes, live validation, selection, and
+// clipboard actions.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

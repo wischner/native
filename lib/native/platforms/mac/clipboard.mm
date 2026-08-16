@@ -28,9 +28,11 @@ namespace
             return nil;
         NSBitmapImageRep *bitmap =
             [NSBitmapImageRep imageRepWithData:data];
+        const NSBitmapImageFileType png_type =
+            NSBitmapImageFileTypePNG;
         return bitmap
-                   ? [bitmap representationUsingType:NSBitmapImageFileTypePNG
-                                          properties:@{}]
+                   ? [bitmap representationUsingType:png_type
+                                           properties:@{}]
                    : nil;
     }
 } // namespace

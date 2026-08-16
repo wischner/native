@@ -110,6 +110,12 @@ For example, an X11 motion event, an SDL mouse event, and a Windows mouse
 message all become the same `signal<point>` notification. Application handlers
 never need to know which native event produced it.
 
+Some toolkit dispatchers still borrow the emitting widget after their action
+callback returns. The Window Maker backend therefore queues portable signals
+until `WMHandleEvent` has returned. This preserves synchronous signal delivery
+at the portable dispatch boundary while allowing a handler to destroy the
+control that emitted the signal.
+
 ## Choosing whether to consume an event
 
 Return `true` when a handler has fully dealt with an event and older handlers

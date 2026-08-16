@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <exception>
 #include <stdexcept>
 #include <utility>
 
@@ -208,7 +209,21 @@ namespace native
         payload.has_image = _has_image;
         payload.text = _text;
         payload.image = _image;
-        detail::write_clipboard(payload);
+        const detail::clipboard_payload previous =
+            detail::read_clipboard();
+        try {
+            detail::write_clipboard(payload);
+        } catch (...) {
+            const std::exception_ptr failure =
+                std::current_exception();
+            try {
+                detail::write_clipboard(previous);
+            } catch (...) {
+                // Preserve the original publication failure. Backends
+                // also retain or restore their native state locally.
+            }
+            std::rethrow_exception(failure);
+        }
         _committed = true;
     }
 

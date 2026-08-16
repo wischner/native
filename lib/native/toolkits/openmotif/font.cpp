@@ -76,7 +76,8 @@ namespace
         return 0;
     }
 
-    // Resolve the first core font in Motif's active default font list so
+    // Resolve the first core font in Motif's active default font list
+    // so
     // custom theme text matches native labels under X resources.
     Font motif_control_font(Font fallback) {
         native::app_wnd *main_window = native::app::main_wnd();

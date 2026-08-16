@@ -12,8 +12,6 @@
 
 #include "globals.h"
 
-using namespace native;
-
 // Translate AppKit window lifecycle events to a borrowed app_wnd.
 @interface native_window_delegate : NSObject <NSWindowDelegate> {
     native::app_wnd *_owner;
@@ -137,7 +135,7 @@ using namespace native;
 namespace mac
 {
 
-    native_window::native_window(app_wnd *owner,
+    native_window::native_window(native::app_wnd *owner,
                                  const char *title,
                                  int x,
                                  int y,

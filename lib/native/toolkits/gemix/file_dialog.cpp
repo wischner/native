@@ -24,7 +24,8 @@ namespace
     constexpr std::size_t name_capacity = 256;
 
     // AES exposes one wildcard at a time. Prefer an unrestricted filter
-    // when the portable dialog offers one, so callers can still reach files
+    // when the portable dialog offers one, so callers can still reach
+    // files
     // outside the first typed filter.
     std::string first_pattern(const native::file_dialog &dialog) {
         const auto &filters = dialog.get_filters();

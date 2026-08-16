@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <filesystem>
+#include <string>
 #include <vector>
 
 #include <X11/Intrinsic.h>
@@ -97,4 +99,32 @@ namespace linux::x11
 
     extern native::bindings<native::text_edit *, xaw_text_edit *>
         text_edit_bindings;
+
+    // Owns one asynchronous Athena file-browser widget hierarchy.
+    struct xaw_file_dialog
+    {
+        // Destroy the complete Athena widget hierarchy, if created.
+        ~xaw_file_dialog();
+
+        native::file_dialog *dialog = nullptr;
+        Widget shell = nullptr;
+        Widget directory_label = nullptr;
+        Widget list = nullptr;
+        Widget path_edit = nullptr;
+        std::filesystem::path directory;
+        std::vector<std::string> labels;
+        std::vector<String> label_pointers;
+        std::vector<std::filesystem::path> paths;
+        int last_selection = -1;
+        Time last_selection_time = 0;
+        std::string suggested_name;
+        std::string default_extension;
+        std::string pending_overwrite;
+        bool save = false;
+        bool confirm_overwrite = true;
+    };
+
+    extern native::bindings<
+        const native::file_dialog *, xaw_file_dialog *>
+        file_dialog_bindings;
 } // namespace linux::x11

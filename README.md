@@ -25,7 +25,9 @@ If you are looking for a straightforward, understandable UI library, or if you w
 
 ## Features
 
-- **Backend coverage today**: Linux (X11, SDL2, OpenMotif build path), Windows (WinAPI), Haiku (API), macOS (Cocoa code path)
+- **Backend coverage today**: Linux (X11/Athena, SDL2, OpenMotif,
+  OPEN LOOK/XView, Window Maker/WINGs, and GEMix), Windows (WinAPI),
+  Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, path, and filter model
@@ -66,10 +68,16 @@ toolchain with C++20 support. A direct Linux build also needs
 - Linux graphics targets use libpng and libjpeg for PNG/JPEG image I/O;
   Windows, Haiku, and macOS use their native codec services.
 - OpenMotif uses Xlib, Xt, and Motif.
+- OPEN LOOK uses XView, OLGX, Xlib, Xrandr, and libtirpc. Its standard
+  `File_chooser`, Panel controls, OpenMenu menus, Selection service, and OLGX
+  painter remain native to the toolkit.
+- Window Maker uses WINGs, WUtil, wraster, Xlib, and Xrandr. WINGs supplies
+  its windows, menus, controls, text editors, standard file panels, clipboard
+  selection service, stock fonts, and native-look drawing resources.
 - File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
-  OpenMotif, and GEMix. X11/Athena prefers Zenity or KDialog and otherwise uses
-  its Xaw browser. SDL2 likewise prefers Zenity or KDialog and otherwise uses
-  its built-in SDL chooser.
+  OpenMotif, OPEN LOOK, Window Maker, and GEMix. X11/Athena prefers Zenity or
+  KDialog and otherwise uses its Xaw browser. SDL2 delegates to Zenity or
+  KDialog and reports cancellation when neither desktop chooser is installed.
 - Portable TrueType/OpenType fonts use the vendored `stb_truetype`
   rasterizer, so file- and memory-backed fonts have the same metrics
   and pixels on every backend.
@@ -93,6 +101,8 @@ cmake --build build/cmake --target docker-gemix
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
+cmake --build build/cmake --target docker-openlook
+cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
@@ -109,6 +119,8 @@ The Docker-backed targets build:
 - `GEMix` into `build/linux-gemix/`
 - `SDL2` into `build/linux-sdl2/`
 - `OpenMotif` into `build/linux-openmotif/`
+- `OPENLOOK` into `build/linux-openlook/`
+- `WMAKER` into `build/linux-wmaker/`
 - Windows MinGW-w64 into `build/windows-mingw-w64/`
 - Haiku into `build/haiku/`
 
@@ -120,6 +132,8 @@ Current exercised runtime paths are:
 
 - Linux X11
 - Linux SDL2
+- Linux OPEN LOOK/XView under OpenWindows `olwm` in Xephyr
+- Linux Window Maker/WINGs under Window Maker in Xephyr
 - Windows MinGW binaries run through Wine
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
 

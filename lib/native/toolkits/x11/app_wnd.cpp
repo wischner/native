@@ -352,7 +352,8 @@ namespace native
                 // ICCCM transient and window-group hints both permit a
                 // window manager to keep an owned shell above its
                 // leader. Modeless ownership is therefore maintained by
-                // the portable owner graph, while the native shell stays
+                // the portable owner graph, while the native shell
+                // stays
                 // an independently stackable top-level window.
                 shell = XtVaAppCreateShell(
                     const_cast<char *>("native"),

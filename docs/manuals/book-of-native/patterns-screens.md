@@ -169,6 +169,7 @@ native display facilities:
 | macOS | `NSScreen` frame | `visibleFrame` |
 | GEMix | Full VDI screen | AES desktop work rectangle |
 | OpenMotif | X screen dimensions | EWMH `_NET_WORKAREA`, or full bounds |
+| Window Maker | Active XRandR output bounds | EWMH `_NET_WORKAREA` clipped per output |
 | SDL2 | Display bounds | SDL usable display bounds |
 | X11 | Active XRandR output bounds | EWMH `_NET_WORKAREA` clipped per output |
 

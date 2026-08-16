@@ -8,6 +8,8 @@ verified.
 - Verified runtime in this workflow:
   - Linux X11
   - Linux SDL2
+  - Linux OPEN LOOK/XView under `olwm` in Xephyr
+  - Linux Window Maker/WINGs under Window Maker in Xephyr
   - Windows build through MinGW, run through Wine
   - Haiku cross-build, copied to a Haiku machine and run over SSH
 - Build-verified but not runtime-verified in this workflow:
@@ -30,6 +32,9 @@ system development packages come from known images rather than the host
 machine.
 
 The X11 image provides Xlib, Xrandr, pixman, Xt, and Athena Widgets (Xaw).
+The OPEN LOOK image provides XView, OLGX, Xlib, Xrandr, and libtirpc.
+The Window Maker image provides WINGs, WUtil, wraster, Xlib, Xrandr, and its
+Pango/Xft font stack.
 The host-side control tree does not require those backend development
 packages.
 
@@ -76,6 +81,18 @@ Build the Linux toolkit target backed by the OpenMotif image:
 cmake --build build/cmake --target docker-openmotif
 ```
 
+Build the Linux OPEN LOOK target backed by XView and OLGX:
+
+```bash
+cmake --build build/cmake --target docker-openlook
+```
+
+Build the Window Maker target backed by WINGs:
+
+```bash
+cmake --build build/cmake --target docker-wmaker
+```
+
 Build the Windows MinGW-w64 target:
 
 ```bash
@@ -94,6 +111,10 @@ Note:
   It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
 - `docker-openmotif` is part of the current build-verified workflow.
   It produces OpenMotif-linked Linux binaries in a separate build tree.
+- `docker-openlook` is runtime-verified with OpenWindows `olwm` in Xephyr.
+  It produces the XView-linked binary in `build/linux-openlook/`.
+- `docker-wmaker` is runtime-verified with Window Maker in Xephyr. It
+  produces the WINGs-linked binary in `build/linux-wmaker/`.
 - `docker-haiku` is part of the current verified workflow.
   It produces Haiku binaries locally, and those binaries are copied to a Haiku machine for runtime checks.
 - Apple platform code exists, but there is no current Docker backend target for Apple builds in this repository.
@@ -105,6 +126,8 @@ The generated outputs are placed in separate backend build trees:
 - `build/linux-x11/`
 - `build/linux-sdl2/`
 - `build/linux-openmotif/`
+- `build/linux-openlook/`
+- `build/linux-wmaker/`
 - `build/windows-mingw-w64/`
 - `build/haiku/`
 
@@ -121,6 +144,8 @@ Run a native window-system, SDL2, or OpenMotif build directly:
 ./build/linux-x11/src/vision
 ./build/linux-sdl2/src/vision
 ./build/linux-openmotif/src/vision
+./build/linux-openlook/src/vision
+./build/linux-wmaker/src/vision
 ```
 
 The Windows cross-build produces
@@ -132,7 +157,8 @@ the Haiku machine before running it.
 
 Status:
 
-- Linux X11/SDL2, Windows/Wine, and Haiku SSH runs are currently exercised.
+- Linux X11/SDL2/OPEN LOOK/Window Maker, Windows/Wine, and Haiku SSH
+  runs are currently exercised.
 - Linux OpenMotif runs depend on host OpenMotif runtime availability.
 - Apple runs are not yet exercised in this workflow.
 
@@ -154,6 +180,8 @@ build/cmake/          host CMake control tree
 build/linux-x11/      Linux toolkit build tree
 build/linux-sdl2/     Linux toolkit build tree
 build/linux-openmotif/ Linux OpenMotif build tree
+build/linux-openlook/ Linux OPEN LOOK/XView build tree
+build/linux-wmaker/  Linux Window Maker/WINGs build tree
 build/windows-mingw-w64/ Windows MinGW-w64 build tree
 build/haiku/          Haiku build tree
 ```

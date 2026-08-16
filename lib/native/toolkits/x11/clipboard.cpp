@@ -84,7 +84,8 @@ namespace
         std::size_t count = 0;
         if ((*requested == utf8 || *requested == XA_STRING) &&
             owned_payload.has_text &&
-            (*requested != XA_STRING || ascii_text(owned_payload.text))) {
+            (*requested != XA_STRING ||
+             ascii_text(owned_payload.text))) {
             source = owned_payload.text.data();
             count = owned_payload.text.size();
             *type = *requested;
@@ -193,6 +194,8 @@ namespace native::detail
 
     void write_clipboard(const clipboard_payload &payload) {
         Widget widget = clipboard_widget();
+        const clipboard_payload previous = owned_payload;
+        Widget previous_owner = selection_owner;
         owned_payload = payload;
         if (!XtOwnSelection(widget,
                             atom("CLIPBOARD"),
@@ -200,7 +203,8 @@ namespace native::detail
                             convert_selection,
                             lose_selection,
                             nullptr)) {
-            owned_payload = {};
+            owned_payload = previous;
+            selection_owner = previous_owner;
             throw std::runtime_error(
                 "X11/Athena: Unable to own the clipboard selection.");
         }

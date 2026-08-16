@@ -141,7 +141,8 @@ namespace
                                 int direction) {
         const std::size_t start = cursor == 0
                                       ? 0
-                                      : text.rfind('\n', cursor - 1) + 1;
+                                      : text.rfind(
+                                            '\n', cursor - 1) + 1;
         std::size_t column = 0;
         for (std::size_t offset = start; offset < cursor; ++column)
             offset = native::detail::next_utf8(text, offset);
@@ -194,7 +195,8 @@ namespace linux::sdl2
         }
         native::text_edit *hit = nullptr;
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && binding->parent == parent &&
                 binding->visible &&
                 binding->bounds.contains(native::point(x, y))) {
@@ -223,7 +225,8 @@ namespace linux::sdl2
 
     bool handle_text_edit_motion(native::wnd *parent, int x, int y) {
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && binding->parent == parent &&
                 binding->mouse_selecting) {
                 binding->cursor = hit_offset(editor, binding, x, y);
@@ -242,7 +245,8 @@ namespace linux::sdl2
         native::text_edit *owner = nullptr;
         sdl2_text_edit *binding = nullptr;
         for (native::text_edit *editor : text_edits) {
-            auto *candidate = text_edit_bindings.object_from_handle(editor);
+            auto *candidate =
+                text_edit_bindings.object_from_handle(editor);
             if (candidate && candidate->parent == parent &&
                 candidate->visible && candidate->focused) {
                 owner = editor;
@@ -353,7 +357,8 @@ namespace linux::sdl2
     bool handle_text_edit_input(native::wnd *parent,
                                 const char *text) {
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && binding->parent == parent &&
                 binding->visible && binding->focused) {
                 return replace_selection(

@@ -8,6 +8,7 @@
 
 #include "vision_window.h"
 
+#include <array>
 #include <exception>
 #include <fstream>
 #include <limits>
@@ -63,13 +64,15 @@ namespace vision
         try {
             _image.reset(new native::img(
                 native::img::load(_open_image.get_path())));
-            _png_size = _image->encode(native::image_format::png).size();
+            _png_size =
+                _image->encode(native::image_format::png).size();
             _jpeg_size =
                 _image->encode(native::image_format::jpeg).size();
             set_status("Loaded image file: " +
                        file_name(_open_image.get_path()));
         } catch (const std::exception &error) {
-            set_status(std::string("Image load failed: ") + error.what());
+            set_status(
+                std::string("Image load failed: ") + error.what());
         }
         return true;
     }
@@ -87,7 +90,8 @@ namespace vision
             set_status("Saved image file: " +
                        file_name(_save_image.get_path()));
         } catch (const std::exception &error) {
-            set_status(std::string("Image save failed: ") + error.what());
+            set_status(
+                std::string("Image save failed: ") + error.what());
         }
         return true;
     }
@@ -115,7 +119,8 @@ namespace vision
             g.draw_rect(native::rect(60, 32, 60, 48), true);
             g.set_ink(native::rgba(150, 86, 178, 255));
             g.draw_rect(native::rect(120, 32, 60, 48), true);
-            g.set_font(native::font_t::stock(native::font_role::control));
+            g.set_font(
+                native::font_t::stock(native::font_role::control));
             g.set_ink(native::rgba(255, 255, 255, 255));
             g.draw_text("gpx_img", native::point(58, 8));
 
@@ -140,10 +145,12 @@ namespace vision
                 native::img::decode(png.data(), png.size())));
             _png_size = png.size();
             _jpeg_size = jpeg.size();
-            set_status("gpx_img, PNG, and JPEG memory round trips passed.");
+            set_status(
+                "gpx_img, PNG, and JPEG memory round trips passed.");
             return true;
         } catch (const std::exception &error) {
-            set_status(std::string("Image demo failed: ") + error.what());
+            set_status(
+                std::string("Image demo failed: ") + error.what());
             return false;
         }
     }
@@ -180,12 +187,38 @@ namespace vision
         const std::vector<native::font_description> fonts =
             native::font_t::enumerate_installed();
         _installed_font_count = fonts.size();
+
+        // macOS exposes private, purpose-built faces such as
+        // ".ADT Slab Numeric" in its font directories.  They are valid
+        // fonts, but most letters map to the missing-glyph box.  Prefer
+        // a normal text family so this sample genuinely exercises both
+        // file-backed and memory-backed TrueType rendering.
+        constexpr std::array<const char *, 8> preferred_families = {
+            "Arial",
+            "Helvetica Neue",
+            "Helvetica",
+            "SF Pro Text",
+            "Segoe UI",
+            "DejaVu Sans",
+            "Liberation Sans",
+            "Noto Sans"};
+        for (const char *family : preferred_families) {
+            for (const native::font_description &font : fonts) {
+                if (font.family == family && !font.path.empty() &&
+                    load_font(font.path, font.face_index)) {
+                    return true;
+                }
+            }
+        }
+
         for (const native::font_description &font : fonts) {
-            if (!font.path.empty() &&
+            if (!font.family.empty() && font.family.front() != '.' &&
+                !font.path.empty() &&
                 load_font(font.path, font.face_index))
                 return true;
         }
-        set_status("No installed TrueType/OpenType face could be loaded.");
+        set_status(
+            "No installed TrueType/OpenType face could be loaded.");
         return false;
     }
 
@@ -199,7 +232,8 @@ namespace vision
             output.write_text("Vision image from the Native demo")
                 .write_image(*_image)
                 .commit();
-            set_status("Copied text and image clipboard formats atomically.");
+            set_status(
+                "Copied text and image clipboard formats atomically.");
         } catch (const std::exception &error) {
             set_status(std::string("Clipboard copy failed: ") +
                        error.what());
@@ -214,7 +248,8 @@ namespace vision
                 return;
             }
             _image.reset(new native::img(input.read_image()));
-            _png_size = _image->encode(native::image_format::png).size();
+            _png_size =
+                _image->encode(native::image_format::png).size();
             _jpeg_size =
                 _image->encode(native::image_format::jpeg).size();
             set_status("Pasted image from a clipboard snapshot.");

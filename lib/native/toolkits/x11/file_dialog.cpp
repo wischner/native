@@ -39,39 +39,7 @@
 namespace
 {
     namespace fs = std::filesystem;
-
-    // Owns one asynchronous Athena file-browser widget hierarchy.
-    struct chooser_state
-    {
-        // Destroy the complete Athena widget hierarchy, if created.
-        ~chooser_state() {
-            if (!shell)
-                return;
-            if (XtIsRealized(shell))
-                XtPopdown(shell);
-            XtDestroyWidget(shell);
-        }
-
-        native::file_dialog *dialog = nullptr;
-        Widget shell = nullptr;
-        Widget directory_label = nullptr;
-        Widget list = nullptr;
-        Widget path_edit = nullptr;
-        fs::path directory;
-        std::vector<std::string> labels;
-        std::vector<String> label_pointers;
-        std::vector<fs::path> paths;
-        int last_selection = -1;
-        Time last_selection_time = 0;
-        std::string suggested_name;
-        std::string default_extension;
-        std::string pending_overwrite;
-        bool save = false;
-        bool confirm_overwrite = true;
-    };
-
-    native::bindings<const native::file_dialog *, chooser_state *>
-        choosers;
+    using chooser_state = linux::x11::xaw_file_dialog;
 
     // Determine whether a leaf name matches any configured filter.
     bool matches_filters(const native::file_dialog &dialog,
@@ -299,7 +267,8 @@ namespace
                 !error && state->pending_overwrite != path.string()) {
                 state->pending_overwrite = path.string();
                 set_status(*state,
-                           "File exists; choose Save again to replace it.");
+                           "File exists; choose Save again to replace "
+                           "it.");
                 set_path_text(*state, path);
                 state->pending_overwrite = path.string();
                 return;
@@ -317,7 +286,8 @@ namespace
             state->dialog->on_native_cancel();
     }
 
-    // Translate the shell's WM_DELETE_WINDOW protocol into cancellation.
+    // Translate the shell's WM_DELETE_WINDOW protocol into
+    // cancellation.
     void on_shell_event(Widget,
                         XtPointer client_data,
                         XEvent *event,
@@ -335,11 +305,12 @@ namespace
 namespace native
 {
     void file_dialog::cancel_native_dialog() const {
-        chooser_state *state = choosers.object_from_handle(this);
+        chooser_state *state = linux::x11::file_dialog_bindings
+                                   .object_from_handle(this);
         if (!state)
             return;
 
-        choosers.unregister_by_handle(this);
+        linux::x11::file_dialog_bindings.unregister_by_handle(this);
         delete state;
     }
 } // namespace native
@@ -354,7 +325,8 @@ namespace linux::x11
         bool confirm_overwrite) {
         native::app_wnd *owner = dialog.get_owner();
         Widget owner_shell = owner
-                                 ? shell_bindings.handle_from_object(owner)
+                                 ? shell_bindings.handle_from_object(
+                                       owner)
                                  : nullptr;
         if (!owner_shell)
             return false;
@@ -524,7 +496,7 @@ namespace linux::x11
                         1);
         XtSetKeyboardFocus(form, state->path_edit);
         XtPopup(state->shell, XtGrabExclusive);
-        choosers.register_pair(&dialog, state.get());
+        file_dialog_bindings.register_pair(&dialog, state.get());
         state.release();
         return true;
     }

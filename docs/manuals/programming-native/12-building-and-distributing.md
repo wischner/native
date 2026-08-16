@@ -1,6 +1,6 @@
 # Chapter 12: Building, Linking, and Distributing
 
-Native has seven supported build selections: four Linux toolkits plus Windows,
+Native has nine supported build selections: six Linux toolkits plus Windows,
 Haiku, and macOS. Application source remains the same, but each selection has
 its own compiler, link closure, and deployment requirements.
 
@@ -63,6 +63,8 @@ Then select a target:
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
+cmake --build build/cmake --target docker-openlook
+cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-gemix
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
@@ -76,6 +78,8 @@ outputs are:
 | `docker-x11` | `wischner/gcc-x86_64-linux-x11:latest` | `build/linux-x11/src/vision` |
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
+| `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` |
+| `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-win` | `wischner/gcc-x86_64-windows-mingw-w64:latest` | `build/windows-mingw-w64/src/vision.exe` |
 | `docker-haiku` | `wischner/gcc-x86_64-haiku:1.1.0` | `build/haiku/src/vision` |
@@ -90,6 +94,8 @@ libraries appear on an end user's machine.
 | Linux X11 | Executable and assets | X11, Xaw7, Xt, pixman, Xrandr, PNG/JPEG, and GCC runtime; optional Zenity or KDialog desktop integration |
 | Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, optional SDL2_ttf and optional Zenity or KDialog desktop integration |
 | Linux OpenMotif | Executable and assets | Xm, Xt, X11, PNG/JPEG, and GCC runtime |
+| Linux OPEN LOOK | Executable and assets | XView, OLGX, libtirpc, X11/Xrandr, PNG/JPEG, and GCC runtime |
+| Linux Window Maker | Executable and assets | WINGs, WUtil, wraster, Pango/Xft, Fontconfig/Freetype, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux GEMix | Executable, assets, and matching GEMix/Rasta runtime when it is not installed system-wide | AES, VDI, Rasta resources, PNG/JPEG, and GCC runtime |
 | Windows MinGW | Executable, assets, and three MinGW runtime DLLs | Windows system DLLs and GDI+ |
 | Haiku | Executable or Haiku package and assets | Haiku Be, Tracker, Translation, and root system libraries |
@@ -125,7 +131,7 @@ image and target distribution.
 
 ## Linux dependencies shared by all toolkits
 
-All four Linux selections require:
+All six Linux selections require:
 
 - CMake 3.20 or newer and a C++20 compiler.
 - `pkg-config` where the selected toolkit CMake file uses it.
@@ -244,8 +250,10 @@ The target system must provide:
 - The common libpng, zlib, libjpeg, and compiler runtime libraries.
 - Optionally `zenity` or `kdialog` for desktop-integrated file dialogs.
 
-Without either helper, Native presents its self-contained SDL chooser. No
-additional file-dialog library or process needs to be distributed.
+An application that requires usable SDL2 file dialogs must declare or bundle
+one of those helper programs. Without either helper, `show()` completes the
+dialog as cancelled and restores owner input; missing optional integration is
+not an exception.
 
 SDL selects its video driver at runtime. Full cross-application image
 clipboard support is available with the X11 driver. On another SDL video
@@ -288,6 +296,122 @@ the common image and compiler runtimes, and an X server. File selection uses
 Motif's shared-library ABI and package name vary across OpenMotif and operating
 system releases. Resolve the exact dependency from the release executable on
 the oldest supported target rather than assuming `libXm.so.4` everywhere.
+
+## Linux OPEN LOOK with XView
+
+### Compile
+
+The reproducible build uses the OPEN LOOK image shown above. A host with
+matching XView and OLGX development files can configure the same backend:
+
+```bash
+cmake -S . -B build/linux-openlook-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTING=OFF \
+  -DTOOLKIT=OPENLOOK
+cmake --build build/linux-openlook-release --parallel
+```
+
+CMake requires the `xview`, `olgx`, and `xrandr` `pkg-config` modules and the
+CMake X11 package. XView also requires libtirpc headers on current Linux
+systems. The reference image installs the historical toolkit below
+`/usr/openwin`, publishes its include and library paths through those modules,
+and supplies GCC 11 with C++20 support. It is the authoritative build
+environment when a host distribution has no maintained XView packages.
+
+### Link libraries
+
+The `native` target links:
+
+- XView and OLGX.
+- Xlib and Xrandr.
+- libtirpc through the XView package metadata.
+- libpng and libjpeg through the common Linux image layer.
+
+The current executable directly resolves `libxview.so.1`, `libolgx.so.1`,
+`libtirpc.so.3`, `libX11.so.6`, `libXrandr.so.2`, `libpng16.so.16`, and
+`libjpeg.so.8`. Their dependency closure brings in Xext, Xrender, XCB, Xau,
+Xdmcp, RPC authentication libraries, zlib, and the normal compiler runtime.
+Inspect the Release artifact because exact SONAMEs follow the target
+distribution.
+
+Application code still includes only `<native.h>`. XView, OLGX, Xlib, and
+libtirpc headers are private backend build dependencies and must not appear in
+the portable application interface.
+
+### Distribute
+
+The target installation must provide ABI-compatible XView, OLGX, libtirpc,
+X11/Xrandr, PNG/JPEG, zlib, and compiler runtime libraries, plus a working X
+server. Install the libraries through distribution packages when possible;
+otherwise bundle the permitted non-system libraries under an application
+loader path and include their licenses. Do not copy a random subset of
+`/usr/openwin/lib`: verify the final dependency closure with `ldd` on a clean
+target.
+
+Any ICCCM window manager can host the application. Distribute OpenWindows
+`olwm` when the complete OPEN LOOK desktop behavior is required. The backend
+uses native XView Panel controls, OpenMenu menus, `File_chooser`, and Selection
+objects, and OLGX theme primitives. It does not require Zenity or KDialog.
+Historical Lucida X server fonts are optional; when they are unavailable the
+backend installs compatible core-font resource fallbacks before creating
+XView controls.
+
+## Linux Window Maker with WINGs
+
+### Compile
+
+Use `docker-wmaker`, or configure a host with the Window Maker development
+files installed:
+
+```bash
+cmake -S . -B build/linux-wmaker-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTING=OFF \
+  -DTOOLKIT=WMAKER
+cmake --build build/linux-wmaker-release --parallel
+```
+
+CMake requires the `WINGs` and `xrandr` `pkg-config` modules and the CMake X11
+package. The reference image contains Window Maker 0.96, the WINGs, WUtil, and
+wraster headers and shared libraries, and the Pango/Xft font stack used by
+that WINGs build. It is the reproducible environment when a host distribution
+does not package the WINGs development files separately.
+
+### Link libraries
+
+The `native` target links:
+
+- WINGs, WUtil, and wraster through the `WINGs` package metadata.
+- Xlib and Xrandr.
+- libpng and libjpeg through the common Linux image layer.
+
+The current artifact directly resolves `libWINGs.so.3`, `libWUtil.so.5`,
+`libwraster.so.6`, `libX11.so.6`, `libXrandr.so.2`, `libpng16.so.16`, and
+`libjpeg.so.8`. The WINGs closure also includes Pango, Xft, Fontconfig,
+Freetype, HarfBuzz, GLib, and supporting X11 libraries. The reference wraster
+build enables several foreign image loaders, including ImageMagick, TIFF,
+WebP, GIF, and XPM; those libraries therefore also appear in its runtime
+closure even though Native decodes its portable PNG and JPEG images directly.
+Inspect the Release executable because these optional wraster dependencies
+depend on how Window Maker was built.
+
+### Distribute
+
+The target system must provide ABI-compatible WINGs, WUtil, wraster,
+X11/Xrandr, font-stack, image-codec, and compiler runtime libraries. Declare
+the complete closure reported by the packaged Release executable, or bundle
+the permitted non-system libraries with suitable loader paths and licenses.
+Do not copy only the three Window Maker libraries from the build image: their
+font and image-loader dependencies are required as well.
+
+The Window Maker executable itself is not needed merely to load WINGs, and an
+ICCCM window manager can host the application. Install Window Maker when the
+intended desktop behavior and decoration are part of the product. The backend
+uses native WINGs windows, pull-down menus, command/switch/radio buttons,
+lists, text widgets, standard open/save panels, and selection handlers. Its
+custom theme primitives read the same active WINGs colors, fonts, relief
+painter, and indicator pixmaps. Zenity and KDialog are not required.
 
 ## Linux GEMix
 
@@ -358,12 +482,14 @@ The `native` target links these Windows import libraries:
 - `user32`
 - `gdi32`
 - `msimg32`
+- `advapi32`
 - `shell32`
 - `ole32`
 - `gdiplus`
 
-They supply windowing and controls, graphics and alpha blending, shell/common
-dialogs, COM clipboard services, and PNG/JPEG codecs.
+They supply windowing and controls, graphics and alpha blending, registry font
+enumeration, shell/common dialogs, COM clipboard services, and PNG/JPEG
+codecs.
 
 ### Distribute
 

@@ -89,6 +89,14 @@ if(UNIX AND NOT APPLE)
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
+    set(DOCKER_IMAGE_OPENLOOK
+        "wischner/gcc-x86_64-linux-openlook:${DOCKER_TAG}"
+        CACHE STRING
+        "Docker image for OpenLook/XView builds")
+    set(DOCKER_IMAGE_WMAKER
+        "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}"
+        CACHE STRING
+        "Docker image for Window Maker/WINGs builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
 
@@ -147,6 +155,16 @@ if(UNIX AND NOT APPLE)
             -DTOOLKIT=SDL2)
         add_docker_cmake_build_target(docker-openmotif build/linux-openmotif ${DOCKER_IMAGE_OPENMOTIF}
             -DTOOLKIT=MOTIF)
+        add_docker_cmake_build_target(
+            docker-openlook
+            build/linux-openlook
+            ${DOCKER_IMAGE_OPENLOOK}
+            -DTOOLKIT=OPENLOOK)
+        add_docker_cmake_build_target(
+            docker-wmaker
+            build/linux-wmaker
+            ${DOCKER_IMAGE_WMAKER}
+            -DTOOLKIT=WMAKER)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-mingw.cmake)
         add_docker_cmake_build_target(docker-haiku build/haiku ${DOCKER_IMAGE_HAIKU}

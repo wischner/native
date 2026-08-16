@@ -66,11 +66,14 @@ namespace vision
 
     bool feature_dialog::on_paint(native::wnd_paint_event event) {
         event.g.set_ink(native::rgba(0, 0, 0, 255));
-        event.g.draw_text("This dialog owns focus and blocks its owner.",
+        event.g.draw_text(
+            "This dialog owns focus and blocks its owner.",
                           native::point(24, 28));
-        event.g.draw_text("Closing it produces a portable dialog_result.",
+        event.g.draw_text(
+            "Closing it produces a portable dialog_result.",
                           native::point(24, 56));
-        event.g.draw_text("Paint and lifecycle dispatch continue normally.",
+        event.g.draw_text(
+            "Paint and lifecycle dispatch continue normally.",
                           native::point(24, 84));
         return true;
     }

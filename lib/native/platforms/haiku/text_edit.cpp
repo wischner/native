@@ -299,7 +299,8 @@ namespace native
     }
 
     bool text_edit::replace_selected_text(const std::string &text) {
-        auto *binding = haiku::text_edit_bindings.object_from_handle(this);
+        auto *binding =
+            haiku::text_edit_bindings.object_from_handle(this);
         auto *view = binding
                          ? dynamic_cast<native_text_edit_view *>(
                                binding->view)

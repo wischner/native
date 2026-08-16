@@ -81,7 +81,8 @@ namespace
                                         linux::sdl2::text_width(
                                             text.substr(
                                                 begin,
-                                                binding->cursor - begin));
+                                                binding->cursor -
+                                                    begin));
                     g.set_ink(colors.button_text)
                         .draw_line(native::point(caret_x, y),
                                    native::point(
@@ -103,8 +104,10 @@ namespace linux::sdl2
     void render_text_edits(native::wnd *parent, native::gpx &g) {
         const native::rect old_clip = g.get_clip();
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->parent == parent && binding->visible) {
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
+            if (binding && binding->parent == parent &&
+                binding->visible) {
                 g.set_clip(old_clip);
                 draw_editor(editor, binding, g);
             }

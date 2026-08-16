@@ -210,8 +210,9 @@ in chooser order. `set_initial_path()` sets the starting location;
 `file_filter` groups provide display names and wildcard patterns. Paths and
 labels are UTF-8.
 
-The open chooser can request multiple selection. OpenMotif and GEM selectors
-still return one path because that is what their standard selector provides.
+The open chooser can request multiple selection. OpenMotif, XView, WINGs,
+and GEM selectors still return one path because that is what their standard
+selector provides.
 The save chooser can suggest a name, append a default extension, and request
 overwrite confirmation. Platforms that always protect existing files retain
 their native safeguard.
@@ -224,13 +225,27 @@ their native safeguard.
 | macOS | `NSOpenPanel` and `NSSavePanel` |
 | Haiku | `BFilePanel` |
 | OpenMotif | `XmFileSelectionBox` |
+| OPEN LOOK | XView `File_chooser` |
+| Window Maker | WINGs `WMOpenPanel` and `WMSavePanel` |
 | GEMix | AES `fsel_input` |
 | X11/Athena | Zenity, KDialog, then an Athena-widget browser |
-| SDL2 | Zenity, KDialog, then a built-in SDL browser |
+| SDL2 | Zenity or KDialog |
 
 Athena and SDL2 have no standard file chooser of their own. X11 can always use
-its Xaw browser, and SDL2 uses its self-contained browser, while Zenity or
-KDialog provides fuller desktop integration. The fallback browsers preserve
-the same owner-modal lifetime and accepted/cancelled result contract.
+its fallback browser because that browser is composed entirely from Athena
+widgets. SDL2 has no native control set from which to compose such a browser,
+so it delegates to an installed desktop chooser. If neither helper is
+available, the SDL2 dialog completes as cancelled, restores its owner, and
+does not throw merely because that runtime capability is absent.
+
+The XView chooser is an owner-modal native OPEN LOOK command frame. It keeps
+directories visible while applying filename filters, performs directory
+navigation inside the chooser, and uses the same `dialog_result` completion
+contract as every other backend.
+
+The WINGs chooser is the toolkit's standard owner-modal browser panel. It
+navigates directories and edits the selected leaf using native WINGs widgets.
+WINGs 0.96 returns one path, so a multiple-selection request degrades to a
+single accepted path.
 
 Next: [Graphics, images, fonts, and themes](10-graphics-images-fonts-themes.md).

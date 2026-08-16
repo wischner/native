@@ -24,9 +24,10 @@ endif()
 
 target_link_libraries(vision PRIVATE native)
 
-# Select the graphical Windows subsystem when using Microsoft tools.
-if(MSVC)
+# Vision is a GUI application on Windows. CMake selects the appropriate
+# linker option for both MinGW (-mwindows) and Microsoft toolchains.
+if(WIN32)
     set_target_properties(vision PROPERTIES
-        LINK_FLAGS "/SUBSYSTEM:WINDOWS"
+        WIN32_EXECUTABLE TRUE
     )
 endif()

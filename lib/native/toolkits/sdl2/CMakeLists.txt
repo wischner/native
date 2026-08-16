@@ -23,7 +23,6 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog_fallback.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
     ${LINUX_PLATFORM_SOURCE_DIR}/file_dialog_process.cpp

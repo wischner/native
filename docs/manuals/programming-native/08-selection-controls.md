@@ -138,6 +138,8 @@ Native uses real controls where the platform or toolkit supplies them:
 | --- | --- |
 | X11 | [Athena Widgets](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html) `Toggle` and `List` widgets |
 | OpenMotif | `XmToggleButton` and `XmList` |
+| OPEN LOOK | XView `PANEL_CHECK_BOX`, `PANEL_CHOICE`, and `PANEL_LIST` items |
+| Window Maker | WINGs switch/radio `WMButton` widgets and `WMList` |
 | Windows | `BUTTON` and `LISTBOX` controls |
 | Haiku | `BCheckBox`, `BRadioButton`, and `BListView` |
 | macOS | `NSButton` and `NSTableView` |

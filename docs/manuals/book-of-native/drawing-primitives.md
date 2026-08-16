@@ -308,7 +308,11 @@ auto controls = native::theme::create(g);
 
 The theme borrows `g`, so it must not outlive the context. It uses native
 painters where they can draw into the target and a backend-specific emulation
-otherwise. The same calls can therefore be used for window and image targets.
+otherwise. On OPEN LOOK window targets, the backend uses OLGX with the same
+XView font and control color map as native Panel items. On Window Maker
+targets, it uses WINGs relief drawing, screen colors and fonts, and native
+check/radio indicator pixmaps. The same calls can
+therefore be used for window and image targets.
 
 ### Control states
 

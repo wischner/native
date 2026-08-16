@@ -97,4 +97,9 @@ Menu commands named Open and Save do not imply a file-selector API. Connect
 those commands to the standard `open_file_dialog` and `save_file_dialog`
 objects described in Chapter 9.
 
+The OPEN LOOK backend materializes this model as XView Panel menu buttons and
+OpenMenu command menus, so menu interaction remains inside the XView notifier.
+The Window Maker backend uses WINGs pull-down `WMPopUpButton` widgets and
+delivers their command identifiers after the WINGs dispatcher returns.
+
 Next: [Buttons and control lifecycle](04-buttons.md).

@@ -216,8 +216,10 @@ custom compositions.
 
 The backend uses its native painter where that painter supports the target:
 Windows uses GDI control primitives, OpenMotif uses Motif shadow primitives,
-Haiku uses `BControlLook`, and macOS uses AppKit cells. X11/Athena, SDL2, and
-GEMix keep backend-specific native-look emulation. Every backend also has a
+OPEN LOOK uses OLGX with the active XView Panel color map and font resources,
+Window Maker uses WINGs relief drawing, screen colors and fonts, and native
+indicator pixmaps, Haiku uses `BControlLook`, and macOS uses AppKit cells.
+X11/Athena, SDL2, and GEMix keep backend-specific native-look emulation. Every backend also has a
 fallback for targets, such as memory images, that its native painter cannot
 draw into.
 

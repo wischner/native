@@ -58,7 +58,8 @@ namespace
         }
     };
 
-    // Copy bytes into movable global storage accepted by SetClipboardData.
+    // Copy bytes into movable global storage accepted by
+    // SetClipboardData.
     HGLOBAL global_bytes(const void *data, std::size_t size) {
         HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, size);
         if (!memory)
@@ -103,7 +104,8 @@ namespace
         if (!memory)
             throw std::bad_alloc();
 
-        auto *header = static_cast<BITMAPV5HEADER *>(GlobalLock(memory));
+        auto *header =
+            static_cast<BITMAPV5HEADER *>(GlobalLock(memory));
         if (!header) {
             GlobalFree(memory);
             throw std::runtime_error(
@@ -196,7 +198,9 @@ namespace
                 const std::size_t source_index =
                     (static_cast<std::size_t>(source_y) * width + x) *
                     4;
-                image.pixels()[static_cast<std::size_t>(y) * width + x] =
+                const std::size_t destination =
+                    static_cast<std::size_t>(y) * width + x;
+                image.pixels()[destination] =
                     native::rgba(source[source_index + 2],
                                  source[source_index + 1],
                                  source[source_index],

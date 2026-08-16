@@ -256,9 +256,10 @@ namespace native
                     const int logical_y =
                         event.button.y - content_origin_y(wnd);
 
-                    // A control callback is allowed to close its window.
-                    // Never retain renderer state across callback dispatch:
-                    // app_wnd::destroy() releases that cache immediately.
+                    // A control callback may close its window. Never
+                    // retain renderer state across callback dispatch:
+                    // app_wnd::destroy() releases that cache
+                    // immediately.
                     const auto invalidate_live_window = [wnd]() {
                         if (!wnd || !wnd->get_created())
                             return;

@@ -36,8 +36,9 @@ are preferred for normal application code.
 The backend chooses the standard system service: Win32 clipboard, AppKit
 pasteboard, Haiku `BClipboard`, X11 `CLIPBOARD`, or GEM AES scrap files. SDL's
 text-only API is supplemented by a private X11 selection provider for PNG on
-the X11 video backend. Native locks and borrowed pointers never escape these
-implementations.
+the X11 video backend. XView uses its Selection package for the standard X11
+targets. Window Maker uses WINGs selection handlers for those same targets.
+Native locks and borrowed pointers never escape these implementations.
 
 GEM publishes lossless `SCRAP.PNG` together with the conventional monochrome
 `SCRAP.IMG`. Native peers retain RGBA pixels while classic AES applications
@@ -61,9 +62,10 @@ classes would otherwise replace the underlying window during its lifecycle.
 Single-line values reject line breaks. Multiline values use portable line
 feeds regardless of the native control's internal convention.
 
-Windows, AppKit, Haiku, Athena, and Motif use their standard text widgets.
-SDL2 and GEMix emulate editing inside their existing backend event and paint
-paths, including focus, selection, cursor movement, clipping, and scrolling.
+Windows, AppKit, Haiku, Athena, Motif, XView, and WINGs use their standard text
+widgets. WINGs selects `WMTextField` or `WMText` according to mode. SDL2 and
+GEMix emulate editing inside their existing backend event and paint paths,
+including focus, selection, cursor movement, clipping, and scrolling.
 Those details remain backend state; `get_text()` always returns the same
 portable complete-value model.
 

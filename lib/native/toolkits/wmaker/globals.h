@@ -1,0 +1,123 @@
+//
+// Declares private WINGs bindings and Window Maker backend resources.
+// Native handles remain below the public Native API boundary.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include <X11/Xlib.h>
+#include <WINGs/WINGs.h>
+
+#include <bindings.h>
+#include <native.h>
+
+namespace linux::wmaker
+{
+    // Owns the WINGs resources representing one portable top level.
+    struct window_state
+    {
+        WMWindow *window = nullptr;
+        int menu_height = 0;
+    };
+
+    // Owns one buffered Xlib graphics context.
+    struct window_graphics
+    {
+        GC gc = nullptr;
+        Pixmap backbuffer = None;
+        int width = 0;
+        int height = 0;
+        native::rgba current_ink = 0xffffffff;
+        int current_thickness = -1;
+    };
+
+    // Borrows a WINGs font retained by the toolkit or this binding.
+    struct native_font
+    {
+        WMFont *font = nullptr;
+        bool owned = false;
+    };
+
+    // Routes one native popup selection to a portable menu command.
+    struct menu_callback
+    {
+        native::app_wnd *owner = nullptr;
+        WMPopUpButton *popup = nullptr;
+        std::vector<int> item_ids;
+    };
+
+    // Owns a row of WINGs pull-down buttons.
+    struct native_menu
+    {
+        native::app_wnd *owner = nullptr;
+        std::vector<WMPopUpButton *> popups;
+        std::vector<menu_callback *> callbacks;
+    };
+
+    // Owns a WINGs single-line or multiline text widget adapter.
+    struct native_text_edit
+    {
+        WMWidget *widget = nullptr;
+        WMTextField *field = nullptr;
+        WMText *text = nullptr;
+        WMTextFieldDelegate delegate = {};
+        bool suppress = false;
+    };
+
+    extern bool initialized;
+    extern bool exit_requested;
+    extern Display *display;
+    extern WMScreen *screen;
+
+    extern native::bindings<WMWidget *, native::wnd *> wnd_bindings;
+    extern native::bindings<native::app_wnd *, window_state *>
+        window_bindings;
+    extern native::bindings<native::wnd *, window_graphics *>
+        graphics_bindings;
+    extern native::bindings<std::uint32_t, native_font *>
+        font_bindings;
+    extern native::bindings<std::uint32_t, native_menu *>
+        menu_bindings;
+    extern native::bindings<native::text_edit *, native_text_edit *>
+        text_edit_bindings;
+
+    // Initialize the process-wide display and WINGs application screen.
+    void initialize();
+
+    // Return a created parent's WINGs widget or throw.
+    WMWidget *parent_widget(native::wnd *control);
+
+    // Return the state belonging to a portable top-level window.
+    window_state *state(native::app_wnd *window);
+
+    // Return the X drawable used by a portable window.
+    Window drawable(native::wnd *window);
+
+    // Translate a control position into its native parent coordinates.
+    native::point control_position(const native::wnd *control);
+
+    // Return a reachable top-level position with its title on screen.
+    native::point constrain_position(const native::point &preferred,
+                                     const native::size &dimensions);
+
+    // Permit an input callback or raise the active modal branch.
+    bool permit_input(native::wnd *window);
+
+    // Schedule a buffered repaint without clearing the live window.
+    void schedule_repaint(native::app_wnd *window,
+                          const native::rect &area);
+
+    // Run a portable callback after WINGs finishes the current event.
+    void defer(std::function<void()> callback);
+
+    // Drain callbacks queued by WINGs actions and event handlers.
+    void dispatch_deferred();
+} // namespace linux::wmaker

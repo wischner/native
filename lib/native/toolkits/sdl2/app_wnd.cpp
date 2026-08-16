@@ -24,7 +24,8 @@ namespace
 {
     bool ttf_initialized = false;
 
-    // Shut SDL_ttf down after function-static font objects release their
+    // Shut SDL_ttf down after function-static font objects release
+    // their
     // TTF_Font handles during normal process teardown.
     void shutdown_ttf() {
         if (!ttf_initialized)

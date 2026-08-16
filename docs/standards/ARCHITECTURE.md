@@ -182,10 +182,11 @@ window geometry.
 
 Backends must use the operating system or toolkit file selector when one
 exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
-Motif `FileSelectionBox`, and GEM AES file selector are the standard paths.
-Toolkits without a chooser, including Athena and SDL2, may delegate to an
-installed desktop chooser. A backend fallback must be composed from that
-toolkit's native controls rather than custom-painted substitutes. Unsupported
+Motif `FileSelectionBox`, XView `File_chooser`, WINGs `WMOpenPanel` and
+`WMSavePanel`, and GEM AES file selector are the standard paths. Toolkits
+without a chooser, including Athena and SDL2, may delegate to an installed
+desktop chooser. A backend fallback must be composed from that toolkit's
+native controls rather than custom-painted substitutes. Unsupported
 native options may degrade conservatively: an older single-selection chooser
 may return one path, and a platform may keep mandatory overwrite confirmation.
 If neither a delegated chooser nor a native-control fallback is available, the
@@ -214,6 +215,18 @@ single-selection with `-1` representing no selection. Keep every control in
 its own same-named public, common, and backend source file. Do not collect
 unrelated controls into a `controls` module or add a `_box` suffix to the
 `check`, `radio`, or `list` type names.
+
+The OPEN LOOK backend uses XView Panel items and OpenMenu objects for its
+interactive controls and menus. It must not replace an available XView widget
+with a custom-painted substitute. Custom OPEN LOOK visuals use OLGX and the
+active Panel color map so their font, geometry, colors, and state match those
+native items.
+
+The Window Maker backend uses WINGs windows, pull-down buttons, command,
+switch, and radio buttons, lists, text fields, text views, and file panels.
+It must not replace an available WINGs widget with a custom-painted
+substitute. Custom Window Maker visuals use WINGs relief drawing, screen
+colors, fonts, and indicator pixmaps so they track the active WINGs resources.
 
 ## 6. Painting in Windows
 
@@ -270,8 +283,9 @@ root.
 Theme rendering follows these rules:
 
 - Prefer native theme or toolkit functions when they can draw into the target.
-  Examples include Windows theme drawing, Motif `XmeDraw*` primitives, and
-  equivalent AppKit or BeAPI facilities.
+  Examples include Windows theme drawing, Motif `XmeDraw*` primitives,
+  XView's OLGX primitives, and WINGs `W_DrawRelief` and indicator resources,
+  as well as equivalent AppKit or BeAPI facilities.
 - Fall back to portable `gpx` operations when no suitable native primitive
   exists, or when drawing into an image rather than a native window.
 - Obtain colors, fonts, spacing, and dimensions from the backend wherever
@@ -333,6 +347,13 @@ implement only the native launcher and event loop; they must preserve this
 public startup order and return the value produced by `program()` to the
 operating system. `app::main_wnd()` returns a borrowed pointer only while
 `app::run()` is active and must return null before and after that interval.
+
+A toolkit action callback may run while the toolkit dispatcher still borrows
+the emitting widget. Such a backend must queue portable signals and lifecycle
+actions until the native dispatcher returns. In particular, WINGs callbacks
+must not let application code destroy the active view inside `WMHandleEvent`.
+The backend releases or invalidates any callback binding before a deferred
+signal can destroy its portable or native object.
 
 ## 9. Screens
 
@@ -497,7 +518,9 @@ Backends use the standard system mechanism:
 - Haiku uses `BClipboard` and Translation Kit-compatible image data.
 - X11 toolkits implement the `CLIPBOARD` selection, advertise `TARGETS`, and
   serve Unicode text and image targets. The `PRIMARY` selection is separate
-  and must not silently replace the portable clipboard.
+  and must not silently replace the portable clipboard. XView backends use
+  its Selection package, and WINGs backends use WINGs selection handlers,
+  while preserving those X11 targets and ownership rules.
 - SDL2 may use SDL's clipboard support where it is complete and must use the
   active platform service or a suitable foreign library for unsupported image
   transfer.
@@ -577,6 +600,8 @@ Backend controls are selected as follows:
 - macOS uses `NSTextField` and scrollable `NSTextView` controls.
 - Haiku uses `BTextView`, with a `BScrollView` for multiline editing.
 - X11/Athena uses `AsciiText`, and OpenMotif uses `XmTextField`/`XmText`.
+- OPEN LOOK/XView uses native `PANEL_TEXT` and `PANEL_MULTILINE_TEXT` items.
+- Window Maker/WINGs uses native `WMTextField` and `WMText` widgets.
 - SDL2 and GEMix keep cursor, selection, focus, and scrolling in private
   bindings and draw through their backend-owned native-look facilities.
 

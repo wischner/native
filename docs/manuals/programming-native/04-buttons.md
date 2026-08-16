@@ -87,4 +87,9 @@ event routing.
 The same lifecycle applies to the selection controls in Chapter 8 and the
 text-edit controls in Chapter 11.
 
+OPEN LOOK uses a native XView `PANEL_BUTTON`; application code does not draw or
+hit-test the control itself.
+Window Maker likewise uses a native WINGs command `WMButton` and routes its
+action through the portable `on_click` signal.
+
 Next: [Configuring controls](05-configuring-controls.md).

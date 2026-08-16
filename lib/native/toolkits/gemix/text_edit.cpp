@@ -117,7 +117,8 @@ namespace
                                 int direction) {
         const std::size_t start = cursor == 0
                                       ? 0
-                                      : text.rfind('\n', cursor - 1) + 1;
+                                      : text.rfind(
+                                            '\n', cursor - 1) + 1;
         std::size_t column = static_cast<std::size_t>(
             character_count(text, start, cursor));
         std::size_t target = start;
@@ -238,7 +239,8 @@ namespace linux::gemix
                                  native::point point) {
         bool over_editor = false;
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && binding->visible &&
                 editor->get_parent() == parent &&
                 editor->get_bounds().contains(point)) {
@@ -259,11 +261,13 @@ namespace linux::gemix
                          native::point point) {
         native::text_edit *hit = nullptr;
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && editor->get_parent() == parent)
                 binding->focused = false;
             if (binding && editor->get_parent() == parent &&
-                binding->visible && editor->get_bounds().contains(point)) {
+                binding->visible &&
+                editor->get_bounds().contains(point)) {
                 hit = editor;
             }
         }
@@ -290,7 +294,8 @@ namespace linux::gemix
         native::text_edit *owner = nullptr;
         gem_text_edit *binding = nullptr;
         for (native::text_edit *editor : text_edits) {
-            auto *candidate = text_edit_bindings.object_from_handle(editor);
+            auto *candidate =
+                text_edit_bindings.object_from_handle(editor);
             if (candidate && editor->get_parent() == parent &&
                 candidate->visible && candidate->focused) {
                 owner = editor;
@@ -330,7 +335,8 @@ namespace linux::gemix
             return replace_selection(owner, binding, "");
         }
         if (scan == scan_delete) {
-            if (begin == end && binding->cursor < owner->get_text().size()) {
+            if (begin == end &&
+                binding->cursor < owner->get_text().size()) {
                 binding->anchor = native::detail::next_utf8(
                     owner->get_text(), binding->cursor);
             }
@@ -397,7 +403,8 @@ namespace linux::gemix
     void render_text_edits(native::app_wnd *parent, native::gpx &g) {
         const native::rect clip = g.get_clip();
         for (native::text_edit *editor : text_edits) {
-            auto *binding = text_edit_bindings.object_from_handle(editor);
+            auto *binding =
+                text_edit_bindings.object_from_handle(editor);
             if (binding && editor->get_parent() == parent &&
                 binding->visible) {
                 g.set_clip(clip);

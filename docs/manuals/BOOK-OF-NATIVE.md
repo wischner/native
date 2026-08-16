@@ -16,6 +16,8 @@ the same commit.
 - Runtime-tested in this project workflow:
   - Linux X11 backend
   - Linux SDL2 backend
+  - Linux OPEN LOOK/XView backend under `olwm` in Xephyr
+  - Linux Window Maker/WINGs backend under Window Maker in Xephyr
   - Windows backend (MinGW build, run through Wine)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
 - Build-tested but not yet runtime-tested in this workflow:

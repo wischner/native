@@ -58,7 +58,8 @@ paint-event context, both are callback-scoped and must not be stored.
 
 A backend should use a native theme or toolkit primitive when that primitive
 can draw correctly into the target. Examples include Windows theme drawing,
-Motif `XmeDraw*` helpers, and the equivalent AppKit or BeAPI facilities.
+Motif `XmeDraw*` helpers, XView OLGX primitives, WINGs relief and indicator
+resources, and the equivalent AppKit or BeAPI facilities.
 
 Native rendering is preferred because it follows the user's current colors,
 metrics, accessibility settings, theme version, and interaction conventions.

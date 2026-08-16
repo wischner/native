@@ -23,7 +23,8 @@ namespace linux::openmotif
         motif_gpx *cache = nullptr;
     };
 
-    // Resolve the native window target represented by a graphics context.
+    // Resolve the native window target represented by a graphics
+    // context.
     theme_target theme_target_from(native::gpx &graphics);
 
     // Find a widget whose resource database applies to the target.

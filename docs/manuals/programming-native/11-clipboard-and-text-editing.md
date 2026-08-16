@@ -49,7 +49,10 @@ The backend publishes standard system formats where available: Win32
 clipboard formats, AppKit pasteboard types, Haiku `BClipboard` MIME data, X11
 `CLIPBOARD` targets, and GEM scrap files. SDL2 uses its clipboard service for
 text and an X11 selection provider for PNG when its active video driver is
-X11. On other SDL video drivers, image clipboard fallback is process-local.
+X11. The OPEN LOOK backend publishes the same UTF-8 and PNG targets through
+the XView Selection package. The Window Maker backend publishes them through
+WINGs selection handlers. On other SDL video drivers, image clipboard
+fallback is process-local.
 
 ## Single-line and multiline editors
 
@@ -219,8 +222,15 @@ int program(int, char **) {
 }
 ```
 
-Windows, macOS, Haiku, Athena, and OpenMotif use their standard text widgets.
-SDL2 and GEMix keep cursor, selection, focus, scrolling, and painting in their
-backend implementations while presenting the same public control behavior.
+Windows, macOS, Haiku, Athena, OpenMotif, XView, and WINGs use their standard
+text widgets. XView selects `PANEL_TEXT` or `PANEL_MULTILINE_TEXT`; WINGs
+selects `WMTextField` or `WMText`. SDL2 and GEMix
+keep cursor, selection, focus, scrolling, and painting in their backend
+implementations while presenting the same public control behavior.
+
+The XView startup resources bind copy, cut, and paste to Ctrl+C, Ctrl+X, and
+Ctrl+V in addition to the historical OPEN LOOK function keys. The backend
+handles Ctrl+A before the native editor action and applies the same validated
+selection replacement used by the direct functions.
 
 Next: [Building, linking, and distributing](12-building-and-distributing.md).

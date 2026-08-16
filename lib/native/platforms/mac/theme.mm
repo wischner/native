@@ -237,11 +237,13 @@ namespace
                 [[NSColor textBackgroundColor] setFill];
                 NSRectFill(NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h));
                 [[NSColor gridColor] setStroke];
+                const int frame_height =
+                    std::max(0, static_cast<int>(r.d.h) - 1);
                 NSBezierPath *frame = [NSBezierPath bezierPathWithRect:
                     NSMakeRect(r.p.x + 0.5,
                                r.p.y + 0.5,
                                std::max(0, static_cast<int>(r.d.w) - 1),
-                               std::max(0, static_cast<int>(r.d.h) - 1))];
+                               frame_height)];
                 [frame setLineWidth:1.0];
                 [frame stroke];
 
@@ -409,12 +411,13 @@ namespace
         void paint_list_entry(const native::rect &r,
                               const std::string &text,
                               const state &s) const {
+            NSColor *inactive_selection = [NSColor
+                unemphasizedSelectedContentBackgroundColor];
             NSColor *background =
                 s.selected
                     ? (s.hot
                            ? [NSColor selectedContentBackgroundColor]
-                           : [NSColor
-                                 unemphasizedSelectedContentBackgroundColor])
+                           : inactive_selection)
                     : [NSColor textBackgroundColor];
             NSColor *foreground =
                 s.disabled
@@ -424,9 +427,10 @@ namespace
                            : [NSColor controlTextColor]);
             [background setFill];
             NSRectFill(NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h));
+            NSFont *font = [NSFont controlContentFontOfSize:0];
             NSDictionary *attributes = @{
                 NSForegroundColorAttributeName : foreground,
-                NSFontAttributeName : [NSFont controlContentFontOfSize:0]
+                NSFontAttributeName : font
             };
             NSString *label =
                 [NSString stringWithUTF8String:text.c_str()];

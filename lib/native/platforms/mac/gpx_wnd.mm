@@ -219,13 +219,16 @@ namespace native
             const rgba source = src.pixels()[index];
             pixels[index] = rgba(
                 static_cast<std::uint8_t>(
-                    (static_cast<unsigned>(source.r) * source.a + 127U) /
+                    (static_cast<unsigned>(source.r) * source.a +
+                     127U) /
                     255U),
                 static_cast<std::uint8_t>(
-                    (static_cast<unsigned>(source.g) * source.a + 127U) /
+                    (static_cast<unsigned>(source.g) * source.a +
+                     127U) /
                     255U),
                 static_cast<std::uint8_t>(
-                    (static_cast<unsigned>(source.b) * source.a + 127U) /
+                    (static_cast<unsigned>(source.b) * source.a +
+                     127U) /
                     255U),
                 source.a);
         }
@@ -235,6 +238,9 @@ namespace native
             pixels.data(),
             pixels.size() * sizeof(rgba),
             nullptr);
+        const CGBitmapInfo alpha_info =
+            static_cast<CGBitmapInfo>(
+                kCGImageAlphaPremultipliedLast);
         CGImageRef cg_image =
             provider ? CGImageCreate(src.w(),
                                      src.h(),
@@ -242,8 +248,7 @@ namespace native
                                      32,
                                      src.w() * sizeof(rgba),
                                      color_space,
-                                     static_cast<CGBitmapInfo>(
-                                         kCGImageAlphaPremultipliedLast) |
+                                     alpha_info |
                                          static_cast<CGBitmapInfo>(
                                              kCGBitmapByteOrder32Big),
                                      provider,

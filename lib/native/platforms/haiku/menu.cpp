@@ -46,7 +46,8 @@ namespace
         const float content_top = bar->Frame().bottom + 1.0f;
         content->MoveTo(bounds.left, content_top);
         content->ResizeTo(
-            bounds.Width(), std::max(0.0f, bounds.bottom - content_top));
+            bounds.Width(),
+            std::max(0.0f, bounds.bottom - content_top));
     }
 } // namespace
 

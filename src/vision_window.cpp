@@ -53,7 +53,8 @@ namespace vision
         , _detailed("Detailed", 20, 122, 140, 24)
         , _features({"Controls", "Images", "Fonts", "Clipboard"},
                     180, 20, 170, 130)
-        , _single_line("Live validation", native::text_edit_mode::single_line,
+        , _single_line("Live validation",
+                       native::text_edit_mode::single_line,
                        20, 170, 330, 28)
         , _multi_line("Multiline editor\nCtrl+C, X, and V work here.",
                       native::text_edit_mode::multi_line,
@@ -201,10 +202,13 @@ namespace vision
 
     bool vision_window::on_paint(native::wnd_paint_event event) {
         event.g.set_ink(native::rgba(0, 0, 0, 255));
-        event.g.set_font(native::font_t::stock(native::font_role::system));
-        event.g.draw_text("Validation: single-line input accepts 36 bytes.",
+        event.g.set_font(
+            native::font_t::stock(native::font_role::system));
+        event.g.draw_text(
+            "Validation: single-line input accepts 36 bytes.",
                           native::point(20, 418));
-        event.g.draw_text("Visible examples: file panels and owned windows.",
+        event.g.draw_text(
+            "Visible examples: file panels and owned windows.",
                           native::point(20, 440));
 
         const native::rect image_area(390, 30, 180, 120);
@@ -266,13 +270,16 @@ namespace vision
             {"Themed list", "Native look", "Portable API"}, 1,
             selected);
 
-        event.g.set_font(native::font_t::stock(native::font_role::system));
+        event.g.set_font(
+            native::font_t::stock(native::font_role::system));
         event.g.set_ink(native::rgba(0, 0, 0, 255));
         event.g.draw_text(
             "Installed fonts: " +
                 std::to_string(_installed_font_count) +
                 "; active: " +
-                (_font_name.empty() ? std::string("stock") : _font_name),
+                (_font_name.empty()
+                     ? std::string("stock")
+                     : _font_name),
             native::point(20, 468));
         event.g.draw_text(
             "Image: " +
@@ -340,8 +347,10 @@ namespace vision
 
     bool vision_window::on_mode_changed(bool selected) {
         if (selected) {
-            set_status(_compact.get_selected() ? "Compact mode selected."
-                                               : "Detailed mode selected.");
+            set_status(
+                _compact.get_selected()
+                    ? "Compact mode selected."
+                    : "Detailed mode selected.");
         }
         return true;
     }

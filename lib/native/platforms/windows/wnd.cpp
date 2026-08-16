@@ -251,6 +251,22 @@ namespace windows
             }
             return 0;
 
+        case WM_CTLCOLORBTN:
+        case WM_CTLCOLORSTATIC: {
+            HWND control = reinterpret_cast<HWND>(lparam);
+            native::wnd *child =
+                windows::wnd_bindings.object_from_handle(control);
+            if (dynamic_cast<native::check *>(child) ||
+                dynamic_cast<native::radio *>(child)) {
+                HDC hdc = reinterpret_cast<HDC>(wparam);
+                SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
+                SetBkMode(hdc, TRANSPARENT);
+                return reinterpret_cast<LRESULT>(
+                    GetSysColorBrush(COLOR_WINDOW));
+            }
+            break;
+        }
+
         case WM_ERASEBKGND:
             return 1;
 

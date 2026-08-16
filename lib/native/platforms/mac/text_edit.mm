@@ -143,7 +143,8 @@ namespace
 namespace native
 {
     void text_edit::apply_text() {
-        auto *binding = mac::text_edit_bindings.object_from_handle(this);
+        auto *binding =
+            mac::text_edit_bindings.object_from_handle(this);
         if (!binding)
             throw std::runtime_error(
                 "macOS: Missing text-edit binding.");
@@ -151,7 +152,8 @@ namespace native
     }
 
     void text_edit::apply_read_only() {
-        auto *binding = mac::text_edit_bindings.object_from_handle(this);
+        auto *binding =
+            mac::text_edit_bindings.object_from_handle(this);
         if (!binding)
             throw std::runtime_error(
                 "macOS: Missing text-edit binding.");
@@ -227,7 +229,8 @@ namespace native
         if (!_created)
             return;
         auto *self = const_cast<text_edit *>(this);
-        auto *binding = mac::text_edit_bindings.object_from_handle(self);
+        auto *binding =
+            mac::text_edit_bindings.object_from_handle(self);
         self->on_native_destroy();
         if (binding) {
             NSView *view = binding->scroll
@@ -259,7 +262,8 @@ namespace native
     }
 
     bool text_edit::replace_selected_text(const std::string &text) {
-        auto *binding = mac::text_edit_bindings.object_from_handle(this);
+        auto *binding =
+            mac::text_edit_bindings.object_from_handle(this);
         NSTextView *view = editing_view(binding);
         if (!binding || _read_only)
             return false;

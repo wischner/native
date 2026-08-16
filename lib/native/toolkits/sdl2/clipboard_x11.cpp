@@ -436,7 +436,8 @@ namespace linux::sdl2::x11_clipboard
         if (text.available) {
             payload.text = latin1
                                ? native::detail::latin1_to_utf8(
-                                     text.bytes.data(), text.bytes.size())
+                                     text.bytes.data(),
+                                     text.bytes.size())
                                : std::string(
                                      text.bytes.begin(),
                                      text.bytes.end());

@@ -62,6 +62,34 @@
             "dependsOn": "CMake Configure Debug (Docker Targets)"
         },
         {
+            "label": "CMake Build Debug (Docker OpenLook)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build/cmake",
+                "--target",
+                "docker-openlook"
+            ],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker Window Maker)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build/cmake",
+                "--target",
+                "docker-wmaker"
+            ],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "CMake Build Debug (Docker Windows)",
             "type": "shell",
             "command": "cmake",

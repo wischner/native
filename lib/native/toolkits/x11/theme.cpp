@@ -1,7 +1,8 @@
 //
 // Implements the X11/Athena theme from the active Xaw resources.
 // Xaw has no painter for arbitrary drawables, so this backend mirrors
-// the native widgets' resources and documented flat/reverse-video model.
+// the native widgets' resources and documented flat/reverse-video
+// model.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

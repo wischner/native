@@ -22,6 +22,8 @@ cmake --build build/cmake --target docker-gemix
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
+cmake --build build/cmake --target docker-openlook
+cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
@@ -37,7 +39,7 @@ The repository uses separate build directories per backend:
   - host-side CMake control tree
   - contains generated top-level targets such as `docker-gemix`, `docker-x11`,
     `docker-sdl2`, `docker-openmotif`, `docker-win`, and
-    `docker-haiku`
+    `docker-openlook`, `docker-wmaker`, and `docker-haiku`
 
 - `build/linux-x11/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=X11`
@@ -50,6 +52,12 @@ The repository uses separate build directories per backend:
 
 - `build/linux-openmotif/`
   - toolkit build tree for the Linux backend configured with `TOOLKIT=MOTIF`
+
+- `build/linux-openlook/`
+  - toolkit build tree configured with `TOOLKIT=OPENLOOK`
+
+- `build/linux-wmaker/`
+  - toolkit build tree configured with `TOOLKIT=WMAKER`
 
 - `build/windows-mingw-w64/`
   - platform build tree for the Windows MinGW-w64 target
@@ -72,6 +80,8 @@ toolchain and system headers.
 - `docker-gemix`
 - `docker-sdl2`
 - `docker-openmotif`
+- `docker-openlook`
+- `docker-wmaker`
 - `docker-win`
 - `docker-haiku`
 
@@ -81,6 +91,8 @@ The images are:
 - `wischner/gcc-x86_64-gemix`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
+- `wischner/gcc-x86_64-linux-openlook`
+- `wischner/gcc-x86_64-linux-window-maker`
 - `wischner/gcc-x86_64-windows-mingw-w64`
 - `wischner/gcc-x86_64-haiku`
 
@@ -93,6 +105,8 @@ host-side and Docker-side invocation.
 - Runtime-tested:
   - Linux X11
   - Linux SDL2
+  - Linux OPEN LOOK/XView under `olwm` in Xephyr
+  - Linux Window Maker/WINGs under Window Maker in Xephyr
   - Windows MinGW binaries run through Wine
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
 - Build-tested only:
@@ -166,6 +180,8 @@ Each backend-specific tree places it in its `src/` build directory:
 - `build/linux-gemix/src/vision`
 - `build/linux-sdl2/src/vision`
 - `build/linux-openmotif/src/vision`
+- `build/linux-openlook/src/vision`
+- `build/linux-wmaker/src/vision`
 - `build/windows-mingw-w64/src/vision.exe`
 - `build/haiku/src/vision`
 
@@ -179,6 +195,8 @@ the VS Code Run and Debug view and press F5.
 | --- | --- | --- |
 | Linux X11 | Local Docker container and local display | GDB through Docker |
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
+| Linux OPEN LOOK | Local Docker container and local display | GDB through Docker |
+| Linux Window Maker | Local Docker container and local display | GDB through Docker |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
 | OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
 | Windows | Local Wine installation | GDB connected to WineDbg's proxy |
@@ -275,6 +293,6 @@ those defaults.
 - Backend builds run inside Docker.
 - Backend build trees are separate on purpose.
 - The root project builds the library and Vision, not generated API docs.
-- Runtime verification currently covers Linux X11/SDL2, Windows/Wine, and
-  Haiku deploy-and-run over SSH.
+- Runtime verification currently covers Linux X11/SDL2/OPEN LOOK/Window
+  Maker, Windows/Wine, and Haiku deploy-and-run over SSH.
 - Linux OpenMotif runtime depends on host OpenMotif runtime availability.

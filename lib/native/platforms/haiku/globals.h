@@ -116,7 +116,8 @@ namespace haiku
     extern native::bindings<native::file_dialog *, haiku_file_dialog *>
         file_dialog_bindings;
 
-    // Return the root content view owned by a Native application window.
+    // Return the root content view owned by a Native application
+    // window.
     BView *content_view(BWindow *window);
 
     // Return the BView used by any public child control.

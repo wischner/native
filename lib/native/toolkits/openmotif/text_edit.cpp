@@ -265,9 +265,10 @@ namespace native
                                 const_cast<text_edit *>(this));
         if (!binding)
             return {};
-        char *selection = binding->multiline
-                              ? XmTextGetSelection(binding->widget)
-                              : XmTextFieldGetSelection(binding->widget);
+        char *selection =
+            binding->multiline
+                ? XmTextGetSelection(binding->widget)
+                : XmTextFieldGetSelection(binding->widget);
         const std::string result = selection ? selection : "";
         if (selection)
             XtFree(selection);
