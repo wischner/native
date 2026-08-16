@@ -172,6 +172,57 @@ Invalid dimensions, empty encoded input, unsupported extensions, malformed
 images, codec failures, and file failures are reported with standard
 exceptions. Image objects own their pixels and context and are not copyable.
 
+## Fonts
+
+Native distinguishes semantic stock fonts from portable fonts. Stock fonts
+come from the active platform or toolkit and provide the local look and feel:
+
+```cpp
+const native::font_t &body =
+    native::font_t::stock(native::font_role::system);
+const native::font_t &code =
+    native::font_t::stock(native::font_role::fixed);
+const native::font_t &labels =
+    native::font_t::stock(native::font_role::icon_label);
+```
+
+The remaining stock roles are `title`, `small`, and `control`. Stock fonts are
+borrowed process-lifetime objects. Several roles may select the same native
+face when a toolkit does not provide distinct choices.
+
+Use `enumerate_installed()` to populate a font picker. Each
+`font_description` contains portable family, style, face name, weight,
+italic/fixed-pitch flags, file path, and collection face index:
+
+```cpp
+std::vector<native::font_description> installed =
+    native::font_t::enumerate_installed();
+```
+
+Enumeration describes the current machine; it does not make rendering
+portable. To select a discovered face, pass its path and face index to
+`from_file()`:
+
+```cpp
+native::font_t face = native::font_t::from_file(
+    installed.front().path, 16, installed.front().face_index);
+```
+
+Applications can instead create the same face from encoded bytes. The bytes
+are copied before `from_memory()` returns, and both creation paths use the
+same shared TrueType validation, UTF-8 layout, measurement, kerning, and
+alpha-rasterization path on every backend:
+
+```cpp
+native::font_t embedded = native::font_t::from_memory(
+    font_bytes.data(), font_bytes.size(), 16, 0);
+```
+
+Both factories return an invalid, move-only `font_t` for malformed data, an
+invalid size, or an unavailable collection face. Check `valid()` before
+selection. A graphics context borrows its selected font, so the font must
+outlive every measurement and drawing operation that uses it.
+
 ## Text and character measurement
 
 Text must be measured with the same font that will draw it. Measurements are
@@ -221,6 +272,34 @@ or platform look.
 A theme draws visuals only. The caller still owns layout, hit testing,
 interaction state, invalidation, focus behavior, and event handling.
 
+The interactive selection controls are:
+
+| Control | State and signal |
+| --- | --- |
+| `native::check` | `get_checked()` / `set_checked()` and `on_change(bool)` |
+| `native::radio` | `get_selected()` / `set_selected()` and `on_change(bool)`; sibling radios are exclusive |
+| `native::list` | UTF-8 items, a single selected index, and `on_selection_change(int)` |
+
+```cpp
+native::check remember("Remember choice", 16, 16, 160, 24);
+native::radio compact("Compact", 16, 48, 120, 24);
+native::radio detailed("Detailed", 16, 76, 120, 24);
+native::list choices(
+    std::vector<std::string>{"First", "Second", "Third"},
+    160, 16, 150, 90);
+
+remember.set_parent(&window);
+compact.set_parent(&window);
+compact.set_selected(true);
+detailed.set_parent(&window);
+choices.set_parent(&window);
+choices.set_selected_index(0);
+```
+
+Create and show them only after their parent window is created. Property
+setters do not emit user-action signals. Native activations update the cached
+state and then emit the signal.
+
 Create the active backend theme around the target context:
 
 ```cpp
@@ -255,6 +334,9 @@ default state.
 | `draw_popup_frame(bounds)` | A popup-menu background and frame |
 | `draw_menu_item(bounds, text, state)` | One popup-menu item |
 | `draw_list_item(bounds, text, state)` | One list item |
+| `draw_check(bounds, text, state)` | A complete check; `state.selected` is checked |
+| `draw_radio(bounds, text, state)` | A complete radio; `state.selected` is chosen |
+| `draw_list(bounds, items, selected_index, state)` | A framed single-selection list |
 
 The caller supplies the rectangles. `defaults()` returns backend-selected
 values for menu height, item height, popup width, and horizontal text padding.
@@ -279,6 +361,12 @@ controls->draw_menu_bar(native::rect(0, 56, 320,
 controls->draw_menu_title(native::rect(4, 56, 52,
                                        metrics.menu_bar_height),
                           "File");
+
+button_state.selected = true;
+controls->draw_check(native::rect(160, 16, 140,
+                                  metrics.check_height),
+                     "Remember",
+                     button_state);
 ```
 
 Every theme operation preserves the context's ink, paper, pen, selected font,
@@ -320,4 +408,3 @@ image target, or that backend's native-look emulation otherwise.
 - Use PNG for RGBA assets and JPEG for opaque photographic output.
 - Prefer real Native controls for interaction and theme primitives for
   custom-drawn control visuals.
-

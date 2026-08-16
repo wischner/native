@@ -1,7 +1,6 @@
 //
-// Declares windows, application windows, and button controls.
-// Common state lives in these types while backends implement lifecycle
-// and native resource operations in their platform source directories.
+// Declares the portable base window shared by top-level windows and
+// controls. Backends implement native resource operations separately.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -10,26 +9,24 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "events.h"
 #include "geometry.h"
-#include "menu.h"
 #include "signal.h"
 
 namespace native
 {
     class gpx;
     class layout_manager;
+    class radio;
 
     // Represents a cross-platform native window or child control.
     class wnd
     {
     public:
         // Construct a window from scalar position and size values.
-        wnd(
-            coord x = 100,
+        wnd(coord x = 100,
             coord y = 100,
             dim width = 640,
             dim height = 480);
@@ -68,13 +65,17 @@ namespace native
         // Assign a non-owning parent and update its child list.
         //
         // Throws:
-        //      std::invalid_argument for a hierarchy cycle, an uncreated
-        //      parent of a created window, or detaching a created control.
+        //      std::invalid_argument for a hierarchy cycle, an
+        //      uncreated parent of a created window, or detaching a
+        //      created control.
         //
         wnd &set_parent(wnd *parent);
 
         // Determine whether the backend resource currently exists.
         bool get_created() const;
+
+        // Return whether this window may currently receive user input.
+        virtual bool get_input_enabled() const;
 
         // Mark the complete client area for repainting.
         virtual wnd &invalidate() const;
@@ -86,7 +87,7 @@ namespace native
         void on_native_move(const point &position);
 
         // Accept destruction initiated by the native toolkit.
-        void on_native_destroy();
+        virtual void on_native_destroy();
 
         //
         // Accept a resize notification from the native toolkit.
@@ -139,113 +140,19 @@ namespace native
         // Release child backend resources before destroying a parent.
         void destroy_children() const;
 
-    private:
         // Apply cached geometry to a created backend resource.
-        void apply_position();
-        void apply_dimensions();
-        void apply_bounds();
+        virtual void apply_position();
+        virtual void apply_dimensions();
+        virtual void apply_bounds();
 
         // Apply the cached parent to a created backend resource.
-        void apply_parent();
-    };
-
-    // Represents the process's top-level application window.
-    class app_wnd : public wnd
-    {
-    public:
-        // Construct an application window from scalar bounds.
-        app_wnd(
-            std::string title,
-            coord x = 100,
-            coord y = 100,
-            dim width = 640,
-            dim height = 480);
-
-        // Construct an application window from position and size.
-        app_wnd(
-            const std::string &title,
-            const point &position,
-            const size &dimensions);
-
-        // Construct an application window from complete bounds.
-        app_wnd(const std::string &title, const rect &bounds);
-
-        // Destroy the application-window interface.
-        ~app_wnd() override;
-
-        // Return the cached window title.
-        const std::string &get_title() const;
-
-        // Change the window title and update a created native window.
-        app_wnd &set_title(const std::string &title);
-
-        // Create the backend application window.
-        void create() const override;
-
-        // Destroy the backend application window.
-        void destroy() const override;
-
-        // Show the backend application window.
-        void show() const override;
-
-        main_menu menu;
-
-        // Emits the command ID selected from the attached menu.
-        signal<int> on_menu;
+        virtual void apply_parent();
 
     private:
-        std::string _title;
+        // Radio controls inspect siblings to enforce exclusive
+        // selection.
+        friend class radio;
 
-        // Apply the cached title to a created backend window.
-        void apply_title();
     };
 
-    // Represents a clickable native or emulated push button.
-    class button : public wnd
-    {
-    public:
-        // Construct a button from label and scalar bounds.
-        button(
-            std::string text,
-            coord x = 0,
-            coord y = 0,
-            dim width = 96,
-            dim height = 28);
-
-        // Construct a button from label, position, and size.
-        button(
-            const std::string &text,
-            const point &position,
-            const size &dimensions);
-
-        // Construct a button from a label and complete bounds.
-        button(const std::string &text, const rect &bounds);
-
-        // Destroy the button interface.
-        ~button() override;
-
-        // Return the cached button label.
-        const std::string &get_text() const;
-
-        // Change the label and update a created backend button.
-        button &set_text(const std::string &text);
-
-        // Create the backend button resource.
-        void create() const override;
-
-        // Destroy the backend button resource.
-        void destroy() const override;
-
-        // Show the backend button resource.
-        void show() const override;
-
-        // Emits when the user activates the button.
-        signal<> on_click;
-
-    private:
-        std::string _text;
-
-        // Apply the cached label to a created backend button.
-        void apply_text();
-    };
-}
+} // namespace native

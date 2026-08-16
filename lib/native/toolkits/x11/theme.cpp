@@ -1,7 +1,7 @@
 //
 // Implements the X11/Athena theme. Xaw does not expose a painter for
-// arbitrary drawables, so custom targets emulate Athena's raised bevels and
-// monochrome selection behavior inside this backend.
+// arbitrary drawables, so custom targets emulate Athena's raised bevels
+// and monochrome selection behavior inside this backend.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -13,6 +13,7 @@
 #include <X11/Xlib.h>
 
 #include <native.h>
+#include <native/theme.h>
 
 #include "../emulated_theme.h"
 #include "globals.h"
@@ -20,8 +21,10 @@
 namespace
 {
     XFontStruct *query_control_font() {
-        const auto &font = native::font_t::stock(native::font_role::control);
-        auto *binding = linux::x11::font_bindings.object_from_handle(font.id());
+        const auto &font =
+            native::font_t::stock(native::font_role::control);
+        auto *binding =
+            linux::x11::font_bindings.object_from_handle(font.id());
         if (!binding || !binding->xfont || !linux::x11::cached_display)
             return nullptr;
         return XQueryFont(linux::x11::cached_display, binding->xfont);
@@ -30,7 +33,8 @@ namespace
     class xaw_theme final : public linux::emulated_theme
     {
     public:
-        explicit xaw_theme(native::gpx &g) : emulated_theme(g) {}
+        explicit xaw_theme(native::gpx &g)
+            : emulated_theme(g) {}
 
         metrics defaults() const override {
             metrics m;
@@ -71,9 +75,7 @@ namespace
             if (!font)
                 return static_cast<int>(text.size()) * 7;
             const int width = XTextWidth(
-                font,
-                text.c_str(),
-                static_cast<int>(text.size()));
+                font, text.c_str(), static_cast<int>(text.size()));
             XFreeFontInfo(nullptr, font, 1);
             return width;
         }
@@ -82,7 +84,8 @@ namespace
             XFontStruct *font = query_control_font();
             if (!font)
                 return 12;
-            const int height = std::max(1, font->ascent - font->descent);
+            const int height =
+                std::max(1, font->ascent - font->descent);
             XFreeFontInfo(nullptr, font, 1);
             return height;
         }
@@ -91,11 +94,11 @@ namespace
             return true;
         }
     };
-}
+} // namespace
 
 namespace native
 {
     std::unique_ptr<theme> theme::create(gpx &painter) {
         return std::make_unique<xaw_theme>(painter);
     }
-}
+} // namespace native

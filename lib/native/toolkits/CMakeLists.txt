@@ -1,5 +1,9 @@
 set(TOOLKIT "X11" CACHE STRING "Toolkit backend to use (SDL, OpenMotif, etc.)")
 
+target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulated_theme.cpp
+)
+
 if(TOOLKIT STREQUAL "SDL2")
     add_subdirectory(sdl2)
 elseif(TOOLKIT STREQUAL "GEMIX")

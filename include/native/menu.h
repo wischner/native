@@ -35,8 +35,7 @@ namespace native
         menu_items_proxy &operator<<(const std::string &label);
 
         // Append a caller-supplied command ID and label.
-        menu_items_proxy &operator<<(
-            std::pair<int, std::string> item);
+        menu_items_proxy &operator<<(std::pair<int, std::string> item);
     };
 
     //
@@ -127,4 +126,4 @@ namespace native
         friend class wnd;
         friend class app_wnd;
     };
-}
+} // namespace native

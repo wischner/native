@@ -136,9 +136,76 @@ the application. A window owns its installed layout manager. Geometry changes
 must update cached bounds and relayout children. Backend resize notifications
 must update the cache and layout without requesting the same resize again.
 
+Top-level ownership is a second relationship and must never be represented by
+`wnd::set_parent()`. An `owned_wnd` borrows an `app_wnd` owner but remains a
+top-level window with screen-coordinate bounds. It is not added to the owner's
+child list, is not clipped to the owner's client rectangle, and never
+participates in the owner's layout. Destroying an owner's native resource must
+first destroy the native resources of its owned windows. Destroying either C++
+object must safely detach the non-owning relationship.
+
+`modeless_wnd` and `modal_wnd` are the two portable owned-window bases:
+
+- A `modeless_wnd` uses the backend's owned, transient, floating-subset, or
+  equivalent top-level relationship. It remains in the normal application
+  event loop and does not disable its owner.
+- A `modal_wnd` is an owner-modal dialog. Showing it starts a modal session,
+  moves focus to the dialog, and prevents input to its owner and the owner's
+  other owned branches. The event loop must continue to dispatch paint and
+  lifecycle events; modality must not require a second portable event loop.
+  Closing it supplies an accepted or cancelled `dialog_result`, ends the
+  session exactly once, and restores the previous eligible owner or modal
+  dialog.
+
+Modal sessions form a stack so a modal dialog may own another modal dialog.
+Only the active modal branch accepts user input. Native owner disabling,
+exclusive grabs, modal-subset window feels, and toolkit modal-parent APIs are
+preferred. A backend without such a facility must enforce the same rule in its
+event dispatcher and keep the active modal window above blocked windows.
+
+All owner-modal system interactions follow the same contract. File-open,
+file-save, folder selection, print, page setup, color, font, message, and
+similar dialogs must derive from `modal_wnd` or adapt their native panel to one
+`modal_wnd` session. They must not introduce a separate ownership, focus,
+result, or event-loop policy.
+
+`file_dialog` is the shared system-panel base for `open_file_dialog` and
+`save_file_dialog`. It caches an initial path, ordered `file_filter` groups,
+and the selected UTF-8 filesystem paths. `open_file_dialog` adds optional
+multiple selection. `save_file_dialog` adds a suggested leaf name, default
+extension, and overwrite-confirmation preference. These public classes contain
+no native panel handles and do not pretend that a system panel has drawable
+window geometry.
+
+Backends must use the operating system or toolkit file selector when one
+exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
+Motif `FileSelectionBox`, and GEM AES file selector are the standard paths.
+Toolkits without a chooser, including Athena and SDL2, may delegate to an
+installed desktop chooser rather than implement a custom selector. Unsupported
+native options may degrade conservatively: an older single-selection chooser
+may return one path, and a platform may keep mandatory overwrite confirmation.
+
+System panels may complete synchronously or asynchronously. Portable code must
+observe `on_modal_close` and read paths after an accepted result instead of
+depending on whether `show()` has returned. Native completion and cancellation
+must end the modal session exactly once, ignore stale callbacks after explicit
+destruction, and release the panel binding before application callbacks can
+destroy the C++ dialog object.
+
 Backends implement creation, display, destruction, invalidation, painting, and
 event translation with identical public behavior. Add each new window type to
 every supported backend and keep all platform differences below the public API.
+
+Interactive controls are windows, not theme drawings. `button`, `check`,
+`radio`, and `list` must use the platform or toolkit's native control when one
+exists. A backend without a widget set may emulate the control through its own
+theme and event loop. Programmatic property setters update cached/native state
+without emitting user-action signals; backend-originated changes update the
+cache and emit the corresponding signal. Sibling `radio` controls are mutually
+exclusive, and `list` is single-selection with `-1` representing no selection.
+Keep every control in its own same-named public, common, and backend source
+file. Do not collect unrelated controls into a `controls` module or add a
+`_box` suffix to the `check`, `radio`, or `list` type names.
 
 ## 6. Painting in Windows
 
@@ -187,9 +254,9 @@ Use the public abstract `theme` interface when custom controls or visuals must
 match the active platform. `theme::create()` asks the active backend for a
 short-lived implementation around a borrowed `gpx &`. The interface exposes
 the same semantic primitives and states on every backend, including common
-button, menu, selection, border, text, hot, pressed, selected, and disabled
-states. Appearance logic must live in the platform or toolkit implementation,
-not in the backend-neutral library root.
+button, check, radio, list, menu, selection, border, text, hot, pressed,
+selected, and disabled states. Appearance logic must live in the platform or
+toolkit implementation, not in the backend-neutral library root.
 
 Theme rendering follows these rules:
 
@@ -232,8 +299,9 @@ directly, or depend on native argument types.
 The startup classes have distinct roles:
 
 - `app` is a static coordinator and must not be instantiated or derived from.
-- `app_wnd` is the portable main-window base class. Applications normally
-  derive one class from it to hold controls, state, and signal handlers.
+- `app_wnd` is the portable top-level application-window base. The unowned
+  instance passed to `app::run()` is the main window; `modeless_wnd` and
+  `modal_wnd` derive from it through `owned_wnd`.
 - The application owns its main-window object. It must remain alive for the
   complete call to `app::run()`.
 

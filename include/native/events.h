@@ -43,10 +43,9 @@ namespace native
         mouse_event();
 
         // Construct a mouse event from button, action, and position.
-        mouse_event(
-            mouse_button event_button,
-            mouse_action event_action,
-            point event_position);
+        mouse_event(mouse_button event_button,
+                    mouse_action event_action,
+                    point event_position);
     };
 
     // Identifies the axis affected by a wheel event.
@@ -71,10 +70,9 @@ namespace native
         mouse_wheel_event();
 
         // Construct a wheel event from its position, delta, and axis.
-        mouse_wheel_event(
-            point event_position,
-            coord event_delta,
-            wheel_direction event_direction);
+        mouse_wheel_event(point event_position,
+                          coord event_delta,
+                          wheel_direction event_direction);
     };
 
     // Provides the invalid rectangle and borrowed context for painting.
@@ -92,4 +90,4 @@ namespace native
         //
         wnd_paint_event(const rect &invalid, gpx &graphics);
     };
-}
+} // namespace native

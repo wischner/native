@@ -12,6 +12,7 @@
 #include <SDL2/SDL.h>
 
 #include <native.h>
+#include <native/screen.h>
 
 namespace native
 {
@@ -20,8 +21,7 @@ namespace native
 
         if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
             throw std::runtime_error(
-                std::string(
-                    "SDL2: Failed to initialize video: ") +
+                std::string("SDL2: Failed to initialize video: ") +
                 SDL_GetError());
         }
 
@@ -50,10 +50,7 @@ namespace native
             bool is_primary = (i == 0);
 
             detected.emplace_back(
-                i,
-                screen_bounds,
-                work_area,
-                is_primary);
+                i, screen_bounds, work_area, is_primary);
         }
 
         _screens = std::move(detected);

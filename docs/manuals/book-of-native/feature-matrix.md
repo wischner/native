@@ -19,7 +19,8 @@ Legend:
 | --- | --- | --- |
 | Linux X11 | `docker-x11` | Yes (tested) |
 | Linux SDL2 | `docker-sdl2` | Yes (tested) |
-| Linux OpenMotif | `docker-openmotif` | Yes (untested) |
+| Linux OpenMotif | `docker-openmotif` | Yes (tested) |
+| Linux GEMix | `docker-gemix` | Yes (untested) |
 | MS Windows (MinGW) | `docker-win` + Wine | Yes (tested) |
 | Haiku | `docker-haiku` + SSH deploy/run | Yes (tested) |
 | Apple | platform code present | Yes (untested) |
@@ -27,45 +28,78 @@ Legend:
 
 ## Core feature matrix
 
-| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | MS Windows | Haiku | Apple | Other WIP ports |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Build through current Docker workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
-| `app::run` startup path | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Main window create/show | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Mouse wheel | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `vision` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
-| `vision` runtime | Yes (tested) | Yes (tested) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
+| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux GEMix | MS Windows | Haiku | Apple | Other WIP ports |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Build through current Docker workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
+| `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Independent owned `modeless_wnd` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Owner-blocking, focus-taking `modal_wnd` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Nested modal stack and `dialog_result` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Standard `open_file_dialog` | Desktop chooser (build tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
+| Standard `save_file_dialog` | Desktop chooser (build tested) | Desktop chooser (build tested) | Motif (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
+| Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Mouse wheel | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Native/emulated `check` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| `vision` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
+| `vision` runtime | Yes (tested) | Yes (tested) | Yes (tested) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
 
 ## Drawing, text, and image matrix
 
-| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | MS Windows | Haiku | Apple | Other WIP ports |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `gpx` ink/paper/pen/font state and clipping | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_wnd`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_wnd`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_wnd`: complete-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_img`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_img`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `gpx_img`: image-to-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| `img`: owned RGBA storage and direct pixel access | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Font, text-run, and Unicode-character measurement | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
-| PNG file load/save and memory decode/encode | libpng (tested) | libpng (tested) | libpng (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
-| JPEG file load/save and memory decode/encode | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
-| `theme` factory, metrics, palette, and state preservation | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
-| Themed button drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
-| Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
-| Themed list-item drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
+| Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux GEMix | MS Windows | Haiku | Apple | Other WIP ports |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `gpx` ink/paper/pen/font state and clipping | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_wnd`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_wnd`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_wnd`: complete-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_img`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_img`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `gpx_img`: image-to-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| `img`: owned RGBA storage and direct pixel access | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Six semantic stock-font roles | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Installed-font enumeration and portable descriptions | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Portable font creation from file or copied memory | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Font, text-run, and Unicode-character measurement | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| PNG file load/save and memory decode/encode | libpng (tested) | libpng (tested) | libpng (tested) | libpng (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
+| JPEG file load/save and memory decode/encode | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
+| `theme` factory, metrics, palette, and state preservation | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
+| Themed button drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
+| Themed check/radio drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
+| Themed complete-list and list-item drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 
 ## Notes
 
 - Linux X11 uses Xt for its event loop and Athena `Command`, `MenuButton`,
-  `SimpleMenu`, and `SmeBSB` widgets for buttons and application menus.
-- SDL2 text drawing depends on `SDL2_ttf`.
-  If `SDL2_ttf` is not present, text rendering is intentionally a no-op.
+  `SimpleMenu`, `SmeBSB`, `Toggle`, and `List` widgets for buttons, menus, and
+  selection controls.
+- Owned windows use Win32 owners, Xt transient shells, Haiku subsets, and
+  AppKit child-window ordering where those facilities exist. SDL2 uses its
+  modal-parent API plus portable input filtering; GEMix enforces ownership and
+  modality in its multi-window AES event dispatcher.
+- `open_file_dialog` and `save_file_dialog` adapt every native chooser to the
+  same `modal_wnd` session and `dialog_result` contract. Windows, AppKit,
+  Haiku, Motif, and GEM use their standard panels. Athena and SDL2 use Zenity
+  or KDialog because those toolkits do not provide a file chooser.
+- Motif and GEM file selection is single-path. AppKit and Haiku preserve their
+  native overwrite safeguards. These older or mandatory native behaviors are
+  conservative reductions of optional public settings.
+- OpenMotif uses `XmToggleButton` and `XmList`; Windows uses BUTTON and LISTBOX;
+  Haiku uses `BCheckBox`, `BRadioButton`, and `BListView`; macOS uses `NSButton`
+  and `NSTableView`.
+- GEMix owns the event handling and native-look emulation for its `check`,
+  `radio`, and `list` windows.
+- SDL2 uses `SDL2_ttf` for native stock faces when it is available and a
+  built-in bitmap stock-font fallback otherwise. Portable file/memory fonts
+  always use the shared byte-backed rasterizer.
+- Portable file/memory fonts use the same vendored TrueType rasterizer on all
+  backends. Installed-font enumeration remains machine-specific and returns
+  file paths and collection face indices for explicit selection.
 - Windows runtime checks in this workflow use Wine and require MinGW runtime
   DLLs for MinGW-built executables.
 - OpenMotif uses widget resource colors when they are available through Motif/Xt.

@@ -6,7 +6,9 @@
 //
 
 #pragma once
+
 #import <AppKit/AppKit.h>
+
 #include <string>
 
 namespace native
@@ -21,13 +23,12 @@ namespace mac
     {
     public:
         // Create and register an AppKit window for a borrowed owner.
-        native_window(
-            native::app_wnd *owner,
-            const char *title,
-            int x,
-            int y,
-            int width,
-            int height);
+        native_window(native::app_wnd *owner,
+                      const char *title,
+                      int x,
+                      int y,
+                      int width,
+                      int height);
     };
 
 } // namespace mac

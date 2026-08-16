@@ -24,3 +24,19 @@ target_link_libraries(native_window_api_tests PRIVATE
 )
 
 add_test(NAME native_window_api_tests COMMAND native_window_api_tests)
+
+if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
+    add_executable(native_modal_runtime_tests
+        native_modal_runtime_tests.cpp
+    )
+
+    target_link_libraries(native_modal_runtime_tests PRIVATE
+        native
+        native_developer_options
+    )
+
+    add_test(NAME native_modal_runtime_tests
+        COMMAND native_modal_runtime_tests)
+    set_tests_properties(native_modal_runtime_tests PROPERTIES
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy")
+endif()

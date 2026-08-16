@@ -6,8 +6,11 @@
 //
 
 #include <native/app.h>
+#include <native/app_wnd.h>
 #include <native/screen.h>
 #include <native/wnd.h>
+
+#include <stdexcept>
 
 namespace native
 {
@@ -17,20 +20,35 @@ namespace native
     app_wnd *app::_main_wnd = nullptr;
 
     int app::run(const app_wnd &wnd) {
-        // Populate the backend's screen list before creating a window.
-        screen::detect();
+        if (_main_wnd)
+            throw std::logic_error(
+                "An application event loop is already active.");
+        if (wnd.get_owner())
+            throw std::invalid_argument(
+                "An owned window cannot be the application main "
+                "window.");
 
-        wnd.create();
-
-        // The caller owns the main window for the duration of the loop.
         _main_wnd = const_cast<app_wnd *>(&wnd);
 
-        wnd.show();
+        try {
+            // Populate screens before creation so handlers may query
+            // them from the window's create signal.
+            screen::detect();
+            wnd.create();
+            wnd.show();
 
-        return app::main_loop();
+            const int result = app::main_loop();
+            wnd.destroy();
+            _main_wnd = nullptr;
+            return result;
+        } catch (...) {
+            wnd.destroy();
+            _main_wnd = nullptr;
+            throw;
+        }
     }
 
     app_wnd *app::main_wnd() {
         return _main_wnd;
     }
-}
+} // namespace native

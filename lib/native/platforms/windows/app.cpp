@@ -6,25 +6,27 @@
 //
 
 #include <native.h>
+#include <native/app.h>
 #include <windows.h>
 
-namespace native {
+namespace native
+{
 
-int app::main_loop() {
-    MSG msg;
-    BOOL ret;
+    int app::main_loop() {
+        MSG msg;
+        BOOL ret;
 
-    while ((ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
-        if (ret == -1) {
-            // Handle error if needed
-            return -1;
+        while ((ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
+            if (ret == -1) {
+                // Handle error if needed
+                return -1;
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
 
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        return static_cast<int>(msg.wParam);
     }
-
-    return static_cast<int>(msg.wParam);
-}
 
 } // namespace native

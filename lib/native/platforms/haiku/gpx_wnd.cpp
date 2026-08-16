@@ -19,7 +19,9 @@
 #include "gpx_wnd.h"
 #include "globals.h"
 
-static void apply_bview_state(BView *view, native::gpx_wnd *self, haiku::haiku_gpx *cache) {
+static void apply_bview_state(BView *view,
+                              native::gpx_wnd *self,
+                              haiku::haiku_gpx *cache) {
     if (!view || !cache)
         return;
 
@@ -38,19 +40,16 @@ static void apply_bview_state(BView *view, native::gpx_wnd *self, haiku::haiku_g
     }
 
     // Set clip region
-    BRect clip_rect(
-        self->get_clip().p.x,
-        self->get_clip().p.y,
-        self->get_clip().x2() - 1,
-        self->get_clip().y2() - 1);
+    BRect clip_rect(self->get_clip().p.x,
+                    self->get_clip().p.y,
+                    self->get_clip().x2() - 1,
+                    self->get_clip().y2() - 1);
     BRegion region(clip_rect);
     view->ConstrainClippingRegion(&region);
 }
 
 template <typename function_type>
-static void with_locked_view(
-    BView *view,
-    function_type &&function) {
+static void with_locked_view(BView *view, function_type &&function) {
     if (!view)
         return;
 
@@ -72,10 +71,12 @@ namespace native
 {
 
     gpx_wnd::gpx_wnd(const wnd *window, point offset)
-        : _wnd(const_cast<wnd *>(window)), _offset(offset) {
+        : _wnd(const_cast<wnd *>(window))
+        , _offset(offset) {
         BWindow *bwin = haiku::wnd_bindings.handle_from_object(_wnd);
         if (!bwin)
-            throw std::runtime_error("Haiku: No BWindow available for gpx_wnd");
+            throw std::runtime_error(
+                "Haiku: No BWindow available for gpx_wnd");
 
         // Get or create view
         auto *cache = haiku::wnd_gpx_bindings.object_from_handle(_wnd);
@@ -84,12 +85,15 @@ namespace native
 
             const bool already_locked = bwin->IsLocked();
             if (!already_locked && !bwin->Lock())
-                throw std::runtime_error("Haiku: Failed to lock BWindow while creating gpx_wnd.");
+                throw std::runtime_error(
+                    "Haiku: Failed to lock BWindow while creating "
+                    "gpx_wnd.");
 
             cache->view = bwin->ChildAt(0);
             if (!cache->view) {
                 BRect bounds = bwin->Bounds();
-                cache->view = new BView(bounds, "MainView", B_FOLLOW_ALL, B_WILL_DRAW);
+                cache->view = new BView(
+                    bounds, "MainView", B_FOLLOW_ALL, B_WILL_DRAW);
                 bwin->AddChild(cache->view);
             }
 
@@ -103,8 +107,7 @@ namespace native
     }
 
     gpx_wnd::~gpx_wnd() {
-        auto *cache =
-            haiku::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache = haiku::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache)
             return;
 
@@ -132,8 +135,7 @@ namespace native
             view->SetHighColor(c);
 
             BRect rect(
-                _clip.p.x, _clip.p.y,
-                _clip.x2() - 1, _clip.y2() - 1);
+                _clip.p.x, _clip.p.y, _clip.x2() - 1, _clip.y2() - 1);
             view->FillRect(rect);
         });
 
@@ -149,7 +151,8 @@ namespace native
 
         with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
-            view->StrokeLine(BPoint(from.x, from.y), BPoint(to.x, to.y));
+            view->StrokeLine(BPoint(from.x, from.y),
+                             BPoint(to.x, to.y));
         });
 
         return *this;
@@ -174,7 +177,7 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+    gpx &gpx_wnd::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         auto *cache = haiku::wnd_gpx_bindings.object_from_handle(_wnd);
@@ -184,8 +187,10 @@ namespace native
         with_locked_view(cache->view, [&](BView *view) {
             apply_bview_state(view, this, cache);
 
-            auto *fh = haiku::font_bindings.object_from_handle(get_font().id());
-            if (fh) view->SetFont(&fh->bfont);
+            auto *fh = haiku::font_bindings.object_from_handle(
+                get_font().id());
+            if (fh)
+                view->SetFont(&fh->bfont);
 
             view->DrawString(
                 text.c_str(),
@@ -219,7 +224,15 @@ namespace native
                     row[x * 4 + 3] = pixel.a;
                 }
             }
+            const drawing_mode old_mode = view->DrawingMode();
+            source_alpha old_source;
+            alpha_function old_function;
+            view->GetBlendingMode(&old_source, &old_function);
+            view->SetDrawingMode(B_OP_ALPHA);
+            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
             view->DrawBitmap(&bitmap, BPoint(dst.x, dst.y));
+            view->SetBlendingMode(old_source, old_function);
+            view->SetDrawingMode(old_mode);
         });
 
         return *this;

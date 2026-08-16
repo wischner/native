@@ -20,7 +20,8 @@ namespace native
 {
 
     gpx_img::gpx_img(const img &image)
-        : _img(image), _clip(0, 0, image.w(), image.h()) {
+        : _img(image)
+        , _clip(0, 0, image.w(), image.h()) {
         // No dependencies needed for software rendering
     }
 
@@ -50,7 +51,7 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_img::draw_text(const std::string &text, point p) {
+    gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         // Create memory DC for text rendering
@@ -68,7 +69,8 @@ namespace native
         bmi.bmiHeader.biCompression = BI_RGB;
 
         void *bits = nullptr;
-        HBITMAP hbm = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
+        HBITMAP hbm = CreateDIBSection(
+            hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
         if (!hbm) {
             DeleteDC(hdc);
             return *this;
@@ -88,17 +90,16 @@ namespace native
 
         HGDIOBJ previous_bitmap = SelectObject(hdc, hbm);
 
-        auto *font = windows::font_bindings.object_from_handle(
-            get_font().id());
+        auto *font =
+            windows::font_bindings.object_from_handle(get_font().id());
         HGDIOBJ previous_font = SelectObject(
             hdc,
-            font && font->hfont
-                ? font->hfont
-                : GetStockObject(DEFAULT_GUI_FONT));
+            font && font->hfont ? font->hfont
+                                : GetStockObject(DEFAULT_GUI_FONT));
 
         // Set clip region
-        HRGN rgn = CreateRectRgn(
-            _clip.p.x, _clip.p.y, _clip.x2(), _clip.y2());
+        HRGN rgn =
+            CreateRectRgn(_clip.p.x, _clip.p.y, _clip.x2(), _clip.y2());
         SelectClipRgn(hdc, rgn);
 
         // Set text color and draw
@@ -106,25 +107,22 @@ namespace native
         SetBkMode(hdc, TRANSPARENT);
         const std::wstring wide = windows::utf8_to_wide(text);
         TextOutW(
-            hdc,
-            p.x,
-            p.y,
-            wide.data(),
-            static_cast<int>(wide.size()));
+            hdc, p.x, p.y, wide.data(), static_cast<int>(wide.size()));
 
         const auto *after = static_cast<const std::uint8_t *>(bits);
         rgba *destination = const_cast<rgba *>(_img.pixels());
         for (std::size_t index = 0;
              index < static_cast<std::size_t>(_img.w()) * _img.h();
              ++index) {
-            const bool changed = after[index * 4] != before[index * 4] ||
+            const bool changed =
+                after[index * 4] != before[index * 4] ||
                 after[index * 4 + 1] != before[index * 4 + 1] ||
                 after[index * 4 + 2] != before[index * 4 + 2];
-            destination[index] = rgba(
-                after[index * 4 + 2],
-                after[index * 4 + 1],
-                after[index * 4],
-                changed ? _ink.a : before[index * 4 + 3]);
+            destination[index] =
+                rgba(after[index * 4 + 2],
+                     after[index * 4 + 1],
+                     after[index * 4],
+                     changed ? _ink.a : before[index * 4 + 3]);
         }
 
         // Cleanup

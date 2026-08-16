@@ -15,14 +15,12 @@ namespace native
 {
 
     // Maps backend handles to objects in both directions.
-    template <typename handle_type, typename object_type>
-    class bindings
+    template <typename handle_type, typename object_type> class bindings
     {
     public:
         // Register or replace a handle/object association.
-        void register_pair(
-            const handle_type &handle,
-            const object_type &object) {
+        void register_pair(const handle_type &handle,
+                           const object_type &object) {
             // Remove either previous side so the two maps cannot retain
             // stale associations when a handle or object is reused.
             unregister_by_handle(handle);
@@ -50,21 +48,19 @@ namespace native
         }
 
         // Return the object for a handle, or a default value if absent.
-        object_type object_from_handle(
-            const handle_type &handle) const {
+        object_type
+        object_from_handle(const handle_type &handle) const {
             auto item = handle_to_object_.find(handle);
-            return item != handle_to_object_.end()
-                       ? item->second
-                       : object_type{};
+            return item != handle_to_object_.end() ? item->second
+                                                   : object_type{};
         }
 
         // Return the object's handle, or a default value if absent.
-        handle_type handle_from_object(
-            const object_type &object) const {
+        handle_type
+        handle_from_object(const object_type &object) const {
             auto item = object_to_handle_.find(object);
-            return item != object_to_handle_.end()
-                       ? item->second
-                       : handle_type{};
+            return item != object_to_handle_.end() ? item->second
+                                                   : handle_type{};
         }
 
         // Remove every association from both lookup directions.

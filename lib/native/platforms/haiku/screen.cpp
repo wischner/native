@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include <native.h>
+#include <native/screen.h>
 
 #include "globals.h"
 
@@ -24,8 +25,8 @@ namespace native
         // query happens before the window is created, so make
         // sure the application object exists first.
         if (!be_app && !haiku::global_app)
-            haiku::global_app = new BApplication(
-                "application/x-vnd.wischner-native");
+            haiku::global_app =
+                new BApplication("application/x-vnd.wischner-native");
 
         BScreen bscreen(B_MAIN_SCREEN_ID);
         if (!bscreen.IsValid())

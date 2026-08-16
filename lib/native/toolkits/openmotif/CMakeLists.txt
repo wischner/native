@@ -5,7 +5,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(XT REQUIRED xt)
 
 find_package(X11 REQUIRED)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/scripts/cmake")
 find_package(Motif REQUIRED)
 
 # Diagnostics
@@ -30,6 +30,13 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../platforms/linux/x_image.cpp
 )
 
 # Conditionally include directories if needed

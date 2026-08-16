@@ -11,39 +11,35 @@
 #include <utility>
 
 #include <native.h>
+#include <native/wnd.h>
 
 namespace native
 {
     wnd::wnd(coord x, coord y, dim width, dim height)
-        : _created(false),
-          _bounds(x, y, width, height),
-          _parent(nullptr) {
-    }
+        : _created(false)
+        , _bounds(x, y, width, height)
+        , _parent(nullptr) {}
 
     wnd::wnd(const point &position, const size &dimensions)
-        : wnd(position.x, position.y, dimensions.w, dimensions.h) {
-    }
+        : wnd(position.x, position.y, dimensions.w, dimensions.h) {}
 
     wnd::wnd(const rect &bounds)
-        : wnd(bounds.p, bounds.d) {
-    }
+        : wnd(bounds.p, bounds.d) {}
 
     wnd::~wnd() {
         if (_parent) {
             wnd *old_parent = _parent;
             _parent = nullptr;
             old_parent->_children.erase(
-                std::remove(
-                    old_parent->_children.begin(),
-                    old_parent->_children.end(),
-                    this),
+                std::remove(old_parent->_children.begin(),
+                            old_parent->_children.end(),
+                            this),
                 old_parent->_children.end());
 
             if (old_parent->_layout) {
                 old_parent->_layout->remove_child(this);
                 old_parent->_layout->relayout(
-                    old_parent,
-                    rect({0, 0}, old_parent->_bounds.d));
+                    old_parent, rect({0, 0}, old_parent->_bounds.d));
             }
         }
 
@@ -100,11 +96,12 @@ namespace native
         if (_parent == parent)
             return *this;
 
-        if (_created && dynamic_cast<button *>(this) && !parent)
+        if (_created && !dynamic_cast<app_wnd *>(this) && !parent)
             throw std::invalid_argument(
                 "A created control requires a parent.");
 
-        for (wnd *ancestor = parent; ancestor; ancestor = ancestor->_parent) {
+        for (wnd *ancestor = parent; ancestor;
+             ancestor = ancestor->_parent) {
             if (ancestor == this)
                 throw std::invalid_argument(
                     "A window cannot parent itself or an ancestor.");
@@ -117,35 +114,31 @@ namespace native
         wnd *old_parent = _parent;
         if (old_parent) {
             old_parent->_children.erase(
-                std::remove(
-                    old_parent->_children.begin(),
-                    old_parent->_children.end(),
-                    this),
+                std::remove(old_parent->_children.begin(),
+                            old_parent->_children.end(),
+                            this),
                 old_parent->_children.end());
 
             if (old_parent->_layout) {
                 old_parent->_layout->remove_child(this);
                 old_parent->_layout->relayout(
-                    old_parent,
-                    rect({0, 0}, old_parent->_bounds.d));
+                    old_parent, rect({0, 0}, old_parent->_bounds.d));
             }
         }
 
         _parent = parent;
 
         if (_parent) {
-            const auto child = std::find(
-                _parent->_children.begin(),
-                _parent->_children.end(),
-                this);
+            const auto child = std::find(_parent->_children.begin(),
+                                         _parent->_children.end(),
+                                         this);
             if (child == _parent->_children.end())
                 _parent->_children.push_back(this);
 
             if (_parent->_layout) {
                 _parent->_layout->add_child(this);
                 _parent->_layout->relayout(
-                    _parent,
-                    rect({0, 0}, _parent->_bounds.d));
+                    _parent, rect({0, 0}, _parent->_bounds.d));
             }
         }
 
@@ -159,6 +152,15 @@ namespace native
         return _created;
     }
 
+    bool wnd::get_input_enabled() const {
+        const wnd *root = this;
+        while (root->_parent)
+            root = root->_parent;
+
+        const auto *window = dynamic_cast<const app_wnd *>(root);
+        return !window || window->get_input_enabled();
+    }
+
     void wnd::on_native_move(const point &position) {
         _bounds.p = position;
     }
@@ -168,8 +170,6 @@ namespace native
             return;
 
         destroy_children();
-        if (auto *window = dynamic_cast<app_wnd *>(this))
-            window->menu.detach();
         delete _gpx;
         _gpx = nullptr;
         _created = false;
@@ -202,85 +202,4 @@ namespace native
         }
     }
 
-    app_wnd::app_wnd(
-        std::string title,
-        coord x,
-        coord y,
-        dim width,
-        dim height)
-        : wnd(x, y, width, height),
-          _title(std::move(title)) {
-    }
-
-    app_wnd::app_wnd(
-        const std::string &title,
-        const point &position,
-        const size &dimensions)
-        : app_wnd(
-              title,
-              position.x,
-              position.y,
-              dimensions.w,
-              dimensions.h) {
-    }
-
-    app_wnd::app_wnd(const std::string &title, const rect &bounds)
-        : app_wnd(title, bounds.p, bounds.d) {
-    }
-
-    app_wnd::~app_wnd() {
-        destroy();
-    }
-
-    const std::string &app_wnd::get_title() const {
-        return _title;
-    }
-
-    app_wnd &app_wnd::set_title(const std::string &title) {
-        _title = title;
-        if (_created)
-            apply_title();
-        return *this;
-    }
-
-    button::button(
-        std::string text,
-        coord x,
-        coord y,
-        dim width,
-        dim height)
-        : wnd(x, y, width, height),
-          _text(std::move(text)) {
-    }
-
-    button::button(
-        const std::string &text,
-        const point &position,
-        const size &dimensions)
-        : button(
-              text,
-              position.x,
-              position.y,
-              dimensions.w,
-              dimensions.h) {
-    }
-
-    button::button(const std::string &text, const rect &bounds)
-        : button(text, bounds.p, bounds.d) {
-    }
-
-    button::~button() {
-        destroy();
-    }
-
-    const std::string &button::get_text() const {
-        return _text;
-    }
-
-    button &button::set_text(const std::string &text) {
-        _text = text;
-        if (_created)
-            apply_text();
-        return *this;
-    }
-}
+} // namespace native

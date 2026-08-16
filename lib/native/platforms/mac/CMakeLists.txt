@@ -23,6 +23,12 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/image_codec.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/button.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/check.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/radio.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/list.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.mm
 )
 
 target_link_libraries(native PRIVATE
@@ -31,4 +37,5 @@ target_link_libraries(native PRIVATE
     "-framework CoreFoundation"
     "-framework CoreGraphics"
     "-framework ImageIO"
+    "-framework UniformTypeIdentifiers"
 )

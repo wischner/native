@@ -10,9 +10,12 @@ examples, see [Drawing Primitives](drawing-primitives.md#themed-control-primitiv
 ## Semantic drawing
 
 The theme API describes what is being drawn rather than how one toolkit draws
-it. Its primitives include complete buttons, menu bars and menu items, popup
-frames, and list items. The backend decides how each primitive is decomposed
-for its native painter.
+it. Its primitives include complete buttons, checks, radios, lists, menu bars
+and menu items, popup frames, and list items. The backend decides how each
+primitive is decomposed for its native painter.
+
+Theme primitives paint only. Live `check`, `radio`, and `list` objects remain
+`wnd` subclasses and use native widgets when available.
 
 Interaction is also expressed semantically:
 

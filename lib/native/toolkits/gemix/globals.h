@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <deque>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <gem.h>
@@ -32,9 +35,24 @@ namespace linux::gemix
         WORD box_h = 16;
     };
 
+    // Stores one generated AES menu tree and its stable string storage.
+    struct menu_state
+    {
+        std::vector<OBJECT> tree;
+        std::deque<std::string> strings;
+        std::unordered_map<int, int> object_to_item_id;
+        bool installed = false;
+    };
+
     extern runtime_state runtime;
     extern native::bindings<WORD, native::wnd *> wnd_bindings;
     extern std::vector<native::button *> buttons;
+    extern std::vector<native::check *> checks;
+    extern std::vector<native::radio *> radios;
+    extern std::vector<native::list *> lists;
+    extern std::vector<native::app_wnd *> windows;
+    extern std::unordered_map<native::app_wnd *, menu_state>
+        menu_states;
 
     // Initialize AES and VDI once; return whether both are available.
     bool ensure_runtime();
@@ -59,4 +77,4 @@ namespace linux::gemix
 
     // Release the menu tree owned by an application window.
     void destroy_menu(native::app_wnd *owner);
-}
+} // namespace linux::gemix

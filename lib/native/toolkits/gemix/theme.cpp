@@ -1,6 +1,6 @@
 //
-// Implements the GEMix theme by emulating the classic AES/VDI control look.
-// The metrics come from the active VDI workstation.
+// Implements the GEMix theme by emulating the classic AES/VDI control
+// look. The metrics come from the active VDI workstation.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <native.h>
+#include <native/theme.h>
 
 #include "../emulated_theme.h"
 #include "globals.h"
@@ -19,16 +20,15 @@ namespace
     class gem_theme final : public linux::emulated_theme
     {
     public:
-        explicit gem_theme(native::gpx &g) : emulated_theme(g) {}
+        explicit gem_theme(native::gpx &g)
+            : emulated_theme(g) {}
 
         metrics defaults() const override {
             metrics m;
             const int character_height = std::max(
-                1,
-                static_cast<int>(linux::gemix::runtime.char_h));
+                1, static_cast<int>(linux::gemix::runtime.char_h));
             const int character_width = std::max(
-                1,
-                static_cast<int>(linux::gemix::runtime.char_w));
+                1, static_cast<int>(linux::gemix::runtime.char_w));
             m.menu_bar_height = character_height + 4;
             m.menu_item_height = character_height + 2;
             m.popup_width = character_width * 22;
@@ -62,26 +62,26 @@ namespace
 
     protected:
         int text_width(const std::string &text) const override {
-            return static_cast<int>(text.size()) * std::max(
-                1,
-                static_cast<int>(linux::gemix::runtime.char_w));
+            return static_cast<int>(text.size()) *
+                   std::max(
+                       1,
+                       static_cast<int>(linux::gemix::runtime.char_w));
         }
 
         int text_height() const override {
             return std::max(
-                1,
-                static_cast<int>(linux::gemix::runtime.char_h / 2));
+                1, static_cast<int>(linux::gemix::runtime.char_h / 2));
         }
 
         bool text_uses_baseline() const override {
             return true;
         }
     };
-}
+} // namespace
 
 namespace native
 {
     std::unique_ptr<theme> theme::create(gpx &painter) {
         return std::make_unique<gem_theme>(painter);
     }
-}
+} // namespace native

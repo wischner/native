@@ -29,7 +29,11 @@ namespace native
         std::uint8_t a;
 
         // Construct a transparent black color.
-        constexpr rgba() : r(0), g(0), b(0), a(0) {}
+        constexpr rgba()
+            : r(0)
+            , g(0)
+            , b(0)
+            , a(0) {}
 
         //
         // Construct a color from its individual channels.
@@ -44,7 +48,10 @@ namespace native
                        std::uint8_t green,
                        std::uint8_t blue,
                        std::uint8_t alpha)
-            : r(red), g(green), b(blue), a(alpha) {}
+            : r(red)
+            , g(green)
+            , b(blue)
+            , a(alpha) {}
 
         //
         // Construct a color from 0xAABBGGRR packed channel data.
@@ -54,10 +61,10 @@ namespace native
         //                    order.
         //
         constexpr rgba(std::uint32_t packed)
-            : r(static_cast<std::uint8_t>(packed & 0xffU)),
-              g(static_cast<std::uint8_t>((packed >> 8U) & 0xffU)),
-              b(static_cast<std::uint8_t>((packed >> 16U) & 0xffU)),
-              a(static_cast<std::uint8_t>((packed >> 24U) & 0xffU)) {}
+            : r(static_cast<std::uint8_t>(packed & 0xffU))
+            , g(static_cast<std::uint8_t>((packed >> 8U) & 0xffU))
+            , b(static_cast<std::uint8_t>((packed >> 16U) & 0xffU))
+            , a(static_cast<std::uint8_t>((packed >> 24U) & 0xffU)) {}
 
         //
         // Pack the channels as 0xAABBGGRR.
@@ -174,4 +181,4 @@ namespace native
         //
         rect intersect(const rect &other) const;
     };
-}
+} // namespace native

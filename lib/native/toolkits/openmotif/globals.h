@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include <Xm/Xm.h>
@@ -40,12 +41,14 @@ namespace linux::openmotif
     };
 
     // Carries a portable menu command into an Xt callback.
-    struct motif_menu_callback {
+    struct motif_menu_callback
+    {
         native::app_wnd *owner = nullptr;
         int item_id = 0;
     };
 
-    struct motif_menu {
+    struct motif_menu
+    {
         Widget menu_bar = nullptr;
         native::app_wnd *owner = nullptr;
         std::vector<motif_menu_callback *> callbacks;
@@ -57,20 +60,28 @@ namespace linux::openmotif
         native::button *owner = nullptr;
     };
 
+    // Owns the Motif widgets used by one file-dialog session.
+    struct motif_file_dialog
+    {
+        Widget selector = nullptr;
+        Widget confirmation = nullptr;
+        std::string pending_path;
+    };
+
     extern XtAppContext app_instance;
     extern bool exit_requested;
 
     extern native::bindings<Widget, native::wnd *> wnd_bindings;
     extern native::bindings<Widget, native::wnd *> shell_bindings;
     extern native::bindings<Widget, native::wnd *> main_wnd_bindings;
-    extern native::bindings<
-        native::wnd *,
-        motif_gpx *> wnd_gpx_bindings;
+    extern native::bindings<native::wnd *, motif_gpx *>
+        wnd_gpx_bindings;
     extern native::bindings<uint32_t, motif_font *> font_bindings;
     extern native::bindings<uint32_t, motif_menu *> menu_bindings;
-    extern native::bindings<
-        native::button *,
-        motif_button *> button_bindings;
+    extern native::bindings<native::button *, motif_button *>
+        button_bindings;
+    extern native::bindings<native::file_dialog *, motif_file_dialog *>
+        file_dialog_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
-}
+} // namespace linux::openmotif

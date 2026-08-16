@@ -6,6 +6,7 @@
 //
 
 #include <native.h>
+#include <native/wnd.h>
 #include <bindings.h>
 #include <AppKit/AppKit.h>
 
@@ -15,48 +16,38 @@
 namespace native
 {
     void wnd::apply_position() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(control);
-            if (binding && binding->ns_button) {
-                [binding->ns_button setFrameOrigin:NSMakePoint(
-                    _bounds.p.x, _bounds.p.y)];
-            }
+        if (NSView *control = mac::view_from_control(this)) {
+            [control
+                setFrameOrigin:NSMakePoint(_bounds.p.x, _bounds.p.y)];
             return;
         }
 
         NSWindow *window = mac::wnd_bindings.handle_from_object(this);
         if (window) {
-            [window setFrameOrigin:NSMakePoint(
-                _bounds.p.x, _bounds.p.y)];
+            [window
+                setFrameOrigin:NSMakePoint(_bounds.p.x, _bounds.p.y)];
         }
     }
 
     void wnd::apply_dimensions() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(control);
-            if (binding && binding->ns_button) {
-                [binding->ns_button setFrameSize:NSMakeSize(
-                    _bounds.d.w, _bounds.d.h)];
-            }
+        if (NSView *control = mac::view_from_control(this)) {
+            [control setFrameSize:NSMakeSize(_bounds.d.w, _bounds.d.h)];
             return;
         }
 
         NSWindow *window = mac::wnd_bindings.handle_from_object(this);
         if (window) {
-            [window setContentSize:NSMakeSize(
-                _bounds.d.w, _bounds.d.h)];
+            [window
+                setContentSize:NSMakeSize(_bounds.d.w, _bounds.d.h)];
         }
     }
 
     void wnd::apply_bounds() {
         NSRect frame = NSMakeRect(
-            _bounds.p.x, _bounds.p.y,
-            _bounds.d.w, _bounds.d.h);
+            _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h);
 
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(control);
-            if (binding && binding->ns_button)
-                [binding->ns_button setFrame:frame];
+        if (NSView *control = mac::view_from_control(this)) {
+            [control setFrame:frame];
             return;
         }
 
@@ -66,18 +57,13 @@ namespace native
     }
 
     void wnd::apply_parent() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(control);
-            if (!binding || !binding->ns_button)
-                return;
-
-            [binding->ns_button removeFromSuperview];
-            NSWindow *parent = _parent
-                                   ? mac::wnd_bindings.handle_from_object(
-                                         _parent)
-                                   : nil;
+        if (NSView *control = mac::view_from_control(this)) {
+            [control removeFromSuperview];
+            NSWindow *parent =
+                _parent ? mac::wnd_bindings.handle_from_object(_parent)
+                        : nil;
             if (parent)
-                [[parent contentView] addSubview:binding->ns_button];
+                [[parent contentView] addSubview:control];
             return;
         }
 
@@ -88,9 +74,9 @@ namespace native
         if ([child parentWindow])
             [[child parentWindow] removeChildWindow:child];
 
-        NSWindow *parent = _parent
-                               ? mac::wnd_bindings.handle_from_object(_parent)
-                               : nil;
+        NSWindow *parent =
+            _parent ? mac::wnd_bindings.handle_from_object(_parent)
+                    : nil;
         if (parent)
             [parent addChildWindow:child ordered:NSWindowAbove];
     }
@@ -99,11 +85,9 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        if (auto *control = dynamic_cast<const button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(
-                const_cast<button *>(control));
-            if (binding && binding->ns_button)
-                [binding->ns_button setNeedsDisplay:YES];
+        if (NSView *control =
+                mac::view_from_control(const_cast<wnd *>(this))) {
+            [control setNeedsDisplay:YES];
             return const_cast<wnd &>(*this);
         }
 
@@ -120,13 +104,11 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        if (auto *control = dynamic_cast<const button *>(this)) {
-            auto *binding = mac::button_bindings.object_from_handle(
-                const_cast<button *>(control));
-            if (binding && binding->ns_button) {
-                [binding->ns_button setNeedsDisplayInRect:NSMakeRect(
-                    r.p.x, r.p.y, r.d.w, r.d.h)];
-            }
+        if (NSView *control =
+                mac::view_from_control(const_cast<wnd *>(this))) {
+            [control
+                setNeedsDisplayInRect:NSMakeRect(
+                                          r.p.x, r.p.y, r.d.w, r.d.h)];
             return const_cast<wnd &>(*this);
         }
 
@@ -142,7 +124,8 @@ namespace native
 
     gpx &wnd::get_gpx() const {
         if (!_created)
-            throw std::runtime_error("Cannot obtain gpx before window is created.");
+            throw std::runtime_error(
+                "Cannot obtain gpx before window is created.");
 
         if (!_gpx)
             _gpx = new gpx_wnd(this);

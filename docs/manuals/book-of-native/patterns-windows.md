@@ -17,7 +17,18 @@ The base class owns or records only portable state:
 
 Derived classes add properties and signals specific to one kind of window.
 `app_wnd`, for example, adds a title, menu, and menu-command signal. `button`
-adds its text and activation signal.
+adds its text and activation signal. `check` and `radio` add selection state,
+while `list` adds an item model and single-selection signal.
+
+`owned_wnd` adds a separate top-level owner relationship. Its public concrete
+bases are `modeless_wnd` and `modal_wnd`; neither is a control or a layout
+child.
+
+These controls are real `wnd` subclasses. Backends use native widgets where
+the platform supplies them: Athena Toggle/List, Motif ToggleButton/List,
+Win32 BUTTON/LISTBOX, Haiku BCheckBox/BRadioButton/BListView, and AppKit
+NSButton/NSTableView. SDL2 and GEMix integrate equivalent controls into their
+toolkit-owned drawing and input paths.
 
 Native window handles, widgets, views, renderers, device contexts, and toolkit
 callbacks never belong in these public classes. Backends keep them in private
@@ -99,6 +110,144 @@ the main window's active event loop.
 Parent assignment must reject hierarchy cycles. Reparenting a created object
 must also preserve the backend's lifecycle requirements; an uncreated parent
 cannot receive a created child.
+
+## Owned top-level windows
+
+Use an owned top-level window for a palette, inspector, auxiliary document
+view, or dialog that remains associated with another application window but
+needs independent screen geometry:
+
+```cpp
+class inspector_window final : public native::modeless_wnd
+{
+public:
+    explicit inspector_window(native::app_wnd &owner)
+        : native::modeless_wnd(
+              owner, "Inspector", native::rect(720, 100, 280, 480)) {}
+};
+```
+
+`get_owner()` reports the borrowed top-level owner. `get_parent()` remains
+null, because the inspector is not clipped, positioned, or arranged as a child
+control. Its bounds use the same virtual screen coordinates as `app_wnd`.
+
+The application owns both C++ objects. The owner should normally outlive its
+owned windows, but the portable owner graph safely detaches surviving objects
+in either destruction order. Destroying the owner's native resource destroys
+owned native resources first.
+
+Backends express this relationship with their native concept: an owned Win32
+top-level window, an Xt transient shell, an AppKit child window, a Haiku
+floating subset, or an event-loop association on toolkits without native
+ownership.
+
+## Modal dialogs
+
+`modal_wnd` adds a result-bearing owner-modal session. It uses the same
+construct, create, and show lifecycle as other windows:
+
+```cpp
+class confirm_window final : public native::modal_wnd
+{
+public:
+    explicit confirm_window(native::app_wnd &owner)
+        : native::modal_wnd(
+              owner, "Confirm", native::rect(260, 180, 360, 160)) {}
+};
+
+confirm_window dialog(window);
+dialog.on_modal_close.connect([](native::dialog_result result) {
+    return result == native::dialog_result::accepted;
+});
+dialog.create();
+dialog.show();
+```
+
+Showing the dialog starts modality and gives it focus. The application event
+loop continues, so paint, resize, and destruction events remain live, but the
+owner and its other owned branches cannot receive user input. Calling
+`close(dialog_result::accepted)` or
+`close(dialog_result::cancelled)` destroys the native dialog, restores the
+previous eligible window, and emits `on_modal_close` exactly once. Closing it
+through the window manager is cancellation.
+
+Modal sessions stack. A second dialog should normally use the first dialog as
+its owner; closing it restores the first dialog while the original owner stays
+blocked.
+
+File-open, file-save, folder, print, color, font, message, and similar system
+dialogs are modal windows under this model. A backend may present an operating
+system panel instead of a drawable Native window, but it must adapt that panel
+to the same owner, modal-session, focus restoration, result, and close-signal
+contract. Native dialogs do not get a separate nested portable event loop.
+
+## File open and save dialogs
+
+`open_file_dialog` and `save_file_dialog` specialize `file_dialog`, which in
+turn specializes `modal_wnd`. They are logical system-panel objects: their
+owner and result semantics are window semantics, but they have no paintable
+client area and do not use ordinary window geometry hooks.
+
+Configure the dialog, connect its completion signal, then create and show it:
+
+```cpp
+native::open_file_dialog dialog(window, "Open drawing");
+dialog.set_initial_path("/home/user/Documents");
+dialog.set_filters({
+    {"Images", {"*.png", "*.jpg", "*.jpeg"}},
+    {"All files", {"*"}}
+});
+dialog.set_allow_multiple(true);
+dialog.on_modal_close.connect([&](native::dialog_result result) {
+    if (result == native::dialog_result::accepted) {
+        for (const std::string &path : dialog.get_paths())
+            open_document(path);
+    }
+    return false;
+});
+dialog.create();
+dialog.show();
+```
+
+`get_path()` returns the first selected path and is convenient for the common
+single-file case. `get_paths()` preserves chooser order. A cancelled dialog
+has no selected paths. Paths are UTF-8 strings; `file_filter` patterns use the
+familiar forms such as `*.png` and `*.txt`.
+
+A save dialog adds the filename-specific options:
+
+```cpp
+native::save_file_dialog dialog(window, "Export image");
+dialog.set_initial_path("/home/user/Pictures");
+dialog.set_suggested_name("drawing");
+dialog.set_default_extension("png");
+dialog.set_confirm_overwrite(true);
+dialog.set_filters({{"PNG image", {"*.png"}}});
+dialog.on_modal_close.connect([&](native::dialog_result result) {
+    if (result == native::dialog_result::accepted)
+        export_image(dialog.get_path());
+    return false;
+});
+dialog.create();
+dialog.show();
+```
+
+Use the close signal instead of assuming completion occurs before or after
+`show()` returns. Windows, GEM, and Linux desktop chooser processes are
+synchronous; AppKit and Haiku panels and the Motif widget complete through
+their native event dispatch. Both forms produce the same signal and result.
+
+The backend selection follows native facilities: Windows Common Item Dialogs,
+AppKit `NSOpenPanel`/`NSSavePanel`, Haiku `BFilePanel`, Motif
+`XmFileSelectionBox`, and GEM AES `fsel_input`. Athena and SDL2 do not include
+a standard chooser, so those Linux backends invoke Zenity or KDialog directly
+without a shell. If neither desktop chooser is installed, `show()` cancels the
+modal session and reports that runtime requirement with an exception.
+
+Some older standard selectors expose fewer options. Motif and GEM return one
+path even when multiple selection was requested. AppKit and Haiku retain their
+standard overwrite safeguards even if confirmation was disabled. These are
+conservative native degradations, not separate public behavior.
 
 ## Layout ownership and geometry
 

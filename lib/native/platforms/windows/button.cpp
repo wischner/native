@@ -12,13 +12,15 @@
 #include <windows.h>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
 namespace native
 {
     void button::apply_text() {
-        auto *binding = windows::button_bindings.object_from_handle(this);
+        auto *binding =
+            windows::button_bindings.object_from_handle(this);
         if (!binding || !binding->hwnd)
             throw std::runtime_error(
                 "Windows: Missing HWND binding for button.");
@@ -33,29 +35,35 @@ namespace native
 
         wnd *p = get_parent();
         if (!p)
-            throw std::runtime_error("Windows: button requires a parent window.");
+            throw std::runtime_error(
+                "Windows: button requires a parent window.");
         if (!p->get_created())
             throw std::runtime_error(
                 "Windows: button parent is not created.");
 
         HWND parent_hwnd = windows::wnd_bindings.handle_from_object(p);
         if (!parent_hwnd)
-            throw std::runtime_error("Windows: button parent is not created.");
+            throw std::runtime_error(
+                "Windows: button parent is not created.");
 
         std::wstring text_w = windows::utf8_to_wide(_text);
-        HWND hwnd = CreateWindowExW(
-            0,
-            L"BUTTON",
-            text_w.c_str(),
-            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-            _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h,
-            parent_hwnd,
-            nullptr,
-            GetModuleHandle(nullptr),
-            nullptr);
+        HWND hwnd =
+            CreateWindowExW(0,
+                            L"BUTTON",
+                            text_w.c_str(),
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                            _bounds.p.x,
+                            _bounds.p.y,
+                            _bounds.d.w,
+                            _bounds.d.h,
+                            parent_hwnd,
+                            nullptr,
+                            GetModuleHandle(nullptr),
+                            nullptr);
 
         if (!hwnd)
-            throw std::runtime_error("Windows: Failed to create button.");
+            throw std::runtime_error(
+                "Windows: Failed to create button.");
 
         auto *self = const_cast<button *>(this);
         windows::wnd_bindings.register_pair(hwnd, self);
@@ -71,11 +79,14 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("Windows: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "Windows: Cannot show button before it is created.");
 
-        auto *h = windows::button_bindings.object_from_handle(const_cast<button *>(this));
+        auto *h = windows::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!h || !h->hwnd)
-            throw std::runtime_error("Windows: Missing HWND binding for button.");
+            throw std::runtime_error(
+                "Windows: Missing HWND binding for button.");
 
         ShowWindow(h->hwnd, SW_SHOW);
         UpdateWindow(h->hwnd);

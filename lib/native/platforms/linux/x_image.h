@@ -1,5 +1,6 @@
 //
-// Converts Native RGBA pixels to and from an X11 TrueColor visual.
+// Declares conversion between Native RGBA pixels and X11 TrueColor
+// visuals for the X11 and OpenMotif graphics backends.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -7,101 +8,48 @@
 
 #pragma once
 
-#include <cstdlib>
-#include <stdexcept>
-
 #include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 #include <native/geometry.h>
 
+namespace native
+{
+    class img;
+}
+
 namespace native::detail
 {
-    inline unsigned mask_shift(unsigned long mask) {
-        unsigned shift = 0;
-        if (mask == 0)
-            return shift;
-        while ((mask & 1UL) == 0) {
-            mask >>= 1;
-            ++shift;
-        }
-        return shift;
-    }
+    // Return the low-bit shift of an X11 visual channel mask.
+    unsigned mask_shift(unsigned long mask);
 
-    inline unsigned long channel_to_mask(
-        std::uint8_t channel,
-        unsigned long mask) {
-        if (mask == 0)
-            return 0;
-        const unsigned shift = mask_shift(mask);
-        const unsigned long maximum = mask >> shift;
-        return ((static_cast<unsigned long>(channel) * maximum + 127UL) /
-                255UL)
-               << shift;
-    }
+    // Scale an eight-bit channel into an X11 visual channel mask.
+    unsigned long channel_to_mask(std::uint8_t channel,
+                                  unsigned long mask);
 
-    inline std::uint8_t channel_from_mask(
-        unsigned long pixel,
-        unsigned long mask) {
-        if (mask == 0)
-            return 0;
-        const unsigned shift = mask_shift(mask);
-        const unsigned long maximum = mask >> shift;
-        const unsigned long value = (pixel & mask) >> shift;
-        return static_cast<std::uint8_t>(
-            (value * 255UL + maximum / 2UL) / maximum);
-    }
+    // Scale an X11 visual channel mask into an eight-bit channel.
+    std::uint8_t channel_from_mask(unsigned long pixel,
+                                   unsigned long mask);
 
-    inline unsigned long x_pixel(Visual *visual, rgba color) {
-        return channel_to_mask(color.r, visual->red_mask) |
-               channel_to_mask(color.g, visual->green_mask) |
-               channel_to_mask(color.b, visual->blue_mask);
-    }
+    // Convert one Native color into an X11 TrueColor pixel value.
+    unsigned long x_pixel(Visual *visual, rgba color);
 
-    inline rgba rgba_from_x_pixel(Visual *visual, unsigned long pixel) {
-        return rgba(
-            channel_from_mask(pixel, visual->red_mask),
-            channel_from_mask(pixel, visual->green_mask),
-            channel_from_mask(pixel, visual->blue_mask),
-            255);
-    }
+    // Convert one X11 TrueColor pixel value into an opaque Native
+    // color.
+    rgba rgba_from_x_pixel(Visual *visual, unsigned long pixel);
 
-    inline XImage *x_image_from_rgba(
-        Display *display,
-        const rgba *pixels,
-        dim width,
-        dim height) {
-        const int screen = DefaultScreen(display);
-        Visual *visual = DefaultVisual(display, screen);
-        XImage *image = XCreateImage(
-            display,
-            visual,
-            DefaultDepth(display, screen),
-            ZPixmap,
-            0,
-            nullptr,
-            width,
-            height,
-            32,
-            0);
-        if (!image)
-            throw std::runtime_error("X11: unable to create image");
-        image->data = static_cast<char *>(std::calloc(
-            static_cast<std::size_t>(image->bytes_per_line),
-            height));
-        if (!image->data) {
-            XDestroyImage(image);
-            throw std::bad_alloc();
-        }
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                XPutPixel(
-                    image,
-                    x,
-                    y,
-                    x_pixel(visual, pixels[y * width + x]));
-            }
-        }
-        return image;
-    }
-}
+    // Allocate an XImage populated from top-to-bottom RGBA pixels.
+    XImage *x_image_from_rgba(Display *display,
+                              const rgba *pixels,
+                              dim width,
+                              dim height);
+
+    // Composite an RGBA image over an X11 drawable. The drawable is
+    // assumed to use the display's default TrueColor visual.
+    void blend_x_image(Display *display,
+                       Drawable drawable,
+                       GC gc,
+                       const img &source,
+                       point destination,
+                       const rect &clip,
+                       size drawable_size);
+} // namespace native::detail

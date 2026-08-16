@@ -22,8 +22,8 @@ namespace native
 {
 
     gpx_img::gpx_img(const img &image)
-        : _img(image), _clip(0, 0, image.w(), image.h()) {
-    }
+        : _img(image)
+        , _clip(0, 0, image.w(), image.h()) {}
 
     gpx &gpx_img::set_clip(const rect &r) {
         _clip = r;
@@ -51,7 +51,7 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_img::draw_text(const std::string &text, point p) {
+    gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         Display *display = linux::openmotif::cached_display;
@@ -59,18 +59,24 @@ namespace native
             return *this;
         const int screen = DefaultScreen(display);
         Visual *visual = DefaultVisual(display, screen);
-        Pixmap pixmap = XCreatePixmap(
-            display,
-            DefaultRootWindow(display),
-            _img.w(),
-            _img.h(),
-            DefaultDepth(display, screen));
+        Pixmap pixmap = XCreatePixmap(display,
+                                      DefaultRootWindow(display),
+                                      _img.w(),
+                                      _img.h(),
+                                      DefaultDepth(display, screen));
         GC gc = XCreateGC(display, pixmap, 0, nullptr);
         XImage *upload = detail::x_image_from_rgba(
             display, _img.pixels(), _img.w(), _img.h());
-        XPutImage(
-            display, pixmap, gc, upload,
-            0, 0, 0, 0, _img.w(), _img.h());
+        XPutImage(display,
+                  pixmap,
+                  gc,
+                  upload,
+                  0,
+                  0,
+                  0,
+                  0,
+                  _img.w(),
+                  _img.h());
         XDestroyImage(upload);
         XSetForeground(display, gc, detail::x_pixel(visual, _ink));
         auto *font = linux::openmotif::font_bindings.object_from_handle(
@@ -78,30 +84,29 @@ namespace native
         if (font && font->xfont)
             XSetFont(display, gc, font->xfont);
 
-        XRectangle xr = {
-            static_cast<short>(_clip.p.x),
-            static_cast<short>(_clip.p.y),
-            static_cast<unsigned short>(_clip.d.w),
-            static_cast<unsigned short>(_clip.d.h)};
+        XRectangle xr = {static_cast<short>(_clip.p.x),
+                         static_cast<short>(_clip.p.y),
+                         static_cast<unsigned short>(_clip.d.w),
+                         static_cast<unsigned short>(_clip.d.h)};
         XSetClipRectangles(display, gc, 0, 0, &xr, 1, Unsorted);
 
         const int baseline = p.y + get_font_metrics().ascent;
-        XDrawString(
-            display,
-            pixmap,
-            gc,
-            p.x,
-            baseline,
-            text.c_str(),
-            text.length());
+        XDrawString(display,
+                    pixmap,
+                    gc,
+                    p.x,
+                    baseline,
+                    text.c_str(),
+                    text.length());
 
-        XImage *result = XGetImage(
-            display,
-            pixmap,
-            0, 0,
-            _img.w(), _img.h(),
-            AllPlanes,
-            ZPixmap);
+        XImage *result = XGetImage(display,
+                                   pixmap,
+                                   0,
+                                   0,
+                                   _img.w(),
+                                   _img.h(),
+                                   AllPlanes,
+                                   ZPixmap);
         if (result) {
             rgba *destination = const_cast<rgba *>(_img.pixels());
             for (int y = 0; y < _img.h(); ++y) {
@@ -110,7 +115,8 @@ namespace native
                         visual, XGetPixel(result, x, y));
                     rgba &old = destination[y * _img.w() + x];
                     const bool changed = converted.r != old.r ||
-                        converted.g != old.g || converted.b != old.b;
+                                         converted.g != old.g ||
+                                         converted.b != old.b;
                     converted.a = changed ? _ink.a : old.a;
                     old = converted;
                 }

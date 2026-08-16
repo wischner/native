@@ -6,19 +6,21 @@
 //
 
 #include <stdexcept>
-#include <vector>
 #include <windows.h>
 
 #include <native.h>
 #include "gpx_wnd.h"
 #include "globals.h"
 
-static void apply_gdi_state(HDC hdc, native::gpx_wnd *self, windows::win_gpx *cache) {
+static void apply_gdi_state(HDC hdc,
+                            native::gpx_wnd *self,
+                            windows::win_gpx *cache) {
     if (!cache)
         return;
 
     // Set pen if color or thickness changed
-    if (cache->current_fg != self->get_ink() || cache->current_thickness != self->get_pen()) {
+    if (cache->current_fg != self->get_ink() ||
+        cache->current_thickness != self->get_pen()) {
         if (cache->pen)
             DeleteObject(cache->pen);
 
@@ -41,11 +43,10 @@ static void apply_gdi_state(HDC hdc, native::gpx_wnd *self, windows::win_gpx *ca
     SelectObject(hdc, cache->brush);
 
     // Set clip region
-    HRGN rgn = CreateRectRgn(
-        self->get_clip().p.x,
-        self->get_clip().p.y,
-        self->get_clip().x2(),
-        self->get_clip().y2());
+    HRGN rgn = CreateRectRgn(self->get_clip().p.x,
+                             self->get_clip().p.y,
+                             self->get_clip().x2(),
+                             self->get_clip().y2());
     SelectClipRgn(hdc, rgn);
     DeleteObject(rgn);
 }
@@ -54,13 +55,16 @@ namespace native
 {
 
     gpx_wnd::gpx_wnd(const wnd *window, point offset)
-        : _wnd(const_cast<wnd *>(window)), _offset(offset) {
+        : _wnd(const_cast<wnd *>(window))
+        , _offset(offset) {
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         if (!hwnd)
-            throw std::runtime_error("Windows: No HWND available for gpx_wnd");
+            throw std::runtime_error(
+                "Windows: No HWND available for gpx_wnd");
 
         if (!windows::wnd_gpx_bindings.object_from_handle(_wnd))
-            windows::wnd_gpx_bindings.register_pair(_wnd, new windows::win_gpx());
+            windows::wnd_gpx_bindings.register_pair(
+                _wnd, new windows::win_gpx());
         const size dimensions = window->get_dimensions();
         _clip = rect(0, 0, dimensions.w, dimensions.h);
     }
@@ -106,7 +110,8 @@ namespace native
     gpx &gpx_wnd::draw_line(point from, point to) {
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         HDC hdc = GetDC(hwnd);
-        auto *cache = windows::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache =
+            windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
         apply_gdi_state(hdc, this, cache);
 
@@ -120,15 +125,15 @@ namespace native
     gpx &gpx_wnd::draw_rect(rect r, bool filled) {
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         HDC hdc = GetDC(hwnd);
-        auto *cache = windows::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache =
+            windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
         apply_gdi_state(hdc, this, cache);
 
         if (filled) {
             RECT rect = {r.p.x, r.p.y, r.x2(), r.y2()};
             FillRect(hdc, &rect, cache->brush);
-        }
-        else {
+        } else {
             Rectangle(hdc, r.p.x, r.p.y, r.x2(), r.y2());
         }
 
@@ -136,16 +141,18 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+    gpx &gpx_wnd::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         HDC hdc = GetDC(hwnd);
-        auto *cache = windows::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache =
+            windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
         apply_gdi_state(hdc, this, cache);
 
-        auto *fh = windows::font_bindings.object_from_handle(get_font().id());
+        auto *fh =
+            windows::font_bindings.object_from_handle(get_font().id());
         if (fh && fh->hfont)
             SelectObject(hdc, fh->hfont);
 
@@ -155,11 +162,7 @@ namespace native
 
         const std::wstring wide = windows::utf8_to_wide(text);
         TextOutW(
-            hdc,
-            p.x,
-            p.y,
-            wide.data(),
-            static_cast<int>(wide.size()));
+            hdc, p.x, p.y, wide.data(), static_cast<int>(wide.size()));
 
         ReleaseDC(hwnd, hdc);
         return *this;
@@ -168,11 +171,11 @@ namespace native
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
         HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
         HDC hdc = GetDC(hwnd);
-        auto *cache = windows::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache =
+            windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
         apply_gdi_state(hdc, this, cache);
 
-        // Create DIB from RGBA pixel data
         BITMAPINFO bmi = {};
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         bmi.bmiHeader.biWidth = src.w();
@@ -181,26 +184,50 @@ namespace native
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        std::vector<std::uint8_t> bgra(
-            static_cast<std::size_t>(src.w()) * src.h() * 4);
+        void *dib_pixels = nullptr;
+        HBITMAP bitmap = CreateDIBSection(
+            hdc, &bmi, DIB_RGB_COLORS, &dib_pixels, nullptr, 0);
+        if (!bitmap || !dib_pixels) {
+            if (bitmap)
+                DeleteObject(bitmap);
+            ReleaseDC(hwnd, hdc);
+            return *this;
+        }
+
+        auto *bgra = static_cast<std::uint8_t *>(dib_pixels);
         for (std::size_t index = 0;
              index < static_cast<std::size_t>(src.w()) * src.h();
              ++index) {
-            bgra[index * 4] = src.pixels()[index].b;
-            bgra[index * 4 + 1] = src.pixels()[index].g;
-            bgra[index * 4 + 2] = src.pixels()[index].r;
-            bgra[index * 4 + 3] = src.pixels()[index].a;
+            const rgba pixel = src.pixels()[index];
+            bgra[index * 4] = static_cast<std::uint8_t>(
+                (static_cast<unsigned>(pixel.b) * pixel.a + 127U) /
+                255U);
+            bgra[index * 4 + 1] = static_cast<std::uint8_t>(
+                (static_cast<unsigned>(pixel.g) * pixel.a + 127U) /
+                255U);
+            bgra[index * 4 + 2] = static_cast<std::uint8_t>(
+                (static_cast<unsigned>(pixel.r) * pixel.a + 127U) /
+                255U);
+            bgra[index * 4 + 3] = pixel.a;
         }
 
-        // Draw DIB directly.
-        StretchDIBits(
-            hdc,
-            dst.x, dst.y, src.w(), src.h(),
-            0, 0, src.w(), src.h(),
-            bgra.data(),
-            &bmi,
-            DIB_RGB_COLORS,
-            SRCCOPY);
+        HDC memory_dc = CreateCompatibleDC(hdc);
+        HGDIOBJ previous = SelectObject(memory_dc, bitmap);
+        BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+        AlphaBlend(hdc,
+                   dst.x,
+                   dst.y,
+                   src.w(),
+                   src.h(),
+                   memory_dc,
+                   0,
+                   0,
+                   src.w(),
+                   src.h(),
+                   blend);
+        SelectObject(memory_dc, previous);
+        DeleteDC(memory_dc);
+        DeleteObject(bitmap);
 
         ReleaseDC(hwnd, hdc);
         return *this;

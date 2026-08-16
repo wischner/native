@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
@@ -25,7 +26,8 @@ namespace native
 
         wnd *parent = get_parent();
         if (!parent)
-            throw std::runtime_error("GEMix: button requires a parent.");
+            throw std::runtime_error(
+                "GEMix: button requires a parent.");
         if (!parent->get_created())
             throw std::runtime_error(
                 "GEMix: button parent is not created.");
@@ -50,7 +52,9 @@ namespace native
         self->on_native_destroy();
 
         linux::gemix::buttons.erase(
-            std::remove(linux::gemix::buttons.begin(), linux::gemix::buttons.end(), self),
+            std::remove(linux::gemix::buttons.begin(),
+                        linux::gemix::buttons.end(),
+                        self),
             linux::gemix::buttons.end());
     }
-}
+} // namespace native

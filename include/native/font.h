@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace native
 {
@@ -36,25 +38,58 @@ namespace native
     {
         system,
         fixed,
+        icon_label,
         title,
-        small_,
+        small,
         control
     };
 
-    // Describes a requested font independently of a native toolkit.
+    // Identifies how a font resource entered the portable API.
+    enum class font_source
+    {
+        invalid,
+        stock,
+        file,
+        memory
+    };
+
+    // Describes one installed face without exposing a native handle.
+    struct font_description
+    {
+        std::string family;
+        std::string style;
+        std::string face_name;
+        std::string path;
+        int weight = 400;
+        std::uint32_t face_index = 0;
+        bool italic = false;
+        bool fixed_pitch = false;
+    };
+
+    // Describes a stock or portable font using backend-neutral values.
     struct font_spec
     {
-        // Family name, file path, or backend-native description.
-        std::string name;
+        // Family and style reported by the selected face.
+        std::string family;
+        std::string style;
 
-        // Point size, or zero to use the backend default.
+        // File path for file-backed fonts; empty for memory fonts.
+        std::string resource;
+
+        // Pixel line size, or zero for a backend-selected stock size.
         int size = 0;
 
-        // Request a bold face when the backend supports one.
-        bool bold = false;
+        // CSS-compatible weight reported by the selected face.
+        int weight = 400;
 
-        // Request an italic face when the backend supports one.
+        // Whether the selected face reports an italic style.
         bool italic = false;
+
+        // Face selected from a TrueType collection.
+        std::uint32_t face_index = 0;
+
+        // Resource category represented by this description.
+        font_source source = font_source::invalid;
     };
 
     // Owns a backend font registration through an opaque identifier.
@@ -95,12 +130,42 @@ namespace native
         std::uint32_t id() const;
 
         //
-        // Create a font from a cross-platform description.
+        // Create a portable TrueType font by reading a complete file.
+        //
+        // Parameters:
+        //      path        - TrueType/OpenType file or collection.
+        //      size        - Positive pixel line size.
+        //      face_index  - Zero-based face within a collection.
         //
         // Returns:
-        //      A font handle, which may be invalid if creation fails.
+        //      An invalid font when validation or creation fails.
         //
-        static font_t create(const font_spec &spec);
+        static font_t from_file(
+            const std::string &path,
+            int size,
+            std::uint32_t face_index = 0);
+
+        //
+        // Create a portable TrueType font by copying encoded bytes.
+        //
+        // Parameters:
+        //      data        - Borrowed encoded bytes copied before
+        //                    return.
+        //      data_size   - Number of accessible bytes.
+        //      size        - Positive pixel line size.
+        //      face_index  - Zero-based face within a collection.
+        //
+        // Returns:
+        //      An invalid font when validation or creation fails.
+        //
+        static font_t from_memory(
+            const std::uint8_t *data,
+            std::size_t data_size,
+            int size,
+            std::uint32_t face_index = 0);
+
+        // Enumerate installed TrueType/OpenType faces on this machine.
+        static std::vector<font_description> enumerate_installed();
 
         // Return the process-lifetime stock font for a semantic role.
         static const font_t &stock(font_role role);
@@ -118,4 +183,4 @@ namespace native
         std::uint32_t _id = 0;
         font_spec _spec;
     };
-}
+} // namespace native

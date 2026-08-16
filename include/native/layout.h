@@ -140,19 +140,18 @@ namespace native
             int margin = 0);
 
         // Move a nested grid placement.
-        grid_child_layout_def(
-            grid_child_layout_def &&) noexcept;
+        grid_child_layout_def(grid_child_layout_def &&) noexcept;
 
         // Move-assign a nested grid placement.
-        grid_child_layout_def &operator=(
-            grid_child_layout_def &&) noexcept;
+        grid_child_layout_def &
+        operator=(grid_child_layout_def &&) noexcept;
 
         // Nested grid placements own their layout and cannot be copied.
         grid_child_layout_def(const grid_child_layout_def &) = delete;
 
         // Nested grid placements cannot be copy-assigned.
-        grid_child_layout_def &operator=(
-            const grid_child_layout_def &) = delete;
+        grid_child_layout_def &
+        operator=(const grid_child_layout_def &) = delete;
     };
 
     // Wrap a row length for the stream-style grid builder.
@@ -162,22 +161,21 @@ namespace native
     grid_column_def column(const grid_length &length);
 
     // Describe a child window's grid placement.
-    grid_cell_def cell(
-        wnd &child,
-        int row,
-        int column,
-        int row_span = 1,
-        int column_span = 1,
-        int margin = 0);
+    grid_cell_def cell(wnd &child,
+                       int row,
+                       int column,
+                       int row_span = 1,
+                       int column_span = 1,
+                       int margin = 0);
 
     // Describe an owning nested grid's placement.
-    grid_child_layout_def child_grid(
-        std::unique_ptr<grid_layout_manager> layout,
-        int row,
-        int column,
-        int row_span = 1,
-        int column_span = 1,
-        int margin = 0);
+    grid_child_layout_def
+    child_grid(std::unique_ptr<grid_layout_manager> layout,
+               int row,
+               int column,
+               int row_span = 1,
+               int column_span = 1,
+               int margin = 0);
 
     // Arranges children in fixed and proportionally weighted tracks.
     class grid_layout_manager final : public layout_manager
@@ -196,22 +194,21 @@ namespace native
         grid_layout_manager &add_column(grid_length length);
 
         // Register or update a child window's grid placement.
-        grid_layout_manager &add(
-            wnd &child,
-            int row,
-            int column,
-            int row_span = 1,
-            int column_span = 1,
-            int margin = 0);
+        grid_layout_manager &add(wnd &child,
+                                 int row,
+                                 int column,
+                                 int row_span = 1,
+                                 int column_span = 1,
+                                 int margin = 0);
 
         // Add an owning nested grid at a specified placement.
-        grid_layout_manager &add_child_grid(
-            std::unique_ptr<grid_layout_manager> layout,
-            int row,
-            int column,
-            int row_span = 1,
-            int column_span = 1,
-            int margin = 0);
+        grid_layout_manager &
+        add_child_grid(std::unique_ptr<grid_layout_manager> layout,
+                       int row,
+                       int column,
+                       int row_span = 1,
+                       int column_span = 1,
+                       int margin = 0);
 
         // Append a row through the stream-style interface.
         grid_layout_manager &operator<<(const grid_row_def &row);
@@ -223,8 +220,7 @@ namespace native
         grid_layout_manager &operator<<(const grid_cell_def &cell);
 
         // Place an owning nested grid through the stream interface.
-        grid_layout_manager &operator<<(
-            grid_child_layout_def &&nested);
+        grid_layout_manager &operator<<(grid_child_layout_def &&nested);
 
         // Arrange all direct and nested children within bounds.
         void relayout(wnd *parent, const rect &bounds) override;
@@ -269,4 +265,4 @@ namespace native
         int _next_auto_row = 0;
         int _next_auto_column = 0;
     };
-}
+} // namespace native

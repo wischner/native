@@ -13,4 +13,4 @@ namespace native
     wnd *gpx_wnd::window() const {
         return _wnd;
     }
-}
+} // namespace native

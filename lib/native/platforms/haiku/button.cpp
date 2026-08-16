@@ -12,6 +12,7 @@
 #include <Window.h>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
@@ -35,14 +36,12 @@ namespace
     class native_button : public BButton
     {
     public:
-        native_button(
-            BRect frame,
-            const char *name,
-            const char *label,
-            native::button *owner)
-            : BButton(frame, name, label, new BMessage('nbtn')),
-              _owner(owner) {
-        }
+        native_button(BRect frame,
+                      const char *name,
+                      const char *label,
+                      native::button *owner)
+            : BButton(frame, name, label, new BMessage('nbtn'))
+            , _owner(owner) {}
 
         status_t Invoke(BMessage *message = nullptr) override {
             if (_owner)
@@ -60,8 +59,7 @@ namespace native
     void button::apply_text() {
         auto *binding = haiku::button_bindings.object_from_handle(this);
         if (!binding || !binding->button)
-            throw std::runtime_error(
-                "Haiku: Missing BButton binding.");
+            throw std::runtime_error("Haiku: Missing BButton binding.");
 
         BWindow *window = binding->button->Window();
         with_locked_window(window, [&](BWindow *) {
@@ -75,14 +73,16 @@ namespace native
 
         wnd *p = get_parent();
         if (!p)
-            throw std::runtime_error("Haiku: button requires a parent window.");
+            throw std::runtime_error(
+                "Haiku: button requires a parent window.");
         if (!p->get_created())
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
         BWindow *window = haiku::wnd_bindings.handle_from_object(p);
         if (!window)
-            throw std::runtime_error("Haiku: button parent is not created.");
+            throw std::runtime_error(
+                "Haiku: button parent is not created.");
 
         auto *self = const_cast<button *>(this);
 
@@ -113,9 +113,11 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("Haiku: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "Haiku: Cannot show button before it is created.");
 
-        auto *h = haiku::button_bindings.object_from_handle(const_cast<button *>(this));
+        auto *h = haiku::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!h || !h->button)
             throw std::runtime_error("Haiku: Missing BButton binding.");
 

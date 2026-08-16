@@ -1,6 +1,7 @@
 //
-// Implements the X11 application event loop through Xt so Athena widgets
-// receive their standard translations, callbacks, and popup behavior.
+// Implements the X11 application event loop through Xt so Athena
+// widgets receive their standard translations, callbacks, and popup
+// behavior.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -11,6 +12,7 @@
 #include <X11/Intrinsic.h>
 
 #include <native.h>
+#include <native/app.h>
 
 #include "globals.h"
 
@@ -35,8 +37,7 @@ namespace native
         linux::x11::wnd_gpx_bindings.clear();
 
         if (linux::x11::app_instance) {
-            XtDestroyApplicationContext(
-                linux::x11::app_instance);
+            XtDestroyApplicationContext(linux::x11::app_instance);
             linux::x11::app_instance = nullptr;
         }
 

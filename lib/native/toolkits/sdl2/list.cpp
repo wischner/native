@@ -1,0 +1,103 @@
+//
+// Implements the SDL-emulated list control.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <algorithm>
+#include <stdexcept>
+#include <native.h>
+#include <native/list.h>
+#include "globals.h"
+namespace linux::sdl2
+{
+    bool
+    handle_list_mouse(native::wnd *owner, int x, int y, bool released) {
+        if (!released)
+            return false;
+        for (auto *c : lists) {
+            auto *b = list_bindings.object_from_handle(c);
+            auto r = c->get_bounds();
+            if (!b || b->parent != owner || !b->visible ||
+                !r.contains(native::point(x, y)))
+                continue;
+            int index = (y - r.p.y - 1) / 20;
+            if (index >= 0 &&
+                index < static_cast<int>(c->get_items().size()))
+                c->on_native_selection(index);
+            owner->invalidate();
+            return true;
+        }
+        return false;
+    }
+    void render_lists(native::wnd *owner, native::gpx &g) {
+        auto painter = native::theme::create(g);
+        for (auto *c : lists) {
+            auto *b = list_bindings.object_from_handle(c);
+            if (b && b->parent == owner && b->visible)
+                painter->draw_list(c->get_bounds(),
+                                   c->get_items(),
+                                   c->get_selected_index());
+        }
+    }
+} // namespace linux::sdl2
+namespace native
+{
+    void list::apply_items() {
+        auto *b = linux::sdl2::list_bindings.object_from_handle(this);
+        if (!b)
+            throw std::runtime_error("SDL2: Missing list binding.");
+        b->items = _items;
+        if (b->parent)
+            b->parent->invalidate();
+    }
+    void list::apply_selected_index() {
+        auto *b = linux::sdl2::list_bindings.object_from_handle(this);
+        if (!b)
+            throw std::runtime_error("SDL2: Missing list binding.");
+        b->selected_index = _selected_index;
+        if (b->parent)
+            b->parent->invalidate();
+    }
+    void list::create() const {
+        if (_created)
+            return;
+        auto *p = get_parent();
+        if (!p || !p->get_created())
+            throw std::runtime_error(
+                "SDL2: list requires a created parent.");
+        auto *self = const_cast<list *>(this);
+        auto *b = new linux::sdl2::sdl2_list();
+        b->parent = p;
+        b->bounds = _bounds;
+        b->items = _items;
+        b->selected_index = _selected_index;
+        linux::sdl2::list_bindings.register_pair(self, b);
+        linux::sdl2::lists.push_back(self);
+        _created = true;
+        self->on_wnd_create.emit();
+    }
+    void list::show() const {
+        auto *b = linux::sdl2::list_bindings.object_from_handle(
+            const_cast<list *>(this));
+        if (!_created || !b)
+            throw std::runtime_error("SDL2: list is not created.");
+        b->visible = true;
+        if (b->parent)
+            b->parent->invalidate();
+    }
+    void list::destroy() const {
+        if (!_created)
+            return;
+        auto *self = const_cast<list *>(this);
+        auto *b = linux::sdl2::list_bindings.object_from_handle(self);
+        self->on_native_destroy();
+        auto &lists = linux::sdl2::lists;
+        lists.erase(std::remove(lists.begin(), lists.end(), self),
+                    lists.end());
+        if (b && b->parent)
+            b->parent->invalidate();
+        linux::sdl2::list_bindings.unregister_by_handle(self);
+        delete b;
+    }
+} // namespace native

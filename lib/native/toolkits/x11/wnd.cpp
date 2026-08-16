@@ -13,6 +13,7 @@
 #include <X11/Xaw/Form.h>
 
 #include <native.h>
+#include <native/wnd.h>
 
 #include "gpx_wnd.h"
 #include "globals.h"
@@ -27,17 +28,14 @@ namespace native
 
         if (shell) {
             XtVaSetValues(
-                shell,
-                XtNx, _bounds.p.x,
-                XtNy, _bounds.p.y,
-                nullptr);
-        }
-        else if (widget) {
-            XtVaSetValues(
-                widget,
-                XtNhorizDistance, _bounds.p.x,
-                XtNvertDistance, _bounds.p.y,
-                nullptr);
+                shell, XtNx, _bounds.p.x, XtNy, _bounds.p.y, nullptr);
+        } else if (widget) {
+            XtVaSetValues(widget,
+                          XtNhorizDistance,
+                          _bounds.p.x,
+                          XtNvertDistance,
+                          _bounds.p.y,
+                          nullptr);
         }
     }
 
@@ -48,18 +46,19 @@ namespace native
             linux::x11::wnd_bindings.handle_from_object(this);
 
         if (shell) {
-            XtVaSetValues(
-                shell,
-                XtNwidth, _bounds.d.w,
-                XtNheight, _bounds.d.h,
-                nullptr);
-        }
-        else if (widget) {
-            XtVaSetValues(
-                widget,
-                XtNwidth, _bounds.d.w,
-                XtNheight, _bounds.d.h,
-                nullptr);
+            XtVaSetValues(shell,
+                          XtNwidth,
+                          _bounds.d.w,
+                          XtNheight,
+                          _bounds.d.h,
+                          nullptr);
+        } else if (widget) {
+            XtVaSetValues(widget,
+                          XtNwidth,
+                          _bounds.d.w,
+                          XtNheight,
+                          _bounds.d.h,
+                          nullptr);
         }
     }
 
@@ -70,42 +69,43 @@ namespace native
             linux::x11::wnd_bindings.handle_from_object(this);
 
         if (shell) {
-            XtVaSetValues(
-                shell,
-                XtNx, _bounds.p.x,
-                XtNy, _bounds.p.y,
-                XtNwidth, _bounds.d.w,
-                XtNheight, _bounds.d.h,
-                nullptr);
-        }
-        else if (widget) {
-            XtVaSetValues(
-                widget,
-                XtNhorizDistance, _bounds.p.x,
-                XtNvertDistance, _bounds.p.y,
-                XtNwidth, _bounds.d.w,
-                XtNheight, _bounds.d.h,
-                nullptr);
+            XtVaSetValues(shell,
+                          XtNx,
+                          _bounds.p.x,
+                          XtNy,
+                          _bounds.p.y,
+                          XtNwidth,
+                          _bounds.d.w,
+                          XtNheight,
+                          _bounds.d.h,
+                          nullptr);
+        } else if (widget) {
+            XtVaSetValues(widget,
+                          XtNhorizDistance,
+                          _bounds.p.x,
+                          XtNvertDistance,
+                          _bounds.p.y,
+                          XtNwidth,
+                          _bounds.d.w,
+                          XtNheight,
+                          _bounds.d.h,
+                          nullptr);
         }
     }
 
     void wnd::apply_parent() {
-        auto *control = dynamic_cast<button *>(this);
-        if (!control)
+        if (dynamic_cast<app_wnd *>(this))
             return;
 
-        auto *binding =
-            linux::x11::button_bindings.object_from_handle(control);
-        const bool was_visible =
-            binding &&
-            binding->widget &&
-            XtIsManaged(binding->widget);
+        Widget widget =
+            linux::x11::wnd_bindings.handle_from_object(this);
+        const bool was_visible = widget && XtIsManaged(widget);
 
-        control->destroy();
+        destroy();
         if (_parent) {
-            control->create();
+            create();
             if (was_visible)
-                control->show();
+                show();
         }
     }
 
@@ -113,18 +113,16 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        Widget widget = linux::x11::wnd_bindings
-                            .handle_from_object(
-                                const_cast<wnd *>(this));
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(
+            const_cast<wnd *>(this));
         if (widget && XtIsRealized(widget)) {
-            XClearArea(
-                linux::x11::cached_display,
-                XtWindow(widget),
-                0,
-                0,
-                0,
-                0,
-                True);
+            XClearArea(linux::x11::cached_display,
+                       XtWindow(widget),
+                       0,
+                       0,
+                       0,
+                       0,
+                       True);
             XFlush(linux::x11::cached_display);
         }
 
@@ -135,18 +133,16 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        Widget widget = linux::x11::wnd_bindings
-                            .handle_from_object(
-                                const_cast<wnd *>(this));
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(
+            const_cast<wnd *>(this));
         if (widget && XtIsRealized(widget)) {
-            XClearArea(
-                linux::x11::cached_display,
-                XtWindow(widget),
-                r.p.x,
-                r.p.y,
-                r.d.w,
-                r.d.h,
-                True);
+            XClearArea(linux::x11::cached_display,
+                       XtWindow(widget),
+                       r.p.x,
+                       r.p.y,
+                       r.d.w,
+                       r.d.h,
+                       True);
             XFlush(linux::x11::cached_display);
         }
 

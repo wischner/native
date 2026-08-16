@@ -14,14 +14,14 @@ namespace native
 {
     main_menu::main_menu() = default;
 
-    menu_items_proxy &menu_items_proxy::operator<<(
-        const std::string &label) {
+    menu_items_proxy &
+    menu_items_proxy::operator<<(const std::string &label) {
         entries.push_back({0, label});
         return *this;
     }
 
-    menu_items_proxy &menu_items_proxy::operator<<(
-        std::pair<int, std::string> item) {
+    menu_items_proxy &
+    menu_items_proxy::operator<<(std::pair<int, std::string> item) {
         entries.push_back({item.first, std::move(item.second)});
         return *this;
     }
@@ -33,24 +33,23 @@ namespace native
     }
 
     main_menu::builder::builder(main_menu &menu)
-        : _menu(menu) {
-    }
+        : _menu(menu) {}
 
-    main_menu::builder &main_menu::builder::operator<<(
-        const std::string &top_title) {
+    main_menu::builder &
+    main_menu::builder::operator<<(const std::string &top_title) {
         _menu.add_top(top_title);
         return *this;
     }
 
-    main_menu::builder &main_menu::builder::operator<<(
-        const menu_items_proxy &proxy) {
+    main_menu::builder &
+    main_menu::builder::operator<<(const menu_items_proxy &proxy) {
         for (const auto &entry : proxy.entries)
             _menu.add_item(entry.id, entry.label);
         return *this;
     }
 
-    main_menu::builder main_menu::operator<<(
-        const std::string &top_title) {
+    main_menu::builder
+    main_menu::operator<<(const std::string &top_title) {
         add_top(top_title);
         return builder(*this);
     }
@@ -94,4 +93,4 @@ namespace native
         if (!_tops.empty())
             _tops.back().items.push_back({id, label});
     }
-}
+} // namespace native

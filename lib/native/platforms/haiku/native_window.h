@@ -23,10 +23,11 @@ namespace haiku
     {
     public:
         // Create a BeAPI window that forwards events to its owner.
-        native_window(
-            native::app_wnd *owner,
-            BRect frame,
-            const char *title);
+        native_window(native::app_wnd *owner,
+                      BRect frame,
+                      const char *title,
+                      window_look look,
+                      window_feel feel);
         // Handle the BeAPI close request and stop the application loop.
         bool QuitRequested() override;
 

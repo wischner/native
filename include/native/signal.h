@@ -16,13 +16,14 @@
 namespace native
 {
     // Dispatches an event to connected boolean-returning callbacks.
-    template <typename... argument_types>
-    class signal
+    template <typename... argument_types> class signal
     {
     public:
         // Construct an empty signal without lazy initialization.
         signal()
-            : current_id(0), initialized(false), initializer(nullptr) {}
+            : current_id(0)
+            , initialized(false)
+            , initializer(nullptr) {}
 
         //
         // Construct a signal with a one-time lazy initializer.
@@ -31,9 +32,9 @@ namespace native
         //      init        - Called before the first connect or emit.
         //
         explicit signal(std::function<void()> init)
-            : current_id(0),
-              initialized(false),
-              initializer(std::move(init)) {}
+            : current_id(0)
+            , initialized(false)
+            , initializer(std::move(init)) {}
 
         //
         // Connect a callable slot.
@@ -58,9 +59,8 @@ namespace native
         //      Connection identifier accepted by disconnect().
         //
         template <typename object_type>
-        int connect(
-            object_type *instance,
-            bool (object_type::*method)(argument_types...)) {
+        int connect(object_type *instance,
+                    bool (object_type::*method)(argument_types...)) {
             return connect([=](argument_types... args) {
                 return (instance->*method)(
                     std::forward<argument_types>(args)...);
@@ -74,9 +74,9 @@ namespace native
         //      Connection identifier accepted by disconnect().
         //
         template <typename object_type>
-        int connect(
-            const object_type *instance,
-            bool (object_type::*method)(argument_types...) const) {
+        int connect(const object_type *instance,
+                    bool (object_type::*method)(argument_types...)
+                        const) {
             return connect([=](argument_types... args) {
                 return (instance->*method)(
                     std::forward<argument_types>(args)...);
@@ -101,11 +101,9 @@ namespace native
         //
         void emit(argument_types... args) {
             ensure_init();
-            for (auto slot = slots.rbegin();
-                 slot != slots.rend();
+            for (auto slot = slots.rbegin(); slot != slots.rend();
                  ++slot) {
-                if (slot->second(
-                        std::forward<argument_types>(args)...))
+                if (slot->second(std::forward<argument_types>(args)...))
                     break;
             }
         }
@@ -119,11 +117,10 @@ namespace native
             }
         }
 
-        mutable std::map<
-            int,
-            std::function<bool(argument_types...)>> slots;
+        mutable std::map<int, std::function<bool(argument_types...)>>
+            slots;
         mutable int current_id;
         mutable bool initialized;
         std::function<void()> initializer;
     };
-}
+} // namespace native

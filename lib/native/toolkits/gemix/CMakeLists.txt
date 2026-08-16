@@ -18,6 +18,12 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
 )
 
 target_include_directories(native PRIVATE

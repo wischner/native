@@ -26,7 +26,8 @@ namespace
     constexpr int k_glyph_w = 5;
     constexpr int k_glyph_h = 7;
 
-    struct glyph {
+    struct glyph
+    {
         char character;
         std::array<std::uint8_t, k_glyph_h> rows;
     };
@@ -90,12 +91,10 @@ namespace
     };
 
     // Resolve a character to bitmap rows for fallback rendering.
-    bool glyph_rows(
-        char character,
-        std::uint8_t rows[k_glyph_h]) {
+    bool glyph_rows(char character, std::uint8_t rows[k_glyph_h]) {
         if (character >= 'a' && character <= 'z') {
-            character = static_cast<char>(std::toupper(
-                static_cast<unsigned char>(character)));
+            character = static_cast<char>(
+                std::toupper(static_cast<unsigned char>(character)));
         }
 
         for (const auto &glyph : fallback_glyphs) {
@@ -117,12 +116,11 @@ namespace
     }
 
     // Draw text with the built-in five-by-seven bitmap font.
-    void draw_fallback_text(
-        SDL_Renderer *renderer,
-        const std::string &text,
-        int x,
-        int y,
-        SDL_Color color) {
+    void draw_fallback_text(SDL_Renderer *renderer,
+                            const std::string &text,
+                            int x,
+                            int y,
+                            SDL_Color color) {
         SDL_SetRenderDrawColor(
             renderer, color.r, color.g, color.b, color.a);
 
@@ -137,15 +135,15 @@ namespace
                 for (int gy = 0; gy < k_glyph_h; ++gy) {
                     for (int gx = 0; gx < k_glyph_w; ++gx) {
                         const bool border =
-                            gy == 0 || gy == k_glyph_h - 1 ||
-                            gx == 0 || gx == k_glyph_w - 1;
+                            gy == 0 || gy == k_glyph_h - 1 || gx == 0 ||
+                            gx == k_glyph_w - 1;
                         if (!border)
                             continue;
-                        SDL_Rect dot{
-                            x + static_cast<int>(i) * adv + gx * px,
-                            y + gy * px,
-                            px,
-                            px};
+                        SDL_Rect dot{x + static_cast<int>(i) * adv +
+                                         gx * px,
+                                     y + gy * px,
+                                     px,
+                                     px};
                         SDL_RenderFillRect(renderer, &dot);
                     }
                 }
@@ -158,32 +156,32 @@ namespace
                     if ((row & (1u << (k_glyph_w - 1 - gx))) == 0)
                         continue;
 
-                    SDL_Rect dot{
-                        x + static_cast<int>(i) * adv + gx * px,
-                        y + gy * px,
-                        px,
-                        px};
+                    SDL_Rect dot{x + static_cast<int>(i) * adv +
+                                     gx * px,
+                                 y + gy * px,
+                                 px,
+                                 px};
                     SDL_RenderFillRect(renderer, &dot);
                 }
             }
         }
     }
-}
+} // namespace
 
 namespace linux::sdl2
 {
     int text_width(const std::string &text) {
 #ifdef HAVE_SDL2_TTF
-        auto *font_handle = linux::sdl2::font_bindings.object_from_handle(
-            native::font_t::stock(native::font_role::control).id());
+        auto *font_handle =
+            linux::sdl2::font_bindings.object_from_handle(
+                native::font_t::stock(native::font_role::control).id());
         if (font_handle && font_handle->ttf_font) {
             int width = 0;
             int height = 0;
-            if (TTF_SizeUTF8(
-                    font_handle->ttf_font,
-                    text.c_str(),
-                    &width,
-                    &height) == 0) {
+            if (TTF_SizeUTF8(font_handle->ttf_font,
+                             text.c_str(),
+                             &width,
+                             &height) == 0) {
                 return width;
             }
         }
@@ -193,23 +191,24 @@ namespace linux::sdl2
 
     int text_height() {
 #ifdef HAVE_SDL2_TTF
-        auto *font_handle = linux::sdl2::font_bindings.object_from_handle(
-            native::font_t::stock(native::font_role::control).id());
+        auto *font_handle =
+            linux::sdl2::font_bindings.object_from_handle(
+                native::font_t::stock(native::font_role::control).id());
         if (font_handle && font_handle->ttf_font)
             return TTF_FontHeight(font_handle->ttf_font);
 #endif
         return k_glyph_h * k_fallback_scale;
     }
 
-    void draw_text(
-        SDL_Renderer *renderer,
-        const std::string &text,
-        int x,
-        int y,
-        SDL_Color color) {
+    void draw_text(SDL_Renderer *renderer,
+                   const std::string &text,
+                   int x,
+                   int y,
+                   SDL_Color color) {
 #ifdef HAVE_SDL2_TTF
-        auto *font_handle = linux::sdl2::font_bindings.object_from_handle(
-            native::font_t::stock(native::font_role::control).id());
+        auto *font_handle =
+            linux::sdl2::font_bindings.object_from_handle(
+                native::font_t::stock(native::font_role::control).id());
         if (font_handle && font_handle->ttf_font) {
             SDL_Surface *surface = TTF_RenderUTF8_Solid(
                 font_handle->ttf_font, text.c_str(), color);

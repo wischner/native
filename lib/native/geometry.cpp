@@ -14,18 +14,18 @@ namespace native
     point::point() = default;
 
     point::point(coord x_value, coord y_value)
-        : x(x_value), y(y_value) {
-    }
+        : x(x_value)
+        , y(y_value) {}
 
     line::line() = default;
 
     line::line(point first, point second)
-        : a(first), b(second) {
-    }
+        : a(first)
+        , b(second) {}
 
     line::line(coord x1, coord y1, coord x2, coord y2)
-        : a(x1, y1), b(x2, y2) {
-    }
+        : a(x1, y1)
+        , b(x2, y2) {}
 
     bool line::contains(point candidate) const {
         const coord line_dx = b.x - a.x;
@@ -49,26 +49,38 @@ namespace native
     size::size() = default;
 
     size::size(dim width, dim height)
-        : w(width), h(height) {
-    }
+        : w(width)
+        , h(height) {}
 
     rect::rect() = default;
 
     rect::rect(point origin, size dimensions)
-        : p(origin), d(dimensions) {
-    }
+        : p(origin)
+        , d(dimensions) {}
 
     rect::rect(coord x, coord y, dim width, dim height)
-        : p(x, y), d(width, height) {
+        : p(x, y)
+        , d(width, height) {}
+
+    coord rect::x1() const {
+        return p.x;
+    }
+    coord rect::y1() const {
+        return p.y;
+    }
+    coord rect::x2() const {
+        return p.x + d.w;
+    }
+    coord rect::y2() const {
+        return p.y + d.h;
     }
 
-    coord rect::x1() const { return p.x; }
-    coord rect::y1() const { return p.y; }
-    coord rect::x2() const { return p.x + d.w; }
-    coord rect::y2() const { return p.y + d.h; }
-
-    dim rect::w() const { return d.w; }
-    dim rect::h() const { return d.h; }
+    dim rect::w() const {
+        return d.w;
+    }
+    dim rect::h() const {
+        return d.h;
+    }
 
     bool rect::contains(point candidate) const {
         return candidate.x >= x1() && candidate.x < x2() &&
@@ -81,14 +93,12 @@ namespace native
         const coord overlap_x2 = std::min(x2(), other.x2());
         const coord overlap_y2 = std::min(y2(), other.y2());
 
-        if (overlap_x2 <= overlap_x1 ||
-            overlap_y2 <= overlap_y1)
+        if (overlap_x2 <= overlap_x1 || overlap_y2 <= overlap_y1)
             return rect();
 
-        return rect(
-            overlap_x1,
-            overlap_y1,
-            overlap_x2 - overlap_x1,
-            overlap_y2 - overlap_y1);
+        return rect(overlap_x1,
+                    overlap_y1,
+                    overlap_x2 - overlap_x1,
+                    overlap_y2 - overlap_y1);
     }
 } // namespace native

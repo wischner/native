@@ -6,6 +6,7 @@
 //
 
 #include <native.h>
+#include <native/app.h>
 
 #import <Cocoa/Cocoa.h>
 

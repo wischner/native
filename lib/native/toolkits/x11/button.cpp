@@ -1,6 +1,7 @@
 //
-// Implements X11 buttons with the Athena Command widget. Athena owns the
-// button appearance, pointer state, keyboard translations, and activation.
+// Implements X11 buttons with the Athena Command widget. Athena owns
+// the button appearance, pointer state, keyboard translations, and
+// activation.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -14,20 +15,18 @@
 #include <X11/Xaw/Form.h>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
 namespace
 {
-    void button_activate(
-        Widget,
-        XtPointer client_data,
-        XtPointer) {
+    void button_activate(Widget, XtPointer client_data, XtPointer) {
         auto *owner = static_cast<native::button *>(client_data);
         if (owner)
             owner->on_click.emit();
     }
-}
+} // namespace
 
 namespace native
 {
@@ -39,9 +38,7 @@ namespace native
                 "X11/Athena: Missing button widget binding.");
 
         XtVaSetValues(
-            binding->widget,
-            XtNlabel, _text.c_str(),
-            nullptr);
+            binding->widget, XtNlabel, _text.c_str(), nullptr);
     }
 
     void button::create() const {
@@ -62,31 +59,36 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: button parent has no widget.");
 
-        Widget widget = XtVaCreateWidget(
-            "button",
-            commandWidgetClass,
-            parent_widget,
-            XtNhorizDistance, _bounds.p.x,
-            XtNvertDistance, _bounds.p.y,
-            XtNwidth, _bounds.d.w,
-            XtNheight, _bounds.d.h,
-            XtNlabel, _text.c_str(),
-            XtNleft, XtChainLeft,
-            XtNright, XtChainLeft,
-            XtNtop, XtChainTop,
-            XtNbottom, XtChainTop,
-            XtNresizable, True,
-            nullptr);
+        Widget widget = XtVaCreateWidget("button",
+                                         commandWidgetClass,
+                                         parent_widget,
+                                         XtNhorizDistance,
+                                         _bounds.p.x,
+                                         XtNvertDistance,
+                                         _bounds.p.y,
+                                         XtNwidth,
+                                         _bounds.d.w,
+                                         XtNheight,
+                                         _bounds.d.h,
+                                         XtNlabel,
+                                         _text.c_str(),
+                                         XtNleft,
+                                         XtChainLeft,
+                                         XtNright,
+                                         XtChainLeft,
+                                         XtNtop,
+                                         XtChainTop,
+                                         XtNbottom,
+                                         XtChainTop,
+                                         XtNresizable,
+                                         True,
+                                         nullptr);
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: Failed to create Command widget.");
 
         auto *self = const_cast<button *>(this);
-        XtAddCallback(
-            widget,
-            XtNcallback,
-            button_activate,
-            self);
+        XtAddCallback(widget, XtNcallback, button_activate, self);
 
         linux::x11::wnd_bindings.register_pair(widget, self);
 
@@ -104,9 +106,8 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: Cannot show button before creation.");
 
-        auto *binding = linux::x11::button_bindings
-                            .object_from_handle(
-                                const_cast<button *>(this));
+        auto *binding = linux::x11::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: Missing button widget binding.");

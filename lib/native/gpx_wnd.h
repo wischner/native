@@ -40,7 +40,9 @@ namespace native
         gpx &draw_rect(rect r, bool filled = false) override;
 
         // Draw text into the window.
-        gpx &draw_text(const std::string &text, point p) override;
+        gpx &draw_native_text(
+            const std::string &text,
+            point p) override;
 
         // Draw an image into the window.
         gpx &draw_img(const img &src, point dst) override;
@@ -51,4 +53,4 @@ namespace native
         point _offset;
     };
 
-}
+} // namespace native

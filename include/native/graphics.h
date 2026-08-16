@@ -36,27 +36,30 @@ namespace native
         // Create an image with non-zero dimensions.
         //
         // Throws:
-        //      std::invalid_argument when a dimension is zero or cannot be
-        //      represented by a positive Native coordinate.
+        //      std::invalid_argument when a dimension is zero or cannot
+        //      be represented by a positive Native coordinate.
         //
         img(dim width, dim height);
 
         // Destroy the image and its lazily created graphics context.
         ~img();
 
+        // Images cannot be copied because they own their pixel storage.
         img(const img &) = delete;
+
+        // Images cannot be copy-assigned.
         img &operator=(const img &) = delete;
 
-        // Decode a PNG or JPEG file, selected from its encoded contents.
+        // Decode a PNG or JPEG file, selected from its encoded
+        // contents.
         static img load(const std::string &path);
 
         // Decode a PNG or JPEG held in memory.
         static img decode(const std::uint8_t *data, std::size_t size);
 
         // Encode this image into a PNG or JPEG memory buffer.
-        std::vector<std::uint8_t> encode(
-            image_format format,
-            int jpeg_quality = 90) const;
+        std::vector<std::uint8_t> encode(image_format format,
+                                         int jpeg_quality = 90) const;
 
         // Encode this image to a .png, .jpg, or .jpeg file.
         void save(const std::string &path, int jpeg_quality = 90) const;
@@ -77,7 +80,8 @@ namespace native
         gpx &get_gpx() const;
 
     private:
-        // Adopt decoded RGBA storage without exposing a resize operation.
+        // Adopt decoded RGBA storage without exposing a resize
+        // operation.
         img(dim width, dim height, std::unique_ptr<rgba[]> pixels);
 
         coord _w;
@@ -141,17 +145,19 @@ namespace native
         // Draw a rectangle outline or filled rectangle.
         virtual gpx &draw_rect(rect bounds, bool filled = false) = 0;
 
-        // Draw text from a top-left position using the selected color/font.
-        virtual gpx &draw_text(
+        // Draw text from a top-left position using the selected
+        // color/font.
+        gpx &draw_text(const std::string &text, point position);
+
+        // Draw an image at a destination point.
+        virtual gpx &draw_img(const img &source, point destination) = 0;
+
+    protected:
+        // Draw stock-font text through the selected native backend.
+        virtual gpx &draw_native_text(
             const std::string &text,
             point position) = 0;
 
-        // Draw an image at a destination point.
-        virtual gpx &draw_img(
-            const img &source,
-            point destination) = 0;
-
-    protected:
         rgba _ink = rgba(0, 0, 0, 255);
         rgba _paper = rgba(255, 255, 255, 255);
         std::uint8_t _thickness = 1;
@@ -159,4 +165,4 @@ namespace native
         // Non-owning; null selects the stock system font.
         const font_t *_font = nullptr;
     };
-}
+} // namespace native

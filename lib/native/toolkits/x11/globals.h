@@ -33,7 +33,7 @@ namespace linux::x11
         Display *display;
         Font xfont;
         XFontStruct *metrics;
-        bool owned;  // if true, XUnloadFont on destruction
+        bool owned; // if true, XUnloadFont on destruction
     };
 
     // Internally cached values for gc and backbuffer
@@ -76,7 +76,15 @@ namespace linux::x11
         native::button *owner = nullptr;
     };
 
-    extern native::bindings<
-        native::button *,
-        xaw_button *> button_bindings;
-}
+    extern native::bindings<native::button *, xaw_button *>
+        button_bindings;
+
+    struct xaw_list
+    {
+        Widget widget = nullptr;
+        std::vector<std::string> labels;
+        std::vector<char *> pointers;
+    };
+
+    extern native::bindings<native::list *, xaw_list *> list_bindings;
+} // namespace linux::x11

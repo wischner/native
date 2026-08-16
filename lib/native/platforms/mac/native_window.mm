@@ -5,25 +5,26 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
-#import <Cocoa/Cocoa.h>
-#include "globals.h"
+#include "native_window.h"
+
 #include <native.h>
 #include <bindings.h>
-#include "native_window.h"
+
+#include "globals.h"
 
 using namespace native;
 
-@interface NativeWindowDelegate : NSObject <NSWindowDelegate>
-{
+// Translate AppKit window lifecycle events to a borrowed app_wnd.
+@interface native_window_delegate : NSObject <NSWindowDelegate> {
     native::app_wnd *_owner;
 }
 
-- (id)initWithOwner:(native::app_wnd *)owner;
+- (id)init_with_owner:(native::app_wnd *)owner;
 @end
 
-@implementation NativeWindowDelegate
+@implementation native_window_delegate
 
-- (id)initWithOwner:(native::app_wnd *)owner {
+- (id)init_with_owner:(native::app_wnd *)owner {
     self = [super init];
     if (self)
         _owner = owner;
@@ -35,9 +36,8 @@ using namespace native;
         return;
 
     NSRect frame = [[notification object] frame];
-    native::point position(
-        static_cast<native::coord>(frame.origin.x),
-        static_cast<native::coord>(frame.origin.y));
+    native::point position(static_cast<native::coord>(frame.origin.x),
+                           static_cast<native::coord>(frame.origin.y));
     _owner->on_native_move(position);
     _owner->on_wnd_move.emit(position);
 }
@@ -56,7 +56,8 @@ using namespace native;
 
 - (BOOL)windowShouldClose:(id)sender {
     (void)sender;
-    [mac::global_app stop:nil];
+    if (_owner)
+        _owner->on_native_destroy();
     return YES;
 }
 
@@ -66,8 +67,23 @@ using namespace native;
     _owner = nullptr;
 
     if (owner) {
-        owner->on_native_destroy();
+        if (owner->get_created())
+            owner->on_native_destroy();
         mac::delegate_bindings.unregister_by_handle(owner);
+        if (owner == native::app::main_wnd() && mac::global_app)
+            [mac::global_app stop:nil];
+        if (owner->get_modal()) {
+            native::app_wnd *parent = owner->get_owner();
+            native::app_wnd *focus =
+                parent && parent->get_input_enabled()
+                    ? parent
+                    : parent ? parent->get_active_modal() : nullptr;
+            NSWindow *focus_window =
+                focus ? mac::wnd_bindings.handle_from_object(focus)
+                      : nil;
+            if (focus_window)
+                [focus_window makeKeyAndOrderFront:nil];
+        }
     }
     mac::wnd_bindings.unregister_by_handle(window);
     [window setDelegate:nil];
@@ -78,32 +94,80 @@ using namespace native;
 }
 @end
 
-namespace mac {
-
-native_window::native_window(
-    app_wnd *owner,
-    const char *title,
-    int x,
-    int y,
-    int width,
-    int height) {
-    NSRect frame = NSMakeRect(x, y, width, height);
-    auto style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable;
-    NSWindow *win = [[NSWindow alloc] initWithContentRect:frame
-                                                 styleMask:style
-                                                   backing:NSBackingStoreBuffered
-                                                     defer:NO];
-    [win setReleasedWhenClosed:NO];
-
-    NSString *ns_title = [NSString stringWithUTF8String:title];
-    [win setTitle:ns_title];
-
-    auto delegate =
-        [[NativeWindowDelegate alloc] initWithOwner:owner];
-    [win setDelegate:delegate];
-
-    mac::wnd_bindings.register_pair(win, owner);
-    mac::delegate_bindings.register_pair(owner, delegate);
+// Dispatch AppKit drawing through the portable window paint signal.
+@interface native_content_view : NSView {
+    native::app_wnd *_owner;
 }
+- (id)init_with_frame:(NSRect)frame owner:(native::app_wnd *)owner;
+@end
+
+@implementation native_content_view
+
+- (id)init_with_frame:(NSRect)frame owner:(native::app_wnd *)owner {
+    self = [super initWithFrame:frame];
+    if (self)
+        _owner = owner;
+    return self;
+}
+
+- (BOOL)isFlipped {
+    return YES;
+}
+
+- (void)drawRect:(NSRect)dirty_rect {
+    [super drawRect:dirty_rect];
+    if (!_owner || !_owner->get_created())
+        return;
+
+    native::rect invalid(
+        static_cast<native::coord>(dirty_rect.origin.x),
+        static_cast<native::coord>(dirty_rect.origin.y),
+        static_cast<native::dim>(dirty_rect.size.width),
+        static_cast<native::dim>(dirty_rect.size.height));
+    native::gpx &graphics = _owner->get_gpx();
+    graphics.set_clip(invalid);
+    native::wnd_paint_event event(invalid, graphics);
+    _owner->on_wnd_paint.emit(event);
+}
+
+@end
+
+namespace mac
+{
+
+    native_window::native_window(app_wnd *owner,
+                                 const char *title,
+                                 int x,
+                                 int y,
+                                 int width,
+                                 int height) {
+        NSRect frame = NSMakeRect(x, y, width, height);
+        auto style = NSWindowStyleMaskTitled |
+                     NSWindowStyleMaskClosable |
+                     NSWindowStyleMaskResizable;
+        NSWindow *win =
+            [[NSWindow alloc] initWithContentRect:frame
+                                        styleMask:style
+                                          backing:NSBackingStoreBuffered
+                                            defer:NO];
+        [win setReleasedWhenClosed:NO];
+
+        native_content_view *content =
+            [[native_content_view alloc]
+                init_with_frame:NSMakeRect(0, 0, width, height)
+                          owner:owner];
+        [win setContentView:content];
+        [content release];
+
+        NSString *ns_title = [NSString stringWithUTF8String:title];
+        [win setTitle:ns_title];
+
+        auto delegate =
+            [[native_window_delegate alloc] init_with_owner:owner];
+        [win setDelegate:delegate];
+
+        mac::wnd_bindings.register_pair(win, owner);
+        mac::delegate_bindings.register_pair(owner, delegate);
+    }
 
 } // namespace mac

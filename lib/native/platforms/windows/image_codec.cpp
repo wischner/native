@@ -61,7 +61,8 @@ namespace
 
     using stream_ptr = std::unique_ptr<IStream, stream_releaser>;
 
-    stream_ptr input_stream(const std::uint8_t *data, std::size_t size) {
+    stream_ptr input_stream(const std::uint8_t *data,
+                            std::size_t size) {
         if (size > std::numeric_limits<SIZE_T>::max())
             throw std::runtime_error(
                 "Windows image codec: input is too large");
@@ -98,16 +99,18 @@ namespace
     CLSID encoder_clsid(const wchar_t *mime_type) {
         UINT count = 0;
         UINT bytes = 0;
-        if (Gdiplus::GetImageEncodersSize(&count, &bytes) != Gdiplus::Ok ||
+        if (Gdiplus::GetImageEncodersSize(&count, &bytes) !=
+                Gdiplus::Ok ||
             count == 0 || bytes == 0) {
             throw std::runtime_error(
                 "Windows image codec: no encoders are installed");
         }
 
         std::vector<std::uint8_t> storage(bytes);
-        auto *codecs = reinterpret_cast<Gdiplus::ImageCodecInfo *>(
-            storage.data());
-        if (Gdiplus::GetImageEncoders(count, bytes, codecs) != Gdiplus::Ok)
+        auto *codecs =
+            reinterpret_cast<Gdiplus::ImageCodecInfo *>(storage.data());
+        if (Gdiplus::GetImageEncoders(count, bytes, codecs) !=
+            Gdiplus::Ok)
             throw std::runtime_error(
                 "Windows image codec: unable to enumerate encoders");
 
@@ -131,8 +134,8 @@ namespace
         if (GetHGlobalFromStream(stream, &memory) != S_OK)
             throw std::runtime_error(
                 "Windows image codec: unable to access encoded data");
-        const std::size_t size = static_cast<std::size_t>(
-            statistics.cbSize.QuadPart);
+        const std::size_t size =
+            static_cast<std::size_t>(statistics.cbSize.QuadPart);
         const void *source = GlobalLock(memory);
         if (!source && size != 0)
             throw std::runtime_error(
@@ -145,47 +148,48 @@ namespace
         return result;
     }
 
-    void require_supported_input(
-        const std::uint8_t *data,
-        std::size_t size) {
-        const bool png = size >= 8 &&
-            std::memcmp(data, "\x89PNG\r\n\x1a\n", 8) == 0;
-        const bool jpeg = size >= 2 && data[0] == 0xff && data[1] == 0xd8;
+    void require_supported_input(const std::uint8_t *data,
+                                 std::size_t size) {
+        const bool png =
+            size >= 8 && std::memcmp(data, "\x89PNG\r\n\x1a\n", 8) == 0;
+        const bool jpeg =
+            size >= 2 && data[0] == 0xff && data[1] == 0xd8;
         if (!png && !jpeg)
             throw std::runtime_error(
                 "Windows image codec: input is not PNG or JPEG");
     }
-}
+} // namespace
 
 namespace native::detail
 {
-    decoded_image decode_image(
-        const std::uint8_t *data,
-        std::size_t size) {
+    decoded_image decode_image(const std::uint8_t *data,
+                               std::size_t size) {
         (void)runtime();
         require_supported_input(data, size);
         stream_ptr stream = input_stream(data, size);
         std::unique_ptr<Gdiplus::Bitmap> bitmap(
             Gdiplus::Bitmap::FromStream(stream.get(), FALSE));
         if (!bitmap || bitmap->GetLastStatus() != Gdiplus::Ok)
-            throw std::runtime_error("Windows image codec: decode failed");
+            throw std::runtime_error(
+                "Windows image codec: decode failed");
 
         const UINT width = bitmap->GetWidth();
         const UINT height = bitmap->GetHeight();
         if (width == 0 || height == 0 ||
-            width > static_cast<UINT>(std::numeric_limits<coord>::max()) ||
-            height > static_cast<UINT>(std::numeric_limits<coord>::max())) {
-            throw std::runtime_error(
-                "Windows image codec: dimensions exceed native image limits");
+            width >
+                static_cast<UINT>(std::numeric_limits<coord>::max()) ||
+            height >
+                static_cast<UINT>(std::numeric_limits<coord>::max())) {
+            throw std::runtime_error("Windows image codec: dimensions "
+                                     "exceed native image limits");
         }
 
         Gdiplus::Rect bounds(0, 0, width, height);
         Gdiplus::BitmapData locked = {};
-        if (bitmap->LockBits(
-                &bounds,
-                Gdiplus::ImageLockModeRead,
-                PixelFormat32bppARGB,
-                &locked) != Gdiplus::Ok) {
+        if (bitmap->LockBits(&bounds,
+                             Gdiplus::ImageLockModeRead,
+                             PixelFormat32bppARGB,
+                             &locked) != Gdiplus::Ok) {
             throw std::runtime_error(
                 "Windows image codec: unable to read decoded pixels");
         }
@@ -195,12 +199,17 @@ namespace native::detail
         decoded.height = static_cast<dim>(height);
         decoded.pixels = std::make_unique<rgba[]>(
             static_cast<std::size_t>(width) * height);
-        const auto *base = static_cast<const std::uint8_t *>(locked.Scan0);
+        const auto *base =
+            static_cast<const std::uint8_t *>(locked.Scan0);
         for (UINT y = 0; y < height; ++y) {
-            const auto *row = base + static_cast<std::ptrdiff_t>(y) * locked.Stride;
+            const auto *row =
+                base + static_cast<std::ptrdiff_t>(y) * locked.Stride;
             for (UINT x = 0; x < width; ++x) {
-                decoded.pixels[static_cast<std::size_t>(y) * width + x] =
-                    rgba(row[x * 4 + 2], row[x * 4 + 1], row[x * 4],
+                decoded
+                    .pixels[static_cast<std::size_t>(y) * width + x] =
+                    rgba(row[x * 4 + 2],
+                         row[x * 4 + 1],
+                         row[x * 4],
                          row[x * 4 + 3]);
             }
         }
@@ -208,15 +217,14 @@ namespace native::detail
         return decoded;
     }
 
-    std::vector<std::uint8_t> encode_image(
-        image_format format,
-        const rgba *pixels,
-        dim width,
-        dim height,
-        int jpeg_quality) {
+    std::vector<std::uint8_t> encode_image(image_format format,
+                                           const rgba *pixels,
+                                           dim width,
+                                           dim height,
+                                           int jpeg_quality) {
         (void)runtime();
-        std::vector<std::uint8_t> bgra(
-            static_cast<std::size_t>(width) * height * 4);
+        std::vector<std::uint8_t> bgra(static_cast<std::size_t>(width) *
+                                       height * 4);
         for (std::size_t index = 0;
              index < static_cast<std::size_t>(width) * height;
              ++index) {
@@ -226,20 +234,18 @@ namespace native::detail
             bgra[index * 4 + 3] = pixels[index].a;
         }
 
-        Gdiplus::Bitmap bitmap(
-            width,
-            height,
-            static_cast<INT>(width) * 4,
-            PixelFormat32bppARGB,
-            bgra.data());
+        Gdiplus::Bitmap bitmap(width,
+                               height,
+                               static_cast<INT>(width) * 4,
+                               PixelFormat32bppARGB,
+                               bgra.data());
         if (bitmap.GetLastStatus() != Gdiplus::Ok)
             throw std::runtime_error(
                 "Windows image codec: unable to create image");
 
         stream_ptr stream = output_stream();
-        const wchar_t *mime = format == image_format::png
-            ? L"image/png"
-            : L"image/jpeg";
+        const wchar_t *mime =
+            format == image_format::png ? L"image/png" : L"image/jpeg";
         const CLSID encoder = encoder_clsid(mime);
         Gdiplus::EncoderParameters parameters = {};
         Gdiplus::EncoderParameters *parameter_ptr = nullptr;
@@ -247,14 +253,17 @@ namespace native::detail
         if (format == image_format::jpeg) {
             parameters.Count = 1;
             parameters.Parameter[0].Guid = Gdiplus::EncoderQuality;
-            parameters.Parameter[0].Type = Gdiplus::EncoderParameterValueTypeLong;
+            parameters.Parameter[0].Type =
+                Gdiplus::EncoderParameterValueTypeLong;
             parameters.Parameter[0].NumberOfValues = 1;
             parameters.Parameter[0].Value = &quality;
             parameter_ptr = &parameters;
         }
 
-        if (bitmap.Save(stream.get(), &encoder, parameter_ptr) != Gdiplus::Ok)
-            throw std::runtime_error("Windows image codec: encode failed");
+        if (bitmap.Save(stream.get(), &encoder, parameter_ptr) !=
+            Gdiplus::Ok)
+            throw std::runtime_error(
+                "Windows image codec: encode failed");
         return stream_bytes(stream.get());
     }
-}
+} // namespace native::detail

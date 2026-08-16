@@ -13,6 +13,7 @@
 #include <Xm/Xm.h>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
@@ -23,7 +24,7 @@ namespace
         if (owner)
             owner->on_click.emit();
     }
-}
+} // namespace
 
 namespace native
 {
@@ -36,11 +37,7 @@ namespace native
 
         XmString label =
             XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
-        XtVaSetValues(
-            binding->widget,
-            XmNlabelString,
-            label,
-            nullptr);
+        XtVaSetValues(binding->widget, XmNlabelString, label, nullptr);
         XmStringFree(label);
     }
 
@@ -50,30 +47,36 @@ namespace native
 
         wnd *p = get_parent();
         if (!p)
-            throw std::runtime_error("Motif: button requires a parent window.");
+            throw std::runtime_error(
+                "Motif: button requires a parent window.");
         if (!p->get_created())
             throw std::runtime_error(
                 "Motif: button parent is not created.");
 
-        Widget parent_widget = linux::openmotif::wnd_bindings.handle_from_object(p);
+        Widget parent_widget =
+            linux::openmotif::wnd_bindings.handle_from_object(p);
         if (!parent_widget)
-            throw std::runtime_error("Motif: button parent is not created.");
+            throw std::runtime_error(
+                "Motif: button parent is not created.");
 
-        XmString label = XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
+        XmString label =
+            XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
 
         Arg args[5];
         int n = 0;
-        XtSetArg(args[n], XmNx, _bounds.p.x); ++n;
-        XtSetArg(args[n], XmNy, _bounds.p.y); ++n;
-        XtSetArg(args[n], XmNwidth, _bounds.d.w); ++n;
-        XtSetArg(args[n], XmNheight, _bounds.d.h); ++n;
-        XtSetArg(args[n], XmNlabelString, label); ++n;
+        XtSetArg(args[n], XmNx, _bounds.p.x);
+        ++n;
+        XtSetArg(args[n], XmNy, _bounds.p.y);
+        ++n;
+        XtSetArg(args[n], XmNwidth, _bounds.d.w);
+        ++n;
+        XtSetArg(args[n], XmNheight, _bounds.d.h);
+        ++n;
+        XtSetArg(args[n], XmNlabelString, label);
+        ++n;
 
         Widget btn = XmCreatePushButton(
-            parent_widget,
-            const_cast<char *>("button"),
-            args,
-            n);
+            parent_widget, const_cast<char *>("button"), args, n);
 
         XmStringFree(label);
 
@@ -96,11 +99,14 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("Motif: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "Motif: Cannot show button before it is created.");
 
-        auto *h = linux::openmotif::button_bindings.object_from_handle(const_cast<button *>(this));
+        auto *h = linux::openmotif::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!h || !h->widget)
-            throw std::runtime_error("Motif: Missing button widget binding.");
+            throw std::runtime_error(
+                "Motif: Missing button widget binding.");
 
         XtManageChild(h->widget);
     }
@@ -110,15 +116,18 @@ namespace native
             return;
 
         auto *self = const_cast<button *>(this);
-        auto *h = linux::openmotif::button_bindings.object_from_handle(self);
+        auto *h =
+            linux::openmotif::button_bindings.object_from_handle(self);
         self->on_native_destroy();
 
         if (h) {
             if (h->widget) {
-                linux::openmotif::wnd_bindings.unregister_by_handle(h->widget);
+                linux::openmotif::wnd_bindings.unregister_by_handle(
+                    h->widget);
                 XtDestroyWidget(h->widget);
             }
-            linux::openmotif::button_bindings.unregister_by_handle(self);
+            linux::openmotif::button_bindings.unregister_by_handle(
+                self);
             delete h;
         }
     }

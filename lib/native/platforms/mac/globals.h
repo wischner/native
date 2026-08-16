@@ -24,7 +24,7 @@ namespace mac
     // Graphics cache structure for macOS Cocoa/Quartz
     struct mac_gpx
     {
-        NSView *view = nullptr;           // Cached NSView for drawing
+        NSView *view = nullptr; // Cached NSView for drawing
         NSGraphicsContext *context = nullptr; // Cached graphics context
 
         // Cached draw parameters
@@ -36,12 +36,14 @@ namespace mac
         bool dirty_clip = true;
     };
 
-    struct mac_menu {
+    struct mac_menu
+    {
         NSMenu *ns_menu = nil;
         native::app_wnd *owner = nullptr;
     };
 
-    struct mac_button {
+    struct mac_button
+    {
         NSButton *ns_button = nil;
         id target = nil;
         native::button *owner = nullptr;
@@ -53,7 +55,34 @@ namespace mac
     extern native::bindings<native::wnd *, mac_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, mac_font *> font_bindings;
     extern native::bindings<uint32_t, mac_menu *> menu_bindings;
-    extern native::bindings<
-        native::button *,
-        mac_button *> button_bindings;
-}
+    extern native::bindings<native::button *, mac_button *>
+        button_bindings;
+
+    struct mac_check
+    {
+        NSButton *button = nil;
+        id target = nil;
+    };
+    struct mac_radio
+    {
+        NSButton *button = nil;
+        id target = nil;
+    };
+    struct mac_list
+    {
+        NSScrollView *scroll = nil;
+        NSTableView *table = nil;
+        id adapter = nil;
+    };
+
+    extern native::bindings<native::check *, mac_check *>
+        check_bindings;
+    extern native::bindings<native::radio *, mac_radio *>
+        radio_bindings;
+    extern native::bindings<native::list *, mac_list *> list_bindings;
+    extern native::bindings<native::file_dialog *, NSSavePanel *>
+        file_dialog_bindings;
+
+    // Return the outer NSView used by any public child control.
+    NSView *view_from_control(native::wnd *control);
+} // namespace mac

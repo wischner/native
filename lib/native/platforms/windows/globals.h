@@ -26,9 +26,9 @@ namespace windows
     // Graphics cache structure for Windows GDI
     struct win_gpx
     {
-        HDC hdc = nullptr;         // Cached device context
-        HPEN pen = nullptr;        // Cached pen
-        HBRUSH brush = nullptr;    // Cached brush
+        HDC hdc = nullptr;      // Cached device context
+        HPEN pen = nullptr;     // Cached pen
+        HBRUSH brush = nullptr; // Cached brush
 
         // Cached draw parameters
         native::rgba current_fg = 0xFFFFFFFF;
@@ -39,7 +39,8 @@ namespace windows
         bool dirty_clip = true;
     };
 
-    struct win_menu {
+    struct win_menu
+    {
         HMENU hmenu = nullptr;
         native::app_wnd *owner = nullptr;
     };
@@ -54,16 +55,14 @@ namespace windows
     extern native::bindings<native::wnd *, win_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, win_font *> font_bindings;
     extern native::bindings<uint32_t, win_menu *> menu_bindings;
-    extern native::bindings<
-        native::button *,
-        win_button *> button_bindings;
+    extern native::bindings<native::button *, win_button *>
+        button_bindings;
 
     // Route Win32 messages to the C++ window registered for a handle.
-    LRESULT CALLBACK routed_wnd_proc(
-        HWND hwnd,
-        UINT message,
-        WPARAM wparam,
-        LPARAM lparam);
+    LRESULT CALLBACK routed_wnd_proc(HWND hwnd,
+                                     UINT message,
+                                     WPARAM wparam,
+                                     LPARAM lparam);
 
     // Convert a Win32 system color to the public RGBA representation.
     native::rgba rgba_from_sys_color(int idx);
@@ -71,9 +70,12 @@ namespace windows
     // Convert UTF-8 text to a Win32 wide string.
     std::wstring utf8_to_wide(const std::string &text);
 
+    // Convert a Win32 wide string to UTF-8 text.
+    std::string wide_to_utf8(const std::wstring &text);
+
     // Convert public rectangle coordinates to an inclusive Win32 RECT.
     RECT to_rect(const native::rect &r);
 
     // Resolve the native window handle behind a graphics context.
     HWND hwnd_from_gpx(native::gpx &g);
-}
+} // namespace windows

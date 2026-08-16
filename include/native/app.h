@@ -46,7 +46,7 @@ namespace native
     private:
         static app_wnd *_main_wnd;
     };
-}
+} // namespace native
 
 //
 // Run the application-defined entry point.

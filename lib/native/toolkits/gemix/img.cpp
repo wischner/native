@@ -18,4 +18,4 @@ namespace native
             _gpx = std::make_unique<gpx_img>(*this);
         return *_gpx;
     }
-}
+} // namespace native

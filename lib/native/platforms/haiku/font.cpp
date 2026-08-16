@@ -10,10 +10,13 @@
 #include <cmath>
 
 #include <native.h>
+#include <native/font.h>
+#include "../../portable_font.h"
 #include "globals.h"
 
-// font_t on Haiku: the platform handle (haiku_font) copies a BFont value and
-// lives in haiku::font_bindings, keyed by the font's opaque uint32_t id.
+// font_t on Haiku: the platform handle (haiku_font) copies a BFont
+// value and lives in haiku::font_bindings, keyed by the font's opaque
+// uint32_t id.
 
 namespace
 {
@@ -24,7 +27,8 @@ namespace
 
     void release(uint32_t id) {
         auto *f = haiku::font_bindings.object_from_handle(id);
-        if (f) delete f;
+        if (f)
+            delete f;
         haiku::font_bindings.unregister_by_handle(id);
     }
 
@@ -35,102 +39,113 @@ namespace
         haiku::font_bindings.register_pair(id, h);
         return id;
     }
-}
+} // namespace
 
 namespace native
 {
 
-font_t::font_t() = default;
+    font_t::font_t() = default;
 
-font_t::font_t(font_t &&other) noexcept
-    : _id(other._id), _spec(std::move(other._spec)) {
-    other._id = 0;
-}
-
-font_t &font_t::operator=(font_t &&other) noexcept {
-    if (this != &other) {
-        std::swap(_id, other._id);
-        _spec = std::move(other._spec);
+    font_t::font_t(font_t &&other) noexcept
+        : _id(other._id)
+        , _spec(std::move(other._spec)) {
+        other._id = 0;
     }
-    return *this;
-}
 
-font_t::~font_t() {
-    if (_id) {
-        release(_id);
-        _id = 0;
+    font_t &font_t::operator=(font_t &&other) noexcept {
+        if (this != &other) {
+            std::swap(_id, other._id);
+            _spec = std::move(other._spec);
+        }
+        return *this;
     }
-}
 
-font_t font_t::create(const font_spec &spec) {
-    font_t f;
-    BFont bfont = *be_plain_font;
-
-    if (!spec.name.empty())
-        bfont.SetFamilyAndStyle(spec.name.c_str(), nullptr);
-    if (spec.size > 0)
-        bfont.SetSize((float)spec.size);
-    if (spec.bold && spec.italic)
-        bfont.SetFace(B_BOLD_FACE | B_ITALIC_FACE);
-    else if (spec.bold)
-        bfont.SetFace(B_BOLD_FACE);
-    else if (spec.italic)
-        bfont.SetFace(B_ITALIC_FACE);
-
-    f._id = register_font(bfont);
-    f._spec = spec;
-    return f;
-}
-
-const font_t &font_t::stock(font_role role) {
-    static font_t s[5];
-    static bool initialized = false;
-    if (!initialized) {
-        initialized = true;
-
-        s[(int)font_role::system]._id  = register_font(*be_plain_font);
-        s[(int)font_role::fixed]._id   = register_font(*be_fixed_font);
-        s[(int)font_role::title]._id   = register_font(*be_bold_font);
-        s[(int)font_role::control]._id = register_font(*be_plain_font);
-
-        BFont small = *be_plain_font;
-        small.SetSize(std::max(8.0f, be_plain_font->Size() * 0.85f));
-        s[(int)font_role::small_]._id = register_font(small);
+    font_t::~font_t() {
+        if (detail::release_portable_font(_id)) {
+            _id = 0;
+            return;
+        }
+        if (_id) {
+            release(_id);
+            _id = 0;
+        }
     }
-    return s[(int)role];
-}
 
-font_metrics font_t::get_metrics() const {
-    if (!_id)
-        return {};
-    auto *binding = haiku::font_bindings.object_from_handle(_id);
-    const BFont *font = binding ? &binding->bfont : be_plain_font;
-    if (!font)
-        return {};
-    font_height height = {};
-    font->GetHeight(&height);
-    const int ascent = static_cast<int>(std::ceil(height.ascent));
-    const int descent = static_cast<int>(std::ceil(height.descent));
-    const int leading = static_cast<int>(std::ceil(height.leading));
-    return {
-        ascent,
-        descent,
-        leading,
-        ascent + descent + leading,
-        static_cast<int>(std::ceil(font->StringWidth("W")))};
-}
+    const font_t &font_t::stock(font_role role) {
+        static font_t s[6];
+        static bool initialized = false;
+        if (!initialized) {
+            initialized = true;
 
-text_metrics font_t::measure_text(const std::string &text) const {
-    if (!_id)
-        return {};
-    auto *binding = haiku::font_bindings.object_from_handle(_id);
-    const BFont *font = binding ? &binding->bfont : be_plain_font;
-    const font_metrics metrics = get_metrics();
-    if (!font)
-        return {};
-    const int width = static_cast<int>(std::ceil(
-        font->StringWidth(text.c_str(), static_cast<int32>(text.size()))));
-    return {width, metrics.height, width};
-}
+            s[(int)font_role::system]._id =
+                register_font(*be_plain_font);
+            s[(int)font_role::fixed]._id =
+                register_font(*be_fixed_font);
+            s[(int)font_role::icon_label]._id =
+                register_font(*be_plain_font);
+            s[(int)font_role::title]._id = register_font(*be_bold_font);
+            s[(int)font_role::control]._id =
+                register_font(*be_plain_font);
+
+            BFont small = *be_plain_font;
+            small.SetSize(
+                std::max(8.0f, be_plain_font->Size() * 0.85f));
+            s[(int)font_role::small]._id = register_font(small);
+            for (auto &font : s) {
+                font._spec.source = font_source::stock;
+                auto *binding =
+                    haiku::font_bindings.object_from_handle(font._id);
+                if (!binding)
+                    continue;
+                font_family family = {};
+                font_style style = {};
+                binding->bfont.GetFamilyAndStyle(&family, &style);
+                font._spec.family = family;
+                font._spec.style = style;
+                font._spec.size = static_cast<int>(
+                    std::lround(binding->bfont.Size()));
+            }
+        }
+        return s[(int)role];
+    }
+
+    font_metrics font_t::get_metrics() const {
+        if (detail::is_portable_font(_id))
+            return detail::portable_font_metrics(_id);
+        if (!_id)
+            return {};
+        auto *binding = haiku::font_bindings.object_from_handle(_id);
+        const BFont *font = binding ? &binding->bfont : be_plain_font;
+        if (!font)
+            return {};
+        font_height height = {};
+        font->GetHeight(&height);
+        const int ascent =
+            std::max(1, static_cast<int>(std::ceil(height.ascent)));
+        const int descent =
+            std::max(1, static_cast<int>(std::ceil(height.descent)));
+        const int leading =
+            std::max(1, static_cast<int>(std::ceil(height.leading)));
+        return {ascent,
+                descent,
+                leading,
+                ascent + descent + leading,
+                static_cast<int>(std::ceil(font->StringWidth("W")))};
+    }
+
+    text_metrics font_t::measure_text(const std::string &text) const {
+        if (detail::is_portable_font(_id))
+            return detail::measure_portable_text(_id, text);
+        if (!_id)
+            return {};
+        auto *binding = haiku::font_bindings.object_from_handle(_id);
+        const BFont *font = binding ? &binding->bfont : be_plain_font;
+        const font_metrics metrics = get_metrics();
+        if (!font)
+            return {};
+        const int width = static_cast<int>(std::ceil(font->StringWidth(
+            text.c_str(), static_cast<int32>(text.size()))));
+        return {width, metrics.height, width};
+    }
 
 } // namespace native

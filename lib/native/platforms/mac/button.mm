@@ -12,21 +12,20 @@
 #include <utility>
 
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
-@interface MacButtonTarget : NSObject
-{
+@interface mac_button_target : NSObject {
 @public
     // Keep runtime type encoding independent of C++ class internals.
     void *_owner;
 }
-- (void)buttonAction:(id)sender;
+- (void)button_action:(id)sender;
 @end
 
-@implementation MacButtonTarget
-- (void)buttonAction:(id)sender
-{
+@implementation mac_button_target
+- (void)button_action:(id)sender {
     (void)sender;
     auto *owner = static_cast<native::button *>(_owner);
     if (owner)
@@ -36,13 +35,14 @@
 
 namespace
 {
+    // Convert a portable label into valid AppKit text.
     static NSString *to_nsstring(const std::string &text) {
         NSString *value = [NSString stringWithUTF8String:text.c_str()];
         if (!value)
             value = @"";
         return value;
     }
-}
+} // namespace
 
 namespace native
 {
@@ -61,37 +61,35 @@ namespace native
 
         wnd *p = get_parent();
         if (!p)
-            throw std::runtime_error("macOS: button requires a parent window.");
+            throw std::runtime_error(
+                "macOS: button requires a parent window.");
         if (!p->get_created())
             throw std::runtime_error(
                 "macOS: button parent is not created.");
 
         NSWindow *window = mac::wnd_bindings.handle_from_object(p);
         if (!window)
-            throw std::runtime_error("macOS: button parent is not created.");
+            throw std::runtime_error(
+                "macOS: button parent is not created.");
 
         NSView *content = [window contentView];
         if (!content)
-            throw std::runtime_error("macOS: button parent has no content view.");
+            throw std::runtime_error(
+                "macOS: button parent has no content view.");
 
-        NSButton *btn = [[NSButton alloc]
-            initWithFrame:NSMakeRect(
-                _bounds.p.x,
-                _bounds.p.y,
-                _bounds.d.w,
-                _bounds.d.h)];
+        NSButton *btn =
+            [[NSButton alloc] initWithFrame:NSMakeRect(_bounds.p.x,
+                                                       _bounds.p.y,
+                                                       _bounds.d.w,
+                                                       _bounds.d.h)];
         [btn setTitle:to_nsstring(_text)];
-#if defined(NSBezelStyleRounded)
-        [btn setBezelStyle:NSBezelStyleRounded];
-#else
-        [btn setBezelStyle:NSRoundedBezelStyle];
-#endif
+        [btn setBezelStyle:NSBezelStylePush];
 
-        MacButtonTarget *target = [[MacButtonTarget alloc] init];
+        mac_button_target *target = [[mac_button_target alloc] init];
         target->_owner = const_cast<button *>(this);
 
         [btn setTarget:target];
-        [btn setAction:@selector(buttonAction:)];
+        [btn setAction:@selector(button_action:)];
         [content addSubview:btn];
 
         auto *self = const_cast<button *>(this);
@@ -107,11 +105,14 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("macOS: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "macOS: Cannot show button before it is created.");
 
-        auto *h = mac::button_bindings.object_from_handle(const_cast<button *>(this));
+        auto *h = mac::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!h || !h->ns_button)
-            throw std::runtime_error("macOS: Missing NSButton binding.");
+            throw std::runtime_error(
+                "macOS: Missing NSButton binding.");
 
         [h->ns_button setHidden:NO];
     }

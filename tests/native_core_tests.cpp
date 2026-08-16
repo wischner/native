@@ -1,6 +1,7 @@
 //
 // Tests backend-independent color, geometry, and signal behavior.
-// The executable avoids display access so every hosted backend can run it.
+// The executable avoids display access so every hosted backend can run
+// it.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -20,14 +21,12 @@
 
 namespace
 {
-    static_assert(
-        std::is_abstract_v<native::theme>,
-        "theme must remain a backend-implemented interface");
-    static_assert(
-        std::is_same_v<
-            decltype(native::theme::create(std::declval<native::gpx &>())),
-            std::unique_ptr<native::theme>>,
-        "theme factory must return the abstract interface");
+    static_assert(std::is_abstract_v<native::theme>,
+                  "theme must remain a backend-implemented interface");
+    static_assert(std::is_same_v<decltype(native::theme::create(
+                                     std::declval<native::gpx &>())),
+                                 std::unique_ptr<native::theme>>,
+                  "theme factory must return the abstract interface");
 
     int failure_count = 0;
 
@@ -49,23 +48,19 @@ namespace
         expect(color.g == 0x22U, "packed color green channel");
         expect(color.b == 0x33U, "packed color blue channel");
         expect(color.a == 0x44U, "packed color alpha channel");
-        expect(
-            static_cast<std::uint32_t>(color) == packed,
-            "color round trip");
+        expect(static_cast<std::uint32_t>(color) == packed,
+               "color round trip");
     }
 
     // Verify line containment and half-open rectangle operations.
     void test_geometry() {
         const native::line diagonal(0, 0, 10, 10);
-        expect(
-            diagonal.contains(native::point(5, 5)),
-            "line contains a point on its segment");
-        expect(
-            !diagonal.contains(native::point(5, 6)),
-            "line rejects a non-collinear point");
-        expect(
-            !diagonal.contains(native::point(11, 11)),
-            "line rejects a collinear point beyond its endpoint");
+        expect(diagonal.contains(native::point(5, 5)),
+               "line contains a point on its segment");
+        expect(!diagonal.contains(native::point(5, 6)),
+               "line rejects a non-collinear point");
+        expect(!diagonal.contains(native::point(11, 11)),
+               "line rejects a collinear point beyond its endpoint");
 
         const native::rect first(0, 0, 10, 10);
         const native::rect second(5, 4, 10, 8);
@@ -74,33 +69,28 @@ namespace
         expect(overlap.p.y == 4, "intersection top coordinate");
         expect(overlap.d.w == 5, "intersection width");
         expect(overlap.d.h == 6, "intersection height");
-        expect(
-            first.contains(native::point(9, 9)),
-            "rectangle includes its final interior point");
-        expect(
-            !first.contains(native::point(10, 10)),
-            "rectangle excludes its lower-right boundary");
+        expect(first.contains(native::point(9, 9)),
+               "rectangle includes its final interior point");
+        expect(!first.contains(native::point(10, 10)),
+               "rectangle excludes its lower-right boundary");
     }
 
     // Verify lazy initialization, reverse order, and propagation stops.
     void test_signal() {
         int initialization_count = 0;
-        native::signal<int> event(
-            [&initialization_count]() {
-                ++initialization_count;
-            });
+        native::signal<int> event([&initialization_count]() {
+            ++initialization_count;
+        });
 
         int observed = 0;
-        const int first_id = event.connect(
-            [&observed](int value) {
-                observed += value;
-                return false;
-            });
-        event.connect(
-            [&observed](int value) {
-                observed += value * 10;
-                return true;
-            });
+        const int first_id = event.connect([&observed](int value) {
+            observed += value;
+            return false;
+        });
+        event.connect([&observed](int value) {
+            observed += value * 10;
+            return true;
+        });
 
         event.emit(2);
         expect(initialization_count == 1, "signal initializes once");
@@ -120,22 +110,18 @@ namespace
 
         registry.register_pair(1, &first);
         registry.register_pair(2, &first);
-        expect(
-            registry.object_from_handle(1) == nullptr,
-            "reusing an object removes its former handle");
-        expect(
-            registry.handle_from_object(&first) == 2,
-            "reused object retains its current handle");
+        expect(registry.object_from_handle(1) == nullptr,
+               "reusing an object removes its former handle");
+        expect(registry.handle_from_object(&first) == 2,
+               "reused object retains its current handle");
 
         registry.register_pair(2, &second);
-        expect(
-            registry.handle_from_object(&first) == 0,
-            "reusing a handle removes its former object");
-        expect(
-            registry.object_from_handle(2) == &second,
-            "reused handle retains its current object");
+        expect(registry.handle_from_object(&first) == 0,
+               "reusing a handle removes its former object");
+        expect(registry.object_from_handle(2) == &second,
+               "reused handle retains its current object");
     }
-}
+} // namespace
 
 int main() {
     test_rgba();

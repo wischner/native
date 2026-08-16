@@ -11,6 +11,7 @@
 #include <View.h>
 
 #include <native.h>
+#include <native/wnd.h>
 
 #include "gpx_wnd.h"
 #include "globals.h"
@@ -36,17 +37,10 @@ namespace
 namespace native
 {
     void wnd::apply_position() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding =
-                haiku::button_bindings.object_from_handle(control);
-            if (binding && binding->button) {
-                with_locked_window(
-                    binding->button->Window(),
-                    [&](BWindow *) {
-                        binding->button->MoveTo(
-                            _bounds.p.x, _bounds.p.y);
-                    });
-            }
+        if (BView *control = haiku::view_from_control(this)) {
+            with_locked_window(control->Window(), [&](BWindow *) {
+                control->MoveTo(_bounds.p.x, _bounds.p.y);
+            });
             return;
         }
 
@@ -57,17 +51,10 @@ namespace native
     }
 
     void wnd::apply_dimensions() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding =
-                haiku::button_bindings.object_from_handle(control);
-            if (binding && binding->button) {
-                with_locked_window(
-                    binding->button->Window(),
-                    [&](BWindow *) {
-                        binding->button->ResizeTo(
-                            _bounds.d.w, _bounds.d.h);
-                    });
-            }
+        if (BView *control = haiku::view_from_control(this)) {
+            with_locked_window(control->Window(), [&](BWindow *) {
+                control->ResizeTo(_bounds.d.w, _bounds.d.h);
+            });
             return;
         }
 
@@ -78,19 +65,11 @@ namespace native
     }
 
     void wnd::apply_bounds() {
-        if (auto *control = dynamic_cast<button *>(this)) {
-            auto *binding =
-                haiku::button_bindings.object_from_handle(control);
-            if (binding && binding->button) {
-                with_locked_window(
-                    binding->button->Window(),
-                    [&](BWindow *) {
-                        binding->button->MoveTo(
-                            _bounds.p.x, _bounds.p.y);
-                        binding->button->ResizeTo(
-                            _bounds.d.w, _bounds.d.h);
-                    });
-            }
+        if (BView *control = haiku::view_from_control(this)) {
+            with_locked_window(control->Window(), [&](BWindow *) {
+                control->MoveTo(_bounds.p.x, _bounds.p.y);
+                control->ResizeTo(_bounds.d.w, _bounds.d.h);
+            });
             return;
         }
 
@@ -102,28 +81,23 @@ namespace native
     }
 
     void wnd::apply_parent() {
-        auto *control = dynamic_cast<button *>(this);
+        BView *control = haiku::view_from_control(this);
         if (!control)
             return;
 
-        auto *binding = haiku::button_bindings.object_from_handle(control);
-        if (!binding || !binding->button)
-            return;
-
-        BWindow *old_window = binding->button->Window();
+        BWindow *old_window = control->Window();
         if (old_window) {
             with_locked_window(old_window, [&](BWindow *) {
-                binding->button->RemoveSelf();
+                control->RemoveSelf();
             });
         }
 
-        BWindow *new_window = _parent
-                                  ? haiku::wnd_bindings.handle_from_object(
-                                        _parent)
-                                  : nullptr;
+        BWindow *new_window =
+            _parent ? haiku::wnd_bindings.handle_from_object(_parent)
+                    : nullptr;
         if (new_window) {
             with_locked_window(new_window, [&](BWindow *locked) {
-                locked->AddChild(binding->button);
+                locked->AddChild(control);
             });
         }
     }
@@ -132,14 +106,11 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        if (auto *control = dynamic_cast<const button *>(this)) {
-            auto *binding = haiku::button_bindings.object_from_handle(
-                const_cast<button *>(control));
-            if (binding && binding->button) {
-                with_locked_window(
-                    binding->button->Window(),
-                    [&](BWindow *) { binding->button->Invalidate(); });
-            }
+        if (BView *control =
+                haiku::view_from_control(const_cast<wnd *>(this))) {
+            with_locked_window(control->Window(), [&](BWindow *) {
+                control->Invalidate();
+            });
             return const_cast<wnd &>(*this);
         }
 
@@ -158,17 +129,12 @@ namespace native
         if (!_created)
             return const_cast<wnd &>(*this);
 
-        if (auto *control = dynamic_cast<const button *>(this)) {
-            auto *binding = haiku::button_bindings.object_from_handle(
-                const_cast<button *>(control));
-            if (binding && binding->button) {
-                with_locked_window(
-                    binding->button->Window(),
-                    [&](BWindow *) {
-                        binding->button->Invalidate(BRect(
-                            r.p.x, r.p.y, r.x2() - 1, r.y2() - 1));
-                    });
-            }
+        if (BView *control =
+                haiku::view_from_control(const_cast<wnd *>(this))) {
+            with_locked_window(control->Window(), [&](BWindow *) {
+                control->Invalidate(
+                    BRect(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1));
+            });
             return const_cast<wnd &>(*this);
         }
 
@@ -179,8 +145,7 @@ namespace native
             if (!view)
                 return;
 
-            BRect rect(
-                r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
+            BRect rect(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
             view->Invalidate(rect);
         });
 
@@ -189,7 +154,8 @@ namespace native
 
     gpx &wnd::get_gpx() const {
         if (!_created)
-            throw std::runtime_error("Cannot obtain gpx before window is created.");
+            throw std::runtime_error(
+                "Cannot obtain gpx before window is created.");
 
         if (!_gpx)
             _gpx = new gpx_wnd(this);

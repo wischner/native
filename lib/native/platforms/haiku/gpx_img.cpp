@@ -25,7 +25,8 @@ namespace native
 {
 
     gpx_img::gpx_img(const img &image)
-        : _img(image), _clip(0, 0, image.w(), image.h()) {
+        : _img(image)
+        , _clip(0, 0, image.w(), image.h()) {
         // No dependencies needed for software rendering
     }
 
@@ -55,7 +56,7 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_img::draw_text(const std::string &text, point p) {
+    gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         // Create BBitmap for text rendering
@@ -70,7 +71,8 @@ namespace native
 
         std::vector<std::uint8_t> before(
             static_cast<std::size_t>(_img.w()) * _img.h() * 4);
-        auto *bitmap_bytes = static_cast<std::uint8_t *>(bitmap->Bits());
+        auto *bitmap_bytes =
+            static_cast<std::uint8_t *>(bitmap->Bits());
         for (int y = 0; y < _img.h(); ++y) {
             auto *row = bitmap_bytes + y * bitmap->BytesPerRow();
             for (int x = 0; x < _img.w(); ++x) {
@@ -86,7 +88,8 @@ namespace native
         }
 
         // Get view from bitmap
-        BView *view = new BView(bounds, "offscreen", B_FOLLOW_NONE, B_WILL_DRAW);
+        BView *view =
+            new BView(bounds, "offscreen", B_FOLLOW_NONE, B_WILL_DRAW);
         bitmap->AddChild(view);
 
         if (bitmap->Lock()) {
@@ -101,10 +104,7 @@ namespace native
 
             // Set clip region
             BRect clip_rect(
-                _clip.p.x,
-                _clip.p.y,
-                _clip.x2() - 1,
-                _clip.y2() - 1);
+                _clip.p.x, _clip.p.y, _clip.x2() - 1, _clip.y2() - 1);
             BRegion region(clip_rect);
             view->ConstrainClippingRegion(&region);
 
@@ -115,8 +115,8 @@ namespace native
             view->Sync();
 
             rgba *destination = const_cast<rgba *>(_img.pixels());
-            const auto *base = static_cast<const std::uint8_t *>(
-                bitmap->Bits());
+            const auto *base =
+                static_cast<const std::uint8_t *>(bitmap->Bits());
             for (int y = 0; y < _img.h(); ++y) {
                 const auto *row = base + y * bitmap->BytesPerRow();
                 for (int x = 0; x < _img.w(); ++x) {
@@ -126,11 +126,11 @@ namespace native
                         row[x * 4] != before[index * 4] ||
                         row[x * 4 + 1] != before[index * 4 + 1] ||
                         row[x * 4 + 2] != before[index * 4 + 2];
-                    destination[index] = rgba(
-                        row[x * 4 + 2],
-                        row[x * 4 + 1],
-                        row[x * 4],
-                        changed ? _ink.a : before[index * 4 + 3]);
+                    destination[index] =
+                        rgba(row[x * 4 + 2],
+                             row[x * 4 + 1],
+                             row[x * 4],
+                             changed ? _ink.a : before[index * 4 + 3]);
                 }
             }
 

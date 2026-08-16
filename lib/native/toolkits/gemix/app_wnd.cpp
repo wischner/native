@@ -5,10 +5,12 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
 #include <native.h>
+#include <native/app_wnd.h>
 
 #include "globals.h"
 
@@ -28,16 +30,28 @@ namespace native
         if (_created)
             return;
 
+        validate_owner_created();
         if (!linux::gemix::ensure_runtime())
-            throw std::runtime_error("GEMix: failed to initialize AES/VDI runtime.");
+            throw std::runtime_error(
+                "GEMix: failed to initialize AES/VDI runtime.");
 
         rect desktop = linux::gemix::desktop_rect();
-        WORD handle = wind_create(NAME | CLOSER | FULLER | MOVER | SIZER,
-                                  desktop.p.x, desktop.p.y, desktop.d.w, desktop.d.h);
+        const WORD features =
+            get_modal() ? NAME | CLOSER | MOVER
+                        : NAME | CLOSER | FULLER | MOVER | SIZER;
+        WORD handle =
+            wind_create(features,
+                        desktop.p.x,
+                        desktop.p.y,
+                        desktop.d.w,
+                        desktop.d.h);
         if (handle < 0)
             throw std::runtime_error("GEMix: failed to create window.");
 
-        linux::gemix::wnd_bindings.register_pair(handle, const_cast<app_wnd *>(this));
+        linux::gemix::wnd_bindings.register_pair(
+            handle, const_cast<app_wnd *>(this));
+        linux::gemix::windows.push_back(
+            const_cast<app_wnd *>(this));
         wind_set_str(handle, WF_NAME, _title.c_str());
         _created = true;
 
@@ -51,18 +65,22 @@ namespace native
             throw std::runtime_error(
                 "GEMix: Cannot show window before it is created.");
 
-        WORD handle = linux::gemix::wnd_bindings.handle_from_object(const_cast<app_wnd *>(this));
+        WORD handle = linux::gemix::wnd_bindings.handle_from_object(
+            const_cast<app_wnd *>(this));
         if (handle <= 0)
             throw std::runtime_error(
                 "GEMix: Missing window binding for app_wnd.");
 
-        wind_open(handle, _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h);
+        wind_open(
+            handle, _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h);
         WORD x = 0;
         WORD y = 0;
         WORD w = 0;
         WORD h = 0;
         wind_get(handle, WF_CURRXYWH, &x, &y, &w, &h);
         const_cast<app_wnd *>(this)->_bounds = rect(x, y, w, h);
+        if (get_modal())
+            wind_set(handle, WF_TOP, 0, 0, 0, 0);
         invalidate();
     }
 
@@ -71,14 +89,33 @@ namespace native
             return;
 
         app_wnd *self = const_cast<app_wnd *>(this);
-        WORD handle = linux::gemix::wnd_bindings.handle_from_object(self);
+        WORD handle =
+            linux::gemix::wnd_bindings.handle_from_object(self);
+        app_wnd *owner = get_owner();
         self->on_native_destroy();
         if (handle > 0) {
             wind_close(handle);
             wind_delete(handle);
             linux::gemix::wnd_bindings.unregister_by_handle(handle);
         }
+        linux::gemix::windows.erase(
+            std::remove(linux::gemix::windows.begin(),
+                        linux::gemix::windows.end(),
+                        self),
+            linux::gemix::windows.end());
+
+        if (get_modal() && owner) {
+            app_wnd *focus = owner->get_input_enabled()
+                                 ? owner
+                                 : owner->get_active_modal();
+            WORD focus_handle =
+                focus ? linux::gemix::wnd_bindings
+                            .handle_from_object(focus)
+                      : 0;
+            if (focus_handle > 0)
+                wind_set(focus_handle, WF_TOP, 0, 0, 0, 0);
+        }
         if (app::main_wnd() == this)
             linux::gemix::runtime.shutdown_requested = true;
     }
-}
+} // namespace native

@@ -31,9 +31,12 @@ namespace
     {
     public:
         explicit native_view(native::app_wnd *owner, BRect frame)
-            : BView(frame, "native_canvas", B_FOLLOW_ALL, B_WILL_DRAW | B_FRAME_EVENTS),
-              _owner(owner),
-              _pressed_button(native::mouse_button::none) {
+            : BView(frame,
+                    "native_canvas",
+                    B_FOLLOW_ALL,
+                    B_WILL_DRAW | B_FRAME_EVENTS)
+            , _owner(owner)
+            , _pressed_button(native::mouse_button::none) {
             SetViewColor(B_TRANSPARENT_COLOR);
         }
 
@@ -54,22 +57,22 @@ namespace
             _owner->on_wnd_paint.emit(e);
         }
 
-        void MouseMoved(BPoint where, uint32, const BMessage *) override {
-            if (!_owner)
+        void
+        MouseMoved(BPoint where, uint32, const BMessage *) override {
+            if (!_owner || !_owner->get_input_enabled())
                 return;
 
             _owner->on_mouse_move.emit(
-                native::point(
-                    static_cast<native::coord>(where.x),
-                    static_cast<native::coord>(where.y)));
+                native::point(static_cast<native::coord>(where.x),
+                              static_cast<native::coord>(where.y)));
         }
 
         void MouseDown(BPoint where) override {
-            if (!_owner)
+            if (!_owner || !_owner->get_input_enabled())
                 return;
 
-            // Keep receiving move/up events for drag interactions such as the
-            // painter sample while the mouse button is held.
+            // Keep receiving move/up events for drag interactions such
+            // as the painter sample while the mouse button is held.
             SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
 
             uint32 buttons = 0;
@@ -85,26 +88,23 @@ namespace
             if (_pressed_button == native::mouse_button::none)
                 return;
 
-            _owner->on_mouse_click.emit(
-                native::mouse_event(
-                    _pressed_button,
-                    native::mouse_action::press,
-                    native::point(
-                        static_cast<native::coord>(where.x),
-                        static_cast<native::coord>(where.y))));
+            _owner->on_mouse_click.emit(native::mouse_event(
+                _pressed_button,
+                native::mouse_action::press,
+                native::point(static_cast<native::coord>(where.x),
+                              static_cast<native::coord>(where.y))));
         }
 
         void MouseUp(BPoint where) override {
-            if (!_owner || _pressed_button == native::mouse_button::none)
+            if (!_owner || !_owner->get_input_enabled() ||
+                _pressed_button == native::mouse_button::none)
                 return;
 
-            _owner->on_mouse_click.emit(
-                native::mouse_event(
-                    _pressed_button,
-                    native::mouse_action::release,
-                    native::point(
-                        static_cast<native::coord>(where.x),
-                        static_cast<native::coord>(where.y))));
+            _owner->on_mouse_click.emit(native::mouse_event(
+                _pressed_button,
+                native::mouse_action::release,
+                native::point(static_cast<native::coord>(where.x),
+                              static_cast<native::coord>(where.y))));
 
             _pressed_button = native::mouse_button::none;
         }
@@ -117,23 +117,30 @@ namespace
 
 namespace haiku
 {
-    native_window::native_window(
-        native::app_wnd *owner,
-        BRect frame,
-        const char *title)
-        : BWindow(frame, title, B_TITLED_WINDOW, B_ASYNCHRONOUS_CONTROLS | B_QUIT_ON_WINDOW_CLOSE),
-          _owner(owner) {
+    native_window::native_window(native::app_wnd *owner,
+                                 BRect frame,
+                                 const char *title,
+                                 window_look look,
+                                 window_feel feel)
+        : BWindow(frame,
+                  title,
+                  look,
+                  feel,
+                  B_ASYNCHRONOUS_CONTROLS)
+        , _owner(owner) {
         AddChild(new native_view(owner, Bounds()));
         wnd_bindings.register_pair(this, owner);
     }
 
     bool native_window::QuitRequested() {
-        if (_owner) {
-            _owner->on_native_destroy();
+        native::app_wnd *owner = _owner;
+        _owner = nullptr;
+        if (owner) {
+            owner->on_native_destroy();
             wnd_bindings.unregister_by_handle(this);
         }
 
-        if (be_app)
+        if (owner == native::app::main_wnd() && be_app)
             be_app->Quit();
 
         return true;
@@ -141,15 +148,18 @@ namespace haiku
 
     void native_window::MessageReceived(BMessage *message) {
         // Check if this is a menu item message for our owner.
-        if (message && _owner) {
-            auto *hm = haiku::owner_menu_bindings.object_from_handle(_owner);
-            if (hm && hm->item_ids.count(static_cast<int>(message->what))) {
+        if (message && _owner && _owner->get_input_enabled()) {
+            auto *hm =
+                haiku::owner_menu_bindings.object_from_handle(_owner);
+            if (hm &&
+                hm->item_ids.count(static_cast<int>(message->what))) {
                 _owner->on_menu.emit(static_cast<int>(message->what));
                 return;
             }
         }
 
-        if (message && message->what == B_MOUSE_WHEEL_CHANGED && _owner) {
+        if (message && message->what == B_MOUSE_WHEEL_CHANGED &&
+            _owner && _owner->get_input_enabled()) {
             float dx = 0.0f;
             float dy = 0.0f;
             message->FindFloat("be:wheel_delta_x", &dx);
@@ -161,23 +171,19 @@ namespace haiku
                 ChildAt(0)->GetMouse(&where, &buttons, false);
 
             if (dx != 0.0f) {
-                _owner->on_mouse_wheel.emit(
-                    native::mouse_wheel_event(
-                        native::point(
-                            static_cast<native::coord>(where.x),
-                            static_cast<native::coord>(where.y)),
-                        static_cast<native::coord>(dx * 120.0f),
-                        native::wheel_direction::horizontal));
+                _owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                    native::point(static_cast<native::coord>(where.x),
+                                  static_cast<native::coord>(where.y)),
+                    static_cast<native::coord>(dx * 120.0f),
+                    native::wheel_direction::horizontal));
             }
 
             if (dy != 0.0f) {
-                _owner->on_mouse_wheel.emit(
-                    native::mouse_wheel_event(
-                        native::point(
-                            static_cast<native::coord>(where.x),
-                            static_cast<native::coord>(where.y)),
-                        static_cast<native::coord>(dy * 120.0f),
-                        native::wheel_direction::vertical));
+                _owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                    native::point(static_cast<native::coord>(where.x),
+                                  static_cast<native::coord>(where.y)),
+                    static_cast<native::coord>(dy * 120.0f),
+                    native::wheel_direction::vertical));
             }
             return;
         }
@@ -197,11 +203,11 @@ namespace haiku
         BWindow::FrameMoved(new_position);
     }
 
-    void native_window::FrameResized(float new_width, float new_height) {
+    void native_window::FrameResized(float new_width,
+                                     float new_height) {
         if (_owner) {
-            native::size s(
-                static_cast<native::dim>(new_width + 1.0f),
-                static_cast<native::dim>(new_height + 1.0f));
+            native::size s(static_cast<native::dim>(new_width + 1.0f),
+                           static_cast<native::dim>(new_height + 1.0f));
             _owner->on_native_resize(s);
             _owner->on_wnd_resize.emit(s);
         }

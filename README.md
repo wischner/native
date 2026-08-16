@@ -16,7 +16,8 @@ The focus is on **clarity**, **minimalism**, and **practicality**:
 
 **native** is not intended to compete with larger frameworks. Instead, it serves two main purposes:
 
-1. It provides a clean, modern C++ API for simple and native UI development across three operating systems.
+1. It provides a clean, modern C++ API for simple and native UI
+   development across four operating systems.
 2. It is written in the open, **chapter by chapter**, allowing developers to understand exactly how each component works.  
    The development process is transparent, aiming to demystify cross-platform UI programming.
 
@@ -26,6 +27,8 @@ If you are looking for a straightforward, understandable UI library, or if you w
 
 - **Backend coverage today**: Linux (X11, SDL2, OpenMotif build path), Windows (WinAPI), Haiku (API), macOS (Cocoa code path)
 - **Native controls**: Direct use of system-native widgets and event loops
+- **Standard file dialogs**: Native open/save panels with one portable modal
+  result, path, and filter model
 - **Minimal and modern C++**: Clean code, few dependencies
 - **Educational**: Open development process, detailed documentation in chapters
 - **Consistent lowercase API**: Naming inspired by the C++ standard library
@@ -60,6 +63,12 @@ toolchain with C++20 support. A direct Linux build also needs
 - Linux graphics targets use libpng and libjpeg for PNG/JPEG image I/O;
   Windows, Haiku, and macOS use their native codec services.
 - OpenMotif uses Xlib, Xt, and Motif.
+- File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
+  OpenMotif, and GEMix. X11/Athena and SDL2 require either Zenity or KDialog at
+  runtime because neither toolkit includes a file chooser.
+- Portable TrueType/OpenType fonts use the vendored `stb_truetype`
+  rasterizer, so file- and memory-backed fonts have the same metrics
+  and pixels on every backend.
 
 Configure a direct debug build under the root `build/` directory. GCC
 debug builds enable `-Wall -Wextra -pedantic` and the address and

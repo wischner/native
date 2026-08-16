@@ -19,11 +19,10 @@ namespace native
     {
     public:
         // Construct a detected display description.
-        screen(
-            int index,
-            const rect &bounds,
-            const rect &work_area,
-            bool is_primary);
+        screen(int index,
+               const rect &bounds,
+               const rect &work_area,
+               bool is_primary);
 
         // Return the backend enumeration index.
         int index() const;
@@ -79,4 +78,4 @@ namespace native
 
         static std::vector<screen> _screens;
     };
-}
+} // namespace native

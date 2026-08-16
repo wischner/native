@@ -15,6 +15,12 @@ set(SRC_FILES
     image_codec.cpp
     menu.cpp
     button.cpp
+    check.cpp
+    radio.cpp
+    list.cpp
+    file_dialog.cpp
+    open_file_dialog.cpp
+    save_file_dialog.cpp
 )
 # Create the executable for the main application
 target_sources(native PRIVATE ${SRC_FILES})

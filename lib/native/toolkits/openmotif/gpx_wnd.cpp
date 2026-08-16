@@ -35,7 +35,8 @@ namespace
         xc.blue = static_cast<unsigned short>(color.b) * 257;
 
         Colormap colormap = widget_colormap(widget);
-        if (XAllocColor(linux::openmotif::cached_display, colormap, &xc))
+        if (XAllocColor(
+                linux::openmotif::cached_display, colormap, &xc))
             return xc.pixel;
 
         return BlackPixelOfScreen(XtScreen(widget));
@@ -47,54 +48,50 @@ namespace
 
         XColor xc = {};
         xc.pixel = pixel;
-        XQueryColor(linux::openmotif::cached_display, widget_colormap(widget), &xc);
-        return native::rgba(
-            static_cast<uint8_t>(xc.red >> 8),
-            static_cast<uint8_t>(xc.green >> 8),
-            static_cast<uint8_t>(xc.blue >> 8),
-            255);
+        XQueryColor(linux::openmotif::cached_display,
+                    widget_colormap(widget),
+                    &xc);
+        return native::rgba(static_cast<uint8_t>(xc.red >> 8),
+                            static_cast<uint8_t>(xc.green >> 8),
+                            static_cast<uint8_t>(xc.blue >> 8),
+                            255);
     }
 
-    void apply_gc(
-        Widget widget,
-        native::gpx_wnd *self,
-        linux::openmotif::motif_gpx *cache) {
+    void apply_gc(Widget widget,
+                  native::gpx_wnd *self,
+                  linux::openmotif::motif_gpx *cache) {
         if (!widget || !cache || !cache->gc)
             return;
 
         if (cache->current_fg != self->get_ink()) {
-            XSetForeground(
-                linux::openmotif::cached_display,
-                cache->gc,
-                rgba_to_pixel(widget, self->get_ink()));
+            XSetForeground(linux::openmotif::cached_display,
+                           cache->gc,
+                           rgba_to_pixel(widget, self->get_ink()));
             cache->current_fg = self->get_ink();
         }
 
         if (cache->current_thickness != self->get_pen()) {
-            XSetLineAttributes(
-                linux::openmotif::cached_display,
-                cache->gc,
-                self->get_pen(),
-                LineSolid,
-                CapButt,
-                JoinMiter);
+            XSetLineAttributes(linux::openmotif::cached_display,
+                               cache->gc,
+                               self->get_pen(),
+                               LineSolid,
+                               CapButt,
+                               JoinMiter);
             cache->current_thickness = self->get_pen();
         }
 
         const native::rect clip = self->get_clip();
-        XRectangle xclip = {
-            static_cast<short>(clip.p.x),
-            static_cast<short>(clip.p.y),
-            static_cast<unsigned short>(clip.d.w),
-            static_cast<unsigned short>(clip.d.h)};
-        XSetClipRectangles(
-            linux::openmotif::cached_display,
-            cache->gc,
-            0,
-            0,
-            &xclip,
-            1,
-            Unsorted);
+        XRectangle xclip = {static_cast<short>(clip.p.x),
+                            static_cast<short>(clip.p.y),
+                            static_cast<unsigned short>(clip.d.w),
+                            static_cast<unsigned short>(clip.d.h)};
+        XSetClipRectangles(linux::openmotif::cached_display,
+                           cache->gc,
+                           0,
+                           0,
+                           &xclip,
+                           1,
+                           Unsorted);
     }
 } // namespace
 
@@ -102,48 +99,66 @@ namespace native
 {
 
     gpx_wnd::gpx_wnd(const wnd *window, point offset)
-        : _wnd(const_cast<wnd *>(window)), _offset(offset) {
+        : _wnd(const_cast<wnd *>(window))
+        , _offset(offset) {
         if (!linux::openmotif::cached_display)
-            throw std::runtime_error("Motif: No display available for gpx_wnd.");
+            throw std::runtime_error(
+                "Motif: No display available for gpx_wnd.");
 
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!canvas || !XtIsRealized(canvas))
-            throw std::runtime_error("Motif: Drawing widget is not realized.");
+            throw std::runtime_error(
+                "Motif: Drawing widget is not realized.");
 
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache) {
             cache = new linux::openmotif::motif_gpx();
-            cache->gc = XCreateGC(linux::openmotif::cached_display, XtWindow(canvas), 0, nullptr);
+            cache->gc = XCreateGC(linux::openmotif::cached_display,
+                                  XtWindow(canvas),
+                                  0,
+                                  nullptr);
 
             XWindowAttributes attrs;
-            XGetWindowAttributes(linux::openmotif::cached_display, XtWindow(canvas), &attrs);
-            cache->backbuffer = XCreatePixmap(
-                linux::openmotif::cached_display,
-                XtWindow(canvas),
-                static_cast<unsigned int>(attrs.width),
-                static_cast<unsigned int>(attrs.height),
-                static_cast<unsigned int>(attrs.depth));
+            XGetWindowAttributes(linux::openmotif::cached_display,
+                                 XtWindow(canvas),
+                                 &attrs);
+            cache->backbuffer =
+                XCreatePixmap(linux::openmotif::cached_display,
+                              XtWindow(canvas),
+                              static_cast<unsigned int>(attrs.width),
+                              static_cast<unsigned int>(attrs.height),
+                              static_cast<unsigned int>(attrs.depth));
             cache->buf_w = attrs.width;
             cache->buf_h = attrs.height;
 
             Pixel background = WhitePixelOfScreen(XtScreen(canvas));
             Pixel foreground = BlackPixelOfScreen(XtScreen(canvas));
-            XtVaGetValues(canvas, XmNbackground, &background, XmNforeground, &foreground, nullptr);
+            XtVaGetValues(canvas,
+                          XmNbackground,
+                          &background,
+                          XmNforeground,
+                          &foreground,
+                          nullptr);
 
             set_paper(pixel_to_rgba(canvas, background));
             set_ink(pixel_to_rgba(canvas, foreground));
 
-            XSetForeground(linux::openmotif::cached_display, cache->gc, background);
-            XFillRectangle(
-                linux::openmotif::cached_display,
-                cache->backbuffer,
-                cache->gc,
-                0, 0,
-                static_cast<unsigned int>(cache->buf_w),
-                static_cast<unsigned int>(cache->buf_h));
+            XSetForeground(linux::openmotif::cached_display,
+                           cache->gc,
+                           background);
+            XFillRectangle(linux::openmotif::cached_display,
+                           cache->backbuffer,
+                           cache->gc,
+                           0,
+                           0,
+                           static_cast<unsigned int>(cache->buf_w),
+                           static_cast<unsigned int>(cache->buf_h));
             cache->current_fg = get_paper();
 
-            linux::openmotif::wnd_gpx_bindings.register_pair(_wnd, cache);
+            linux::openmotif::wnd_gpx_bindings.register_pair(_wnd,
+                                                             cache);
         }
         const size dimensions = window->get_dimensions();
         _clip = rect(0, 0, dimensions.w, dimensions.h);
@@ -158,9 +173,8 @@ namespace native
         if (cache->gc && linux::openmotif::cached_display)
             XFreeGC(linux::openmotif::cached_display, cache->gc);
         if (cache->backbuffer && linux::openmotif::cached_display) {
-            XFreePixmap(
-                linux::openmotif::cached_display,
-                cache->backbuffer);
+            XFreePixmap(linux::openmotif::cached_display,
+                        cache->backbuffer);
         }
         delete cache;
         linux::openmotif::wnd_gpx_bindings.unregister_by_handle(_wnd);
@@ -176,113 +190,122 @@ namespace native
     }
 
     gpx &gpx_wnd::clear(rgba color) {
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
-        XSetForeground(linux::openmotif::cached_display, cache->gc, rgba_to_pixel(canvas, color));
-        XFillRectangle(
-            linux::openmotif::cached_display,
-            cache->backbuffer,
-            cache->gc,
-            _clip.p.x, _clip.p.y,
-            static_cast<unsigned int>(_clip.d.w),
-            static_cast<unsigned int>(_clip.d.h));
+        XSetForeground(linux::openmotif::cached_display,
+                       cache->gc,
+                       rgba_to_pixel(canvas, color));
+        XFillRectangle(linux::openmotif::cached_display,
+                       cache->backbuffer,
+                       cache->gc,
+                       _clip.p.x,
+                       _clip.p.y,
+                       static_cast<unsigned int>(_clip.d.w),
+                       static_cast<unsigned int>(_clip.d.h));
         cache->current_fg = color;
         return *this;
     }
 
     gpx &gpx_wnd::draw_line(point from, point to) {
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
         apply_gc(canvas, this, cache);
-        XDrawLine(
-            linux::openmotif::cached_display,
-            cache->backbuffer,
-            cache->gc,
-            from.x,
-            from.y,
-            to.x,
-            to.y);
+        XDrawLine(linux::openmotif::cached_display,
+                  cache->backbuffer,
+                  cache->gc,
+                  from.x,
+                  from.y,
+                  to.x,
+                  to.y);
         return *this;
     }
 
     gpx &gpx_wnd::draw_rect(rect r, bool filled) {
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
         apply_gc(canvas, this, cache);
 
         if (filled) {
-            XFillRectangle(
-                linux::openmotif::cached_display,
-                cache->backbuffer,
-                cache->gc,
-                r.p.x,
-                r.p.y,
-                r.d.w,
-                r.d.h);
-        }
-        else {
-            XDrawRectangle(
-                linux::openmotif::cached_display,
-                cache->backbuffer,
-                cache->gc,
-                r.p.x,
-                r.p.y,
-                r.d.w - 1,
-                r.d.h - 1);
+            XFillRectangle(linux::openmotif::cached_display,
+                           cache->backbuffer,
+                           cache->gc,
+                           r.p.x,
+                           r.p.y,
+                           r.d.w,
+                           r.d.h);
+        } else {
+            XDrawRectangle(linux::openmotif::cached_display,
+                           cache->backbuffer,
+                           cache->gc,
+                           r.p.x,
+                           r.p.y,
+                           r.d.w - 1,
+                           r.d.h - 1);
         }
 
         return *this;
     }
 
-    gpx &gpx_wnd::draw_text(const std::string &text, point p) {
+    gpx &gpx_wnd::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
         apply_gc(canvas, this, cache);
 
-        auto *fh = linux::openmotif::font_bindings.object_from_handle(get_font().id());
+        auto *fh = linux::openmotif::font_bindings.object_from_handle(
+            get_font().id());
         if (fh && fh->xfont)
-            XSetFont(linux::openmotif::cached_display, cache->gc, fh->xfont);
+            XSetFont(
+                linux::openmotif::cached_display, cache->gc, fh->xfont);
 
         const int baseline = p.y + get_font_metrics().ascent;
-        XDrawString(linux::openmotif::cached_display, cache->backbuffer, cache->gc,
-                    p.x, baseline, text.c_str(), text.length());
+        XDrawString(linux::openmotif::cached_display,
+                    cache->backbuffer,
+                    cache->gc,
+                    p.x,
+                    baseline,
+                    text.c_str(),
+                    text.length());
         return *this;
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
-        auto *cache = linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
-        Widget canvas = linux::openmotif::wnd_bindings.handle_from_object(_wnd);
+        auto *cache =
+            linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
+        Widget canvas =
+            linux::openmotif::wnd_bindings.handle_from_object(_wnd);
         if (!cache || !cache->backbuffer || !canvas)
             return *this;
 
         apply_gc(canvas, this, cache);
-        Display *display = linux::openmotif::cached_display;
-        XImage *ximg = detail::x_image_from_rgba(
-            display, src.pixels(), src.w(), src.h());
-
-        XPutImage(
-            linux::openmotif::cached_display,
-            cache->backbuffer,
-            cache->gc,
-            ximg,
-            0, 0,
-            dst.x, dst.y,
-            src.w(), src.h());
-        XDestroyImage(ximg);
+        detail::blend_x_image(linux::openmotif::cached_display,
+                              cache->backbuffer,
+                              cache->gc,
+                              src,
+                              dst,
+                              _clip,
+                              size(cache->buf_w, cache->buf_h));
         return *this;
     }
 

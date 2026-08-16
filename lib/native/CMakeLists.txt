@@ -23,9 +23,26 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/portable_font.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/portable_font_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/installed_fonts.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/software_image.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/software_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/owned_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/modeless_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/modal_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp

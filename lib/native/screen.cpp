@@ -14,26 +14,33 @@ namespace native
 {
     std::vector<screen> screen::_screens;
 
-    screen::screen(
-        int index,
-        const rect &bounds,
-        const rect &work_area,
-        bool is_primary)
-        : _index(index),
-          _bounds(bounds),
-          _work_area(work_area.intersect(bounds)),
-          _is_primary(is_primary) {
+    screen::screen(int index,
+                   const rect &bounds,
+                   const rect &work_area,
+                   bool is_primary)
+        : _index(index)
+        , _bounds(bounds)
+        , _work_area(work_area.intersect(bounds))
+        , _is_primary(is_primary) {
         if (_work_area.w() == 0 || _work_area.h() == 0)
             _work_area = _bounds;
     }
 
-    int screen::index() const { return _index; }
-    bool screen::is_primary() const { return _is_primary; }
+    int screen::index() const {
+        return _index;
+    }
+    bool screen::is_primary() const {
+        return _is_primary;
+    }
     bool screen::is_landscape() const {
         return _bounds.w() >= _bounds.h();
     }
-    const rect &screen::bounds() const { return _bounds; }
-    const rect &screen::work_area() const { return _work_area; }
+    const rect &screen::bounds() const {
+        return _bounds;
+    }
+    const rect &screen::work_area() const {
+        return _work_area;
+    }
 
     int screen::count() {
         return static_cast<int>(_screens.size());
@@ -46,12 +53,12 @@ namespace native
     }
 
     screen *screen::primary() {
-        const auto primary = std::find_if(
-            _screens.begin(),
-            _screens.end(),
-            [](const screen &candidate) {
-                return candidate._is_primary;
-            });
+        const auto primary =
+            std::find_if(_screens.begin(),
+                         _screens.end(),
+                         [](const screen &candidate) {
+                             return candidate._is_primary;
+                         });
         return primary == _screens.end() ? nullptr : &*primary;
     }
 

@@ -11,6 +11,7 @@
 #include <X11/Xlib.h>
 
 #include <native.h>
+#include <native/screen.h>
 
 #include "globals.h"
 
@@ -18,10 +19,8 @@ namespace native
 {
     // Return the work area advertised by an EWMH window manager.
     static rect get_work_area(Display *display, Window root) {
-        Atom work_area_atom = XInternAtom(
-            display,
-            "_NET_WORKAREA",
-            True);
+        Atom work_area_atom =
+            XInternAtom(display, "_NET_WORKAREA", True);
         if (work_area_atom == None)
             return {};
 
@@ -31,31 +30,27 @@ namespace native
         unsigned long bytes_after = 0;
         unsigned char *property = nullptr;
 
-        const int result = XGetWindowProperty(
-            display,
-            root,
-            work_area_atom,
-            0,
-            4,
-            False,
-            XA_CARDINAL,
-            &actual_type,
-            &actual_format,
-            &item_count,
-            &bytes_after,
-            &property);
+        const int result = XGetWindowProperty(display,
+                                              root,
+                                              work_area_atom,
+                                              0,
+                                              4,
+                                              False,
+                                              XA_CARDINAL,
+                                              &actual_type,
+                                              &actual_format,
+                                              &item_count,
+                                              &bytes_after,
+                                              &property);
 
         rect work_area;
-        if (result == Success &&
-            actual_type == XA_CARDINAL &&
-            actual_format == 32 &&
-            item_count >= 4) {
+        if (result == Success && actual_type == XA_CARDINAL &&
+            actual_format == 32 && item_count >= 4) {
             auto *values = reinterpret_cast<unsigned long *>(property);
-            work_area = rect(
-                static_cast<coord>(values[0]),
-                static_cast<coord>(values[1]),
-                static_cast<dim>(values[2]),
-                static_cast<dim>(values[3]));
+            work_area = rect(static_cast<coord>(values[0]),
+                             static_cast<coord>(values[1]),
+                             static_cast<dim>(values[2]),
+                             static_cast<dim>(values[3]));
         }
 
         if (property)
@@ -80,9 +75,8 @@ namespace native
         for (int i = 0; i < screen_count; ++i) {
             Screen *scr = ScreenOfDisplay(display, i);
             rect bounds(0, 0, WidthOfScreen(scr), HeightOfScreen(scr));
-            rect work_area = get_work_area(
-                display,
-                RootWindowOfScreen(scr));
+            rect work_area =
+                get_work_area(display, RootWindowOfScreen(scr));
             bool is_primary = (i == DefaultScreen(display));
             _screens.emplace_back(i, bounds, work_area, is_primary);
         }

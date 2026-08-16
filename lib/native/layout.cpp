@@ -17,18 +17,15 @@
 namespace
 {
     template <typename value_type>
-    void remove_ptr(
-        std::vector<value_type *> &items,
-        value_type *item) {
-        items.erase(
-            std::remove(items.begin(), items.end(), item),
-            items.end());
+    void remove_ptr(std::vector<value_type *> &items,
+                    value_type *item) {
+        items.erase(std::remove(items.begin(), items.end(), item),
+                    items.end());
     }
 
     template <typename value_type>
-    void push_unique(
-        std::vector<value_type *> &items,
-        value_type *item) {
+    void push_unique(std::vector<value_type *> &items,
+                     value_type *item) {
         if (!item)
             return;
         if (std::find(items.begin(), items.end(), item) == items.end())
@@ -36,10 +33,10 @@ namespace
     }
 
     native::coord clamp_coord(int v) {
-        const int lo = static_cast<int>(
-            std::numeric_limits<native::coord>::min());
-        const int hi = static_cast<int>(
-            std::numeric_limits<native::coord>::max());
+        const int lo =
+            static_cast<int>(std::numeric_limits<native::coord>::min());
+        const int hi =
+            static_cast<int>(std::numeric_limits<native::coord>::max());
         return static_cast<native::coord>(
             std::max(lo, std::min(hi, v)));
     }
@@ -47,23 +44,22 @@ namespace
     native::dim clamp_dim(int v) {
         if (v <= 0)
             return 0;
-        const int hi = static_cast<int>(
-            std::numeric_limits<native::dim>::max());
+        const int hi =
+            static_cast<int>(std::numeric_limits<native::dim>::max());
         return static_cast<native::dim>(std::min(v, hi));
     }
 
     // Add weighted tracks until a requested index range exists.
-    void ensure_track_count(
-        std::vector<native::grid_length> &tracks,
-        int required) {
+    void ensure_track_count(std::vector<native::grid_length> &tracks,
+                            int required) {
         while (static_cast<int>(tracks.size()) < required)
             tracks.push_back(native::grid_length::star());
     }
 
     // Resolve fixed and weighted track definitions to integer pixels.
-    std::vector<int> compute_track_sizes(
-        const std::vector<native::grid_length> &defs,
-        int total) {
+    std::vector<int>
+    compute_track_sizes(const std::vector<native::grid_length> &defs,
+                        int total) {
         const int available = std::max(0, total);
         const int n = static_cast<int>(defs.size());
 
@@ -83,8 +79,8 @@ namespace
         for (int i = 0; i < n; ++i) {
             const auto &d = defs[static_cast<std::size_t>(i)];
             if (d.type == native::grid_length::unit::pixel) {
-                const int sz = static_cast<int>(std::lround(
-                    std::max(0.0f, d.value)));
+                const int sz = static_cast<int>(
+                    std::lround(std::max(0.0f, d.value)));
                 sizes[static_cast<std::size_t>(i)] = sz;
                 fixed_used += sz;
             }
@@ -101,24 +97,21 @@ namespace
                     continue;
 
                 const float weight = std::max(0.0f, d.value);
-                const int sz = static_cast<int>(std::floor(
-                    (remaining * weight) / star_sum));
+                const int sz = static_cast<int>(
+                    std::floor((remaining * weight) / star_sum));
                 sizes[static_cast<std::size_t>(i)] = sz;
                 star_used += sz;
                 star_indices.push_back(i);
             }
 
             int left = remaining - star_used;
-            for (int j = 0;
-                 left > 0 && !star_indices.empty();
+            for (int j = 0; left > 0 && !star_indices.empty();
                  ++j, --left) {
-                const int index = star_indices[
-                    static_cast<std::size_t>(
-                        j % static_cast<int>(star_indices.size()))];
+                const int index = star_indices[static_cast<std::size_t>(
+                    j % static_cast<int>(star_indices.size()))];
                 ++sizes[static_cast<std::size_t>(index)];
             }
-        }
-        else if (n > 0) {
+        } else if (n > 0) {
             sizes.back() += remaining;
         }
 
@@ -126,9 +119,8 @@ namespace
     }
 
     // Compute the starting coordinate of every resolved track.
-    std::vector<int> compute_track_offsets(
-        const std::vector<int> &sizes,
-        int origin) {
+    std::vector<int>
+    compute_track_offsets(const std::vector<int> &sizes, int origin) {
         std::vector<int> offsets(sizes.size(), origin);
         int cur = origin;
         for (std::size_t i = 0; i < sizes.size(); ++i) {
@@ -138,16 +130,15 @@ namespace
         return offsets;
     }
 
-    native::rect compute_cell_rect(const native::rect &bounds,
-                                   const std::vector<
-                                       native::grid_length> &row_defs,
-                                   const std::vector<
-                                       native::grid_length> &col_defs,
-                                   int row,
-                                   int column,
-                                   int row_span,
-                                   int column_span,
-                                   int margin) {
+    native::rect
+    compute_cell_rect(const native::rect &bounds,
+                      const std::vector<native::grid_length> &row_defs,
+                      const std::vector<native::grid_length> &col_defs,
+                      int row,
+                      int column,
+                      int row_span,
+                      int column_span,
+                      int margin) {
         std::vector<native::grid_length> rows = row_defs;
         std::vector<native::grid_length> cols = col_defs;
 
@@ -166,14 +157,14 @@ namespace
         const int r2 = std::min(nr, r + rs) - 1;
         const int c2 = std::min(nc, c + cs) - 1;
 
-        const std::vector<int> row_sizes = compute_track_sizes(
-            rows, static_cast<int>(bounds.d.h));
-        const std::vector<int> col_sizes = compute_track_sizes(
-            cols, static_cast<int>(bounds.d.w));
-        const std::vector<int> row_offsets = compute_track_offsets(
-            row_sizes, bounds.p.y);
-        const std::vector<int> col_offsets = compute_track_offsets(
-            col_sizes, bounds.p.x);
+        const std::vector<int> row_sizes =
+            compute_track_sizes(rows, static_cast<int>(bounds.d.h));
+        const std::vector<int> col_sizes =
+            compute_track_sizes(cols, static_cast<int>(bounds.d.w));
+        const std::vector<int> row_offsets =
+            compute_track_offsets(row_sizes, bounds.p.y);
+        const std::vector<int> col_offsets =
+            compute_track_offsets(col_sizes, bounds.p.x);
 
         int x = col_offsets[static_cast<std::size_t>(c)];
         int y = row_offsets[static_cast<std::size_t>(r)];
@@ -193,12 +184,9 @@ namespace
         h = std::max(0, h - (m * 2));
 
         return native::rect(
-            clamp_coord(x),
-            clamp_coord(y),
-            clamp_dim(w),
-            clamp_dim(h));
+            clamp_coord(x), clamp_coord(y), clamp_dim(w), clamp_dim(h));
     }
-}
+} // namespace
 
 namespace native
 {
@@ -235,13 +223,12 @@ namespace native
         int rs,
         int cs,
         int m)
-        : layout(std::move(child_layout)),
-          row(r),
-          column(c),
-          row_span(rs),
-          column_span(cs),
-          margin(m) {
-    }
+        : layout(std::move(child_layout))
+        , row(r)
+        , column(c)
+        , row_span(rs)
+        , column_span(cs)
+        , margin(m) {}
 
     grid_child_layout_def::grid_child_layout_def(
         grid_child_layout_def &&) noexcept = default;
@@ -273,20 +260,19 @@ namespace native
         return d;
     }
 
-    grid_child_layout_def child_grid(
-        std::unique_ptr<grid_layout_manager> layout,
-        int row_idx,
-        int column_idx,
-        int row_span,
-        int column_span,
-        int margin) {
-        return grid_child_layout_def(
-            std::move(layout),
-            row_idx,
-            column_idx,
-            row_span,
-            column_span,
-            margin);
+    grid_child_layout_def
+    child_grid(std::unique_ptr<grid_layout_manager> layout,
+               int row_idx,
+               int column_idx,
+               int row_span,
+               int column_span,
+               int margin) {
+        return grid_child_layout_def(std::move(layout),
+                                     row_idx,
+                                     column_idx,
+                                     row_span,
+                                     column_span,
+                                     margin);
     }
 
     absolute_layout_manager &
@@ -326,8 +312,8 @@ namespace native
         const int rr = std::max(1, rows);
         const int cc = std::max(1, columns);
         _rows.assign(static_cast<std::size_t>(rr), grid_length::star());
-        _columns.assign(
-            static_cast<std::size_t>(cc), grid_length::star());
+        _columns.assign(static_cast<std::size_t>(cc),
+                        grid_length::star());
     }
 
     grid_layout_manager &
@@ -365,8 +351,7 @@ namespace native
                                });
         if (it == _placed_children.end()) {
             _placed_children.push_back({&child, r, c, rs, cs, margin});
-        }
-        else {
+        } else {
             it->row = r;
             it->column = c;
             it->row_span = rs;
@@ -400,43 +385,40 @@ namespace native
         return *this;
     }
 
-    grid_layout_manager &grid_layout_manager::operator<<(
-        const grid_row_def &r) {
+    grid_layout_manager &
+    grid_layout_manager::operator<<(const grid_row_def &r) {
         return add_row(r.length);
     }
 
-    grid_layout_manager &grid_layout_manager::operator<<(
-        const grid_column_def &c) {
+    grid_layout_manager &
+    grid_layout_manager::operator<<(const grid_column_def &c) {
         return add_column(c.length);
     }
 
-    grid_layout_manager &grid_layout_manager::operator<<(
-        const grid_cell_def &p) {
+    grid_layout_manager &
+    grid_layout_manager::operator<<(const grid_cell_def &p) {
         if (!p.child)
             return *this;
-        return add(
-            *p.child,
-            p.row,
-            p.column,
-            p.row_span,
-            p.column_span,
-            p.margin);
+        return add(*p.child,
+                   p.row,
+                   p.column,
+                   p.row_span,
+                   p.column_span,
+                   p.margin);
     }
 
-    grid_layout_manager &grid_layout_manager::operator<<(
-        grid_child_layout_def &&nested) {
-        return add_child_grid(
-            std::move(nested.layout),
-            nested.row,
-            nested.column,
-            nested.row_span,
-            nested.column_span,
-            nested.margin);
+    grid_layout_manager &
+    grid_layout_manager::operator<<(grid_child_layout_def &&nested) {
+        return add_child_grid(std::move(nested.layout),
+                              nested.row,
+                              nested.column,
+                              nested.row_span,
+                              nested.column_span,
+                              nested.margin);
     }
 
-    void grid_layout_manager::relayout(
-        wnd *parent,
-        const rect &bounds) {
+    void grid_layout_manager::relayout(wnd *parent,
+                                       const rect &bounds) {
         if (!parent)
             return;
 
@@ -520,4 +502,4 @@ namespace native
     const std::vector<wnd *> &grid_layout_manager::children() const {
         return _children;
     }
-}
+} // namespace native

@@ -10,6 +10,7 @@
 #include <X11/Intrinsic.h>
 
 #include <native.h>
+#include <native/app.h>
 
 #include "globals.h"
 
@@ -18,7 +19,8 @@ namespace native
 
     int app::main_loop() {
         if (!linux::openmotif::app_instance)
-            throw std::runtime_error("Motif: No Xt application context available for main loop.");
+            throw std::runtime_error("Motif: No Xt application context "
+                                     "available for main loop.");
 
         linux::openmotif::exit_requested = false;
 

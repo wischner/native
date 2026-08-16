@@ -8,20 +8,17 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include <vector>
-
 #include <native.h>
+#include <native/button.h>
 
 #include "globals.h"
 
 namespace
 {
-    std::vector<native::button *> g_buttons;
-
     bool is_inside(const native::rect &r, int x, int y) {
         return x >= r.x1() && y >= r.y1() && x < r.x2() && y < r.y2();
     }
-}
+} // namespace
 
 namespace linux::sdl2
 {
@@ -31,7 +28,7 @@ namespace linux::sdl2
 
         bool changed = false;
 
-        for (auto *btn : g_buttons) {
+        for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
             if (!h || h->parent != owner || !h->visible)
                 continue;
@@ -50,13 +47,14 @@ namespace linux::sdl2
         return changed;
     }
 
-    bool handle_button_mouse(native::wnd *owner, int x, int y, bool pressed, bool released) {
+    bool handle_button_mouse(
+        native::wnd *owner, int x, int y, bool pressed, bool released) {
         if (!owner)
             return false;
 
         bool consumed = false;
 
-        for (auto *btn : g_buttons) {
+        for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
             if (!h || h->parent != owner || !h->visible)
                 continue;
@@ -69,8 +67,7 @@ namespace linux::sdl2
                 if (hit) {
                     h->pressed = true;
                     consumed = true;
-                }
-                else {
+                } else {
                     h->pressed = false;
                 }
             }
@@ -99,7 +96,7 @@ namespace linux::sdl2
             return;
 
         auto painter = native::theme::create(g);
-        for (auto *btn : g_buttons) {
+        for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
             if (!h || h->parent != owner || !h->visible)
                 continue;
@@ -120,8 +117,7 @@ namespace native
         auto *binding =
             linux::sdl2::button_bindings.object_from_handle(this);
         if (!binding)
-            throw std::runtime_error(
-                "SDL2: Missing button binding.");
+            throw std::runtime_error("SDL2: Missing button binding.");
 
         binding->label = _text;
         if (binding->parent)
@@ -134,7 +130,8 @@ namespace native
 
         wnd *p = get_parent();
         if (!p)
-            throw std::runtime_error("SDL2: button requires a parent window.");
+            throw std::runtime_error(
+                "SDL2: button requires a parent window.");
         if (!p->get_created())
             throw std::runtime_error(
                 "SDL2: button parent is not created.");
@@ -151,7 +148,7 @@ namespace native
         h->visible = false;
         linux::sdl2::button_bindings.register_pair(self, h);
 
-        g_buttons.push_back(self);
+        linux::sdl2::buttons.push_back(self);
 
         _created = true;
         self->on_wnd_create.emit();
@@ -159,9 +156,11 @@ namespace native
 
     void button::show() const {
         if (!_created)
-            throw std::runtime_error("SDL2: Cannot show button before it is created.");
+            throw std::runtime_error(
+                "SDL2: Cannot show button before it is created.");
 
-        auto *h = linux::sdl2::button_bindings.object_from_handle(const_cast<button *>(this));
+        auto *h = linux::sdl2::button_bindings.object_from_handle(
+            const_cast<button *>(this));
         if (!h)
             throw std::runtime_error("SDL2: Missing button binding.");
 
@@ -181,8 +180,9 @@ namespace native
         self->on_native_destroy();
 
         if (h) {
-            auto it = std::remove(g_buttons.begin(), g_buttons.end(), self);
-            g_buttons.erase(it, g_buttons.end());
+            auto &buttons = linux::sdl2::buttons;
+            auto it = std::remove(buttons.begin(), buttons.end(), self);
+            buttons.erase(it, buttons.end());
 
             if (h->parent)
                 h->parent->invalidate();

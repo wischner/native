@@ -18,8 +18,8 @@
 namespace native
 {
     gpx_img::gpx_img(const img &image)
-        : _img(image), _clip(0, 0, image.w(), image.h()) {
-    }
+        : _img(image)
+        , _clip(0, 0, image.w(), image.h()) {}
 
     gpx &gpx_img::set_clip(const rect &r) {
         _clip = r;
@@ -47,15 +47,15 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_img::draw_text(const std::string &text, point p) {
+    gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         const int advance = linux::gemix::runtime.initialized
-            ? linux::gemix::runtime.char_w
-            : 8;
+                                ? linux::gemix::runtime.char_w
+                                : 8;
         const int height = linux::gemix::runtime.initialized
-            ? linux::gemix::runtime.char_h
-            : 16;
+                               ? linux::gemix::runtime.char_h
+                               : 16;
         detail::draw_bitmap_text(
             _img,
             _clip,
@@ -71,4 +71,4 @@ namespace native
         detail::copy_image(_img, _clip, src, dst);
         return *this;
     }
-}
+} // namespace native

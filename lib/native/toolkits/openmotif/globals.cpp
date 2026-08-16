@@ -25,6 +25,8 @@ namespace linux::openmotif
     native::bindings<uint32_t, motif_font *> font_bindings;
     native::bindings<uint32_t, motif_menu *> menu_bindings;
     native::bindings<native::button *, motif_button *> button_bindings;
+    native::bindings<native::file_dialog *, motif_file_dialog *>
+        file_dialog_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;
-}
+} // namespace linux::openmotif

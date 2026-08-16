@@ -18,7 +18,8 @@ namespace native
 {
 
     gpx_img::gpx_img(const img &image)
-        : _img(image), _clip(0, 0, image.w(), image.h()) {
+        : _img(image)
+        , _clip(0, 0, image.w(), image.h()) {
         // No dependencies needed for software rendering
     }
 
@@ -48,14 +49,17 @@ namespace native
         return *this;
     }
 
-    gpx &gpx_img::draw_text(const std::string &text, point p) {
+    gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
         // Create CGBitmapContext from our RGBA buffer
         CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
         CGContextRef context = CGBitmapContextCreate(
             const_cast<rgba *>(_img.pixels()),
-            _img.w(), _img.h(), 8, _img.w() * 4,
+            _img.w(),
+            _img.h(),
+            8,
+            _img.w() * 4,
             color_space,
             static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) |
                 static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
@@ -66,23 +70,26 @@ namespace native
         }
 
         // Set clip region
-        CGRect clip_rect = CGRectMake(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
+        CGRect clip_rect =
+            CGRectMake(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
         CGContextClipToRect(context, clip_rect);
 
         // Convert text to NSString and draw
-        NSString *ns_text = [NSString stringWithUTF8String:text.c_str()];
+        NSString *ns_text =
+            [NSString stringWithUTF8String:text.c_str()];
         NSColor *color = [NSColor colorWithRed:_ink.r / 255.0
-                                        green:_ink.g / 255.0
-                                         blue:_ink.b / 255.0
-                                        alpha:_ink.a / 255.0];
-        auto *font_binding = mac::font_bindings.object_from_handle(
-            get_font().id());
-        NSFont *font = font_binding && font_binding->ns_font
-            ? font_binding->ns_font
-            : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+                                         green:_ink.g / 255.0
+                                          blue:_ink.b / 255.0
+                                         alpha:_ink.a / 255.0];
+        auto *font_binding =
+            mac::font_bindings.object_from_handle(get_font().id());
+        NSFont *font =
+            font_binding && font_binding->ns_font
+                ? font_binding->ns_font
+                : [NSFont systemFontOfSize:[NSFont systemFontSize]];
         NSDictionary *attributes = @{
-            NSForegroundColorAttributeName: color,
-            NSFontAttributeName: font
+            NSForegroundColorAttributeName : color,
+            NSFontAttributeName : font
         };
 
         NSGraphicsContext *ns_context =
@@ -91,7 +98,8 @@ namespace native
         [NSGraphicsContext saveGraphicsState];
         [NSGraphicsContext setCurrentContext:ns_context];
 
-        [ns_text drawAtPoint:NSMakePoint(p.x, p.y) withAttributes:attributes];
+        [ns_text drawAtPoint:NSMakePoint(p.x, p.y)
+              withAttributes:attributes];
 
         [NSGraphicsContext restoreGraphicsState];
 

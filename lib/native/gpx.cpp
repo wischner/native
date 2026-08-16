@@ -7,6 +7,10 @@
 
 #include <native/graphics.h>
 
+#include <limits>
+
+#include "portable_font.h"
+
 namespace native
 {
     gpx::~gpx() = default;
@@ -59,6 +63,32 @@ namespace native
 
     text_metrics gpx::measure_character(char32_t character) const {
         return get_font().measure_character(character);
+    }
+
+    gpx &gpx::draw_text(
+        const std::string &text,
+        point position) {
+        const font_t &font = get_font();
+        if (_font && !font.valid())
+            return *this;
+        if (!detail::is_portable_font(font.id()))
+            return draw_native_text(text, position);
+
+        detail::rasterized_text raster =
+            detail::rasterize_portable_text(font.id(), text, _ink);
+        if (!raster.image)
+            return *this;
+        const int x = static_cast<int>(position.x) + raster.offset.x;
+        const int y = static_cast<int>(position.y) + raster.offset.y;
+        if (x < std::numeric_limits<coord>::min() ||
+            x > std::numeric_limits<coord>::max() ||
+            y < std::numeric_limits<coord>::min() ||
+            y > std::numeric_limits<coord>::max()) {
+            return *this;
+        }
+        return draw_img(
+            *raster.image,
+            point(static_cast<coord>(x), static_cast<coord>(y)));
     }
 
 } // namespace native

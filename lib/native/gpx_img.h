@@ -37,7 +37,9 @@ namespace native
         gpx &draw_rect(rect r, bool filled = false) override;
 
         // Draw text into the image.
-        gpx &draw_text(const std::string &text, point p) override;
+        gpx &draw_native_text(
+            const std::string &text,
+            point p) override;
 
         // Copy another image into this image.
         gpx &draw_img(const img &src, point dst) override;

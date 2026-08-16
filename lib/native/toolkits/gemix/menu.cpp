@@ -6,28 +6,19 @@
 //
 
 #include <cstring>
-#include <deque>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <gem.h>
 
 #include <native.h>
+#include <native/menu.h>
 
 #include "globals.h"
 
 namespace
 {
-    struct menu_state
-    {
-        std::vector<OBJECT> tree;
-        std::deque<std::string> strings;
-        std::unordered_map<int, int> object_to_item_id;
-        bool installed = false;
-    };
-
-    std::unordered_map<native::app_wnd *, menu_state> g_menu_states;
+    using linux::gemix::menu_state;
 
     void init_object(OBJECT *object,
                      WORD next,
@@ -56,7 +47,7 @@ namespace
 
     LONG store_string(menu_state &state, std::string text) {
         state.strings.push_back(std::move(text));
-        return (LONG) (intptr_t) state.strings.back().c_str();
+        return (LONG)(intptr_t)state.strings.back().c_str();
     }
 
     std::string menu_title_text(const std::string &title) {
@@ -72,10 +63,9 @@ namespace
     }
 
     // Convert the portable menu model into an AES object tree.
-    menu_state &build_menu(
-        native::main_menu &menu,
-        native::app_wnd &owner) {
-        menu_state &state = g_menu_states[&owner];
+    menu_state &build_menu(native::main_menu &menu,
+                           native::app_wnd &owner) {
+        menu_state &state = linux::gemix::menu_states[&owner];
         const auto &tops = menu.tops();
         const int top_count = static_cast<int>(tops.size());
         const int root_index = 0;
@@ -91,9 +81,7 @@ namespace
         std::vector<int> title_indices;
         title_indices.reserve(tops.size());
 
-        for (int top_index = 0;
-             top_index < top_count;
-             ++top_index) {
+        for (int top_index = 0; top_index < top_count; ++top_index) {
             title_indices.push_back(next_index++);
         }
         const int popups_index = next_index++;
@@ -110,7 +98,8 @@ namespace
 
             if (!top.items.empty()) {
                 const int first_item_index = next_index;
-                const int last_item_index = next_index + static_cast<int>(top.items.size()) - 1;
+                const int last_item_index =
+                    next_index + static_cast<int>(top.items.size()) - 1;
                 first_item_indices.push_back(first_item_index);
                 last_item_indices.push_back(last_item_index);
                 next_index += static_cast<int>(top.items.size());
@@ -122,19 +111,55 @@ namespace
 
         state.tree.resize(next_index);
 
-        init_object(&state.tree[root_index], NIL, bar_box_index,
-                    top_count > 0 ? title_indices.front() : bar_box_index,
-                    G_IBOX, NONE, NORMAL, 0L, 0, 0, 0, 0);
-        init_object(&state.tree[bar_box_index], root_index, titles_index,
-                    titles_index, G_BOX, NONE, NORMAL, 0x1100L, 0, 0, 80, 1);
-        init_object(&state.tree[titles_index], bar_box_index,
+        init_object(&state.tree[root_index],
+                    NIL,
+                    bar_box_index,
+                    top_count > 0 ? title_indices.front()
+                                  : bar_box_index,
+                    G_IBOX,
+                    NONE,
+                    NORMAL,
+                    0L,
+                    0,
+                    0,
+                    0,
+                    0);
+        init_object(&state.tree[bar_box_index],
+                    root_index,
+                    titles_index,
+                    titles_index,
+                    G_BOX,
+                    NONE,
+                    NORMAL,
+                    0x1100L,
+                    0,
+                    0,
+                    80,
+                    1);
+        init_object(&state.tree[titles_index],
+                    bar_box_index,
                     top_count > 0 ? title_indices.front() : NIL,
                     top_count > 0 ? title_indices.back() : NIL,
-                    G_IBOX, NONE, NORMAL, 0L, 0, 0, 80, 1);
-        init_object(&state.tree[popups_index], root_index,
+                    G_IBOX,
+                    NONE,
+                    NORMAL,
+                    0L,
+                    0,
+                    0,
+                    80,
+                    1);
+        init_object(&state.tree[popups_index],
+                    root_index,
                     top_count > 0 ? popup_indices.front() : NIL,
                     top_count > 0 ? popup_indices.back() : NIL,
-                    G_IBOX, NONE, NORMAL, 0L, 0, 0, 0, 0);
+                    G_IBOX,
+                    NONE,
+                    NORMAL,
+                    0L,
+                    0,
+                    0,
+                    0,
+                    0);
 
         int title_x = 0;
 
@@ -142,7 +167,8 @@ namespace
             const auto &top = tops[top_i];
             const int title_index = title_indices[top_i];
             const int popup_index = popup_indices[top_i];
-            const int title_width = static_cast<int>(top.title.size()) + 2;
+            const int title_width =
+                static_cast<int>(top.title.size()) + 2;
             const bool last_title = top_i == top_count - 1;
             const int item_count = static_cast<int>(top.items.size());
             const int first_item_index = first_item_indices[top_i];
@@ -150,28 +176,39 @@ namespace
             size_t popup_width = 0;
 
             for (const auto &item : top.items) {
-                popup_width = std::max(popup_width, item.label.size() + 3u);
+                popup_width =
+                    std::max(popup_width, item.label.size() + 3u);
             }
             if (popup_width < 8u) {
                 popup_width = 8u;
             }
 
             init_object(&state.tree[title_index],
-                        last_title ? titles_index : title_indices[top_i + 1],
-                        NIL, NIL,
+                        last_title ? titles_index
+                                   : title_indices[top_i + 1],
+                        NIL,
+                        NIL,
                         G_TITLE,
                         NONE,
                         NORMAL,
                         store_string(state, menu_title_text(top.title)),
-                        static_cast<WORD>(title_x), 0,
-                        static_cast<WORD>(title_width), 1);
+                        static_cast<WORD>(title_x),
+                        0,
+                        static_cast<WORD>(title_width),
+                        1);
 
             init_object(&state.tree[popup_index],
-                        top_i == top_count - 1 ? popups_index : popup_indices[top_i + 1],
+                        top_i == top_count - 1
+                            ? popups_index
+                            : popup_indices[top_i + 1],
                         static_cast<WORD>(first_item_index),
                         static_cast<WORD>(last_item_index),
-                        G_BOX, NONE, NORMAL, 0x1100L,
-                        0, 0,
+                        G_BOX,
+                        NONE,
+                        NORMAL,
+                        0x1100L,
+                        0,
+                        0,
                         static_cast<WORD>(popup_width),
                         static_cast<WORD>(std::max(1, item_count)));
 
@@ -180,15 +217,20 @@ namespace
                 const bool last_item = item_i == item_count - 1;
                 const auto &item = top.items[item_i];
 
-                init_object(&state.tree[current_index],
-                            last_item ? popup_index : current_index + 1,
-                            NIL, NIL,
-                            G_STRING,
-                            NONE,
-                            NORMAL,
-                            store_string(state, menu_item_text(item.label, popup_width)),
-                            0, static_cast<WORD>(item_i),
-                            static_cast<WORD>(popup_width), 1);
+                init_object(
+                    &state.tree[current_index],
+                    last_item ? popup_index : current_index + 1,
+                    NIL,
+                    NIL,
+                    G_STRING,
+                    NONE,
+                    NORMAL,
+                    store_string(
+                        state, menu_item_text(item.label, popup_width)),
+                    0,
+                    static_cast<WORD>(item_i),
+                    static_cast<WORD>(popup_width),
+                    1);
                 state.object_to_item_id[current_index] = item.id;
             }
 
@@ -201,7 +243,7 @@ namespace
 
         return state;
     }
-}
+} // namespace
 
 namespace native
 {
@@ -231,21 +273,21 @@ namespace native
         menu_bar(state.tree.data(), 1);
         state.installed = true;
     }
-}
+} // namespace native
 
 namespace linux::gemix
 {
     OBJECT *menu_tree_for(native::app_wnd *owner) {
-        auto it = g_menu_states.find(owner);
-        if (it == g_menu_states.end() || it->second.tree.empty()) {
+        auto it = menu_states.find(owner);
+        if (it == menu_states.end() || it->second.tree.empty()) {
             return nullptr;
         }
         return it->second.tree.data();
     }
 
     int menu_item_id_for(native::app_wnd *owner, WORD object_index) {
-        auto it = g_menu_states.find(owner);
-        if (it == g_menu_states.end()) {
+        auto it = menu_states.find(owner);
+        if (it == menu_states.end()) {
             return 0;
         }
 
@@ -257,13 +299,13 @@ namespace linux::gemix
     }
 
     void destroy_menu(native::app_wnd *owner) {
-        auto it = g_menu_states.find(owner);
-        if (it == g_menu_states.end()) {
+        auto it = menu_states.find(owner);
+        if (it == menu_states.end()) {
             return;
         }
         if (it->second.installed) {
             menu_bar(it->second.tree.data(), 0);
         }
-        g_menu_states.erase(it);
+        menu_states.erase(it);
     }
-}
+} // namespace linux::gemix
