@@ -42,7 +42,7 @@ namespace
         }
 
         void Draw(BRect update_rect) override {
-            if (!_owner)
+            if (!_owner || !_owner->get_created())
                 return;
 
             native::rect r(

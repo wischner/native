@@ -24,14 +24,13 @@ namespace
         if (!held)
             window->Unlock();
     }
-    BWindow *parent(native::list *c) {
+    BView *parent_view(native::list *c) {
         auto *p = c->get_parent();
-        BWindow *w =
-            p ? haiku::wnd_bindings.handle_from_object(p) : nullptr;
-        if (!p || !p->get_created() || !w)
+        BView *view = haiku::parent_view(p);
+        if (!p || !p->get_created() || !view || !view->Window())
             throw std::runtime_error(
                 "Haiku: list requires a created parent.");
-        return w;
+        return view;
     }
     class native_list_view : public BListView
     {
@@ -93,13 +92,10 @@ namespace native
         if (_created)
             return;
         auto *self = const_cast<list *>(this);
-        BWindow *w = parent(self);
+        BView *parent = parent_view(self);
+        BWindow *w = parent->Window();
         native_list_view *v = nullptr;
         locked(w, [&] {
-            BView *content = haiku::content_view(w);
-            if (!content)
-                return;
-
             v = new native_list_view(BRect(_bounds.p.x,
                                            _bounds.p.y,
                                            _bounds.x2() - 1,
@@ -111,7 +107,7 @@ namespace native
                 v->Select(_selected_index);
                 v->_suppress = false;
             }
-            content->AddChild(v);
+            parent->AddChild(v);
         });
         if (!v)
             throw std::runtime_error("Haiku: Failed to create list.");

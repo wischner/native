@@ -59,11 +59,8 @@ namespace native
     void wnd::apply_parent() {
         if (NSView *control = mac::view_from_control(this)) {
             [control removeFromSuperview];
-            NSWindow *parent =
-                _parent ? mac::wnd_bindings.handle_from_object(_parent)
-                        : nil;
-            if (parent)
-                [[parent contentView] addSubview:control];
+            if (NSView *parent = mac::parent_view(_parent))
+                [parent addSubview:control];
             return;
         }
 

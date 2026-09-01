@@ -3,8 +3,8 @@
 This manual teaches application programming with the `native` C++ user
 interface library. It starts with the smallest possible window and then
 introduces painting, input events, menus, controls, layouts, independent
-windows, system dialogs, graphics, fonts, images, clipboard access, and text
-editing.
+windows, system dialogs, graphics, fonts, images, clipboard access, text
+editing, collection and tree controls, and virtual multi-column tables.
 
 The first chapters preserve the former runnable examples as maintained
 documentation while the repository itself builds only the `vision`
@@ -39,6 +39,9 @@ controls.
 10. [Graphics, images, fonts, and themes](programming-native/10-graphics-images-fonts-themes.md)
 11. [Clipboard and text editing](programming-native/11-clipboard-and-text-editing.md)
 12. [Building, linking, and distributing](programming-native/12-building-and-distributing.md)
+13. [Collection and disclosure controls](programming-native/13-collection-and-disclosure-controls.md)
+14. [Advanced table views](programming-native/14-advanced-table-views.md)
+15. [Source editing](programming-native/15-source-editing.md)
 
 ## Building the repository program
 

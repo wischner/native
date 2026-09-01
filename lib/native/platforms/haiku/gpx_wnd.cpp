@@ -73,7 +73,10 @@ namespace native
     gpx_wnd::gpx_wnd(const wnd *window, point offset)
         : _wnd(const_cast<wnd *>(window))
         , _offset(offset) {
-        BWindow *bwin = haiku::wnd_bindings.handle_from_object(_wnd);
+        BView *control_view = haiku::view_from_control(_wnd);
+        BWindow *bwin = control_view
+                            ? control_view->Window()
+                            : haiku::wnd_bindings.handle_from_object(_wnd);
         if (!bwin)
             throw std::runtime_error(
                 "Haiku: No BWindow available for gpx_wnd");
@@ -89,7 +92,7 @@ namespace native
                     "Haiku: Failed to lock BWindow while creating "
                     "gpx_wnd.");
 
-            cache->view = bwin->ChildAt(0);
+            cache->view = control_view ? control_view : bwin->ChildAt(0);
             if (!cache->view) {
                 BRect bounds = bwin->Bounds();
                 cache->view = new BView(

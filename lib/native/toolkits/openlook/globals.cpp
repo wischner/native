@@ -10,6 +10,7 @@
 
 #include <stdexcept>
 
+#include <xview/panel.h>
 #include <xview/window.h>
 #include <xview/xview.h>
 
@@ -30,6 +31,18 @@ namespace linux::openlook
     native::bindings<std::uint32_t, openlook_menu *> menu_bindings;
     native::bindings<native::text_edit *, openlook_text_edit *>
         text_edit_bindings;
+    native::bindings<native::accordion *, openlook_collection *>
+        accordion_bindings;
+    native::bindings<native::icon_view *, openlook_collection *>
+        icon_view_bindings;
+    native::bindings<native::tree_view *, openlook_collection *>
+        tree_view_bindings;
+    native::bindings<native::table_view *, openlook_collection *>
+        table_view_bindings;
+    native::bindings<native::code_edit *, openlook_collection *>
+        code_edit_bindings;
+    native::bindings<Xv_Window, native::wnd *>
+        collection_paint_bindings;
     native::bindings<
         const native::file_dialog *, openlook_file_dialog *>
         file_dialog_bindings;
@@ -40,7 +53,9 @@ namespace linux::openlook
             throw std::runtime_error(
                 "OpenLook/XView: control requires a created parent.");
         }
-        Xv_opaque handle = wnd_bindings.handle_from_object(parent);
+        Xv_opaque handle = parent
+                               ? wnd_bindings.handle_from_object(parent)
+                               : XV_NULL;
         if (!handle) {
             throw std::runtime_error(
                 "OpenLook/XView: parent has no content panel.");
@@ -109,6 +124,44 @@ namespace linux::openlook
                        : None;
         }
 
+        if (auto *accordion =
+                dynamic_cast<native::accordion *>(window)) {
+            auto *state = accordion_bindings.object_from_handle(
+                accordion);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *icons = dynamic_cast<native::icon_view *>(window)) {
+            auto *state = icon_view_bindings.object_from_handle(icons);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *tree = dynamic_cast<native::tree_view *>(window)) {
+            auto *state = tree_view_bindings.object_from_handle(tree);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *table = dynamic_cast<native::table_view *>(window)) {
+            auto *state = table_view_bindings.object_from_handle(table);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *editor = dynamic_cast<native::code_edit *>(window)) {
+            auto *state = code_edit_bindings.object_from_handle(editor);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+
         Xv_opaque item = wnd_bindings.handle_from_object(window);
         Xv_Window paint_window = item
                                      ? static_cast<Xv_Window>(xv_get(
@@ -120,5 +173,33 @@ namespace linux::openlook
                    ? static_cast<Window>(
                          xv_get(paint_window, XV_XID))
                    : None;
+    }
+
+    void fit_item_width(Xv_opaque item, native::dim width) {
+        if (!item || width == 0)
+            return;
+
+        const int target = static_cast<int>(width);
+        int label = target;
+
+        // Two passes: the first sets the label and measures what the
+        // toolkit's border added, the second takes that back off. The
+        // border is a constant, so the second pass lands exactly.
+        for (int pass = 0; pass < 2; ++pass) {
+            xv_set(item, PANEL_LABEL_WIDTH, label, nullptr);
+
+            const int actual = static_cast<int>(xv_get(item, XV_WIDTH));
+            const int overshoot = actual - target;
+            if (overshoot <= 0)
+                break;
+
+            // Never shrink the label away entirely: a control too
+            // narrow for any border is better left slightly wide than
+            // rendered as an empty box.
+            if (overshoot >= label)
+                break;
+
+            label -= overshoot;
+        }
     }
 } // namespace linux::openlook

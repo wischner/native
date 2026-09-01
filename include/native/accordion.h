@@ -1,0 +1,188 @@
+//
+// Declares a portable stack of collapsible disclosure sections.
+// Section state is owned by the accordion while application content
+// windows remain borrowed and keep their normal Native lifecycle.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#pragma once
+
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "wnd.h"
+
+namespace native
+{
+    class accordion;
+    class img;
+
+    // Selects whether one or several accordion sections may be open.
+    enum class accordion_mode
+    {
+        single,
+        multiple
+    };
+
+    // Identifies a portable accordion-header keyboard command.
+    enum class accordion_navigation
+    {
+        previous,
+        next,
+        first,
+        last,
+        toggle
+    };
+
+    // Stores the portable state of one accordion header and body.
+    class accordion_item final
+    {
+    public:
+        // Return the UTF-8 header title.
+        const std::string &get_title() const;
+
+        // Change the UTF-8 header title without emitting an action.
+        accordion_item &set_title(std::string title);
+
+        // Return whether this section is expanded.
+        bool get_expanded() const;
+
+        // Expand or collapse this section without emitting an action.
+        accordion_item &set_expanded(bool expanded);
+
+        // Return whether the header accepts user input.
+        bool get_enabled() const;
+
+        // Enable or disable header input without changing expansion.
+        accordion_item &set_enabled(bool enabled);
+
+        // Return the borrowed content window for this section.
+        wnd &get_content() const;
+
+        // Return the borrowed optional header icon, or null.
+        const img *get_icon() const;
+
+    private:
+        friend class accordion;
+
+        accordion_item(accordion &owner,
+                       std::string title,
+                       const img *icon,
+                       wnd &content);
+
+        accordion *_owner;
+        std::string _title;
+        const img *_icon;
+        wnd *_content;
+        dim _preferred_height;
+        bool _expanded = false;
+        bool _enabled = true;
+    };
+
+    // Presents vertically stacked headers and borrowed content bodies.
+    class accordion : public wnd
+    {
+    public:
+        // Construct an empty single-expansion accordion from bounds.
+        accordion(coord x = 0,
+                  coord y = 0,
+                  dim width = 240,
+                  dim height = 320);
+
+        // Construct an empty accordion from position and dimensions.
+        accordion(const point &position, const size &dimensions);
+
+        // Construct an empty accordion from complete bounds.
+        explicit accordion(const rect &bounds);
+
+        // Destroy native resources and detach every borrowed body.
+        ~accordion() override;
+
+        // Set single- or multiple-expansion behavior.
+        accordion &set_mode(accordion_mode mode);
+
+        // Return the current expansion behavior.
+        accordion_mode get_mode() const;
+
+        // Return the number of sections in display order.
+        std::size_t get_item_count() const;
+
+        // Return a section by index or throw std::out_of_range.
+        accordion_item &get_item(std::size_t index) const;
+
+        // Append a section with no header icon and borrow its content.
+        accordion_item &add_item(const std::string &title,
+                                 wnd &content);
+
+        // Append a section borrowing both its icon and content window.
+        // Both borrowed objects must outlive the section.
+        accordion_item &add_item(const std::string &title,
+                                 const img &icon,
+                                 wnd &content);
+
+        // Remove a section by index or throw std::out_of_range.
+        accordion &remove_item(std::size_t index);
+
+        // Remove all sections and detach their borrowed content.
+        accordion &clear_items();
+
+        // Return the first expanded index, or -1 when all are closed.
+        int get_expanded_index() const;
+
+        // Expand one index, or collapse all with -1, without a signal.
+        accordion &set_expanded_index(int index);
+
+        // Return the client-relative bounds of a section header.
+        rect get_header_bounds(std::size_t index) const;
+
+        // Return the client-relative body bounds for a section.
+        rect get_content_bounds(std::size_t index) const;
+
+        // Toggle a header after a backend-originated user action.
+        void on_native_toggle(std::size_t index);
+
+        // Return the header currently carrying keyboard focus.
+        int get_focused_index() const;
+
+        // Cache backend focus entry or departure without a signal.
+        void on_native_focus(bool focused);
+
+        // Apply one backend-originated header navigation command.
+        void on_native_navigation(accordion_navigation navigation);
+
+        // Create the backend accordion resource.
+        void create() const override;
+
+        // Destroy the backend accordion resource.
+        void destroy() const override;
+
+        // Show the backend accordion resource.
+        void show() const override;
+
+        // Emits the newly expanded index, or -1 after a collapse.
+        signal<int> on_expanded_change;
+
+    protected:
+        // Recalculate body geometry after this control is resized.
+        void on_bounds_changed() override;
+
+    private:
+        friend class accordion_item;
+
+        accordion_mode _mode = accordion_mode::single;
+        std::vector<std::unique_ptr<accordion_item>> _items;
+        int _header_height = 24;
+        int _focused_index = -1;
+
+        void apply_items();
+        void refresh();
+        void validate_index(int index, bool allow_none) const;
+        void set_item_expanded(std::size_t index, bool expanded);
+        void detach_item(accordion_item &item);
+        void synchronize_theme_metrics();
+    };
+} // namespace native

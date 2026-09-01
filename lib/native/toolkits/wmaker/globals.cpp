@@ -37,6 +37,16 @@ namespace linux::wmaker
     native::bindings<std::uint32_t, native_menu *> menu_bindings;
     native::bindings<native::text_edit *, native_text_edit *>
         text_edit_bindings;
+    native::bindings<native::accordion *, native_collection *>
+        accordion_bindings;
+    native::bindings<native::icon_view *, native_collection *>
+        icon_view_bindings;
+    native::bindings<native::tree_view *, native_collection *>
+        tree_view_bindings;
+    native::bindings<native::table_view *, native_collection *>
+        table_view_bindings;
+    native::bindings<native::code_edit *, native_collection *>
+        code_edit_bindings;
 
     void initialize() {
         if (initialized)

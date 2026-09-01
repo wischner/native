@@ -273,6 +273,21 @@ When the user or toolkit resizes a window, the backend calls
 sending the same resize request back to the toolkit. Native move notifications
 follow the same no-echo rule.
 
+A notification that repeats the cached dimensions is ignored. Several backends
+report geometry through a single event that also covers moves, so without this
+a window would arrange its children every time it was dragged.
+
+A layout pass never re-enters itself. A backend may report the size it granted
+from inside the call that applied it, and geometry management in some toolkits
+resizes a parent when a child changes size. Requests that arrive while a pass
+runs are dropped, so applying geometry and arranging children is one pass
+against the size the toolkit granted, rather than two against different ones.
+
+A backend reports the client size its window really has once that window and
+its menu exist. Where a menu bar or similar furniture sits above the client
+area, the client is smaller than the window the toolkit created, and the first
+arrangement has to use the smaller size to match what the backend renders.
+
 ## Invalidation and painting boundary
 
 `invalidate()` asks the backend to schedule a repaint of all or part of the

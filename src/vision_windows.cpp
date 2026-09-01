@@ -8,7 +8,249 @@
 
 #include "vision_window.h"
 
+#include <charconv>
+#include <cctype>
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace
+{
+    // Build one alpha-bearing procedural thumbnail using only the
+    // public portable graphics API.
+    std::shared_ptr<const native::img> make_thumbnail(
+        int index,
+        int color_seed) {
+        auto image = std::make_shared<native::img>(48, 48);
+        native::gpx &graphics = image->get_gpx();
+        graphics.clear(native::rgba(0, 0, 0, 0));
+        const native::rgba color(
+            static_cast<std::uint8_t>((color_seed + index * 47) % 210 + 32),
+            static_cast<std::uint8_t>((color_seed * 3 + index * 71) % 210 + 32),
+            static_cast<std::uint8_t>((color_seed * 5 + index * 29) % 210 + 32),
+            static_cast<std::uint8_t>(index % 3 == 0 ? 190 : 255));
+        graphics.set_ink(color);
+        if (index % 3 == 0) {
+            graphics.draw_ellipse(native::rect(5, 5, 38, 38), true);
+        } else if (index % 3 == 1) {
+            graphics.draw_rect(native::rect(6, 8, 36, 32), true);
+        } else {
+            graphics.draw_polygon(
+                {{24, 3}, {45, 42}, {3, 42}}, true);
+        }
+        graphics.set_ink(native::rgba(35, 35, 35, 220))
+            .set_pen(2)
+            .draw_line({8, 40}, {40, 8});
+        return image;
+    }
+
+    // Create enough stable-ID entries to force vertical scrolling.
+    std::vector<native::icon_view_item> make_items(
+        const std::string &prefix,
+        int count,
+        int color_seed) {
+        std::vector<native::icon_view_item> items;
+        items.reserve(static_cast<std::size_t>(count));
+        for (int index = 0; index < count; ++index) {
+            items.push_back({prefix + " " + std::to_string(index + 1),
+                             make_thumbnail(index, color_seed),
+                             static_cast<std::uint64_t>(index + 1),
+                             true});
+        }
+        return items;
+    }
+
+    // Create a classic file hierarchy with shared portable icons.
+    std::vector<native::tree_view_item> make_tree_items() {
+        auto folder = make_thumbnail(1, 41);
+        auto document = make_thumbnail(2, 101);
+        return {
+            {"Project",
+             folder,
+             100,
+             {{"include",
+               folder,
+               110,
+               {{"native.h", document, 111},
+                {"tree_view.h", document, 112}},
+               true},
+              {"lib",
+               folder,
+               120,
+               {{"native",
+                 folder,
+                 121,
+                 {{"tree_view.cpp", document, 122}},
+                 true}},
+               true},
+              {"tests",
+               folder,
+               130,
+               {{"native_window_api_tests.cpp", document, 131}},
+               false}},
+             true},
+            {"README.md", document, 200},
+            {"LICENSE", document, 201}};
+    }
+
+    // Generate a compact alpha-bearing image for table cells.
+    std::shared_ptr<const native::img> make_table_icon(int index) {
+        auto image = std::make_shared<native::img>(18, 18);
+        native::gpx &graphics = image->get_gpx();
+        graphics.clear(native::rgba(0, 0, 0, 0));
+        graphics.set_ink(index % 2 == 0
+                             ? native::rgba(52, 116, 205, 220)
+                             : native::rgba(222, 132, 42, 220));
+        if (index % 2 == 0)
+            graphics.draw_rect(native::rect(2, 3, 14, 12), true);
+        else
+            graphics.draw_ellipse(native::rect(2, 2, 14, 14), true);
+        return image;
+    }
+
+    // Return the four semantic columns shared by both table demos.
+    std::vector<native::table_column> make_table_columns() {
+        native::table_column name;
+        name.id = 1;
+        name.title = "Name";
+        name.width = 230;
+        name.sortable = true;
+        native::table_column type;
+        type.id = 2;
+        type.title = "Type";
+        type.width = 125;
+        type.sortable = true;
+        native::table_column modified;
+        modified.id = 3;
+        modified.title = "Modified";
+        modified.width = 150;
+        modified.sortable = true;
+        native::table_column size;
+        size.id = 4;
+        size.title = "Size";
+        size.width = 100;
+        size.alignment = native::table_alignment::end;
+        size.sortable = true;
+        return {name, type, modified, size};
+    }
+
+    // Supplies one million rows without retaining per-row objects.
+    class million_row_model final : public native::table_model
+    {
+    public:
+        std::size_t row_count() const override {
+            return 1000000;
+        }
+
+        native::table_row_id row_id(std::size_t row) const override {
+            return static_cast<native::table_row_id>(row + 1);
+        }
+
+        native::table_cell cell(
+            std::size_t row,
+            native::table_column_id column) const override {
+            const std::string number = std::to_string(row + 1);
+            if (column == 1)
+                return {"Virtual row " + number, nullptr};
+            if (column == 2)
+                return {row % 2 == 0 ? "Generated" : "On demand",
+                        nullptr};
+            if (column == 3)
+                return {"Never materialized", nullptr};
+            if (column == 4)
+                return {number + " B", nullptr};
+            return {};
+        }
+
+        std::optional<std::size_t> find(
+            const native::table_search &query) const override {
+            constexpr std::string_view prefix = "Virtual row ";
+            if (query.text.rfind(prefix, 0) != 0)
+                return native::table_model::find(query);
+            std::size_t number = 0;
+            const char *first = query.text.data() + prefix.size();
+            const char *last = query.text.data() + query.text.size();
+            const auto parsed = std::from_chars(first, last, number);
+            if (parsed.ec != std::errc() || parsed.ptr != last ||
+                number == 0 || number > row_count()) {
+                return std::nullopt;
+            }
+            return number - 1;
+        }
+    };
+
+    // Highlights a few C++ lexical forms for the editor demonstration.
+    class demo_code_lexer final : public native::code_lexer
+    {
+    public:
+        std::string language_id() const override { return "cpp"; }
+
+        std::vector<native::style_run> lex(
+            std::string_view text,
+            std::size_t dirty_start,
+            std::size_t dirty_end) override {
+            (void)dirty_start;
+            (void)dirty_end;
+            std::vector<native::style_run> result;
+            std::size_t offset = 0;
+            while (offset < text.size()) {
+                if (offset + 1 < text.size() && text[offset] == '/' &&
+                    text[offset + 1] == '/') {
+                    const std::size_t end = text.find('\n', offset);
+                    result.push_back({
+                        {offset,
+                         end == std::string_view::npos
+                             ? text.size()
+                             : end},
+                        3});
+                    offset = end == std::string_view::npos
+                                 ? text.size()
+                                 : end;
+                    continue;
+                }
+                if (text[offset] == '"') {
+                    std::size_t end = offset + 1;
+                    while (end < text.size()) {
+                        if (text[end] == '\\' && end + 1 < text.size()) {
+                            end += 2;
+                        } else if (text[end] == '"') {
+                            ++end;
+                            break;
+                        } else {
+                            ++end;
+                        }
+                    }
+                    result.push_back({{offset, end}, 2});
+                    offset = end;
+                    continue;
+                }
+                const unsigned char value =
+                    static_cast<unsigned char>(text[offset]);
+                if (!std::isalpha(value) && text[offset] != '_') {
+                    ++offset;
+                    continue;
+                }
+                const std::size_t begin = offset++;
+                while (offset < text.size()) {
+                    const unsigned char next =
+                        static_cast<unsigned char>(text[offset]);
+                    if (!std::isalnum(next) && text[offset] != '_')
+                        break;
+                    ++offset;
+                }
+                const std::string_view word =
+                    text.substr(begin, offset - begin);
+                if (word == "int" || word == "return" ||
+                    word == "const" || word == "std") {
+                    result.push_back({{begin, offset}, 1});
+                }
+            }
+            return result;
+        }
+    };
+} // namespace
 
 namespace vision
 {
@@ -40,6 +282,532 @@ namespace vision
             native::rect(210, 78, 155, 104),
             {"Controls", "Images", "Fonts", "Clipboard"}, 2,
             selected);
+        return true;
+    }
+
+    feature_layout::feature_layout(native::app_wnd &owner)
+        : native::modeless_wnd(owner, "Vision Layout Managers",
+                               200, 170, 560, 420)
+        , _toggle("Switch to absolute layout", 0, 0, 200, 28)
+        , _sidebar("Sidebar", 0, 0, 120, 28)
+        , _status("Status bar", 0, 0, 120, 28)
+        , _cell_1("Cell 0,0", 0, 0, 90, 26)
+        , _cell_2("Cell 0,1", 0, 0, 90, 26)
+        , _cell_3("Cell 1,0", 0, 0, 90, 26)
+        , _cell_4("Cell 1,1", 0, 0, 90, 26) {
+        on_wnd_create.connect(this, &feature_layout::on_create);
+        on_wnd_paint.connect(this, &feature_layout::on_paint);
+        _toggle.on_click.connect(this, &feature_layout::on_toggle);
+    }
+
+    bool feature_layout::on_create() {
+        // The controls carry no useful bounds yet. Parenting them
+        // before a layout exists is deliberate: the layout installed
+        // below adopts the children the window already has, and the
+        // cells named here survive that adoption.
+        for (native::button *control : {&_toggle,
+                                        &_sidebar,
+                                        &_status,
+                                        &_cell_1,
+                                        &_cell_2,
+                                        &_cell_3,
+                                        &_cell_4}) {
+            control->set_parent(this);
+            control->create();
+            control->show();
+        }
+
+        apply_grid_layout();
+        return true;
+    }
+
+    void feature_layout::apply_grid_layout() {
+        auto grid = std::make_unique<native::grid_layout_manager>();
+
+        // Three fixed rows and one weighted row. Only the weighted
+        // row grows, so the toolbar and status bar keep their height
+        // whatever the window does. The first row holds no control at
+        // all; a track is just space, and this one is painted into.
+        (*grid) << native::row(native::pixels(52))
+                << native::row(native::pixels(40))
+                << native::row(native::star())
+                << native::row(native::pixels(40))
+                << native::column(native::star(1.0f))
+                << native::column(native::star(2.0f))
+                << native::cell(_toggle, 1, 0, 1, 2, 6)
+                << native::cell(_sidebar, 2, 0, 1, 1, 6)
+                << native::cell(_status, 3, 0, 1, 2, 6);
+
+        // A nested grid owns the content cell and subdivides it. Its
+        // children belong to it alone; the grid above never places
+        // them a second time.
+        auto nested =
+            std::make_unique<native::grid_layout_manager>(2, 2);
+        nested->add(_cell_1, 0, 0, 1, 1, 6)
+            .add(_cell_2, 0, 1, 1, 1, 6)
+            .add(_cell_3, 1, 0, 1, 1, 6)
+            .add(_cell_4, 1, 1, 1, 1, 6);
+        (*grid) << native::child_grid(std::move(nested), 2, 1, 1, 1, 3);
+
+        set_layout(std::move(grid));
+        _toggle.set_text("Switch to absolute layout");
+    }
+
+    void feature_layout::apply_absolute_layout() {
+        // Absolute layout registers children without moving them, so
+        // the explicit bounds below are what the window keeps, at any
+        // size.
+        auto layout =
+            std::make_unique<native::absolute_layout_manager>();
+        (*layout) << _toggle << _sidebar << _status
+                  << _cell_1 << _cell_2 << _cell_3 << _cell_4;
+        set_layout(std::move(layout));
+
+        _toggle.set_bounds(native::rect(16, 58, 200, 28));
+        _sidebar.set_bounds(native::rect(16, 98, 150, 180));
+        _cell_1.set_bounds(native::rect(180, 98, 130, 84));
+        _cell_2.set_bounds(native::rect(320, 98, 130, 84));
+        _cell_3.set_bounds(native::rect(180, 194, 130, 84));
+        _cell_4.set_bounds(native::rect(320, 194, 130, 84));
+        _status.set_bounds(native::rect(16, 292, 434, 28));
+        _toggle.set_text("Switch to grid layout");
+    }
+
+    bool feature_layout::on_toggle() {
+        _using_grid = !_using_grid;
+        if (_using_grid)
+            apply_grid_layout();
+        else
+            apply_absolute_layout();
+        invalidate();
+        return true;
+    }
+
+    bool feature_layout::on_paint(native::wnd_paint_event event) {
+        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.draw_text(
+            _using_grid
+                ? "Grid layout: pixel rows stay fixed, the star row "
+                  "grows."
+                : "Absolute layout: every control keeps its explicit "
+                  "bounds.",
+            native::point(16, 14));
+        event.g.draw_text(
+            _using_grid
+                ? "Columns share the width 1:2. Resize to watch it "
+                  "reflow."
+                : "Resize the window: nothing moves until a grid is "
+                  "installed.",
+            native::point(16, 32));
+        return true;
+    }
+
+    feature_collections::feature_collections(native::app_wnd &owner)
+        : native::modeless_wnd(owner, "Vision Collection Controls",
+                               230, 130, 760, 500)
+        , _shapes(make_items("Shape", 20, 17), 0, 0, 330, 300)
+        , _colors(make_items("Color", 16, 79), 0, 0, 330, 300)
+        , _backgrounds(
+              make_items("Background", 14, 137), 0, 0, 330, 300)
+        , _libraries(20, 52, 330, 390)
+        , _tree(make_tree_items(), 370, 52, 370, 390)
+        , _status("Select, expand, or double-click an item.") {
+        _libraries.set_mode(native::accordion_mode::single);
+        _libraries.add_item("Shapes", _shapes);
+        _libraries.add_item("Colors", _colors);
+        _libraries.add_item("Backgrounds", _backgrounds);
+        on_wnd_create.connect(this, &feature_collections::on_create);
+        on_wnd_paint.connect(this, &feature_collections::on_paint);
+        _libraries.on_expanded_change.connect(
+            this, &feature_collections::on_expanded);
+        for (native::icon_view *view : {
+                 &_shapes, &_colors, &_backgrounds}) {
+            view->on_selection_change.connect(
+                this, &feature_collections::on_selected);
+            view->on_item_activate.connect(
+                this, &feature_collections::on_activated);
+        }
+        _tree.on_selection_change.connect(
+            this, &feature_collections::on_tree_selected);
+        _tree.on_expanded_change.connect(
+            this, &feature_collections::on_tree_expanded);
+        _tree.on_item_activate.connect(
+            this, &feature_collections::on_tree_activated);
+    }
+
+    bool feature_collections::on_create() {
+        _libraries.set_parent(this);
+        _libraries.create();
+        _libraries.show();
+        _tree.set_parent(this);
+        _tree.create();
+        _tree.show();
+        return true;
+    }
+
+    bool feature_collections::on_paint(
+        native::wnd_paint_event event) {
+        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.draw_text(
+            "Libraries: accordion/icon view                 "
+            "Classic tree view",
+            native::point(20, 16));
+        event.g.draw_text(_status, native::point(20, 458));
+        return true;
+    }
+
+    bool feature_collections::on_expanded(int index) {
+        static constexpr const char *names[] = {
+            "Shapes", "Colors", "Backgrounds"};
+        _status = index >= 0 && index < 3
+                      ? std::string("Expanded ") + names[index] + "."
+                      : "Collapsed the active library.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_collections::on_selected(int index) {
+        _status = "Selected icon index " + std::to_string(index) + ".";
+        invalidate();
+        return true;
+    }
+
+    bool feature_collections::on_activated(int index) {
+        _status = "Activated icon index " + std::to_string(index) + ".";
+        invalidate();
+        return true;
+    }
+
+    bool feature_collections::on_tree_selected(
+        native::tree_item_id id) {
+        _status = "Selected tree item " + std::to_string(id) + ".";
+        invalidate();
+        return true;
+    }
+
+    bool feature_collections::on_tree_expanded(
+        native::tree_item_id id,
+        bool expanded) {
+        _status = std::string(expanded ? "Expanded" : "Collapsed") +
+                  " tree item " + std::to_string(id) + ".";
+        invalidate();
+        return true;
+    }
+
+    bool feature_collections::on_tree_activated(
+        native::tree_item_id id) {
+        _status = "Activated tree item " + std::to_string(id) + ".";
+        invalidate();
+        return true;
+    }
+
+    feature_tables::feature_tables(native::app_wnd &owner)
+        : native::modeless_wnd(owner, "Vision Table View",
+                               250, 100, 800, 650)
+        , _million_model(std::make_unique<million_row_model>())
+        , _table(20, 72, 760, 300)
+        , _million_table(20, 430, 760, 150)
+        , _alternating("Alternating rows", 20, 18, 140, 24)
+        , _grid("Grid lines", 170, 18, 110, 24)
+        , _multiple("Multiple selection", 290, 18, 160, 24)
+        , _search("Item 78", native::text_edit_mode::single_line,
+                  460, 16, 180, 28)
+        , _find("Find/reveal", 650, 16, 120, 28)
+        , _scroll("Scroll to row 900,001", 20, 594, 190, 28)
+        , _status("Both tables request cells only as they are needed.") {
+        for (int index = 0; index < 4; ++index)
+            _images.push_back(make_table_icon(index));
+        std::vector<native::table_store_row> rows;
+        rows.reserve(120);
+        for (std::uint64_t index = 1; index <= 120; ++index) {
+            rows.push_back(
+                {index,
+                 {{1,
+                   {"Item " + std::to_string(index),
+                    _images[static_cast<std::size_t>(index % 4)]
+                        .get()}},
+                  {2,
+                   {index <= 60 ? "Document" : "Image", nullptr}},
+                  {3,
+                   {index % 3 == 0 ? "Today" : "Yesterday",
+                    nullptr}},
+                  {4,
+                   {std::to_string(index * 7) + " KB", nullptr}}}});
+        }
+        _store.set_rows(std::move(rows));
+        _store.set_groups(
+            {{10, "Documents (60)", 0, 60, true, true},
+             {20, "Images (60)", 60, 60, true, true}});
+
+        _alternating.set_checked(true);
+        _multiple.set_checked(true);
+        _table.set_columns(make_table_columns())
+            .set_model(&_store)
+            .set_data_mode(native::table_data_mode::materialized)
+            .set_selection_mode(native::table_selection_mode::multiple)
+            .set_alternating_rows(true)
+            .set_icon_size(std::optional<native::size>(
+                native::size(18, 18)));
+        _million_table.set_columns(make_table_columns())
+            .set_model(_million_model.get())
+            .set_data_mode(native::table_data_mode::virtualized)
+            .set_selection_mode(native::table_selection_mode::multiple)
+            .set_alternating_rows(true);
+
+        on_wnd_create.connect(this, &feature_tables::on_create);
+        on_wnd_paint.connect(this, &feature_tables::on_paint);
+        _alternating.on_change.connect(
+            this, &feature_tables::on_alternating);
+        _grid.on_change.connect(this, &feature_tables::on_grid);
+        _multiple.on_change.connect(this, &feature_tables::on_multiple);
+        _find.on_click.connect(this, &feature_tables::on_find);
+        _scroll.on_click.connect(this, &feature_tables::on_scroll);
+        _table.on_selection_change.connect(
+            this, &feature_tables::on_selection);
+        _million_table.on_selection_change.connect(
+            this, &feature_tables::on_selection);
+        _table.on_sort_request.connect(this, &feature_tables::on_sort);
+        _million_table.on_sort_request.connect(
+            this, &feature_tables::on_sort);
+        _table.on_group_expand.connect(
+            this, &feature_tables::on_group);
+    }
+
+    bool feature_tables::on_create() {
+        for (native::wnd *control : {
+                 static_cast<native::wnd *>(&_alternating),
+                 static_cast<native::wnd *>(&_grid),
+                 static_cast<native::wnd *>(&_multiple),
+                 static_cast<native::wnd *>(&_search),
+                 static_cast<native::wnd *>(&_find),
+                 static_cast<native::wnd *>(&_table),
+                 static_cast<native::wnd *>(&_million_table),
+                 static_cast<native::wnd *>(&_scroll)}) {
+            control->set_parent(this);
+            control->create();
+            control->show();
+        }
+        return true;
+    }
+
+    bool feature_tables::on_paint(native::wnd_paint_event event) {
+        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.draw_text(
+            "120 materialized rows, four columns, icons, and two groups",
+            native::point(20, 50));
+        event.g.draw_text(
+            "Virtual model: 1,000,000 generated rows",
+            native::point(20, 402));
+        event.g.draw_text(_status, native::point(226, 600));
+        return true;
+    }
+
+    bool feature_tables::on_alternating(bool enabled) {
+        _table.set_alternating_rows(enabled);
+        _million_table.set_alternating_rows(enabled);
+        _status = enabled ? "Alternating rows enabled."
+                          : "Alternating rows disabled.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_grid(bool enabled) {
+        const native::table_grid_lines lines = enabled
+            ? native::table_grid_lines::both
+            : native::table_grid_lines::none;
+        _table.set_grid_lines(lines);
+        _million_table.set_grid_lines(lines);
+        _status = enabled ? "Horizontal and vertical grid lines enabled."
+                          : "Grid lines disabled.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_multiple(bool enabled) {
+        const native::table_selection_mode mode = enabled
+            ? native::table_selection_mode::multiple
+            : native::table_selection_mode::single;
+        _table.set_selection_mode(mode);
+        _million_table.set_selection_mode(mode);
+        _status = enabled ? "Multiple selection enabled."
+                          : "Single selection enabled.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_find() {
+        native::table_search query;
+        query.text = _search.get_text();
+        query.match = native::table_search_match::substring;
+        _status = _table.find_and_reveal(query)
+            ? "Found and revealed: " + query.text
+            : "No table row contains: " + query.text;
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_scroll() {
+        native::table_search query;
+        query.text = "Virtual row 900001";
+        query.match = native::table_search_match::exact;
+        query.columns = {1};
+        _status = _million_table.find_and_reveal(query)
+            ? "Virtual table jumped to stable row 900,001."
+            : "Virtual row 900,001 was not found.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_selection(
+        const std::vector<native::table_row_id> &rows) {
+        _status = "User selected " + std::to_string(rows.size()) +
+                  " stable row ID(s).";
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_sort(native::table_sort sort) {
+        _status = "Sort requested for column " +
+                  std::to_string(sort.column) +
+                  (sort.direction == native::sort_direction::ascending
+                       ? " ascending."
+                       : " descending.");
+        invalidate();
+        return true;
+    }
+
+    bool feature_tables::on_group(native::table_group_id group,
+                                  bool expanded) {
+        _status = "Group " + std::to_string(group) +
+                  (expanded ? " expanded." : " collapsed.");
+        invalidate();
+        return true;
+    }
+
+    feature_code_editor::feature_code_editor(native::app_wnd &owner)
+        : native::modeless_wnd(owner,
+                               "Vision Code Editor",
+                               270,
+                               110,
+                               760,
+                               550)
+        , _lexer(std::make_unique<demo_code_lexer>())
+        , _editor("#include <iostream>\n\n"
+                  "int main() {\n"
+                  "    const char *message = \"Hello, Native!\";\n"
+                  "    // Click the gutter to toggle a breakpoint.\n"
+                  "    return message[0] == 'H' ? 0 : 1;\n"
+                  "}\n",
+                  20,
+                  54,
+                  720,
+                  400)
+        , _show_completion("Show completion", 20, 468, 150, 28)
+        , _status("Line numbers, styles, diagnostics, and marks are "
+                  "portable overlays.") {
+        native::code_theme colors;
+        colors.styles.resize(4);
+        colors.styles[0].foreground = native::rgba(20, 20, 20, 255);
+        colors.styles[1].foreground = native::rgba(35, 70, 180, 255);
+        colors.styles[2].foreground = native::rgba(35, 125, 65, 255);
+        colors.styles[3].foreground = native::rgba(110, 110, 110, 255);
+        _editor.set_language("cpp")
+            .set_code_theme(std::move(colors))
+            .set_lexer(_lexer.get());
+        _editor.add_marker(
+            {2, native::marker_kind::breakpoint});
+        _editor.add_marker(
+            {3, native::marker_kind::current_line});
+        const std::size_t message = _editor.get_text().find("message");
+        if (message != std::string::npos) {
+            _editor.set_diagnostics({
+                {{message, message + 7},
+                 native::diagnostic_severity::info,
+                 "Demonstration diagnostic"}});
+        }
+        on_wnd_create.connect(this, &feature_code_editor::on_create);
+        on_wnd_paint.connect(this, &feature_code_editor::on_paint);
+        _editor.on_gutter_click.connect(
+            this, &feature_code_editor::on_gutter);
+        _editor.on_text_change.connect(
+            this, &feature_code_editor::on_text_change);
+        _editor.on_complete.connect(
+            this, &feature_code_editor::on_completion);
+        _show_completion.on_click.connect(
+            this, &feature_code_editor::on_show_completion);
+    }
+
+    bool feature_code_editor::on_create() {
+        for (native::wnd *control : {
+                 static_cast<native::wnd *>(&_editor),
+                 static_cast<native::wnd *>(&_show_completion)}) {
+            control->set_parent(this);
+            control->create();
+            control->show();
+        }
+        return true;
+    }
+
+    bool feature_code_editor::on_paint(
+        native::wnd_paint_event event) {
+        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.draw_text(
+            "Edit UTF-8 source; arrows, selection, clipboard, and undo "
+            "are active.",
+            native::point(20, 18));
+        event.g.draw_text(_status, native::point(186, 474));
+        event.g.draw_text(
+            "The optional session sidecar remains application-owned.",
+            native::point(20, 512));
+        return true;
+    }
+
+    bool feature_code_editor::on_gutter(int line) {
+        bool found = false;
+        for (const native::line_marker &marker : _editor.markers()) {
+            if (marker.line == line &&
+                marker.kind == native::marker_kind::breakpoint) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            _editor.remove_marker(line, native::marker_kind::breakpoint);
+            _status = "Removed breakpoint from line " +
+                      std::to_string(line + 1) + ".";
+        } else {
+            _editor.add_marker(
+                {line, native::marker_kind::breakpoint});
+            _status = "Added breakpoint to line " +
+                      std::to_string(line + 1) + ".";
+        }
+        invalidate();
+        return true;
+    }
+
+    bool feature_code_editor::on_text_change() {
+        _status = "Document changed; " +
+                  std::to_string(_editor.line_count()) +
+                  " logical line(s).";
+        invalidate();
+        return true;
+    }
+
+    bool feature_code_editor::on_show_completion() {
+        _editor.show_completion({
+            {"std::cout", "std::cout", "standard output stream"},
+            {"std::string", "std::string", "UTF-8 byte string"},
+            {"return", "return", "return statement"}});
+        _status = "Use Up/Down, Enter, or Escape in the editor.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_code_editor::on_completion(
+        native::completion_item item) {
+        _editor.insert(_editor.get_caret_offset(), item.insert);
+        _status = "Accepted completion: " + item.label + ".";
+        invalidate();
         return true;
     }
 

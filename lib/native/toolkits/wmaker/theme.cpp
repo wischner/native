@@ -105,6 +105,7 @@ namespace
             result.check_height = 20;
             result.radio_height = 20;
             result.list_item_height = height + 1;
+            result.header_height = height + 10;
             return result;
         }
 
@@ -150,6 +151,14 @@ namespace
             result.menu_hot_text = black;
             result.menu_popup_bg = gray;
             result.menu_popup_border = black;
+            result.content_bg = white;
+            result.content_text = black;
+            result.selection_bg = black;
+            result.selection_text = white;
+            result.selection_inactive_bg = dark;
+            result.selection_inactive_text = white;
+            result.separator = dark;
+            result.focus = black;
             return result;
         }
 

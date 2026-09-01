@@ -8,14 +8,12 @@ verified.
 - Verified runtime in this workflow:
   - Linux X11
   - Linux SDL2
-  - Linux OPEN LOOK/XView under `olwm` in Xephyr
-  - Linux Window Maker/WINGs under Window Maker in Xephyr
+  - Linux OpenMotif under Xvfb in its Docker image
+  - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+  - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Windows build through MinGW, run through Wine
   - Haiku cross-build, copied to a Haiku machine and run over SSH
-- Build-verified but not runtime-verified in this workflow:
-  - Linux OpenMotif
-- Implemented but not runtime-verified in this workflow:
-  - Apple
+  - Apple on the configured remote macOS host
 - Other toolkits/ports:
   - still work in progress
 
@@ -111,10 +109,12 @@ Note:
   It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
 - `docker-openmotif` is part of the current build-verified workflow.
   It produces OpenMotif-linked Linux binaries in a separate build tree.
-- `docker-openlook` is runtime-verified with OpenWindows `olwm` in Xephyr.
-  It produces the XView-linked binary in `build/linux-openlook/`.
-- `docker-wmaker` is runtime-verified with Window Maker in Xephyr. It
-  produces the WINGs-linked binary in `build/linux-wmaker/`.
+- `docker-openlook` produces the reproducible XView-linked binary in
+  `build/linux-openlook/`. The maintained graphical debug/runtime path builds
+  the same backend natively in the `Tribblix-OpenLook` guest.
+- `docker-wmaker` produces the reproducible WINGs-linked binary in
+  `build/linux-wmaker/`. The maintained graphical debug/runtime path builds
+  the same backend natively in the `Bookworm-WindowMaker` guest.
 - `docker-haiku` is part of the current verified workflow.
   It produces Haiku binaries locally, and those binaries are copied to a Haiku machine for runtime checks.
 - Apple platform code exists, but there is no current Docker backend target for Apple builds in this repository.
@@ -144,9 +144,26 @@ Run a native window-system, SDL2, or OpenMotif build directly:
 ./build/linux-x11/src/vision
 ./build/linux-sdl2/src/vision
 ./build/linux-openmotif/src/vision
-./build/linux-openlook/src/vision
-./build/linux-wmaker/src/vision
 ```
+
+OPEN LOOK and Window Maker need the window manager that belongs to them:
+`olwm` owns OPEN LOOK's frames and resize behaviour, and Window Maker owns its
+own. Started on an ordinary desktop they come up under whatever window manager
+is already running, and neither behaves as its toolkit intends. The maintained
+VS Code launch entries start their libvirt guests, synchronize the source,
+build it natively, and debug Vision on the logged-in desktop over SSH.
+
+The Docker build artifacts can still be exercised locally through the isolated
+smoke-session script, which raises Xephyr and starts the matching window
+manager inside it:
+
+```bash
+./scripts/linux/toolkit-session-run.sh openlook ./build/linux-openlook/src/vision
+./scripts/linux/toolkit-session-run.sh wmaker ./build/linux-wmaker/src/vision
+```
+
+These nested sessions are useful for build-image checks but are separate from
+the VM-native F5 workflow documented in [Build System](build-system.md).
 
 The Windows cross-build produces
 `build/windows-mingw-w64/src/vision.exe`. MinGW runtime DLLs must be beside
@@ -157,10 +174,12 @@ the Haiku machine before running it.
 
 Status:
 
-- Linux X11/SDL2/OPEN LOOK/Window Maker, Windows/Wine, and Haiku SSH
-  runs are currently exercised.
-- Linux OpenMotif runs depend on host OpenMotif runtime availability.
-- Apple runs are not yet exercised in this workflow.
+- Linux X11/SDL2, OPEN LOOK in Tribblix, Window Maker in Bookworm,
+  Windows/Wine, and Haiku SSH runs are currently exercised.
+- Linux OpenMotif lifecycle checks run in the Motif Docker image under
+  Xvfb.
+- Apple builds, startup smoke tests, and lifecycle assertions run on the
+  configured remote macOS host.
 
 For Haiku runtime checks in the current workflow, the binaries are copied to a
 Haiku machine and launched there. The repository includes VS Code tasks and

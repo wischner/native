@@ -54,19 +54,19 @@ namespace native
         ~text_edit() override;
 
         // Return the cached portable UTF-8 text.
-        const std::string &get_text() const;
+        virtual const std::string &get_text() const;
 
         // Replace text after validation without emitting on_change.
-        text_edit &set_text(const std::string &text);
+        virtual text_edit &set_text(const std::string &text);
 
         // Return whether this is a single-line or multiline editor.
         text_edit_mode get_mode() const;
 
         // Return whether user edits are currently disabled.
-        bool get_read_only() const;
+        virtual bool get_read_only() const;
 
         // Enable or disable user edits on a created control.
-        text_edit &set_read_only(bool read_only);
+        virtual text_edit &set_read_only(bool read_only);
 
         // Return the live complete-value validator, if one is set.
         const text_validator &get_validator() const;
@@ -81,19 +81,19 @@ namespace native
         bool validate(const std::string &text) const;
 
         // Accept or reject a complete native-originated value.
-        bool on_native_text(const std::string &text);
+        virtual bool on_native_text(const std::string &text);
 
         // Copy the current selection to the shared clipboard.
-        bool copy() const;
+        virtual bool copy() const;
 
         // Copy and remove the current selection when it is editable.
-        bool cut();
+        virtual bool cut();
 
         // Replace the current selection with clipboard text.
-        bool paste();
+        virtual bool paste();
 
         // Select the complete editor value.
-        void select_all() const;
+        virtual void select_all() const;
 
         // Create the backend text-edit resource.
         void create() const override;
@@ -107,25 +107,25 @@ namespace native
         // Emits validated text after a user-originated change.
         signal<std::string> on_change;
 
-    private:
+    protected:
         std::string _text;
         text_edit_mode _mode;
         bool _read_only = false;
         text_validator _validator;
 
         // Apply cached text to a created backend control.
-        void apply_text();
+        virtual void apply_text();
 
         // Apply cached read-only state to a created backend control.
-        void apply_read_only();
+        virtual void apply_read_only();
 
         // Return a copied portable form of the native selection.
-        std::string selected_text() const;
+        virtual std::string selected_text() const;
 
         // Replace the native selection after complete-value validation.
-        bool replace_selected_text(const std::string &text);
+        virtual bool replace_selected_text(const std::string &text);
 
         // Select the complete native control value.
-        void select_all_native() const;
+        virtual void select_all_native() const;
     };
 } // namespace native

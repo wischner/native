@@ -167,11 +167,8 @@ namespace native
         if (_created)
             return;
         wnd *parent = get_parent();
-        NSWindow *window = parent
-                               ? mac::wnd_bindings.handle_from_object(
-                                     parent)
-                               : nil;
-        if (!parent || !parent->get_created() || !window)
+        NSView *parent_content = mac::parent_view(parent);
+        if (!parent_content)
             throw std::runtime_error(
                 "macOS: text_edit requires a created parent.");
 
@@ -191,7 +188,7 @@ namespace native
             [binding->field setStringValue:native_string(_text)];
             [binding->field setEditable:_read_only ? NO : YES];
             [binding->field setDelegate:delegate];
-            [[window contentView] addSubview:binding->field];
+            [parent_content addSubview:binding->field];
         } else {
             binding->scroll =
                 [[NSScrollView alloc] initWithFrame:frame];
@@ -205,7 +202,7 @@ namespace native
             [binding->text_view setVerticallyResizable:YES];
             [binding->text_view setAutoresizingMask:NSViewWidthSizable];
             [binding->scroll setDocumentView:binding->text_view];
-            [[window contentView] addSubview:binding->scroll];
+            [parent_content addSubview:binding->scroll];
         }
 
         mac::text_edit_bindings.register_pair(self, binding);

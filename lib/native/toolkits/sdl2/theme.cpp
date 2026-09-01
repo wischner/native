@@ -55,6 +55,12 @@ namespace
             m.menu_item_height = 20;
             m.popup_width = 180;
             m.text_padding_x = 8;
+            m.header_height = std::max(
+                20,
+                native::font_t::stock(native::font_role::control)
+                        .get_metrics()
+                        .height +
+                    8);
             return m;
         }
 
@@ -79,6 +85,14 @@ namespace
             p.menu_hot_text = native::rgba(255, 255, 255, 255);
             p.menu_popup_bg = native::rgba(255, 255, 255, 255);
             p.menu_popup_border = native::rgba(120, 126, 136, 255);
+            p.content_bg = native::rgba(255, 255, 255, 255);
+            p.content_text = p.button_text;
+            p.selection_bg = p.menu_hot_bg;
+            p.selection_text = p.menu_hot_text;
+            p.selection_inactive_bg = native::rgba(178, 187, 201, 255);
+            p.selection_inactive_text = p.button_text;
+            p.separator = p.menu_bar_line_bottom;
+            p.focus = p.menu_hot_bg;
             return p;
         }
 

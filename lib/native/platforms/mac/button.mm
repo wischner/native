@@ -67,12 +67,7 @@ namespace native
             throw std::runtime_error(
                 "macOS: button parent is not created.");
 
-        NSWindow *window = mac::wnd_bindings.handle_from_object(p);
-        if (!window)
-            throw std::runtime_error(
-                "macOS: button parent is not created.");
-
-        NSView *content = [window contentView];
+        NSView *content = mac::parent_view(p);
         if (!content)
             throw std::runtime_error(
                 "macOS: button parent has no content view.");

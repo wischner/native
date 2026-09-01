@@ -25,6 +25,38 @@ namespace
                                .handle_from_object(window);
         return static_cast<Panel_item>(handle);
     }
+
+    linux::openlook::openlook_collection *collection_state(
+        native::wnd *window) {
+        if (auto *accordion =
+                dynamic_cast<native::accordion *>(window)) {
+            return linux::openlook::accordion_bindings
+                .object_from_handle(accordion);
+        }
+        if (auto *icons = dynamic_cast<native::icon_view *>(window)) {
+            return linux::openlook::icon_view_bindings
+                .object_from_handle(icons);
+        }
+        return nullptr;
+    }
+
+    native::point frame_position(native::wnd *window,
+                                 int &menu_height) {
+        native::point result = window->get_position();
+        native::wnd *root = window->get_parent();
+        while (root && !dynamic_cast<native::app_wnd *>(root)) {
+            result.x = static_cast<native::coord>(
+                result.x + root->get_position().x);
+            result.y = static_cast<native::coord>(
+                result.y + root->get_position().y);
+            root = root->get_parent();
+        }
+        auto *top = dynamic_cast<native::app_wnd *>(root);
+        auto *state = top ? linux::openlook::window_state(top) : nullptr;
+        menu_height = state ? state->menu_height : 0;
+        return result;
+    }
+
 } // namespace
 
 namespace native
@@ -42,6 +74,18 @@ namespace native
                    position.x,
                    XV_Y,
                    position.y,
+                   nullptr);
+            return;
+        }
+
+        if (auto *state = collection_state(this)) {
+            int menu_height = 0;
+            const point position = frame_position(this, menu_height);
+            xv_set(state->panel,
+                   XV_X,
+                   position.x,
+                   XV_Y,
+                   position.y + menu_height,
                    nullptr);
             return;
         }
@@ -86,6 +130,10 @@ namespace native
                    XV_HEIGHT,
                    _bounds.d.h,
                    nullptr);
+            if (!dynamic_cast<accordion *>(this) &&
+                !dynamic_cast<icon_view *>(this)) {
+                linux::openlook::fit_item_width(item, _bounds.d.w);
+            }
         }
     }
 
@@ -118,6 +166,11 @@ namespace native
             linux::openlook::repaint_window(
                 window,
                 rect(point(0, 0), window->get_dimensions()));
+        } else if (auto *state = collection_state(self)) {
+            XClearArea(linux::openlook::cached_display,
+                       static_cast<Window>(xv_get(
+                           state->paint_window, XV_XID)),
+                       0, 0, 0, 0, True);
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
         }
@@ -131,6 +184,15 @@ namespace native
         auto *self = const_cast<wnd *>(this);
         if (auto *window = dynamic_cast<app_wnd *>(self)) {
             linux::openlook::repaint_window(window, area);
+        } else if (auto *state = collection_state(self)) {
+            XClearArea(linux::openlook::cached_display,
+                       static_cast<Window>(xv_get(
+                           state->paint_window, XV_XID)),
+                       area.p.x,
+                       area.p.y,
+                       area.d.w,
+                       area.d.h,
+                       True);
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
         }

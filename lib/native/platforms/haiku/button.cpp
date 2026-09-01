@@ -60,19 +60,16 @@ namespace native
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
-        BWindow *window = haiku::wnd_bindings.handle_from_object(p);
-        if (!window)
+        BView *parent = haiku::parent_view(p);
+        BWindow *window = parent ? parent->Window() : nullptr;
+        if (!parent || !window)
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
         auto *self = const_cast<button *>(this);
 
         BButton *btn = nullptr;
-        with_locked_window(window, [&](BWindow *locked_window) {
-            BView *content = haiku::content_view(locked_window);
-            if (!content)
-                return;
-
+        with_locked_window(window, [&](BWindow *) {
             BRect frame(
                 static_cast<float>(_bounds.p.x),
                 static_cast<float>(_bounds.p.y),
@@ -85,7 +82,7 @@ namespace native
                               "native_button",
                               _text.c_str(),
                               message);
-            content->AddChild(btn);
+            parent->AddChild(btn);
         });
 
         if (!btn)

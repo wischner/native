@@ -20,19 +20,19 @@ Legend:
 | Linux X11 | `docker-x11` | Yes (tested) |
 | Linux SDL2 | `docker-sdl2` | Yes (tested) |
 | Linux OpenMotif | `docker-openmotif` | Yes (tested) |
-| Linux OPEN LOOK/XView | `docker-openlook` | Yes (tested) |
-| Linux Window Maker/WINGs | `docker-wmaker` | Yes (tested) |
+| Linux OPEN LOOK/XView | `docker-openlook` + Tribblix VM native build | Yes (tested) |
+| Linux Window Maker/WINGs | `docker-wmaker` + Bookworm VM native build | Yes (tested) |
 | Linux GEMix | `docker-gemix` | Yes (untested) |
 | MS Windows (MinGW) | `docker-win` + Wine | Yes (tested) |
 | Haiku | `docker-haiku` + SSH deploy/run | Yes (tested) |
-| Apple | platform code present | Yes (untested) |
+| Apple | remote build and runtime checks | Yes (tested) |
 | Other toolkit ports | varies | WIP |
 
 ## Core feature matrix
 
 | Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux OPEN LOOK | Linux Window Maker | Linux GEMix | MS Windows | Haiku | Apple | Other WIP ports |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Build through current Docker workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No | WIP |
+| Build through the current platform workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
 | `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -48,6 +48,11 @@ Legend:
 | Native/emulated `check` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
+| Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Motif themed grid (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
+| Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline (build tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
+| Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (build tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
+| UTF-8 source `code_edit` with gutter and overlays | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (build tested) | Custom themed HWND (tested) | Native-look BView (tested) | Native-look NSView (tested) | WIP |
 | Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | XView Selection (tested) | WINGs Selection (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Lossless RGBA image clipboard | PNG selection (build tested) | X11 PNG (build tested), fallback (tested) | PNG selection (build tested) | PNG selection (build tested) | PNG selection (build tested) | AES PNG plus standard IMG scrap (build tested) | PNG/DIBV5 (build tested) | PNG MIME (build tested) | PNG/TIFF (untested) | WIP |
 | Native/emulated single-line `text_edit` | Athena (build tested) | Yes (tested) | Motif (build tested) | XView Panel (tested) | WMTextField (tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
@@ -55,7 +60,7 @@ Legend:
 | Live complete-value validation | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Direct and keyboard copy/cut/paste | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | `vision` build | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
-| `vision` runtime | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No (not run) | Yes (tested) | Yes (tested) | No (not run) | No (not run) |
+| `vision` runtime | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | No (not run) | Yes (tested) | Yes (tested) | Yes (tested) | No (not run) |
 
 ## Drawing, text, and image matrix
 
@@ -65,6 +70,10 @@ Legend:
 | `gpx_wnd`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | `gpx_wnd`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | `gpx_wnd`: complete-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Scoped `gpx` state restoration | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Ellipse, polyline, and polygon drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Bounded aligned/ellipsized UTF-8 text | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Cropped/scaled nearest or linear RGBA images | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | `gpx_img`: clear, line, outlined/filled rectangle | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | `gpx_img`: UTF-8 text drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | `gpx_img`: image-to-image drawing | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -81,6 +90,7 @@ Legend:
 | Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (build tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed complete-list and list-item drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Themed editable-text frame drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (build tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Semantic surfaces, selection, focus, disclosure, separators, and scrollbar parts | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (build tested) | WINGs (build tested) | Yes (build tested) | Yes (build tested) | BControlLook/palette (build tested) | AppKit/palette (build tested) | WIP |
 
 ## Notes
 
@@ -115,6 +125,23 @@ Legend:
 - OpenMotif uses `XmToggleButton` and `XmList`; Windows uses BUTTON and LISTBOX;
   Haiku uses `BCheckBox`, `BRadioButton`, and `BListView`; macOS uses `NSButton`
   and `NSTableView`.
+- Windows keeps the text-only `list` on LISTBOX but maps `icon_view` to the
+  common-control `WC_LISTVIEW`. macOS similarly keeps `list` on `NSTableView`
+  and maps `icon_view` to `NSCollectionView`.
+- `table_view` remains model-backed on every backend. Windows uses report-mode
+  ListView with owner data for virtual models, macOS uses `NSTableView`, and
+  OpenMotif uses `XmContainer` detail view for explicit materialized mode.
+  Other toolkit ports request only viewport rows through their native-look
+  table hosts.
+- `code_edit` keeps UTF-8 source, line indexes, undo records, style runs,
+  diagnostics, and markers in the portable document. Every backend hosts the
+  library-painted gutter and text presentation with its own theme palette and
+  routes native focus, pointer, keyboard, text-input, and clipboard events
+  back to that document. Lexers, completion providers, debuggers, and optional
+  session sidecars remain application-owned.
+- Accordion and custom icon-grid backends compose reusable theme surfaces,
+  selection, focus, disclosure, separator, and scrollbar parts. They do not
+  copy Windows or macOS styling onto another toolkit.
 - Window Maker uses WINGs `WBTToggle`/`WBTRadio` buttons and `WMList`.
 - GEMix owns the event handling and native-look emulation for its `check`,
   `radio`, and `list` windows.

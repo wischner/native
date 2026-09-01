@@ -135,6 +135,11 @@ Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
 must update cached bounds and relayout children. Backend resize notifications
 must update the cache and layout without requesting the same resize again.
+The core ignores a notification repeating the cached dimensions and never lets
+a layout pass re-enter itself, so a backend may report geometry freely,
+including synchronously from inside the call that applied it. A backend must
+report the client size its window really has once that window and its menu
+exist, so the first arrangement matches the area it renders into.
 Requested top-level screen coordinates are preferences. A backend must keep
 the native title area within a detected work area, even when the requested
 window is taller than that work area.
@@ -205,7 +210,8 @@ event translation with identical public behavior. Add each new window type to
 every supported backend and keep all platform differences below the public API.
 
 Interactive controls are windows, not theme drawings. `button`, `check`,
-`radio`, `list`, and `text_edit` must use the platform or toolkit's native
+`radio`, `list`, `text_edit`, `code_edit`, `accordion`, `icon_view`,
+`tree_view`, and `table_view` must use the platform or toolkit's native
 control when one exists. A backend without a widget set may emulate the
 control through its own theme and event loop. Programmatic property setters
 update cached/native state without emitting user-action signals;
@@ -215,6 +221,17 @@ single-selection with `-1` representing no selection. Keep every control in
 its own same-named public, common, and backend source file. Do not collect
 unrelated controls into a `controls` module or add a `_box` suffix to the
 `check`, `radio`, or `list` type names.
+
+`accordion` owns section state but borrows its section content windows. Its
+default single mode leaves all headers visible and assigns remaining height to
+the expanded body; multiple mode keeps independent expanded states.
+`icon_view` remains distinct from the text-only `list`: it owns shared image
+references and item values, wraps image-and-label tiles, scrolls internally,
+and exposes single selection plus activation. Windows maps it to
+`WC_LISTVIEW`; macOS maps it to `NSCollectionView`, and macOS composes the
+accordion from AppKit stack/disclosure controls. A backend lacking an
+appropriate widget must provide keyboard-focusable input and compose its own
+native theme resources rather than imitate another platform.
 
 The OPEN LOOK backend uses XView Panel items and OpenMenu objects for its
 interactive controls and menus. It must not replace an available XView widget
@@ -231,8 +248,9 @@ colors, fonts, and indicator pixmaps so they track the active WINGs resources.
 ## 6. Painting in Windows
 
 `gpx` is the portable, abstract drawing interface. It provides common drawing
-state and virtual operations for clipping, clearing, lines, rectangles, text,
-and images. Its API must use only public Native types and should return `gpx &`
+state and operations for clipping, clearing, lines, rectangles, ellipses,
+polylines, polygons, bounded text, and cropped or scaled images. Its API must
+use only public Native types and should return `gpx &`
 from drawing and state-changing operations when chaining is useful.
 
 Use concrete contexts for different drawing targets:
@@ -248,6 +266,11 @@ window context's clip with the invalid region. Selecting an explicit font must
 affect drawing and measurement in the same way for both targets.
 `draw_text()` interprets its position as the top-left of the text line; native
 APIs that accept a baseline must add the selected font's ascent internally.
+`save_state()` returns a move-only guard that restores ink, paper, pen, font,
+and clip. Nearest image scaling must retain exact samples; linear scaling must
+preserve source alpha. Bounded text must clip and support logical horizontal
+alignment, vertical alignment, and end ellipsis without exposing backend text
+layout types.
 
 `img` owns pixels in top-to-bottom RGBA order and provides PNG and JPEG file
 and memory I/O. Decoding detects the format from the encoded signature rather
@@ -275,8 +298,9 @@ Use the public abstract `theme` interface when custom controls or visuals must
 match the active platform. `theme::create()` asks the active backend for a
 short-lived implementation around a borrowed `gpx &`. The interface exposes
 the same semantic primitives and states on every backend, including common
-button, check, radio, list, editable-text frame, menu, selection, border,
-text, hot, pressed, selected, and disabled states. Appearance logic must live
+button, check, radio, list, editable-text frame, menu, semantic surface,
+selection, focus, disclosure, separator, scrollbar, text, hot, pressed,
+selected, disabled, focused, and active states. Appearance logic must live
 in the platform or toolkit implementation, not in the backend-neutral library
 root.
 
@@ -609,3 +633,137 @@ Tests must cover both modes, Unicode cursor boundaries, selection replacement,
 read-only behavior, programmatic and native change-signal rules, live
 validation of typing and paste, direct clipboard functions, standard keyboard
 shortcuts, and rejected-edit cache preservation.
+
+## 13. Advanced tables
+
+`table_view` is the model-backed, multi-column collection control. It remains
+separate from the owned, single-column, text-only `list`. Its public interface
+uses stable non-zero row IDs, group IDs, semantic column IDs, UTF-8 strings,
+portable images, and Native geometry only. Platform indexes and widget objects
+never become public identity.
+
+A `table_view` borrows a `table_model`; the model must outlive the view or be
+detached first. The model supplies its logical row count, stable row IDs, and
+cells lazily. `table_store` is the materialized convenience implementation,
+not the storage architecture of the control. Backends must not build one
+native object per row for a virtual model. Visible-row mapping is compact in
+the number of groups, so a million-row model does not require a million-row
+mapping array.
+
+Columns have stable IDs and cache title, width constraints, visibility,
+alignment, image, resize, reorder, and sort capabilities. Group ranges are
+ordered, disjoint logical row ranges. Expansion is view state: collapsing a
+group hides display rows without removing logical rows, stable selection, or
+search results. `find_and_reveal()` may expand a group to reveal the match.
+
+Programmatic model, selection, sort-indicator, column, group, and scroll
+changes update native state without emitting user-action signals. Native
+selection, activation, sort, resize, reorder, and disclosure actions update
+the portable cache first and emit exactly one corresponding signal. Model
+notifications preserve selection and scroll anchors by stable ID when those
+rows still exist.
+
+Windows uses report-mode `WC_LISTVIEW`, `LVS_OWNERDATA` for virtual data, and
+native ListView groups for explicitly materialized data. macOS uses
+`NSTableView`. OpenMotif uses `XmContainer` detail view for explicitly
+materialized data and its native-look compact host for virtual data. Haiku
+uses its Open Tracker-licensed `BColumnListView` library for materialized data
+and a `BControlLook` viewport host for virtual data. Athena, XView, WINGs,
+SDL2, and GEM use their own toolkit host, focus path, theme resources, and
+native-looking semantic table painter where no adequate table widget exists.
+
+Search supports exact, prefix, and substring matching, optional case folding,
+selected columns, start position, and wrapping. The default implementation
+scans lazily and performs deterministic Unicode scalar matching. Large or
+indexed models should override `find()` while preserving the same result
+contract. Tests must cover stable selection, groups, model notifications,
+search modes and Unicode, signal rules, backend lifecycle, and a million-row
+model that proves cells are requested only for visible rows.
+
+## 14. Source editing
+
+`code_edit` is the portable source editor and extends the overlapping
+`text_edit` contract. Its private document contains canonical UTF-8 with `\n`
+line endings. Every public position and span is a UTF-8 byte offset on a
+scalar boundary; lines are zero based. Tabs remain bytes in the document, and
+`tab_width` affects presentation only. Invalid UTF-8 read from disk is
+replaced with U+FFFD and exposed through a load warning.
+
+File translation happens only in `load()` and `save()`. A load strips and
+remembers a UTF-8 BOM, detects LF, CRLF, or CR endings, and normalizes the
+buffer. A save restores the selected line ending and preserves a loaded BOM
+when requested. Syntax styles, diagnostics, markers, selection, caret,
+scrolling, and completion items never become file bytes. Optional session
+JSON is application state; Native does not define or access a sidecar file.
+
+All mutations pass through insert, erase, or replace operations. They rebuild
+the line index, remap overlays, record a document-local delta undo step, and
+emit text-change signals only for accepted edits. Programmatic `set_text()`
+clears undo and overlays without emitting. Marker remapping moves a mark down
+when a newline is inserted before its line, keeps it on the original line
+when that line is split, and removes it when its line is deleted. Style runs
+remain sorted, non-overlapping half-open spans.
+
+The library paints the marker and line-number gutter on every backend. A
+backend may combine that gutter with a native multiline widget when it can
+preserve the portable document and overlays; otherwise it provides a
+keyboard-focusable, toolkit-themed painted editor through its normal event
+loop. The shared painted path renders visible source rows, current-line and
+selection surfaces, style runs, diagnostic marks, caret, and a themed
+completion list. Platform input translation must preserve scalar boundaries
+and route standard clipboard and undo keys through the public commands.
+
+Lexing and language intelligence are application services. `code_lexer`
+returns validated `style_run` overlays for a dirty byte range; an exception
+falls back to the default style without making the buffer uneditable.
+Completion items are application-supplied and Up/Down, Enter, and Escape
+navigate, accept, and dismiss the overlay. A gutter click reports a line; the
+application decides whether that action changes a breakpoint. Native does not
+embed a language server, debugger, third-party editor, RTF, or HTML buffer.
+
+Tests must cover canonical lines, Unicode boundaries, load/save translation,
+malformed-input repair, undo/redo, marker and overlay remapping, cached public
+properties, signals, completion commands, and live create/show/destroy on
+each supported backend.
+
+## 15. Classic trees
+
+`tree_view` is the owned, single-selection hierarchy control. It remains
+separate from the flat text-only `list`, spatial `icon_view`, and model-backed
+multi-column `table_view`. Each `tree_view_item` owns its descendant values,
+retains an optional `shared_ptr<const img>`, and has a unique non-zero stable
+`tree_item_id`. Native row indexes, pointers, item handles, and toolkit object
+identity never cross the public API.
+
+Expansion is view state stored on each item. Flattened visible rows contain a
+stable ID and depth, and include descendants only while every ancestor is
+expanded. Collapsing a branch containing the selected descendant moves the
+selection to that branch, so keyboard focus never remains on a hidden row.
+Replacing items preserves selection by stable ID when that item still exists;
+removing a branch removes all descendants and clears descendant selection.
+
+Programmatic item, selection, expansion, image-size, line-visibility, and
+scroll changes update a created native control without emitting action
+signals. Backend selection, disclosure, and activation update the portable
+cache first and emit exactly one `on_selection_change`, `on_expanded_change`,
+or `on_item_activate` signal. Disabled items remain visible but cannot be
+selected, expanded by user input, or activated.
+
+Up and Down move over visible enabled rows; Home and End choose enabled
+endpoints; Page Up and Page Down move by a viewport. Left collapses an open
+branch or selects its parent. Right expands a closed branch or selects its
+first enabled child. Space toggles a branch and Enter activates it. A classic
+row double click performs the platform's branch action and emits activation.
+Pointer disclosure hit testing is distinct from row selection.
+
+Windows uses `WC_TREEVIEW`, macOS uses `NSOutlineView`, OpenMotif uses
+`XmContainer` outline layout, and Haiku uses `BOutlineListView`. Athena,
+XView, WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with
+the shared semantic selection, disclosure, focus, connector, image, and
+scrollbar painter because they have no adequate interactive outline widget.
+Every path uses its backend theme metrics and native drawing resources.
+
+Tests must cover unique IDs, recursive ownership, visible flattening,
+selection preservation and removal, disclosure hit testing, disabled rows,
+classic keyboard navigation, scrolling, programmatic silence, exact
+user-action signal counts, and live create/show/destroy on every backend.

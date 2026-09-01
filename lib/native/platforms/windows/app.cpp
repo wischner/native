@@ -9,6 +9,8 @@
 #include <native/app.h>
 #include <windows.h>
 
+#include "../../post_backend.h"
+
 namespace native
 {
 
@@ -16,6 +18,7 @@ namespace native
         MSG msg;
         BOOL ret;
 
+        detail::drain_posted_work();
         while ((ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
             if (ret == -1) {
                 // Handle error if needed

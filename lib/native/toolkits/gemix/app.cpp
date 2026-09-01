@@ -15,21 +15,10 @@
 
 #include "globals.h"
 #include "gpx_wnd.h"
+#include "../../post_backend.h"
 
 namespace
 {
-    native::rect work_rect_for_handle(WORD handle) {
-        WORD x = 0;
-        WORD y = 0;
-        WORD w = 0;
-        WORD h = 0;
-        wind_get(handle, WF_WORKXYWH, &x, &y, &w, &h);
-        return native::rect(x,
-                            y,
-                            static_cast<native::dim>(w),
-                            static_cast<native::dim>(h));
-    }
-
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
         for (auto *button : linux::gemix::buttons) {
             if (!button || !button->get_parent() ||
@@ -66,6 +55,7 @@ namespace
                                control->get_selected_index());
         }
         linux::gemix::render_text_edits(owner, graphics);
+        linux::gemix::render_collections(owner, graphics);
     }
 
     void paint_window(native::app_wnd *owner,
@@ -75,7 +65,7 @@ namespace
         if (handle <= 0)
             return;
 
-        native::rect work = work_rect_for_handle(handle);
+        native::rect work = linux::gemix::work_rect(handle);
         GRECT box{};
         wind_get(handle,
                  WF_FIRSTXYWH,
@@ -207,7 +197,7 @@ namespace linux::gemix
         }
 
         const WORD handle = wnd_bindings.handle_from_object(owner);
-        const native::rect work = work_rect_for_handle(handle);
+        const native::rect work = linux::gemix::work_rect(handle);
         const native::rect screen_area(
             area->p.x + work.p.x,
             area->p.y + work.p.y,
@@ -247,6 +237,7 @@ namespace native
                 paint_window(window, nullptr);
         }
 
+        detail::drain_posted_work();
         while (!linux::gemix::runtime.shutdown_requested) {
             WORD events = evnt_multi(MU_MESAG | MU_KEYBD | MU_BUTTON |
                                          MU_TIMER,
@@ -279,11 +270,13 @@ namespace native
             if (pointer_window &&
                 pointer_window->get_input_enabled()) {
                 const rect work =
-                    work_rect_for_handle(pointer_handle);
+                    linux::gemix::work_rect(pointer_handle);
                 const point local(mx - work.p.x, my - work.p.y);
 
                 if (mx != prev_mx || my != prev_my) {
                     linux::gemix::update_text_edit_cursor(
+                        pointer_window, local);
+                    linux::gemix::update_collection_pointer(
                         pointer_window, local);
                     pointer_window->on_mouse_move.emit(local);
                 }
@@ -306,7 +299,8 @@ namespace native
                     if (auto *button =
                             button_at(pointer_window, local)) {
                         button->on_click.emit();
-                    } else {
+                    } else if (!linux::gemix::activate_collection(
+                                   pointer_window, local)) {
                         activate_selection_control(pointer_window,
                                                    local);
                     }
@@ -335,6 +329,9 @@ namespace native
                 } else if (top && linux::gemix::handle_text_edit_key(
                                       top, ks, kr)) {
                     // The focused editor consumed this key packet.
+                } else if (top && linux::gemix::handle_collection_key(
+                                      top, ks, kr)) {
+                    // A collection control consumed this key packet.
                 } else if (top && (kr & 0xff) == 27) {
                     top->destroy();
                 }
@@ -366,12 +363,18 @@ namespace native
                                  msg[5],
                                  msg[6],
                                  msg[7]);
+
+                        // The message carries the outer rectangle.
+                        // Ask AES what work area that leaves, so the
+                        // client size the portable layer arranges
+                        // children in excludes the title, borders,
+                        // and any sliders the window carries.
+                        const size work =
+                            linux::gemix::work_rect(msg[3]).d;
                         target->on_native_move(
                             point(msg[4], msg[5]));
-                        target->on_native_resize(
-                            size(msg[6], msg[7]));
-                        target->on_wnd_resize.emit(
-                            size(msg[6], msg[7]));
+                        target->on_native_resize(work);
+                        target->on_wnd_resize.emit(work);
                         target->on_wnd_move.emit(
                             point(msg[4], msg[5]));
                     } else if (target) {
@@ -402,9 +405,11 @@ namespace native
                              desktop.p.y,
                              desktop.d.w,
                              desktop.d.h);
+
+                    const size work = linux::gemix::work_rect(msg[3]).d;
                     target->on_native_move(desktop.p);
-                    target->on_native_resize(desktop.d);
-                    target->on_wnd_resize.emit(desktop.d);
+                    target->on_native_resize(work);
+                    target->on_wnd_resize.emit(work);
                     target->on_wnd_move.emit(desktop.p);
                     break;
                 }

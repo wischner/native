@@ -66,6 +66,7 @@ namespace
             m.popup_width = 180;
             m.text_padding_x = 3;
             m.list_item_height = text_height() + 2;
+            m.header_height = text_height() + 8;
             return m;
         }
 

@@ -82,6 +82,19 @@ namespace native
         int x = 0;
         constexpr int menu_height = 24;
         WMFont *font = WMDefaultSystemFont(linux::wmaker::screen);
+
+        // Created and mapped first so it sits behind the buttons, and
+        // as wide as the window so the strip beside the last button
+        // is part of the menu bar rather than bare background.
+        menu->background = WMCreateFrame(window_state->window);
+        WMSetFrameRelief(menu->background, WRFlat);
+        WMMoveWidget(menu->background, 0, 0);
+        WMResizeWidget(
+            menu->background,
+            static_cast<unsigned int>(
+                std::max<int>(1, owner.get_dimensions().w)),
+            menu_height);
+        WMMapWidget(menu->background);
         for (const auto &top : _tops) {
             const int width = std::max(
                 52, WMWidthOfString(font,
@@ -118,3 +131,23 @@ namespace native
         linux::wmaker::menu_bindings.register_pair(_id, menu);
     }
 } // namespace native
+
+namespace linux::wmaker
+{
+    void resize_menu_bar(native::app_wnd *owner, int width) {
+        if (!owner || !owner->menu.id())
+            return;
+
+        native_menu *menu =
+            menu_bindings.object_from_handle(owner->menu.id());
+        if (!menu || !menu->background)
+            return;
+
+        WMResizeWidget(menu->background,
+                       static_cast<unsigned int>(std::max(1, width)),
+                       static_cast<unsigned int>(
+                           std::max(1, state(owner)
+                                           ? state(owner)->menu_height
+                                           : 24)));
+    }
+} // namespace linux::wmaker

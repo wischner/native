@@ -56,8 +56,9 @@ the full image. During window painting, restrict drawing to the invalid area
 reported by the event.
 
 Code that borrows a context should restore any state that its caller expects
-to reuse. Theme operations do this automatically for ink, paper, pen, font,
-and clip.
+to reuse. A move-only `gpx_state` from `save_state()` restores ink, paper,
+pen, font, and clip when its scope exits. Theme operations use the same
+contract.
 
 ## Geometric and content primitives
 
@@ -69,12 +70,18 @@ The common drawing operations are:
 | `draw_line(from, to)` | Draw a line in the current ink and pen thickness |
 | `draw_rect(bounds)` | Draw the outline of a half-open rectangle |
 | `draw_rect(bounds, true)` | Fill a rectangle with the current ink |
+| `draw_ellipse(bounds, filled)` | Draw an outlined or filled ellipse |
+| `draw_polyline(points)` | Connect an ordered sequence of points |
+| `draw_polygon(points, filled)` | Close and optionally fill point geometry |
 | `draw_text(text, position)` | Draw UTF-8 text from a top-left position with the current font and ink |
-| `draw_img(source, destination)` | Draw the complete source image at a top-left destination |
+| `draw_text(text, bounds, layout)` | Draw clipped, aligned, optionally ellipsized text |
+| `draw_img(source, destination)` | Draw the complete source image at a point or scaled rectangle |
+| `draw_img(source, source_rect, destination, filter)` | Crop and scale with nearest or linear filtering |
 
-`draw_img` is deliberately small: the current interface has no source
-rectangle, scaling, rotation, or opacity argument. Drawing is clipped at the
-target boundaries and by the active clip.
+Scaled image drawing preserves straight-alpha RGBA and validates that a crop
+lies inside the source. Linear is the normal artwork filter; nearest preserves
+pixel-art edges. Rotation, opacity modulation, and affine transforms are not
+part of this interface.
 
 Native rectangles are half-open: the left and top edges are included, while
 `x2()` and `y2()` are excluded. See
@@ -83,13 +90,19 @@ color rules.
 
 ```cpp
 void draw_scene(native::gpx &g, const native::img &icon) {
+    auto saved = g.save_state();
     g.clear(native::rgba(246, 246, 246, 255))
      .set_pen(2)
      .set_ink(native::rgba(45, 45, 48, 255))
      .draw_line(native::point(12, 18), native::point(210, 18))
      .draw_rect(native::rect(12, 30, 198, 72))
-     .draw_img(icon, native::point(20, 38))
-     .draw_text("Ready", native::point(72, 45));
+     .draw_img(icon, native::rect(20, 38, 32, 32))
+     .draw_text("Ready",
+                native::rect(72, 38, 120, 32),
+                {native::text_align::start,
+                 native::text_valign::center,
+                 native::text_overflow::ellipsis,
+                 true});
 }
 ```
 
@@ -324,9 +337,11 @@ therefore be used for window and image targets.
 | `pressed` | The element is actively depressed |
 | `selected` | The item is the current or selected item |
 | `disabled` | The element cannot currently be activated |
+| `focused` | The element carries keyboard focus |
+| `active` | The containing window has active selection emphasis |
 
-All fields default to `false`. Overloads without a state argument draw the
-default state.
+All fields except `active` default to `false`; `active` defaults to `true`.
+Overloads without a state argument draw the default state.
 
 ### Control drawing operations
 
@@ -342,9 +357,16 @@ default state.
 | `draw_radio(bounds, text, state)` | A complete radio; `state.selected` is chosen |
 | `draw_list(bounds, items, selected_index, state)` | A framed single-selection list |
 | `draw_text_edit_frame(bounds, state)` | An empty text-edit frame; `state.selected` is focused |
+| `draw_surface(bounds, kind, state)` | A panel, content, inset, popup, or header surface |
+| `draw_selection(bounds, shape, state)` | A row or tile selection background |
+| `draw_focus(bounds, state)` | A keyboard-focus indicator |
+| `draw_disclosure(bounds, disclosure, state)` | A collapsed or expanded indicator |
+| `draw_separator(bounds, orientation)` | A native-looking separator |
+| `draw_scrollbar_part(bounds, orientation, part, state)` | A track, thumb, or step part |
 
 The caller supplies the rectangles. `defaults()` returns backend-selected
-values for menu height, item height, popup width, and horizontal text padding.
+values for menu, header, disclosure, icon-grid, focus, separator, and
+scrollbar geometry as well as established control dimensions.
 `native_palette()` exposes backend-selected colors for a portable composition,
 but semantic drawing operations should be preferred when one already exists.
 

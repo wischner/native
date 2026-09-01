@@ -8,6 +8,7 @@
 #include <native.h>
 #include <native/app.h>
 #include <bindings.h>
+#include <post_backend.h>
 #include <SDL2/SDL.h>
 
 #include <algorithm>
@@ -18,6 +19,8 @@
 
 namespace native
 {
+    using linux::sdl2::content_origin_y;
+
     // Recheck decorations after the compositor has presented a window.
     static void keep_window_reachable(native::wnd *owner) {
         SDL_Window *window =
@@ -37,15 +40,6 @@ namespace native
 
         SDL_SetWindowPosition(window, position.x, position.y);
         owner->on_native_move(position);
-    }
-
-    // Return the logical content origin below an emulated menu bar.
-    static int content_origin_y(native::wnd *window) {
-        auto *application_window =
-            dynamic_cast<native::app_wnd *>(window);
-        return application_window && application_window->menu.id()
-                   ? linux::sdl2::menu_bar_height
-                   : 0;
     }
 
     // Recover the modal window which blocks input to this owner branch.
@@ -127,6 +121,7 @@ namespace native
         linux::sdl2::render_radios(wnd, g);
         linux::sdl2::render_lists(wnd, g);
         linux::sdl2::render_text_edits(wnd, g);
+        linux::sdl2::render_collections(wnd, g);
 
         SDL_RenderSetViewport(cache->renderer, nullptr);
 
@@ -198,12 +193,18 @@ namespace native
 
                 switch (event.type) {
                 case SDL_KEYDOWN:
-                    linux::sdl2::handle_text_edit_key(wnd, event.key);
+                    if (!linux::sdl2::handle_text_edit_key(
+                            wnd, event.key))
+                        linux::sdl2::handle_collection_key(
+                            wnd, event.key);
                     break;
 
                 case SDL_TEXTINPUT:
-                    linux::sdl2::handle_text_edit_input(
-                        wnd, event.text.text);
+                    if (!linux::sdl2::handle_text_edit_input(
+                            wnd, event.text.text)) {
+                        linux::sdl2::handle_collection_text(
+                            wnd, event.text.text);
+                    }
                     break;
 
                 case SDL_MOUSEMOTION: {
@@ -245,6 +246,8 @@ namespace native
                     linux::sdl2::handle_radio_motion(
                         wnd, event.motion.x, logical_y);
                     linux::sdl2::handle_text_edit_motion(
+                        wnd, event.motion.x, logical_y);
+                    linux::sdl2::handle_collection_motion(
                         wnd, event.motion.x, logical_y);
                     wnd->on_mouse_move.emit(
                         point(event.motion.x, logical_y));
@@ -302,6 +305,17 @@ namespace native
 
                     if (logical_y < 0)
                         break;
+
+                    if (linux::sdl2::handle_collection_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP,
+                            event.button.clicks)) {
+                        invalidate_live_window();
+                        break;
+                    }
 
                     if (linux::sdl2::handle_text_edit_mouse(
                             wnd,
@@ -379,7 +393,21 @@ namespace native
                                       ? event.wheel.x
                                       : event.wheel.y;
 
-                    mouse_wheel_event whe(point(), delta, dir);
+                    int pointer_x = 0;
+                    int pointer_y = 0;
+                    SDL_GetMouseState(&pointer_x, &pointer_y);
+                    pointer_y -= content_origin_y(wnd);
+                    if (dir == wheel_direction::vertical &&
+                        linux::sdl2::handle_collection_wheel(
+                            wnd,
+                            pointer_x,
+                            pointer_y,
+                            delta * 24)) {
+                        break;
+                    }
+                    mouse_wheel_event whe(point(pointer_x, pointer_y),
+                                          delta,
+                                          dir);
                     wnd->on_mouse_wheel.emit(whe);
                     break;
                 }
@@ -439,6 +467,13 @@ namespace native
                 if (window && window->get_created())
                     render_window_if_needed(window);
             }
+
+            // Work handed over by worker threads. Drained after
+            // input and before the delay, so a posted repaint is
+            // presented on the next pass rather than a frame later.
+            // This loop polls, so no wake routine is installed: it
+            // comes back around within the delay below regardless.
+            detail::drain_posted_work();
 
             if (app_wnd *main = app::main_wnd()) {
                 if (!main->get_created())

@@ -11,11 +11,13 @@ examples, see [Drawing Primitives](drawing-primitives.md#themed-control-primitiv
 
 The theme API describes what is being drawn rather than how one toolkit draws
 it. Its primitives include complete buttons, checks, radios, lists, menu bars
-and menu items, popup frames, and list items. The backend decides how each
-primitive is decomposed for its native painter.
+and menu items, popup frames, and list items. Reusable advanced parts cover
+surfaces, selections, focus, disclosures, separators, and scrollbars. The
+backend decides how each primitive is decomposed for its native painter.
 
-Theme primitives paint only. Live `check`, `radio`, and `list` objects remain
-`wnd` subclasses and use native widgets when available.
+Theme primitives paint only. Live controls, including `accordion` and
+`icon_view`, and `tree_view`, remain `wnd` subclasses and use native widgets
+when available.
 
 Interaction is also expressed semantically:
 
@@ -25,6 +27,8 @@ state.hot = true;
 state.pressed = false;
 state.selected = false;
 state.disabled = false;
+state.focused = true;
+state.active = true;
 ```
 
 Backends interpret the same state using their native theme facilities or a
@@ -86,8 +90,9 @@ draw the primitive. Every backend must provide a usable result.
 
 ## Palette and metrics
 
-The facade exposes backend-selected control metrics and a native palette. These
-values provide menu heights, padding, popup dimensions, and state-sensitive
+The facade exposes backend-selected control metrics and a native palette.
+These values provide menu and header heights, disclosure and icon-grid
+spacing, scrollbar dimensions, padding, popup dimensions, and state-sensitive
 colors to portable rendering code.
 
 Defaults are only a fallback. A backend should obtain colors, fonts, spacing,
@@ -105,8 +110,8 @@ must preserve caller-visible `gpx` state, including:
 - Selected font.
 - Active clipping rectangle.
 
-The implementation should capture the incoming state, perform the native or
-fallback drawing, and restore the state before returning. A caller must not
+The implementation should use `gpx::save_state()`, perform the native or
+fallback drawing, and let the guard restore state before returning. A caller must not
 need backend-specific repair code after drawing a theme primitive.
 
 ## Adding a theme primitive

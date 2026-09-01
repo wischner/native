@@ -47,6 +47,7 @@ namespace windows
                                                 WPARAM wparam) {
         switch (message) {
         case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
         case WM_LBUTTONUP:
             return native::mouse_button::left;
         case WM_RBUTTONDOWN:
@@ -138,6 +139,7 @@ namespace windows
             const native::mouse_button btn =
                 button_from_msg(message, wparam);
             const bool is_press = message == WM_LBUTTONDOWN ||
+                                  message == WM_LBUTTONDBLCLK ||
                                   message == WM_RBUTTONDOWN ||
                                   message == WM_MBUTTONDOWN ||
                                   message == WM_XBUTTONDOWN;
@@ -146,15 +148,183 @@ namespace windows
                          : native::mouse_action::release;
 
             if (btn != native::mouse_button::none) {
+                if (is_press)
+                    SetFocus(hwnd);
                 native::mouse_event me(
                     btn,
                     act,
                     native::point(GET_X_LPARAM(lparam),
                                   GET_Y_LPARAM(lparam)));
                 wnd->on_mouse_click.emit(me);
+                if (message == WM_LBUTTONDBLCLK) {
+                    if (auto *icons =
+                            dynamic_cast<native::icon_view *>(wnd)) {
+                        icons->on_native_activate(icons->item_at(
+                            native::point(GET_X_LPARAM(lparam),
+                                          GET_Y_LPARAM(lparam))));
+                    }
+                }
             }
             break;
         }
+
+        case WM_SETFOCUS:
+            if (auto *accordion =
+                    dynamic_cast<native::accordion *>(wnd))
+                accordion->on_native_focus(true);
+            if (auto *icons = dynamic_cast<native::icon_view *>(wnd))
+                icons->on_native_focus(true);
+            if (auto *editor = dynamic_cast<native::code_edit *>(wnd))
+                editor->on_native_focus(true);
+            break;
+
+        case WM_KILLFOCUS:
+            if (auto *accordion =
+                    dynamic_cast<native::accordion *>(wnd))
+                accordion->on_native_focus(false);
+            if (auto *icons = dynamic_cast<native::icon_view *>(wnd))
+                icons->on_native_focus(false);
+            if (auto *editor = dynamic_cast<native::code_edit *>(wnd))
+                editor->on_native_focus(false);
+            break;
+
+        case WM_KEYDOWN:
+            if (auto *editor = dynamic_cast<native::code_edit *>(wnd)) {
+                const bool extend =
+                    (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                const bool command =
+                    (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                if (command) {
+                    native::code_edit_key key;
+                    bool handled = true;
+                    if (wparam == 'A')
+                        key = native::code_edit_key::select_all;
+                    else if (wparam == 'C')
+                        key = native::code_edit_key::copy;
+                    else if (wparam == 'X')
+                        key = native::code_edit_key::cut;
+                    else if (wparam == 'V')
+                        key = native::code_edit_key::paste;
+                    else if (wparam == 'Z')
+                        key = extend ? native::code_edit_key::redo
+                                     : native::code_edit_key::undo;
+                    else
+                        handled = false;
+                    if (handled) {
+                        editor->on_native_key(key);
+                        return 0;
+                    }
+                }
+                native::code_edit_key key;
+                bool handled = true;
+                switch (wparam) {
+                case VK_LEFT:
+                    key = native::code_edit_key::left;
+                    break;
+                case VK_RIGHT:
+                    key = native::code_edit_key::right;
+                    break;
+                case VK_UP:
+                    key = native::code_edit_key::up;
+                    break;
+                case VK_DOWN:
+                    key = native::code_edit_key::down;
+                    break;
+                case VK_HOME:
+                    key = native::code_edit_key::home;
+                    break;
+                case VK_END:
+                    key = native::code_edit_key::end;
+                    break;
+                case VK_PRIOR:
+                    key = native::code_edit_key::page_up;
+                    break;
+                case VK_NEXT:
+                    key = native::code_edit_key::page_down;
+                    break;
+                case VK_BACK:
+                    key = native::code_edit_key::backspace;
+                    break;
+                case VK_DELETE:
+                    key = native::code_edit_key::delete_forward;
+                    break;
+                case VK_RETURN:
+                    key = native::code_edit_key::enter;
+                    break;
+                case VK_TAB:
+                    key = native::code_edit_key::tab;
+                    break;
+                case VK_ESCAPE:
+                    key = native::code_edit_key::escape;
+                    break;
+                default:
+                    handled = false;
+                    break;
+                }
+                if (handled) {
+                    editor->on_native_key(key, extend);
+                    return 0;
+                }
+            }
+            if (auto *accordion =
+                    dynamic_cast<native::accordion *>(wnd)) {
+                switch (wparam) {
+                case VK_UP:
+                    accordion->on_native_navigation(
+                        native::accordion_navigation::previous);
+                    return 0;
+                case VK_DOWN:
+                    accordion->on_native_navigation(
+                        native::accordion_navigation::next);
+                    return 0;
+                case VK_HOME:
+                    accordion->on_native_navigation(
+                        native::accordion_navigation::first);
+                    return 0;
+                case VK_END:
+                    accordion->on_native_navigation(
+                        native::accordion_navigation::last);
+                    return 0;
+                case VK_RETURN:
+                case VK_SPACE:
+                    accordion->on_native_navigation(
+                        native::accordion_navigation::toggle);
+                    return 0;
+                }
+            }
+            break;
+
+        case WM_CHAR:
+            if (auto *editor = dynamic_cast<native::code_edit *>(wnd)) {
+                if ((GetKeyState(VK_CONTROL) & 0x8000) == 0 &&
+                    wparam >= 0x20 && wparam != 0x7f) {
+                    const wchar_t unit =
+                        static_cast<wchar_t>(wparam);
+                    if (unit >= 0xd800 && unit <= 0xdbff) {
+                        code_edit_high_surrogates[editor] = unit;
+                        return 0;
+                    }
+                    std::wstring value;
+                    const auto pending =
+                        code_edit_high_surrogates.find(editor);
+                    if (unit >= 0xdc00 && unit <= 0xdfff) {
+                        if (pending ==
+                            code_edit_high_surrogates.end()) {
+                            return 0;
+                        }
+                        value.push_back(pending->second);
+                        value.push_back(unit);
+                    } else {
+                        value.push_back(unit);
+                    }
+                    code_edit_high_surrogates.erase(editor);
+                    const std::string utf8 = wide_to_utf8(value);
+                    if (!utf8.empty())
+                        editor->on_native_text_input(utf8);
+                }
+                return 0;
+            }
+            break;
 
         case WM_MOUSEWHEEL:
 #ifdef WM_MOUSEHWHEEL
@@ -250,6 +420,68 @@ namespace windows
                 }
             }
             return 0;
+
+        case WM_NOTIFY:
+            if (lparam != 0) {
+                auto *notification =
+                    reinterpret_cast<NMHDR *>(lparam);
+                auto *child = windows::wnd_bindings.object_from_handle(
+                    notification->hwndFrom);
+                if (!child) {
+                    child = windows::wnd_bindings.object_from_handle(
+                        GetParent(notification->hwndFrom));
+                }
+                if (auto *table =
+                        dynamic_cast<native::table_view *>(child)) {
+                    return windows::handle_table_notify(
+                        table, notification);
+                }
+                if (auto *tree =
+                        dynamic_cast<native::tree_view *>(child)) {
+                    return windows::handle_tree_notify(
+                        tree, notification);
+                }
+                if (auto *icons =
+                        dynamic_cast<native::icon_view *>(child)) {
+                    auto *binding = windows::icon_view_bindings
+                                        .object_from_handle(icons);
+                    if (!binding || binding->suppress)
+                        return 0;
+                    if (notification->code == LVN_ITEMCHANGED) {
+                        const int selected = ListView_GetNextItem(
+                            notification->hwndFrom,
+                            -1,
+                            LVNI_SELECTED);
+                        if (selected >= 0 &&
+                            !icons->get_items()[selected].enabled) {
+                            binding->suppress = true;
+                            ListView_SetItemState(
+                                notification->hwndFrom,
+                                -1,
+                                0,
+                                LVIS_SELECTED | LVIS_FOCUSED);
+                            const int previous =
+                                icons->get_selected_index();
+                            if (previous >= 0) {
+                                ListView_SetItemState(
+                                    notification->hwndFrom,
+                                    previous,
+                                    LVIS_SELECTED | LVIS_FOCUSED,
+                                    LVIS_SELECTED | LVIS_FOCUSED);
+                            }
+                            binding->suppress = false;
+                        } else {
+                            icons->on_native_selection(selected);
+                        }
+                    } else if (notification->code == NM_DBLCLK ||
+                               notification->code == NM_RETURN) {
+                        icons->on_native_activate(
+                            icons->get_selected_index());
+                    }
+                    return 0;
+                }
+            }
+            break;
 
         case WM_CTLCOLORBTN:
         case WM_CTLCOLORSTATIC: {

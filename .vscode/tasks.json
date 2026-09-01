@@ -176,6 +176,87 @@
             "dependsOn": "Sync Source (OpenMotif Tribblix CDE)"
         },
         {
+            "label": "Start Debug Target (Tribblix OPEN LOOK)",
+            "type": "process",
+            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
+            "args": ["Tribblix-OpenLook", "tomaz@192.168.122.28"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Sync Source (OPEN LOOK Tribblix VM)",
+            "type": "shell",
+            "command": "rsync",
+            "args": [
+                "-az",
+                "--delete",
+                "--exclude",
+                ".git",
+                "--exclude",
+                "build",
+                "${workspaceFolder}/",
+                "tomaz@192.168.122.28:~/Projects/${workspaceFolderBasename}/"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Start Debug Target (Tribblix OPEN LOOK)"
+        },
+        {
+            "label": "Build Vision Debug (OPEN LOOK Tribblix VM)",
+            "type": "process",
+            "command": "ssh",
+            "args": [
+                "tomaz@192.168.122.28",
+                "cd $HOME/Projects/${workspaceFolderBasename} && cmake -S . -B build/tribblix-openlook-debug -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=OPENLOOK -DNATIVE_ENABLE_DEVELOPER_CHECKS=OFF -DCMAKE_CXX_FLAGS='-m32 -Wall -Wextra -pedantic' -DCMAKE_EXE_LINKER_FLAGS=-m32 -DCMAKE_LIBRARY_PATH=/usr/lib && cmake --build build/tribblix-openlook-debug"
+            ],
+            "problemMatcher": "$gcc",
+            "dependsOn": "Sync Source (OPEN LOOK Tribblix VM)"
+        },
+        {
+            "label": "Start Debug Target (Bookworm Window Maker)",
+            "type": "process",
+            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
+            "args": ["Bookworm-WindowMaker", "whiskey"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Prepare Source Directory (Window Maker Bookworm VM)",
+            "type": "process",
+            "command": "ssh",
+            "args": [
+                "whiskey",
+                "mkdir -p $HOME/Projects/${workspaceFolderBasename}"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Start Debug Target (Bookworm Window Maker)"
+        },
+        {
+            "label": "Sync Source (Window Maker Bookworm VM)",
+            "type": "shell",
+            "command": "rsync",
+            "args": [
+                "-az",
+                "--delete",
+                "--exclude",
+                ".git",
+                "--exclude",
+                "build",
+                "${workspaceFolder}/",
+                "whiskey:~/Projects/${workspaceFolderBasename}/"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Prepare Source Directory (Window Maker Bookworm VM)"
+        },
+        {
+            "label": "Build Vision Debug (Window Maker Bookworm VM)",
+            "type": "process",
+            "command": "ssh",
+            "args": [
+                "whiskey",
+                "cd $HOME/Projects/${workspaceFolderBasename} && cmake -S . -B build/bookworm-wmaker-debug -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=WMAKER && cmake --build build/bookworm-wmaker-debug"
+            ],
+            "problemMatcher": "$gcc",
+            "dependsOn": "Sync Source (Window Maker Bookworm VM)"
+        },
+        {
             "label": "Start Debug Target (Haiku)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",

@@ -41,16 +41,6 @@ namespace linux::openlook
             return;
 
         Display *probe = cached_display;
-        int font_count = 0;
-        char **lucida_fonts = probe
-                                  ? XListFonts(
-                                        probe,
-                                        "*-lucida-*",
-                                        1,
-                                        &font_count)
-                                  : nullptr;
-        if (lucida_fonts)
-            XFreeFontNames(lucida_fonts);
 
         int argc = native::app::argc;
         char **argv = native::app::argv;
@@ -78,27 +68,61 @@ namespace linux::openlook
             "OpenWindows.KeyboardCommand.Store: s+Ctrl+Meta"};
         std::vector<char *> xview_arguments;
         char xrm_option[] = "-xrm";
+
+        // Lucida Sans is the OPEN LOOK text face. XView builds this
+        // name from its own defaults and is supposed to find it
+        // unaided, but in practice the lookup fails and the toolkit
+        // drops to the server's fixed font. That font is monospaced
+        // and much wider, so every control label measures past the
+        // bounds a layout gives it and neighbouring controls overlap.
+        // Naming the font outright is what makes controls come out
+        // the size they were asked for.
+        constexpr const char *lucida_regular =
+            "-b&h-lucida-medium-r-normal-sans-12-120-75-75-"
+            "p-71-iso8859-1";
+        constexpr const char *lucida_bold =
+            "-b&h-lucida-bold-r-normal-sans-12-120-75-75-"
+            "p-79-iso8859-1";
+        // One step down from the proportional face. Lucida
+        // Typewriter at the same pixel size carries a seven pixel
+        // advance against Lucida Sans's five, so matching the sizes
+        // makes editor text read as oversized next to every label
+        // around it.
+        constexpr const char *lucida_mono =
+            "-b&h-lucidatypewriter-medium-r-normal-sans-10-100-75-75-"
+            "m-60-iso8859-1";
+
+        // A server without the OPEN LOOK fonts still has to render
+        // something. Prefer a sized fixed font over the bare "fixed"
+        // alias so at least the metrics are known.
         constexpr const char *fixed_regular =
             "-misc-fixed-medium-r-normal--15-120-100-100-"
             "c-90-iso8859-1";
         constexpr const char *fixed_bold =
             "-misc-fixed-bold-r-normal--15-120-100-100-"
             "c-90-iso8859-1";
+
         std::string regular_font =
-            font_available(probe, fixed_regular)
-                ? fixed_regular
-                : "fixed";
+            font_available(probe, lucida_regular)
+                ? lucida_regular
+                : (font_available(probe, fixed_regular) ? fixed_regular
+                                                        : "fixed");
         std::string bold_font =
-            font_available(probe, fixed_bold)
-                ? fixed_bold
-                : regular_font;
+            font_available(probe, lucida_bold)
+                ? lucida_bold
+                : (font_available(probe, fixed_bold) ? fixed_bold
+                                                     : regular_font);
+        std::string mono_font = font_available(probe, lucida_mono)
+                                    ? lucida_mono
+                                    : regular_font;
+
         std::string regular_resource =
             "OpenWindows.RegularFont: " + regular_font;
         std::string bold_resource =
             "OpenWindows.BoldFont: " + bold_font;
         std::string mono_resource =
-            "OpenWindows.MonospaceFont: " + regular_font;
-        if (probe && font_count == 0) {
+            "OpenWindows.MonospaceFont: " + mono_font;
+        if (probe) {
             resources.push_back(regular_resource);
             resources.push_back(bold_resource);
             resources.push_back(mono_resource);
@@ -127,7 +151,10 @@ namespace linux::openlook
                 "OpenLook/XView: failed to initialize XView.");
         }
 
-        if (font_count == 0) {
+        // The command-line resources above are consumed while XView
+        // starts. Record the same choice in the defaults database so
+        // anything reading it later resolves the same font.
+        {
             char regular_name[] =
                 "openwindows.regularfont";
             char bold_name[] = "openwindows.boldfont";
@@ -136,7 +163,7 @@ namespace linux::openlook
             defaults_set_string(
                 regular_name, regular_font.data());
             defaults_set_string(bold_name, bold_font.data());
-            defaults_set_string(mono_name, regular_font.data());
+            defaults_set_string(mono_name, mono_font.data());
         }
         if (probe && probe != display)
             XCloseDisplay(probe);

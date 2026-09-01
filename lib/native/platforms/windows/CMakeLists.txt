@@ -18,8 +18,13 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/check.cpp
     ${CMAKE_CURRENT_LIST_DIR}/radio.cpp
     ${CMAKE_CURRENT_LIST_DIR}/list.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/accordion.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/icon_view.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/tree_view.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/table_view.cpp
     ${CMAKE_CURRENT_LIST_DIR}/clipboard.cpp
     ${CMAKE_CURRENT_LIST_DIR}/text_edit.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/code_edit.cpp
     ${CMAKE_CURRENT_LIST_DIR}/file_dialog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/save_file_dialog.cpp
@@ -34,4 +39,5 @@ target_link_libraries(native PRIVATE
     shell32
     ole32
     gdiplus
+    comctl32
 )

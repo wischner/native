@@ -118,6 +118,7 @@ namespace
                 const int height = std::max(1, font_metrics.height);
                 m.menu_bar_height = std::max(20, height + 8);
                 m.menu_item_height = std::max(18, height + 4);
+                m.header_height = std::max(20, height + 8);
                 m.popup_width =
                     font.measure_text("MMMMMMMMMMMMMMMMMMMM").width +
                     16;
@@ -133,6 +134,7 @@ namespace
                                  height.leading));
             m.menu_bar_height = std::max(20, text_height + 8);
             m.menu_item_height = std::max(18, text_height + 4);
+            m.header_height = std::max(20, text_height + 8);
             m.popup_width = static_cast<int>(be_plain_font->StringWidth(
                                 "MMMMMMMMMMMMMMMMMMMM")) +
                             16;
@@ -165,6 +167,14 @@ namespace
                 p.menu_hot_text = native::rgba(255, 255, 255, 255);
                 p.menu_popup_bg = p.button_bg;
                 p.menu_popup_border = p.button_border;
+                p.content_bg = native::rgba(255, 255, 255, 255);
+                p.content_text = p.button_text;
+                p.selection_bg = p.menu_hot_bg;
+                p.selection_text = p.menu_hot_text;
+                p.selection_inactive_bg = p.button_shadow;
+                p.selection_inactive_text = p.button_text;
+                p.separator = p.button_shadow;
+                p.focus = p.menu_hot_bg;
                 return p;
             }
             p.button_bg =
@@ -197,6 +207,18 @@ namespace
             p.menu_popup_bg = p.menu_bar_bg;
             p.menu_popup_border =
                 from_native(ui_color(B_MENU_SELECTED_BORDER_COLOR));
+            p.content_bg = from_native(ui_color(B_DOCUMENT_BACKGROUND_COLOR));
+            p.content_text = from_native(ui_color(B_DOCUMENT_TEXT_COLOR));
+            p.selection_bg = from_native(
+                ui_color(B_LIST_SELECTED_BACKGROUND_COLOR));
+            p.selection_text = from_native(
+                ui_color(B_LIST_SELECTED_ITEM_TEXT_COLOR));
+            p.selection_inactive_bg = from_native(tint_color(
+                ui_color(B_LIST_SELECTED_BACKGROUND_COLOR),
+                B_LIGHTEN_1_TINT));
+            p.selection_inactive_text = p.content_text;
+            p.separator = p.button_shadow;
+            p.focus = from_native(ui_color(B_KEYBOARD_NAVIGATION_COLOR));
             return p;
         }
 
@@ -285,13 +307,13 @@ namespace
         theme &draw_check(const native::rect &r,
                           const std::string &text,
                           const state &s) override {
-            return draw_selection(r, text, s, false);
+            return draw_native_selection(r, text, s, false);
         }
 
         theme &draw_radio(const native::rect &r,
                           const std::string &text,
                           const state &s) override {
-            return draw_selection(r, text, s, true);
+            return draw_native_selection(r, text, s, true);
         }
 
         theme &draw_list(const native::rect &r,
@@ -402,10 +424,10 @@ namespace
                 side);
         }
 
-        theme &draw_selection(const native::rect &r,
-                              const std::string &text,
-                              const state &s,
-                              bool radio) {
+        theme &draw_native_selection(const native::rect &r,
+                                     const std::string &text,
+                                     const state &s,
+                                     bool radio) {
             const native::rect indicator = indicator_bounds(r);
             const bool painted = with_view(_g, [&](BView *view) {
                 const rgb_color base =

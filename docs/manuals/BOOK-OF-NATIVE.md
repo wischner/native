@@ -11,18 +11,16 @@ implementation should look like. This is not a roadmap or a wish list. When
 the architecture or code changes, the relevant chapter should be updated in
 the same commit.
 
-## Current scope (August 2026)
+## Current scope (September 2026)
 
 - Runtime-tested in this project workflow:
   - Linux X11 backend
   - Linux SDL2 backend
-  - Linux OPEN LOOK/XView backend under `olwm` in Xephyr
-  - Linux Window Maker/WINGs backend under Window Maker in Xephyr
+  - Linux OpenMotif backend
+  - Linux OPEN LOOK/XView backend in the `Tribblix-OpenLook` KVM guest
+  - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
   - Windows backend (MinGW build, run through Wine)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
-- Build-tested but not yet runtime-tested in this workflow:
-  - Linux OpenMotif backend
-- Implemented but not yet runtime-tested in this workflow:
   - Apple backend
 - Work in progress:
   - other toolkit targets and ports not listed above
@@ -79,7 +77,15 @@ the same commit.
     validation, selection, and direct or keyboard clipboard commands.
     Expands Architecture Sections 11 and 12.
 
-14. [Feature matrix](book-of-native/feature-matrix.md)
+14. [Patterns: advanced table views](book-of-native/patterns-table-view.md)
+    Model ownership, stable row identity, virtualization, grouping, search,
+    and backend adaptation. Expands Architecture Section 13.
+
+15. [Patterns: source editing](book-of-native/patterns-code-edit.md)
+    Canonical source storage, overlays, lexers, completion, shared painting,
+    and backend input translation. Expands Architecture Section 14.
+
+16. [Feature matrix](book-of-native/feature-matrix.md)
     Per-backend feature and test status for what is implemented now.
 
 For a tutorial organized around complete programs, see

@@ -20,6 +20,10 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/collections.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp

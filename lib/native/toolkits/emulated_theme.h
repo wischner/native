@@ -54,6 +54,34 @@ namespace linux
             const native::rect &bounds,
             const state &element_state) override;
 
+        theme &draw_surface(
+            const native::rect &bounds,
+            native::surface_kind kind,
+            const state &element_state) override;
+
+        theme &draw_selection(
+            const native::rect &bounds,
+            native::selection_shape shape,
+            const state &element_state) override;
+
+        theme &draw_focus(const native::rect &bounds,
+                          const state &element_state) override;
+
+        theme &draw_disclosure(
+            const native::rect &bounds,
+            native::disclosure_state disclosure,
+            const state &element_state) override;
+
+        theme &draw_separator(
+            const native::rect &bounds,
+            native::separator_orientation orientation) override;
+
+        theme &draw_scrollbar_part(
+            const native::rect &bounds,
+            native::scrollbar_orientation orientation,
+            native::scrollbar_part part,
+            const state &element_state) override;
+
     protected:
         virtual int text_width(const std::string &text) const = 0;
         virtual int text_height() const = 0;

@@ -130,25 +130,39 @@ namespace
         return offsets;
     }
 
-    native::rect
-    compute_cell_rect(const native::rect &bounds,
-                      const std::vector<native::grid_length> &row_defs,
-                      const std::vector<native::grid_length> &col_defs,
-                      int row,
-                      int column,
-                      int row_span,
-                      int column_span,
-                      int margin) {
-        std::vector<native::grid_length> rows = row_defs;
-        std::vector<native::grid_length> cols = col_defs;
+    // Holds the resolved pixel size and origin of every track on one
+    // grid axis. Resolving depends only on the arranged bounds, so a
+    // relayout pass resolves each axis once and shares it between
+    // every child instead of repeating the work per cell.
+    struct track_axis
+    {
+        std::vector<int> sizes;
+        std::vector<int> offsets;
+    };
 
-        if (rows.empty())
-            rows.push_back(native::grid_length::star());
-        if (cols.empty())
-            cols.push_back(native::grid_length::star());
+    // Resolve one axis of track definitions into pixels and origins.
+    track_axis
+    resolve_track_axis(const std::vector<native::grid_length> &defs,
+                       int origin,
+                       int total) {
+        track_axis axis;
+        axis.sizes = compute_track_sizes(defs, total);
+        axis.offsets = compute_track_offsets(axis.sizes, origin);
+        return axis;
+    }
 
-        const int nr = static_cast<int>(rows.size());
-        const int nc = static_cast<int>(cols.size());
+    // Compute one cell rectangle from already resolved track axes.
+    native::rect cell_rect(const track_axis &rows,
+                           const track_axis &columns,
+                           int row,
+                           int column,
+                           int row_span,
+                           int column_span,
+                           int margin) {
+        const int nr = static_cast<int>(rows.sizes.size());
+        const int nc = static_cast<int>(columns.sizes.size());
+        if (nr <= 0 || nc <= 0)
+            return native::rect(0, 0, 0, 0);
 
         const int r = std::max(0, std::min(row, nr - 1));
         const int c = std::max(0, std::min(column, nc - 1));
@@ -157,25 +171,16 @@ namespace
         const int r2 = std::min(nr, r + rs) - 1;
         const int c2 = std::min(nc, c + cs) - 1;
 
-        const std::vector<int> row_sizes =
-            compute_track_sizes(rows, static_cast<int>(bounds.d.h));
-        const std::vector<int> col_sizes =
-            compute_track_sizes(cols, static_cast<int>(bounds.d.w));
-        const std::vector<int> row_offsets =
-            compute_track_offsets(row_sizes, bounds.p.y);
-        const std::vector<int> col_offsets =
-            compute_track_offsets(col_sizes, bounds.p.x);
-
-        int x = col_offsets[static_cast<std::size_t>(c)];
-        int y = row_offsets[static_cast<std::size_t>(r)];
+        int x = columns.offsets[static_cast<std::size_t>(c)];
+        int y = rows.offsets[static_cast<std::size_t>(r)];
 
         int w = 0;
         for (int i = c; i <= c2; ++i)
-            w += col_sizes[static_cast<std::size_t>(i)];
+            w += columns.sizes[static_cast<std::size_t>(i)];
 
         int h = 0;
         for (int i = r; i <= r2; ++i)
-            h += row_sizes[static_cast<std::size_t>(i)];
+            h += rows.sizes[static_cast<std::size_t>(i)];
 
         const int m = std::max(0, margin);
         x += m;
@@ -303,10 +308,11 @@ namespace native
         return _children;
     }
 
-    grid_layout_manager::grid_layout_manager() {
-        _rows.push_back(grid_length::star());
-        _columns.push_back(grid_length::star());
-    }
+    // A default grid starts with no tracks at all. Appending a row
+    // or column is then the only thing that creates one, so a caller
+    // who writes three rows gets three rows and not a leading star
+    // track that quietly eats their space.
+    grid_layout_manager::grid_layout_manager() = default;
 
     grid_layout_manager::grid_layout_manager(int rows, int columns) {
         const int rr = std::max(1, rows);
@@ -421,6 +427,8 @@ namespace native
                                        const rect &bounds) {
         if (!parent)
             return;
+        if (_placed_children.empty() && _nested_grids.empty())
+            return;
 
         std::vector<grid_length> row_defs = _rows;
         std::vector<grid_length> col_defs = _columns;
@@ -429,33 +437,43 @@ namespace native
         if (col_defs.empty())
             col_defs.push_back(grid_length::star());
 
+        // Track geometry depends only on the arranged bounds, so it
+        // is resolved once for the whole pass and shared by every
+        // child and nested grid below.
+        const track_axis rows =
+            resolve_track_axis(row_defs,
+                               bounds.p.y,
+                               static_cast<int>(bounds.d.h));
+        const track_axis columns =
+            resolve_track_axis(col_defs,
+                               bounds.p.x,
+                               static_cast<int>(bounds.d.w));
+
         for (const auto &placed : _placed_children) {
             if (!placed.child)
                 continue;
 
-            const rect r = compute_cell_rect(bounds,
-                                             row_defs,
-                                             col_defs,
-                                             placed.row,
-                                             placed.column,
-                                             placed.row_span,
-                                             placed.column_span,
-                                             placed.margin);
-            placed.child->set_bounds(r);
+            placed.child->set_bounds(cell_rect(rows,
+                                               columns,
+                                               placed.row,
+                                               placed.column,
+                                               placed.row_span,
+                                               placed.column_span,
+                                               placed.margin));
         }
 
         for (auto &nested : _nested_grids) {
             if (!nested.layout)
                 continue;
-            const rect r = compute_cell_rect(bounds,
-                                             row_defs,
-                                             col_defs,
-                                             nested.row,
-                                             nested.column,
-                                             nested.row_span,
-                                             nested.column_span,
-                                             nested.margin);
-            nested.layout->relayout(parent, r);
+
+            nested.layout->relayout(parent,
+                                    cell_rect(rows,
+                                              columns,
+                                              nested.row,
+                                              nested.column,
+                                              nested.row_span,
+                                              nested.column_span,
+                                              nested.margin));
         }
     }
 
@@ -463,24 +481,84 @@ namespace native
         if (!child)
             return;
 
+        // A window hands every one of its children to the layout it
+        // installs, including the ones the caller has already placed
+        // by cell. Re-placing those would silently discard the spans
+        // and margins the caller asked for, so they keep the cell
+        // they were given.
+        if (has_placement(child))
+            return;
+
         if (_columns.empty())
             _columns.push_back(grid_length::star());
         if (_rows.empty())
             _rows.push_back(grid_length::star());
 
-        const int cols = std::max(1, static_cast<int>(_columns.size()));
-        const int row_idx = _next_auto_row;
-        const int column_idx = _next_auto_column;
+        // Step over cells an explicit placement already covers, so an
+        // auto-placed child never lands on top of one. Placements are
+        // finite, so a cursor walking down the rows leaves the last
+        // of them behind and this always terminates.
+        while (cell_occupied(_next_auto_row, _next_auto_column))
+            advance_auto_cell();
 
-        add(*child, row_idx, column_idx);
+        add(*child, _next_auto_row, _next_auto_column);
+        advance_auto_cell();
+    }
+
+    bool grid_layout_manager::has_placement(const wnd *child) const {
+        for (const auto &placed : _placed_children) {
+            if (placed.child == child)
+                return true;
+        }
+
+        for (const auto &nested : _nested_grids) {
+            if (nested.layout && nested.layout->has_placement(child))
+                return true;
+        }
+
+        return false;
+    }
+
+    bool grid_layout_manager::cell_occupied(int row, int column) const {
+        const auto covers =
+            [row, column](int r, int c, int rs, int cs) {
+                return row >= r && row < r + std::max(1, rs) &&
+                       column >= c && column < c + std::max(1, cs);
+            };
+
+        for (const auto &placed : _placed_children) {
+            if (covers(placed.row,
+                       placed.column,
+                       placed.row_span,
+                       placed.column_span))
+                return true;
+        }
+
+        for (const auto &nested : _nested_grids) {
+            if (covers(nested.row,
+                       nested.column,
+                       nested.row_span,
+                       nested.column_span))
+                return true;
+        }
+
+        return false;
+    }
+
+    void grid_layout_manager::advance_auto_cell() {
+        const int columns =
+            std::max(1, static_cast<int>(_columns.size()));
 
         ++_next_auto_column;
-        if (_next_auto_column >= cols) {
-            _next_auto_column = 0;
-            ++_next_auto_row;
-            if (_next_auto_row >= static_cast<int>(_rows.size()))
-                _rows.push_back(grid_length::star());
-        }
+        if (_next_auto_column < columns)
+            return;
+
+        // Only move the cursor. Placing a child is what creates the
+        // row it lands in, so a cursor that has run off the end of
+        // the grid does not add a row nobody occupies and nothing but
+        // the existing children's share of the space would pay for.
+        _next_auto_column = 0;
+        ++_next_auto_row;
     }
 
     void grid_layout_manager::remove_child(wnd *child) {

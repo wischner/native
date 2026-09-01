@@ -90,6 +90,28 @@ namespace linux::x11
 
     extern native::bindings<native::list *, xaw_list *> list_bindings;
 
+    struct xaw_collection
+    {
+        Widget widget = nullptr;
+        Time last_click = 0;
+        int last_item = -1;
+        native::table_row_id last_row =
+            native::invalid_table_row_id;
+        native::tree_item_id last_tree_item =
+            native::invalid_tree_item_id;
+    };
+
+    extern native::bindings<native::accordion *, xaw_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, xaw_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, xaw_collection *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, xaw_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, xaw_collection *>
+        code_edit_bindings;
+
     struct xaw_text_edit
     {
         Widget widget = nullptr;

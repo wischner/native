@@ -10,6 +10,7 @@
 #include <Application.h>
 #include <iostream>
 #include "globals.h"
+#include "../../post_backend.h"
 
 namespace native
 {
@@ -21,7 +22,9 @@ namespace native
             return 1;
         }
 
-        haiku::global_app->Run();
+        detail::drain_posted_work();
+        if (!app::main_wnd() || app::main_wnd()->get_created())
+            haiku::global_app->Run();
         delete haiku::global_app;
         haiku::global_app = nullptr;
 

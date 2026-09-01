@@ -23,14 +23,13 @@ namespace
         if (!held)
             window->Unlock();
     }
-    BWindow *parent(native::check *c) {
+    BView *parent_view(native::check *c) {
         auto *p = c->get_parent();
-        BWindow *w =
-            p ? haiku::wnd_bindings.handle_from_object(p) : nullptr;
-        if (!p || !p->get_created() || !w)
+        BView *view = haiku::parent_view(p);
+        if (!p || !p->get_created() || !view || !view->Window())
             throw std::runtime_error(
                 "Haiku: check requires a created parent.");
-        return w;
+        return view;
     }
     class native_check_view : public BCheckBox
     {
@@ -70,13 +69,10 @@ namespace native
         if (_created)
             return;
         auto *self = const_cast<check *>(this);
-        BWindow *w = parent(self);
+        BView *parent = parent_view(self);
+        BWindow *w = parent->Window();
         native_check_view *v = nullptr;
         locked(w, [&] {
-            BView *content = haiku::content_view(w);
-            if (!content)
-                return;
-
             v = new native_check_view(BRect(_bounds.p.x,
                                             _bounds.p.y,
                                             _bounds.x2() - 1,
@@ -84,7 +80,7 @@ namespace native
                                       _text.c_str(),
                                       self);
             v->SetValue(_checked ? B_CONTROL_ON : B_CONTROL_OFF);
-            content->AddChild(v);
+            parent->AddChild(v);
         });
         if (!v)
             throw std::runtime_error("Haiku: Failed to create check.");

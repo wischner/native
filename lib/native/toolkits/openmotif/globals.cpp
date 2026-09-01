@@ -27,6 +27,16 @@ namespace linux::openmotif
     native::bindings<native::button *, motif_button *> button_bindings;
     native::bindings<native::text_edit *, motif_text_edit *>
         text_edit_bindings;
+    native::bindings<native::accordion *, motif_collection *>
+        accordion_bindings;
+    native::bindings<native::icon_view *, motif_collection *>
+        icon_view_bindings;
+    native::bindings<native::tree_view *, motif_collection *>
+        tree_view_bindings;
+    native::bindings<native::table_view *, motif_collection *>
+        table_view_bindings;
+    native::bindings<native::code_edit *, motif_collection *>
+        code_edit_bindings;
     native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     Display *cached_display = nullptr;

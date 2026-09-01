@@ -13,49 +13,45 @@
 #include "globals.h"
 #include "gpx_wnd.h"
 
+namespace
+{
+    // Apply cached bounds to an AES window. Public geometry names the
+    // client area, but AES is set through the outer rectangle, so the
+    // size grows by the window's own decorations on the way out.
+    void apply_window_bounds(native::wnd *window,
+                             const native::rect &bounds) {
+        WORD handle =
+            linux::gemix::wnd_bindings.handle_from_object(window);
+        if (handle <= 0)
+            return;
+
+        const native::size outer =
+            linux::gemix::outer_size_for(handle, bounds.d);
+        wind_set(handle,
+                 WF_CURRXYWH,
+                 bounds.p.x,
+                 bounds.p.y,
+                 outer.w,
+                 outer.h);
+    }
+} // namespace
+
 namespace native
 {
     void wnd::apply_position() {
-        WORD handle =
-            linux::gemix::wnd_bindings.handle_from_object(this);
-        if (handle > 0) {
-            wind_set(handle,
-                     WF_CURRXYWH,
-                     _bounds.p.x,
-                     _bounds.p.y,
-                     _bounds.d.w,
-                     _bounds.d.h);
-        }
+        apply_window_bounds(this, _bounds);
         if (_parent)
             _parent->invalidate();
     }
 
     void wnd::apply_dimensions() {
-        WORD handle =
-            linux::gemix::wnd_bindings.handle_from_object(this);
-        if (handle > 0) {
-            wind_set(handle,
-                     WF_CURRXYWH,
-                     _bounds.p.x,
-                     _bounds.p.y,
-                     _bounds.d.w,
-                     _bounds.d.h);
-        }
+        apply_window_bounds(this, _bounds);
         if (_parent)
             _parent->invalidate();
     }
 
     void wnd::apply_bounds() {
-        WORD handle =
-            linux::gemix::wnd_bindings.handle_from_object(this);
-        if (handle > 0) {
-            wind_set(handle,
-                     WF_CURRXYWH,
-                     _bounds.p.x,
-                     _bounds.p.y,
-                     _bounds.d.w,
-                     _bounds.d.h);
-        }
+        apply_window_bounds(this, _bounds);
         if (_parent)
             _parent->invalidate();
     }

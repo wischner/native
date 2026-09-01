@@ -18,6 +18,10 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/collections.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/clipboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/clipboard_x11.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp

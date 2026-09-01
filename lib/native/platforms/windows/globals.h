@@ -8,7 +8,10 @@
 #pragma once
 
 #include <windows.h>
+#include <commctrl.h>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <native.h>
 #include <bindings.h>
@@ -51,6 +54,37 @@ namespace windows
         native::button *owner = nullptr;
     };
 
+    struct win_icon_view
+    {
+        HWND hwnd = nullptr;
+        HIMAGELIST images = nullptr;
+        int applied_scroll = 0;
+        bool suppress = false;
+    };
+
+    // Stores native handles and stable identity for a Tree-View.
+    struct win_tree_view
+    {
+        HWND hwnd = nullptr;
+        HIMAGELIST images = nullptr;
+        WNDPROC original_proc = nullptr;
+        std::unordered_map<native::tree_item_id, HTREEITEM> items;
+        std::unordered_map<HTREEITEM, native::tree_item_id> ids;
+        bool suppress = false;
+    };
+
+    // Stores the owner-data/native-group state for a report ListView.
+    struct win_table_view
+    {
+        HWND hwnd = nullptr;
+        HIMAGELIST images = nullptr;
+        std::unordered_map<const native::img *, int> image_indexes;
+        std::vector<native::table_column_id> native_columns;
+        bool owner_data = true;
+        bool suppress = false;
+        int horizontal_offset = 0;
+    };
+
     // Stores the subclass state for one Win32 EDIT control.
     struct win_text_edit
     {
@@ -67,6 +101,28 @@ namespace windows
         button_bindings;
     extern native::bindings<native::text_edit *, win_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::icon_view *, win_icon_view *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, win_tree_view *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, win_table_view *>
+        table_view_bindings;
+    extern std::unordered_map<native::code_edit *, wchar_t>
+        code_edit_high_surrogates;
+
+    // Translate a report ListView or header notification.
+    LRESULT handle_table_notify(native::table_view *table,
+                                NMHDR *notification);
+
+    // Translate a Tree-View notification into portable tree actions.
+    LRESULT handle_tree_notify(native::tree_view *tree,
+                               NMHDR *notification);
+
+    // Register the routed window class used by custom native hosts.
+    void register_window_class();
+
+    // Name of the routed window class used by Native windows.
+    extern const wchar_t class_name[];
 
     // Validate and cache one EN_CHANGE notification.
     void handle_text_edit_change(native::text_edit *editor);

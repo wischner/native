@@ -36,38 +36,51 @@
             "preLaunchTask": "CMake Build Debug (Docker SDL2)"
         },
         {
-            "name": "Debug Vision (Linux OpenLook, local)",
+            "name": "Debug Vision (OPEN LOOK, Tribblix VM)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-openlook/src/vision",
-            "cwd": "${workspaceFolder}",
+            "program": "/export/home/tomaz/Projects/${workspaceFolderBasename}/build/tribblix-openlook-debug/src/vision",
+            "cwd": "/export/home/tomaz/Projects/${workspaceFolderBasename}",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
-            "pipeTransport": {
-                "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-linux-openlook:latest"],
-                "debuggerPath": "/usr/bin/gdb"
+            "environment": [
+                {"name": "DISPLAY", "value": ":0"},
+                {"name": "XAUTHORITY", "value": "/export/home/tomaz/.Xauthority"}
+            ],
+            "sourceFileMap": {
+                "/export/home/tomaz/Projects/native": "${workspaceFolder}"
             },
-            "preLaunchTask": "CMake Build Debug (Docker OpenLook)"
+            "pipeTransport": {
+                "pipeProgram": "ssh",
+                "pipeArgs": ["-T", "tomaz@192.168.122.28"],
+                "debuggerPath": "/usr/bin/amd64/gdb"
+            },
+            "preLaunchTask": "Build Vision Debug (OPEN LOOK Tribblix VM)"
         },
         {
-            "name": "Debug Vision (Linux Window Maker, local)",
+            "name": "Debug Vision (Window Maker, Bookworm VM)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux-wmaker/src/vision",
-            "cwd": "${workspaceFolder}",
+            "program": "/home/tomaz/Projects/${workspaceFolderBasename}/build/bookworm-wmaker-debug/src/vision",
+            "cwd": "/home/tomaz/Projects/${workspaceFolderBasename}",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
+            "environment": [
+                {"name": "DISPLAY", "value": ":0"},
+                {"name": "XAUTHORITY", "value": "/home/tomaz/.Xauthority"},
+                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
+            ],
+            "sourceFileMap": {
+                "/home/tomaz/Projects/native": "${workspaceFolder}"
+            },
             "pipeTransport": {
-                "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-linux-window-maker:latest"],
+                "pipeProgram": "ssh",
+                "pipeArgs": ["-T", "whiskey"],
                 "debuggerPath": "/usr/bin/gdb"
             },
-            "preLaunchTask": "CMake Build Debug (Docker Window Maker)"
+            "preLaunchTask": "Build Vision Debug (Window Maker Bookworm VM)"
         },
         {
             "name": "Debug Vision (Linux GEMix, local)",

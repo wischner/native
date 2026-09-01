@@ -51,6 +51,11 @@ namespace linux::gemix
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
     extern std::vector<native::text_edit *> text_edits;
+    extern std::vector<native::accordion *> accordions;
+    extern std::vector<native::icon_view *> icon_views;
+    extern std::vector<native::tree_view *> tree_views;
+    extern std::vector<native::table_view *> table_views;
+    extern std::vector<native::code_edit *> code_edits;
     extern std::vector<native::app_wnd *> windows;
     extern native::app_wnd *active_window;
     extern std::unordered_map<native::app_wnd *, menu_state>
@@ -78,6 +83,25 @@ namespace linux::gemix
     // Render every visible text editor belonging to a window.
     void render_text_edits(native::app_wnd *parent, native::gpx &g);
 
+    // Draw every created collection descendant of an AES window.
+    void render_collections(native::app_wnd *parent, native::gpx &g);
+
+    // Route a local click release to a collection control.
+    bool activate_collection(native::app_wnd *parent,
+                             native::point point);
+
+    // Route one AES key packet to the focused collection control.
+    bool handle_collection_key(native::app_wnd *parent,
+                               WORD modifiers,
+                               WORD key);
+
+    // Route pointer motion to a source editor under the pointer.
+    bool update_collection_pointer(native::app_wnd *parent,
+                                   native::point point);
+
+    // Forget pending double-click state for a destroyed tree.
+    void forget_tree_click(native::tree_view *control);
+
     // Select the AES text cursor while the pointer is over an editor.
     void update_text_edit_cursor(native::app_wnd *parent,
                                  native::point point);
@@ -90,6 +114,32 @@ namespace linux::gemix
 
     // Return the GEM desktop work area.
     native::rect desktop_rect();
+
+    //
+    // Return a window's work-area rectangle.
+    //
+    // Notes:
+    //      AES subtracts every decoration the window carries: title,
+    //      borders, info line, and the sliders and arrows when the
+    //      window was created with them. This is the area the backend
+    //      paints and hit-tests, so it is the size the portable layer
+    //      is told about.
+    //
+    native::rect work_rect(WORD handle);
+
+    // Return a window's outer rectangle, decorations included.
+    native::rect outer_rect(WORD handle);
+
+    //
+    // Return the outer size whose work area is a requested size.
+    //
+    // Notes:
+    //      The inverse of work_rect(), through wind_calc() and the
+    //      window's own kind mask, so a window asked for a client of
+    //      a given size is opened large enough to hold it whatever
+    //      decorations it carries.
+    //
+    native::size outer_size_for(WORD handle, const native::size &work);
 
     // Return the full VDI screen bounds.
     native::rect screen_rect();

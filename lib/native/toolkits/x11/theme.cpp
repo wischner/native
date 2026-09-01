@@ -132,6 +132,7 @@ namespace
             result.check_height = row_height + 4;
             result.radio_height = row_height + 4;
             result.list_item_height = row_height;
+            result.header_height = row_height + 4;
             return result;
         }
 
@@ -158,6 +159,14 @@ namespace
             result.menu_hot_text = resources.background;
             result.menu_popup_bg = resources.background;
             result.menu_popup_border = resources.border;
+            result.content_bg = resources.background;
+            result.content_text = resources.foreground;
+            result.selection_bg = resources.foreground;
+            result.selection_text = resources.background;
+            result.selection_inactive_bg = resources.border;
+            result.selection_inactive_text = resources.background;
+            result.separator = resources.border;
+            result.focus = resources.foreground;
             return result;
         }
 

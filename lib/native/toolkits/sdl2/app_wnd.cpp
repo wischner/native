@@ -78,12 +78,18 @@ namespace native
             linux::sdl2::constrain_window_position(
                 nullptr, _bounds.p, _bounds.d);
 
-        SDL_Window *window = SDL_CreateWindow(_title.c_str(),
-                                              position.x,
-                                              position.y,
-                                              _bounds.d.w,
-                                              _bounds.d.h,
-                                              SDL_WINDOW_HIDDEN);
+        // Resizable, like the Win32, Cocoa, Haiku, and X11 shells.
+        // Without it a toolkit window can never change size, so a
+        // layout would arrange its children exactly once and no
+        // resize would ever be reported.
+        SDL_Window *window =
+            SDL_CreateWindow(_title.c_str(),
+                             position.x,
+                             position.y,
+                             _bounds.d.w,
+                             _bounds.d.h,
+                             SDL_WINDOW_HIDDEN |
+                                 SDL_WINDOW_RESIZABLE);
 
         if (!window) {
             const std::string error = SDL_GetError();
@@ -121,6 +127,34 @@ namespace native
         _created = true;
 
         self->menu.attach(*self);
+
+        // An emulated menu bar sits above the client area, so the
+        // portable client height is smaller than the window SDL2 just
+        // created. Every backend that reports geometry through the
+        // event loop delivers this on its own; SDL2 sends a resize
+        // only when the user causes one, so report it here. Doing it
+        // before on_wnd_create means user code that installs a layout
+        // arranges children against the size SDL2 actually renders.
+        const int menu_height = linux::sdl2::content_origin_y(self);
+
+        // A menu bar has just claimed part of the window, so grow it
+        // back by that much to leave the client the caller asked for,
+        // and stop the user shrinking the window into the menu.
+        if (menu_height > 0) {
+            SDL_SetWindowSize(window,
+                              _bounds.d.w,
+                              _bounds.d.h + menu_height);
+        }
+        SDL_SetWindowMinimumSize(window, 1, menu_height + 1);
+
+        int window_width = 0;
+        int window_height = 0;
+        SDL_GetWindowSize(window, &window_width, &window_height);
+        self->on_native_resize(
+            size(static_cast<dim>(std::max(0, window_width)),
+                 static_cast<dim>(
+                     std::max(1, window_height - menu_height))));
+
         self->on_wnd_create.emit();
     }
 

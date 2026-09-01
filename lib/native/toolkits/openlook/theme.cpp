@@ -93,6 +93,16 @@ namespace
         if (auto *top = dynamic_cast<native::app_wnd *>(window)) {
             auto *state = linux::openlook::window_state(top);
             panel = state ? state->content : XV_NULL;
+        } else if (auto *accordion =
+                       dynamic_cast<native::accordion *>(window)) {
+            auto *state = linux::openlook::accordion_bindings
+                              .object_from_handle(accordion);
+            panel = state ? state->panel : XV_NULL;
+        } else if (auto *icons =
+                       dynamic_cast<native::icon_view *>(window)) {
+            auto *state = linux::openlook::icon_view_bindings
+                              .object_from_handle(icons);
+            panel = state ? state->panel : XV_NULL;
         } else {
             Xv_opaque item = linux::openlook::wnd_bindings
                                  .handle_from_object(window);
@@ -152,6 +162,14 @@ namespace
         result.menu_hot_text = result.button_text;
         result.menu_popup_bg = result.button_bg;
         result.menu_popup_border = result.button_border;
+        result.content_bg = native::rgba(255, 255, 255, 255);
+        result.content_text = result.button_text;
+        result.selection_bg = result.button_text;
+        result.selection_text = result.button_bg;
+        result.selection_inactive_bg = result.button_shadow;
+        result.selection_inactive_text = result.button_text;
+        result.separator = result.button_shadow;
+        result.focus = result.button_text;
         return result;
     }
 
@@ -179,6 +197,7 @@ namespace
             result.check_height = 24;
             result.radio_height = 24;
             result.list_item_height = text_height() + 5;
+            result.header_height = text_height() + 10;
             return result;
         }
 
@@ -233,6 +252,14 @@ namespace
             result.menu_hot_text = result.button_text;
             result.menu_popup_bg = result.button_bg;
             result.menu_popup_border = result.button_border;
+            result.content_bg = result.button_bg;
+            result.content_text = result.button_text;
+            result.selection_bg = result.button_text;
+            result.selection_text = result.button_bg;
+            result.selection_inactive_bg = result.button_shadow;
+            result.selection_inactive_text = result.button_text;
+            result.separator = result.button_shadow;
+            result.focus = result.button_text;
             return result;
         }
 

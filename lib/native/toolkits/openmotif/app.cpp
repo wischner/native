@@ -13,6 +13,7 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../post_backend.h"
 
 namespace native
 {
@@ -23,6 +24,7 @@ namespace native
                                      "available for main loop.");
 
         linux::openmotif::exit_requested = false;
+        detail::drain_posted_work();
 
         while (!linux::openmotif::exit_requested)
             XtAppProcessEvent(linux::openmotif::app_instance,

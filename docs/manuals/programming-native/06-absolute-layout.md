@@ -108,4 +108,8 @@ int program(int, char **) {
 Resizing the parent triggers `relayout()`, but the absolute manager preserves
 the bounds originally assigned to each control.
 
+The `vision` program shows this side by side with a grid. Open **Window ->
+Layout managers**, then use the button in that window to swap the two
+managers and resize it to see the difference.
+
 Next: [Grid and nested layout](07-grid-layout.md).

@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <Application.h>
 #include <Window.h>
@@ -22,10 +24,15 @@ class BMenuBar;
 class BCheckBox;
 class BRadioButton;
 class BListView;
+class BOutlineListView;
+class BListItem;
 class BTextView;
 class BScrollView;
 class BFilePanel;
 class BRefFilter;
+class BColumn;
+class BColumnListView;
+class BRow;
 
 namespace haiku
 {
@@ -99,6 +106,23 @@ namespace haiku
     {
         BListView *view = nullptr;
     };
+    struct haiku_collection
+    {
+        BView *view = nullptr;
+        BColumnListView *column_view = nullptr;
+        std::vector<BRow *> rows;
+        std::vector<native::table_row_id> row_ids;
+        std::vector<BRow *> group_rows;
+        std::vector<native::table_group_id> group_ids;
+        bool native_table = false;
+    };
+
+    struct haiku_tree_view
+    {
+        BOutlineListView *view = nullptr;
+        BScrollView *scroll = nullptr;
+        std::unordered_map<native::tree_item_id, BListItem *> items;
+    };
 
     struct haiku_text_edit
     {
@@ -111,6 +135,16 @@ namespace haiku
     extern native::bindings<native::radio *, haiku_radio *>
         radio_bindings;
     extern native::bindings<native::list *, haiku_list *> list_bindings;
+    extern native::bindings<native::accordion *, haiku_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, haiku_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, haiku_tree_view *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, haiku_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, haiku_collection *>
+        code_edit_bindings;
     extern native::bindings<native::text_edit *, haiku_text_edit *>
         text_edit_bindings;
     extern native::bindings<native::file_dialog *, haiku_file_dialog *>
@@ -122,4 +156,7 @@ namespace haiku
 
     // Return the BView used by any public child control.
     BView *view_from_control(native::wnd *control);
+
+    // Return the created content view which can own a child control.
+    BView *parent_view(native::wnd *parent);
 } // namespace haiku

@@ -23,6 +23,10 @@ namespace
     constexpr int command_copy_image = 203;
     constexpr int command_paste_image = 204;
     constexpr int command_modal = 301;
+    constexpr int command_layout = 302;
+    constexpr int command_collections = 303;
+    constexpr int command_tables = 304;
+    constexpr int command_code_editor = 305;
     constexpr int command_installed_font = 401;
 
     // Create and show a native child after its parent exists.
@@ -46,7 +50,7 @@ namespace vision
 {
     vision_window::vision_window()
         : native::app_wnd("Vision Native Feature Gallery",
-                          36, 36, 820, 620)
+                          36, 36, 820, 660)
         , _action("Activate", 20, 20, 120, 32)
         , _editing_enabled("Editing enabled", 20, 62, 150, 24)
         , _compact("Compact", 20, 94, 140, 24)
@@ -65,8 +69,16 @@ namespace vision
         , _save_file("Save file...", 112, 378, 84, 30)
         , _show_modeless("Modeless", 204, 378, 84, 30)
         , _show_modal("Modal", 296, 378, 84, 30)
+        , _show_layout("Layout managers...", 20, 566, 170, 30)
+        , _show_collections("Collections...", 204, 566, 130, 30)
+        , _show_tables("Tables...", 348, 566, 110, 30)
+        , _show_code_editor("Code editor...", 472, 566, 130, 30)
         , _status("Starting portable feature gallery...")
         , _inspector(*this)
+        , _layout(*this)
+        , _collections(*this)
+        , _tables(*this)
+        , _code_editor(*this)
         , _dialog(*this)
         , _open_image(*this, "Open PNG or JPEG")
         , _save_image(*this, "Save PNG or JPEG")
@@ -105,7 +117,15 @@ namespace vision
              << "Window"
              << (native::menu_items("Modeless inspector")
                  << std::pair<int, std::string>(
-                        command_modal, "Modal dialog"))
+                        command_modal, "Modal dialog")
+                 << std::pair<int, std::string>(
+                        command_layout, "Layout managers")
+                 << std::pair<int, std::string>(
+                        command_collections, "Collection controls")
+                 << std::pair<int, std::string>(
+                        command_tables, "Advanced tables")
+                 << std::pair<int, std::string>(
+                        command_code_editor, "Code editor"))
              << "Demo"
              << (native::menu_items("Reset image")
                  << std::pair<int, std::string>(
@@ -165,6 +185,14 @@ namespace vision
             this, &vision_window::on_show_modeless);
         _show_modal.on_click.connect(
             this, &vision_window::on_show_modal);
+        _show_layout.on_click.connect(
+            this, &vision_window::on_show_layout);
+        _show_collections.on_click.connect(
+            this, &vision_window::on_show_collections);
+        _show_tables.on_click.connect(
+            this, &vision_window::on_show_tables);
+        _show_code_editor.on_click.connect(
+            this, &vision_window::on_show_code_editor);
         _dialog.on_modal_close.connect(
             this, &vision_window::on_dialog_closed);
         _open_image.on_modal_close.connect(
@@ -189,6 +217,10 @@ namespace vision
         create_child(_save_file, *this);
         create_child(_show_modeless, *this);
         create_child(_show_modal, *this);
+        create_child(_show_layout, *this);
+        create_child(_show_collections, *this);
+        create_child(_show_tables, *this);
+        create_child(_show_code_editor, *this);
 
         try {
             reset_image();
@@ -320,6 +352,14 @@ namespace vision
             on_show_modeless();
         } else if (command == command_modal) {
             on_show_modal();
+        } else if (command == command_layout) {
+            on_show_layout();
+        } else if (command == command_collections) {
+            on_show_collections();
+        } else if (command == command_tables) {
+            on_show_tables();
+        } else if (command == command_code_editor) {
+            on_show_code_editor();
         } else if (command == _reset_image_command) {
             reset_image();
         } else if (command == command_installed_font) {
@@ -406,6 +446,26 @@ namespace vision
 
     bool vision_window::on_show_modal() {
         show_dialog();
+        return true;
+    }
+
+    bool vision_window::on_show_layout() {
+        show_layout();
+        return true;
+    }
+
+    bool vision_window::on_show_collections() {
+        show_collections();
+        return true;
+    }
+
+    bool vision_window::on_show_tables() {
+        show_tables();
+        return true;
+    }
+
+    bool vision_window::on_show_code_editor() {
+        show_code_editor();
         return true;
     }
 

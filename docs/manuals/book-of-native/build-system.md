@@ -105,14 +105,12 @@ host-side and Docker-side invocation.
 - Runtime-tested:
   - Linux X11
   - Linux SDL2
-  - Linux OPEN LOOK/XView under `olwm` in Xephyr
-  - Linux Window Maker/WINGs under Window Maker in Xephyr
+  - Linux OpenMotif under Xvfb in its Docker image
+  - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+  - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Windows MinGW binaries run through Wine
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
-- Build-tested only:
-  - Linux OpenMotif
-- Not runtime-tested yet:
-  - Apple
+  - Apple binaries built and run on the configured remote macOS host
 - Other backends/toolkits:
   - still work in progress
 
@@ -195,19 +193,21 @@ the VS Code Run and Debug view and press F5.
 | --- | --- | --- |
 | Linux X11 | Local Docker container and local display | GDB through Docker |
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
-| Linux OPEN LOOK | Local Docker container and local display | GDB through Docker |
-| Linux Window Maker | Local Docker container and local display | GDB through Docker |
+| Linux OPEN LOOK | `Tribblix-OpenLook` KVM guest | GDB over SSH |
+| Linux Window Maker | `Bookworm-WindowMaker` KVM guest | GDB over SSH |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
 | OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
 | Windows | Local Wine installation | GDB connected to WineDbg's proxy |
 | Haiku | `Haiku` KVM guest | GDB over SSH |
 | macOS | Remote host `leia` | LLDB over SSH |
 
-The Linux debugger pipes keep the program inside its build image. This is
-important because a Debug binary can depend on the sanitizer runtime supplied
-by that image rather than the version installed on the host. The X11 and SDL2
-pipe forwards `DISPLAY`, the X11 socket, and the active Xauthority file. The
-GEMix pipe starts Rasta locally and shares its framebuffer with the container.
+The X11 and SDL2 debugger pipes keep the program inside their build images.
+This is important because a Debug binary can depend on the sanitizer runtime
+supplied by that image rather than the version installed on the host. The X11
+and SDL2 pipes forward `DISPLAY`, the X11 socket, and the active Xauthority
+file. The GEMix pipe starts Rasta locally and shares its framebuffer with the
+container. OPEN LOOK and Window Maker synchronize and build the source in
+their desktop guests, then run GDB against display `:0`.
 
 ### Development-host preparation
 
@@ -222,6 +222,60 @@ The development host needs:
 - The Docker images named by the top-level CMake project. In particular, the
   GEMix image must contain its runtime resources; Native does not mount a
   repository-owned resource directory.
+
+### Tribblix OPEN LOOK preparation
+
+The OPEN LOOK configuration expects:
+
+- A libvirt domain named `Tribblix-OpenLook` at `192.168.122.28`.
+- The SSH target `tomaz@192.168.122.28`, authenticated without an interactive
+  password prompt.
+- CMake, GCC/G++, rsync, the 32-bit XView and OLGX development files, and
+  X11/Xrandr development files installed in the guest.
+- The multilib GDB at `/usr/bin/amd64/gdb`. It debugs the 32-bit executable;
+  `/usr/bin/gdb` cannot handle the current Tribblix procfs interface reliably.
+- A logged-in `olvwm` or `olwm` session using display `:0`, with
+  `/export/home/tomaz/.Xauthority` available.
+- A writable `/export/home/tomaz/Projects/` directory.
+
+F5 starts the guest if necessary, waits for SSH, synchronizes the source into
+`/export/home/tomaz/Projects/native`, configures the 32-bit
+`build/tribblix-openlook-debug` tree, builds Vision, and starts remote GDB. The
+task keeps Debug symbols and GCC warnings but disables the sanitizer bundle,
+which is unavailable for this Tribblix configuration. Tribblix installs XView
+and OLGX without `pkg-config` files; CMake falls back to their system headers
+and libraries. Synchronization uses `--delete`, so files changed only in the
+guest project copy are not preserved.
+
+### Bookworm Window Maker preparation
+
+The Window Maker configuration expects:
+
+- A libvirt domain named `Bookworm-WindowMaker` and an SSH alias named
+  `whiskey` for `tomaz@192.168.122.99`, authenticated without an interactive
+  password prompt.
+- CMake, GCC/G++, GDB, rsync, `pkg-config`, the WINGs/wraster development
+  files, X11/Xrandr development files, and the Pango development files.
+- A logged-in Window Maker session using display `:0`, with
+  `/home/tomaz/.Xauthority` available.
+
+On the current Bookworm guest the development prerequisites are installed with:
+
+```bash
+sudo apt-get update
+sudo apt-get install -t bookworm-backports \
+  cmake pkg-config libwings-dev libwraster-dev libxrandr-dev
+sudo apt-get install gdb rsync libpango1.0-dev
+```
+
+The explicit Pango package is required because the configured Window Maker
+repository's WINGs development package exposes Pango headers in `WINGs.pc` but
+does not declare that development dependency. F5 starts the guest if necessary,
+waits for SSH, creates `/home/tomaz/Projects/native`, synchronizes the source,
+builds `build/bookworm-wmaker-debug`, and starts remote GDB on display `:0`.
+Leak reporting is disabled for the debug launch because the WINGs/font stack
+retains process-lifetime allocations. Synchronization uses `--delete`;
+remote-only source changes are not preserved.
 
 ### Tribblix CDE preparation
 
@@ -290,9 +344,10 @@ those defaults.
 
 - CMake is the build entry point.
 - `build/cmake/` is the host control tree.
-- Backend builds run inside Docker.
+- Reproducible backend builds run inside Docker; desktop-specific F5 builds run
+  natively in the configured guests.
 - Backend build trees are separate on purpose.
 - The root project builds the library and Vision, not generated API docs.
-- Runtime verification currently covers Linux X11/SDL2/OPEN LOOK/Window
-  Maker, Windows/Wine, and Haiku deploy-and-run over SSH.
-- Linux OpenMotif runtime depends on host OpenMotif runtime availability.
+- Runtime verification currently covers Linux X11/SDL2/OpenMotif, OPEN LOOK in
+  Tribblix, Window Maker in Bookworm, Windows/Wine, Haiku deploy-and-run over
+  SSH, and Apple on the configured remote host.

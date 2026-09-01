@@ -23,6 +23,14 @@ namespace windows
     native::bindings<native::button *, win_button *> button_bindings;
     native::bindings<native::text_edit *, win_text_edit *>
         text_edit_bindings;
+    native::bindings<native::icon_view *, win_icon_view *>
+        icon_view_bindings;
+    native::bindings<native::tree_view *, win_tree_view *>
+        tree_view_bindings;
+    native::bindings<native::table_view *, win_table_view *>
+        table_view_bindings;
+    std::unordered_map<native::code_edit *, wchar_t>
+        code_edit_high_surrogates;
 
     native::rgba rgba_from_sys_color(int idx) {
         const COLORREF c = GetSysColor(idx);

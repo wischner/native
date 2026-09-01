@@ -18,8 +18,14 @@ set(SRC_FILES
     check.cpp
     radio.cpp
     list.cpp
+    collection_view.cpp
+    accordion.cpp
+    icon_view.cpp
+    tree_view.cpp
+    table_view.cpp
     clipboard.cpp
     text_edit.cpp
+    code_edit.cpp
     file_dialog.cpp
     open_file_dialog.cpp
     save_file_dialog.cpp
@@ -42,10 +48,26 @@ find_library(HAIKU_LIB_TRANSLATION
     REQUIRED
 )
 
+find_path(HAIKU_COLUMN_LIST_INCLUDE
+    NAMES ColumnListView.h
+    PATH_SUFFIXES private/interface
+    REQUIRED
+)
+
+find_library(HAIKU_LIB_COLUMN_LIST
+    NAMES columnlistview
+    REQUIRED
+)
+
+target_include_directories(native PRIVATE
+    ${HAIKU_COLUMN_LIST_INCLUDE}
+)
+
 # Link against the BeAPI and Tracker libraries.
 target_link_libraries(native
     PRIVATE
         ${HAIKU_LIB_BE}
         ${HAIKU_LIB_TRACKER}
         ${HAIKU_LIB_TRANSLATION}
+        ${HAIKU_LIB_COLUMN_LIST}
 )

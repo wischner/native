@@ -1,9 +1,41 @@
 # Configure the Linux OPEN LOOK backend through XView, OLGX, and Xlib.
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(XVIEW REQUIRED xview)
-pkg_check_modules(OLGX REQUIRED olgx)
+pkg_check_modules(XVIEW QUIET xview)
+pkg_check_modules(OLGX QUIET olgx)
 pkg_check_modules(XRANDR REQUIRED xrandr)
 find_package(X11 REQUIRED)
+
+# Linux build images publish XView and OLGX through pkg-config. Tribblix
+# installs the same development interfaces in the system include and library
+# directories without .pc files, so retain a native CMake discovery path for
+# that supported runtime.
+if(NOT XVIEW_FOUND)
+    find_path(XVIEW_INCLUDE_DIR
+        NAMES xview/xview.h
+        REQUIRED)
+    find_library(XVIEW_LIBRARY
+        NAMES xview
+        REQUIRED)
+    set(XVIEW_INCLUDE_DIRS ${XVIEW_INCLUDE_DIR})
+    set(XVIEW_LIBRARIES ${XVIEW_LIBRARY})
+    get_filename_component(XVIEW_LIBRARY_DIR
+        ${XVIEW_LIBRARY} DIRECTORY)
+    set(XVIEW_LIBRARY_DIRS ${XVIEW_LIBRARY_DIR})
+endif()
+
+if(NOT OLGX_FOUND)
+    find_path(OLGX_INCLUDE_DIR
+        NAMES olgx/olgx.h
+        REQUIRED)
+    find_library(OLGX_LIBRARY
+        NAMES olgx
+        REQUIRED)
+    set(OLGX_INCLUDE_DIRS ${OLGX_INCLUDE_DIR})
+    set(OLGX_LIBRARIES ${OLGX_LIBRARY})
+    get_filename_component(OLGX_LIBRARY_DIR
+        ${OLGX_LIBRARY} DIRECTORY)
+    set(OLGX_LIBRARY_DIRS ${OLGX_LIBRARY_DIR})
+endif()
 
 set(LINUX_PLATFORM_SOURCE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/../../platforms/linux)
@@ -21,6 +53,10 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/collections.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
@@ -47,8 +83,8 @@ target_link_directories(native PUBLIC
 )
 
 target_link_libraries(native PRIVATE
-    ${X11_LIBRARIES}
     ${XVIEW_LIBRARIES}
     ${OLGX_LIBRARIES}
+    ${X11_LIBRARIES}
     ${XRANDR_LIBRARIES}
 )

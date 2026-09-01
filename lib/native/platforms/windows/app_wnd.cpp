@@ -17,7 +17,7 @@
 
 namespace windows
 {
-    constexpr wchar_t class_name[] = L"native_window_class";
+    const wchar_t class_name[] = L"native_window_class";
 
     void register_window_class() {
         static bool registered = false;
@@ -25,6 +25,7 @@ namespace windows
             return;
 
         WNDCLASSW wc = {};
+        wc.style = CS_DBLCLKS;
         wc.lpfnWndProc = routed_wnd_proc;
         wc.hInstance = GetModuleHandle(nullptr);
         wc.lpszClassName = class_name;

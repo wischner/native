@@ -67,6 +67,26 @@ namespace linux::openmotif
         bool suppress = false;
     };
 
+    struct motif_collection
+    {
+        Widget widget = nullptr;
+        Widget content = nullptr;
+        std::vector<Widget> items;
+        std::vector<native::table_row_id> row_ids;
+        std::vector<native::tree_item_id> tree_ids;
+        std::vector<Widget> group_items;
+        std::vector<native::table_group_id> group_ids;
+        std::vector<Pixmap> pixmaps;
+        bool native_table = false;
+        bool suppress = false;
+        Time last_click = 0;
+        int last_item = -1;
+        native::table_row_id last_row =
+            native::invalid_table_row_id;
+        native::tree_item_id last_tree_item =
+            native::invalid_tree_item_id;
+    };
+
     // Owns the Motif widgets used by one file-dialog session.
     struct motif_file_dialog
     {
@@ -89,6 +109,16 @@ namespace linux::openmotif
         button_bindings;
     extern native::bindings<native::text_edit *, motif_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::accordion *, motif_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, motif_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, motif_collection *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, motif_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, motif_collection *>
+        code_edit_bindings;
     extern native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     extern Display *cached_display;

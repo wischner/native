@@ -15,8 +15,18 @@
 #include <native.h>
 #include <native/text_edit.h>
 
+#if !__has_include(<xview/ev.h>)
+// Tribblix exports textsw_set_selection but omits the private ev.h header
+// shipped by the Linux XView build. Ask textsw.h for that declaration and
+// supply the stable OpenWindows selection-mask values below.
+#define _OTHER_TEXTSW_FUNCTIONS
+#define NATIVE_XVIEW_SELECTION_COMPAT
+#endif
+
 #include <xview/xview.h>
+#if __has_include(<xview/ev.h>)
 #include <xview/ev.h>
+#endif
 #include <xview/notify.h>
 #include <xview/panel.h>
 #include <xview/sel_pkg.h>
@@ -25,6 +35,13 @@
 #include <xview/window.h>
 
 #include "globals.h"
+
+#ifdef NATIVE_XVIEW_SELECTION_COMPAT
+#define EV_SEL_PRIMARY 0x0001
+#define EV_SEL_PD_PRIMARY 0x0010
+#undef _OTHER_TEXTSW_FUNCTIONS
+#undef NATIVE_XVIEW_SELECTION_COMPAT
+#endif
 
 namespace
 {

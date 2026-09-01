@@ -5,6 +5,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 #include <SDL2/SDL.h>
@@ -64,6 +66,14 @@ namespace
 
     bool update_control_bounds(native::wnd *window,
                                const native::rect &bounds) {
+        if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::icon_view *>(window) ||
+            dynamic_cast<native::tree_view *>(window) ||
+            dynamic_cast<native::table_view *>(window)) {
+            if (window->get_parent())
+                window->get_parent()->invalidate(bounds);
+            return true;
+        }
         return update_bounds<native::button>(
                    window, bounds, linux::sdl2::button_bindings) ||
                update_bounds<native::check>(
@@ -78,6 +88,14 @@ namespace
 
     bool update_control_parent(native::wnd *window,
                                native::wnd *parent) {
+        if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::icon_view *>(window) ||
+            dynamic_cast<native::tree_view *>(window) ||
+            dynamic_cast<native::table_view *>(window)) {
+            if (parent)
+                parent->invalidate();
+            return true;
+        }
         return update_parent<native::button>(
                    window, parent, linux::sdl2::button_bindings) ||
                update_parent<native::check>(
@@ -91,6 +109,12 @@ namespace
     }
 
     native::wnd *emulated_parent(native::wnd *window) {
+        if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::icon_view *>(window) ||
+            dynamic_cast<native::tree_view *>(window) ||
+            dynamic_cast<native::table_view *>(window)) {
+            return window->get_parent();
+        }
         if (auto *parent = control_parent<native::button>(
                 window, linux::sdl2::button_bindings))
             return parent;
@@ -108,6 +132,42 @@ namespace
     }
 } // namespace
 
+namespace
+{
+    // Convert a cached client size to the window size that holds it.
+    // Public geometry is the client area, but SDL2 sizes the whole
+    // window, so a window carrying a menu bar has to be that much
+    // taller to leave the requested client behind it. Reporting a
+    // resize converts the same way in reverse.
+    native::size window_size_for(native::wnd *window,
+                                 const native::size &client) {
+        const int limit =
+            std::numeric_limits<native::dim>::max();
+        const int height =
+            static_cast<int>(client.h) +
+            linux::sdl2::content_origin_y(window);
+
+        return native::size(client.w,
+                            static_cast<native::dim>(
+                                std::min(height, limit)));
+    }
+
+    // Apply a window's cached size and keep its title bar reachable.
+    void apply_window_geometry(native::wnd *owner,
+                               SDL_Window *window,
+                               const native::rect &bounds,
+                               bool resize) {
+        const native::size outer = window_size_for(owner, bounds.d);
+        if (resize)
+            SDL_SetWindowSize(window, outer.w, outer.h);
+
+        const native::point position =
+            linux::sdl2::constrain_window_position(
+                window, bounds.p, outer);
+        SDL_SetWindowPosition(window, position.x, position.y);
+    }
+} // namespace
+
 namespace native
 {
     void wnd::apply_position() {
@@ -116,12 +176,8 @@ namespace native
 
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);
-        if (window) {
-            const point position =
-                linux::sdl2::constrain_window_position(
-                    window, _bounds.p, _bounds.d);
-            SDL_SetWindowPosition(window, position.x, position.y);
-        }
+        if (window)
+            apply_window_geometry(this, window, _bounds, false);
     }
 
     void wnd::apply_dimensions() {
@@ -130,13 +186,8 @@ namespace native
 
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);
-        if (window) {
-            SDL_SetWindowSize(window, _bounds.d.w, _bounds.d.h);
-            const point position =
-                linux::sdl2::constrain_window_position(
-                    window, _bounds.p, _bounds.d);
-            SDL_SetWindowPosition(window, position.x, position.y);
-        }
+        if (window)
+            apply_window_geometry(this, window, _bounds, true);
     }
 
     void wnd::apply_bounds() {
@@ -145,13 +196,8 @@ namespace native
 
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);
-        if (window) {
-            SDL_SetWindowSize(window, _bounds.d.w, _bounds.d.h);
-            const point position =
-                linux::sdl2::constrain_window_position(
-                    window, _bounds.p, _bounds.d);
-            SDL_SetWindowPosition(window, position.x, position.y);
-        }
+        if (window)
+            apply_window_geometry(this, window, _bounds, true);
     }
 
     void wnd::apply_parent() {

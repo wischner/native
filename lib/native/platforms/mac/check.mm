@@ -30,11 +30,11 @@ namespace
     }
     NSView *parent(native::check *c) {
         auto *p = c->get_parent();
-        NSWindow *w = p ? mac::wnd_bindings.handle_from_object(p) : nil;
-        if (!p || !p->get_created() || !w || ![w contentView])
+        NSView *view = mac::parent_view(p);
+        if (!view)
             throw std::runtime_error(
                 "macOS: check requires a created parent.");
-        return [w contentView];
+        return view;
     }
 } // namespace
 namespace native

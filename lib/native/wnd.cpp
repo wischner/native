@@ -13,6 +13,33 @@
 #include <native.h>
 #include <native/wnd.h>
 
+namespace
+{
+    // Holds a flag true for the lifetime of a scope and restores the
+    // previous value on the way out, including when the guarded code
+    // throws.
+    class scoped_flag
+    {
+    public:
+        explicit scoped_flag(bool &flag)
+            : _flag(flag)
+            , _previous(flag) {
+            _flag = true;
+        }
+
+        ~scoped_flag() {
+            _flag = _previous;
+        }
+
+        scoped_flag(const scoped_flag &) = delete;
+        scoped_flag &operator=(const scoped_flag &) = delete;
+
+    private:
+        bool &_flag;
+        bool _previous;
+    };
+} // namespace
+
 namespace native
 {
     wnd::wnd(coord x, coord y, dim width, dim height)
@@ -38,8 +65,7 @@ namespace native
 
             if (old_parent->_layout) {
                 old_parent->_layout->remove_child(this);
-                old_parent->_layout->relayout(
-                    old_parent, rect({0, 0}, old_parent->_bounds.d));
+                old_parent->relayout_children();
             }
         }
 
@@ -67,11 +93,20 @@ namespace native
     }
 
     wnd &wnd::set_dimensions(const size &dimensions) {
-        _bounds.d = dimensions;
-        if (_created)
-            apply_dimensions();
-        if (_layout)
-            _layout->relayout(this, rect({0, 0}, _bounds.d));
+        {
+            // Applying geometry can come straight back as a native
+            // resize notification carrying the size the backend
+            // actually granted. Suspending the pass lets that update
+            // the cache, so the single pass below arranges children
+            // against the granted size rather than the requested one.
+            const scoped_flag pass(_layout_suspended);
+            _bounds.d = dimensions;
+            if (_created)
+                apply_dimensions();
+        }
+
+        relayout_children();
+        on_bounds_changed();
         return *this;
     }
 
@@ -80,11 +115,15 @@ namespace native
     }
 
     wnd &wnd::set_bounds(const rect &bounds) {
-        _bounds = bounds;
-        if (_created)
-            apply_bounds();
-        if (_layout)
-            _layout->relayout(this, rect({0, 0}, _bounds.d));
+        {
+            const scoped_flag pass(_layout_suspended);
+            _bounds = bounds;
+            if (_created)
+                apply_bounds();
+        }
+
+        relayout_children();
+        on_bounds_changed();
         return *this;
     }
 
@@ -121,8 +160,7 @@ namespace native
 
             if (old_parent->_layout) {
                 old_parent->_layout->remove_child(this);
-                old_parent->_layout->relayout(
-                    old_parent, rect({0, 0}, old_parent->_bounds.d));
+                old_parent->relayout_children();
             }
         }
 
@@ -137,8 +175,7 @@ namespace native
 
             if (_parent->_layout) {
                 _parent->_layout->add_child(this);
-                _parent->_layout->relayout(
-                    _parent, rect({0, 0}, _parent->_bounds.d));
+                _parent->relayout_children();
             }
         }
 
@@ -176,9 +213,12 @@ namespace native
     }
 
     void wnd::on_native_resize(const size &dimensions) {
+        if (_bounds.d.w == dimensions.w && _bounds.d.h == dimensions.h)
+            return;
+
         _bounds.d = dimensions;
-        if (_layout)
-            _layout->relayout(this, rect({0, 0}, _bounds.d));
+        relayout_children();
+        on_bounds_changed();
     }
 
     wnd &wnd::set_layout(std::unique_ptr<layout_manager> layout) {
@@ -186,7 +226,7 @@ namespace native
         if (_layout) {
             for (wnd *child : _children)
                 _layout->add_child(child);
-            _layout->relayout(this, rect({0, 0}, _bounds.d));
+            relayout_children();
         }
         return *this;
     }
@@ -194,6 +234,16 @@ namespace native
     layout_manager *wnd::get_layout() const {
         return _layout.get();
     }
+
+    void wnd::relayout_children() {
+        if (!_layout || _layout_suspended)
+            return;
+
+        const scoped_flag pass(_layout_suspended);
+        _layout->relayout(this, rect({0, 0}, _bounds.d));
+    }
+
+    void wnd::on_bounds_changed() {}
 
     void wnd::destroy_children() const {
         for (wnd *child : _children) {

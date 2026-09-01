@@ -78,8 +78,8 @@ outputs are:
 | `docker-x11` | `wischner/gcc-x86_64-linux-x11:latest` | `build/linux-x11/src/vision` |
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
-| `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` |
-| `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` |
+| `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
+| `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-win` | `wischner/gcc-x86_64-windows-mingw-w64:latest` | `build/windows-mingw-w64/src/vision.exe` |
 | `docker-haiku` | `wischner/gcc-x86_64-haiku:1.1.0` | `build/haiku/src/vision` |
@@ -312,12 +312,18 @@ cmake -S . -B build/linux-openlook-release \
 cmake --build build/linux-openlook-release --parallel
 ```
 
-CMake requires the `xview`, `olgx`, and `xrandr` `pkg-config` modules and the
-CMake X11 package. XView also requires libtirpc headers on current Linux
-systems. The reference image installs the historical toolkit below
-`/usr/openwin`, publishes its include and library paths through those modules,
-and supplies GCC 11 with C++20 support. It is the authoritative build
-environment when a host distribution has no maintained XView packages.
+CMake uses the `xview` and `olgx` `pkg-config` modules when available, and
+falls back to standard system include and library discovery for Tribblix. It
+also requires the `xrandr` module and the CMake X11 package. XView requires
+libtirpc headers on current Linux systems. The reference image installs the
+historical toolkit below `/usr/openwin`, publishes its include and library
+paths through those modules, and supplies GCC 11 with C++20 support. It is the
+authoritative build environment when a host distribution has no maintained
+XView packages.
+
+The maintained interactive debug path performs a native 32-bit build in the
+`Tribblix-OpenLook` VM and runs it on the guest's logged-in OPEN LOOK desktop.
+The Docker target remains the reproducible build and isolated Xephyr smoke path.
 
 ### Link libraries
 
@@ -377,6 +383,11 @@ package. The reference image contains Window Maker 0.96, the WINGs, WUtil, and
 wraster headers and shared libraries, and the Pango/Xft font stack used by
 that WINGs build. It is the reproducible environment when a host distribution
 does not package the WINGs development files separately.
+
+The maintained interactive debug path performs a native Debug build in the
+`Bookworm-WindowMaker` VM and runs it on the guest's logged-in Window Maker
+desktop. The guest also needs `libpango1.0-dev` when its WINGs package metadata
+names Pango include paths without declaring that development dependency.
 
 ### Link libraries
 

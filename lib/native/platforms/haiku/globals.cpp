@@ -37,6 +37,16 @@ namespace haiku
     native::bindings<native::check *, haiku_check *> check_bindings;
     native::bindings<native::radio *, haiku_radio *> radio_bindings;
     native::bindings<native::list *, haiku_list *> list_bindings;
+    native::bindings<native::accordion *, haiku_collection *>
+        accordion_bindings;
+    native::bindings<native::icon_view *, haiku_collection *>
+        icon_view_bindings;
+    native::bindings<native::tree_view *, haiku_tree_view *>
+        tree_view_bindings;
+    native::bindings<native::table_view *, haiku_collection *>
+        table_view_bindings;
+    native::bindings<native::code_edit *, haiku_collection *>
+        code_edit_bindings;
     native::bindings<native::text_edit *, haiku_text_edit *>
         text_edit_bindings;
     native::bindings<native::file_dialog *, haiku_file_dialog *>
@@ -63,6 +73,29 @@ namespace haiku
             auto *binding = list_bindings.object_from_handle(list);
             return binding ? binding->view : nullptr;
         }
+        if (auto *accordion =
+                dynamic_cast<native::accordion *>(control)) {
+            auto *binding =
+                accordion_bindings.object_from_handle(accordion);
+            return binding ? binding->view : nullptr;
+        }
+        if (auto *icons = dynamic_cast<native::icon_view *>(control)) {
+            auto *binding = icon_view_bindings.object_from_handle(icons);
+            return binding ? binding->view : nullptr;
+        }
+        if (auto *tree = dynamic_cast<native::tree_view *>(control)) {
+            auto *binding = tree_view_bindings.object_from_handle(tree);
+            return binding ? static_cast<BView *>(binding->scroll)
+                           : nullptr;
+        }
+        if (auto *table = dynamic_cast<native::table_view *>(control)) {
+            auto *binding = table_view_bindings.object_from_handle(table);
+            return binding ? binding->view : nullptr;
+        }
+        if (auto *editor = dynamic_cast<native::code_edit *>(control)) {
+            auto *binding = code_edit_bindings.object_from_handle(editor);
+            return binding ? binding->view : nullptr;
+        }
         if (auto *editor =
                 dynamic_cast<native::text_edit *>(control)) {
             auto *binding =
@@ -74,5 +107,13 @@ namespace haiku
                        : static_cast<BView *>(binding->view);
         }
         return nullptr;
+    }
+
+    BView *parent_view(native::wnd *parent) {
+        if (!parent || !parent->get_created())
+            return nullptr;
+        if (BView *view = view_from_control(parent))
+            return view;
+        return content_view(wnd_bindings.handle_from_object(parent));
     }
 } // namespace haiku

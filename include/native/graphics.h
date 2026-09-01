@@ -21,6 +21,76 @@ namespace native
 {
     class gpx;
 
+    // Selects pixel sampling for scaled image drawing.
+    enum class image_filter
+    {
+        nearest,
+        linear
+    };
+
+    // Selects logical horizontal text alignment.
+    enum class text_align
+    {
+        start,
+        center,
+        end
+    };
+
+    // Selects vertical text alignment within a rectangle.
+    enum class text_valign
+    {
+        top,
+        center,
+        bottom
+    };
+
+    // Selects clipping or end-ellipsis overflow behavior.
+    enum class text_overflow
+    {
+        clip,
+        ellipsis
+    };
+
+    // Describes bounded plain-text placement.
+    struct text_layout
+    {
+        text_align horizontal = text_align::start;
+        text_valign vertical = text_valign::top;
+        text_overflow overflow = text_overflow::clip;
+        bool single_line = true;
+    };
+
+    // Restores a borrowed graphics context's complete portable state.
+    class gpx_state final
+    {
+    public:
+        // Capture ink, paper, pen, font, and clipping state.
+        explicit gpx_state(gpx &graphics);
+
+        // Restore captured state unless ownership was moved.
+        ~gpx_state();
+
+        // Move responsibility for restoring captured state.
+        gpx_state(gpx_state &&other) noexcept;
+
+        // State guards cannot be copy constructed.
+        gpx_state(const gpx_state &) = delete;
+
+        // State guards cannot be copied or reassigned.
+        gpx_state &operator=(const gpx_state &) = delete;
+
+        // State guards cannot replace an active captured state.
+        gpx_state &operator=(gpx_state &&) = delete;
+
+    private:
+        gpx *_graphics;
+        rgba _ink;
+        rgba _paper;
+        std::uint8_t _pen;
+        const font_t *_font;
+        rect _clip;
+    };
+
     // Selects an encoded image representation.
     enum class image_format
     {
@@ -121,6 +191,9 @@ namespace native
         // Return the selected font or the stock system font.
         const font_t &get_font() const;
 
+        // Capture portable drawing state in a move-only RAII guard.
+        [[nodiscard]] gpx_state save_state();
+
         // Return metrics for the currently selected font.
         font_metrics get_font_metrics() const;
 
@@ -145,12 +218,38 @@ namespace native
         // Draw a rectangle outline or filled rectangle.
         virtual gpx &draw_rect(rect bounds, bool filled = false) = 0;
 
+        // Draw an ellipse outline or fill using portable geometry.
+        gpx &draw_ellipse(const rect &bounds, bool filled = false);
+
+        // Draw connected line segments through all supplied points.
+        gpx &draw_polyline(const std::vector<point> &points);
+
+        // Draw an outlined or filled polygon.
+        gpx &draw_polygon(const std::vector<point> &points,
+                          bool filled = false);
+
         // Draw text from a top-left position using the selected
         // color/font.
         gpx &draw_text(const std::string &text, point position);
 
+        // Draw clipped, aligned plain text inside a rectangle.
+        gpx &draw_text(const std::string &text,
+                       const rect &bounds,
+                       const text_layout &layout = {});
+
         // Draw an image at a destination point.
         virtual gpx &draw_img(const img &source, point destination) = 0;
+
+        // Scale a complete image into a destination rectangle.
+        gpx &draw_img(const img &source,
+                      const rect &destination,
+                      image_filter filter = image_filter::linear);
+
+        // Crop and scale a source rectangle into a destination.
+        gpx &draw_img(const img &source,
+                      const rect &source_rect,
+                      const rect &destination,
+                      image_filter filter = image_filter::linear);
 
     protected:
         // Draw stock-font text through the selected native backend.

@@ -10,6 +10,7 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../post_backend.h"
 
 namespace native
 {
@@ -21,6 +22,7 @@ namespace native
         }
 
         linux::wmaker::exit_requested = false;
+        detail::drain_posted_work();
         while (!linux::wmaker::exit_requested) {
             XEvent event = {};
             WMNextEvent(linux::wmaker::display, &event);

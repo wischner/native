@@ -96,6 +96,11 @@ namespace native
         //      Cached bounds and layout are updated without sending a
         //      resize request back to the operating system.
         //
+        //      A notification that repeats the cached dimensions is
+        //      ignored. Backends report geometry through one event
+        //      that also covers moves, so without this a window would
+        //      relayout its children every time it was dragged.
+        //
         void on_native_resize(const size &dimensions);
 
         // Make an already-created native resource visible.
@@ -131,6 +136,10 @@ namespace native
 
         rect _bounds;
         std::unique_ptr<layout_manager> _layout;
+
+        // True while a layout pass over this window's children runs,
+        // or while cached geometry is being applied to the backend.
+        bool _layout_suspended = false;
         mutable gpx *_gpx = nullptr;
         wnd *_parent;
 
@@ -139,6 +148,23 @@ namespace native
 
         // Release child backend resources before destroying a parent.
         void destroy_children() const;
+
+        //
+        // Run one layout pass over this window's children.
+        //
+        // Notes:
+        //      Requests that arrive while a pass already runs are
+        //      dropped. A backend may report a resize synchronously
+        //      from inside the call that applied it, and geometry
+        //      management in some toolkits resizes a parent when a
+        //      child changes size. Either would otherwise re-enter
+        //      this pass, at best repeating it and at worst not
+        //      terminating.
+        //
+        void relayout_children();
+
+        // React after cached client dimensions have changed.
+        virtual void on_bounds_changed();
 
         // Apply cached geometry to a created backend resource.
         virtual void apply_position();

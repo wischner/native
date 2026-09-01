@@ -41,10 +41,24 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/clipboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_util.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_document.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/accordion.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/icon_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/collection_render.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_model.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_store.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_search.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_visible_rows.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_view_model.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/table_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
@@ -53,8 +67,12 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
 )
 
-add_subdirectory(platforms)
-
+# Configure Unix toolkit libraries before the shared Linux codec libraries.
+# This matches native XView client link order on Tribblix; its notifier
+# interposes select and depends on that order to reach the libc system call
+# from inside the notification loop.
 if(NOT WIN32 AND NOT HAIKU AND NOT APPLE)
     add_subdirectory(toolkits)
 endif()
+
+add_subdirectory(platforms)

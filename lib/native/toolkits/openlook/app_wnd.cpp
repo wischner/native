@@ -77,6 +77,10 @@ namespace
         cache->buffer_height = height;
     }
 
+    // True while the panel repaint procedure runs, so restoring the
+    // items below cannot re-enter it.
+    bool repainting_panel = false;
+
     void repaint_panel(Panel panel,
                        Xv_Window paint_window,
                        Rectlist *areas) {
@@ -126,6 +130,23 @@ namespace
                   invalid.d.h,
                   invalid.p.x,
                   invalid.p.y);
+
+        // XView calls this procedure to restore the background under
+        // an item it is clearing, which is what it does to every item
+        // a layout moves or resizes. The background just painted
+        // covers whatever else stood in that rectangle, so any other
+        // item overlapping it is now erased and nothing would draw it
+        // again. Put the items back on top.
+        //
+        // PANEL_NO_CLEAR paints without clearing, so this cannot
+        // come back round through panel_default_clear_item(); the
+        // guard covers the case where a paint handler itself
+        // triggers another repaint.
+        if (!repainting_panel) {
+            repainting_panel = true;
+            panel_paint(panel, PANEL_NO_CLEAR);
+            repainting_panel = false;
+        }
     }
 
     void resize_panel(Canvas canvas, int width, int height) {
@@ -139,6 +160,62 @@ namespace
             static_cast<native::dim>(height));
         owner->on_native_resize(dimensions);
         owner->on_wnd_resize.emit(dimensions);
+    }
+
+    // Bring the portable size and the content panel back in line
+    // with the frame.
+    //
+    // CANVAS_RESIZE_PROC is a Canvas attribute and the content is a
+    // Panel, so the resize proc set on it never runs and a resized
+    // window would otherwise never reach the portable layer: an
+    // installed layout would arrange its children once and never
+    // again. ConfigureNotify on the frame is the notification that
+    // does arrive, so the size is taken from the frame itself.
+    void sync_frame_size(native::app_wnd *owner) {
+        auto *state = linux::openlook::window_state(owner);
+        if (!state || !state->frame || !state->content)
+            return;
+
+        const int frame_width =
+            static_cast<int>(xv_get(state->frame, XV_WIDTH));
+        const int frame_height =
+            static_cast<int>(xv_get(state->frame, XV_HEIGHT));
+        const int width = frame_width;
+        const int height = frame_height - state->menu_height;
+        if (width <= 0 || height <= 0)
+            return;
+
+        const native::size dimensions(
+            static_cast<native::dim>(width),
+            static_cast<native::dim>(height));
+        if (dimensions.w == owner->get_dimensions().w &&
+            dimensions.h == owner->get_dimensions().h)
+            return;
+
+        xv_set(state->content,
+               XV_WIDTH,
+               width,
+               XV_HEIGHT,
+               height,
+               nullptr);
+
+        // Resizing the panel gives it a fresh paint window. Holding
+        // the old one would leave every later repaint drawing into a
+        // window that is no longer on screen.
+        if (Xv_Window paint = static_cast<Xv_Window>(
+                xv_get(state->content, CANVAS_NTH_PAINT_WINDOW, 0)))
+            state->paint_window = paint;
+
+        ensure_backbuffer(owner, width, height);
+        owner->on_native_resize(dimensions);
+        owner->on_wnd_resize.emit(dimensions);
+
+        // The server clears the window when it changes size and the
+        // panel does not redraw its items by itself, so without this
+        // controls vanish until something else asks for a repaint.
+        // Done after the layout has run, so items are drawn where the
+        // new size puts them.
+        owner->invalidate();
     }
 
     Notify_value handle_window_event(
@@ -159,6 +236,29 @@ namespace
         linux::openlook::permit_input(owner);
 
         const int action = event_action(event);
+
+        // The window manager's Quit sends WM_DELETE_WINDOW, which
+        // XView turns into ACTION_DISMISS for an owned frame (a
+        // root-owned one it destroys itself). ACTION_DISMISS is what
+        // frame_event_proc() would turn into a FRAME_DONE_PROC call,
+        // but installing an event procedure on the frame displaces
+        // that procedure, so the done proc never runs: the frame is
+        // dismissed while the window still believes it exists, and
+        // every later show() re-shows a frame that is gone. Close it
+        // here instead. destroy() is idempotent, so a backend path
+        // that does reach frame_done() still costs nothing.
+        if (action == ACTION_DISMISS) {
+            if (!linux::openlook::permit_input(owner))
+                return NOTIFY_DONE;
+
+            owner->destroy();
+
+            // The frame and its panel items are gone. Passing the
+            // event on would hand the next procedure in the chain a
+            // window that no longer exists, which XView reports as an
+            // invalid object, so the dispatch stops here.
+            return NOTIFY_DONE;
+        }
         if (owner->get_input_enabled()) {
             if (action == LOC_MOVE || action == LOC_DRAG) {
                 owner->on_mouse_move.emit(native::point(
@@ -194,6 +294,7 @@ namespace
                     state ? state->frame : XV_NULL);
             owner->on_native_move(position);
             owner->on_wnd_move.emit(position);
+            sync_frame_size(owner);
         }
         return notify_next_event_func(
             window,
@@ -426,9 +527,15 @@ namespace native
             return;
         auto *self = const_cast<app_wnd *>(this);
         auto *state = linux::openlook::window_state(self);
-        self->on_native_destroy();
 
+        // Drop the content panel's binding before anything is torn
+        // down. Destroying a child item makes XView clear it, which
+        // calls the repaint procedure, which would otherwise repaint
+        // a panel whose items are half destroyed. Without the
+        // binding the procedure has no owner to find and returns.
         linux::openlook::wnd_bindings.unregister_by_object(self);
+
+        self->on_native_destroy();
         linux::openlook::frame_bindings.unregister_by_object(self);
         linux::openlook::window_bindings.unregister_by_handle(self);
 

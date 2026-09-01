@@ -8,6 +8,11 @@ can have fixed pixel sizes or weighted shares of the remaining space.
 - `native::pixels(value)` creates a fixed-size track.
 - `native::star(weight)` creates a weighted track.
 - A larger star weight receives a larger share of remaining space.
+- A default-constructed grid has no tracks. The rows and columns appended
+  afterwards are the only ones it has, so the example below arranges three
+  rows and two columns.
+- `grid_layout_manager(rows, columns)` starts with that many weighted tracks
+  instead of appending them one at a time.
 
 `native::cell()` places a control by row, column, span, and margin. A nested
 grid can occupy a parent cell through `native::child_grid()`.
@@ -142,11 +147,26 @@ int program(int, char **) {
 }
 ```
 
-## Layout ownership
+## Placement and ownership
+
+A window hands every child it has to the layout it installs, so the order of
+`set_parent()` and `set_layout()` does not matter. A control placed with
+`native::cell()` or `add()` keeps the cell, span, and margin it was given. A
+control that has no placement is added to the next free cell, stepping over
+the cells an explicit placement already covers.
 
 The root layout owns the nested grid. Both layouts borrow their control
 pointers. The window still owns every `native::button`, so controls outlive
-the layouts that reference them.
+the layouts that reference them. A control placed in a nested grid belongs to
+that grid alone; the grid above it does not place it a second time.
+
+## Seeing it run
+
+The `vision` program contains the same arrangement as a resizable window.
+Open **Window -> Layout managers** to get a grid with fixed and weighted
+tracks, a spanned toolbar and status bar, and a nested grid in its content
+cell. Resizing that window shows which tracks hold their size and which
+absorb the change, and its button swaps the grid for an absolute layout.
 
 The next chapters cover the controls and services added after the original
 runnable examples.

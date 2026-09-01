@@ -8,6 +8,8 @@
 #pragma once
 
 #import <Cocoa/Cocoa.h>
+#include <unordered_map>
+#include <vector>
 #include <native.h>
 #include <bindings.h>
 
@@ -86,15 +88,65 @@ namespace mac
         NSTableView *table = nil;
         id adapter = nil;
     };
+    struct mac_accordion
+    {
+        NSStackView *stack = nil;
+        id target = nil;
+        std::vector<NSButton *> headers;
+    };
+    struct mac_icon_view
+    {
+        NSScrollView *scroll = nil;
+        NSCollectionView *collection = nil;
+        NSCollectionViewFlowLayout *layout = nil;
+        id adapter = nil;
+        std::vector<NSImage *> images;
+        bool suppress = false;
+    };
+    struct mac_tree_view
+    {
+        NSScrollView *scroll = nil;
+        NSOutlineView *outline = nil;
+        id adapter = nil;
+        std::unordered_map<native::tree_item_id, NSNumber *> items;
+        std::unordered_map<native::tree_item_id, NSImage *> images;
+        bool suppress = false;
+    };
+    struct mac_table_view
+    {
+        NSScrollView *scroll = nil;
+        NSTableView *table = nil;
+        NSTableHeaderView *header = nil;
+        id adapter = nil;
+        std::unordered_map<const native::img *, NSImage *> images;
+        bool suppress = false;
+    };
+    struct mac_code_edit
+    {
+        NSView *view = nil;
+    };
 
     extern native::bindings<native::check *, mac_check *>
         check_bindings;
     extern native::bindings<native::radio *, mac_radio *>
         radio_bindings;
     extern native::bindings<native::list *, mac_list *> list_bindings;
+    extern native::bindings<native::accordion *, mac_accordion *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, mac_icon_view *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, mac_tree_view *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, mac_table_view *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, mac_code_edit *>
+        code_edit_bindings;
     extern native::bindings<native::file_dialog *, NSSavePanel *>
         file_dialog_bindings;
 
     // Return the outer NSView used by any public child control.
     NSView *view_from_control(native::wnd *control);
+
+    // Return the child-content view of a created window or control.
+    NSView *parent_view(native::wnd *parent);
 } // namespace mac

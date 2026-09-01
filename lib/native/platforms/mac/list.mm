@@ -47,11 +47,11 @@ namespace
 {
     NSView *parent(native::list *c) {
         auto *p = c->get_parent();
-        NSWindow *w = p ? mac::wnd_bindings.handle_from_object(p) : nil;
-        if (!p || !p->get_created() || !w || ![w contentView])
+        NSView *view = mac::parent_view(p);
+        if (!view)
             throw std::runtime_error(
                 "macOS: list requires a created parent.");
-        return [w contentView];
+        return view;
     }
     native_list_adapter *adapter(mac::mac_list *b) {
         return static_cast<native_list_adapter *>(b->adapter);

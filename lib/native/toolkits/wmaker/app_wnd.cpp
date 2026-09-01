@@ -137,6 +137,11 @@ namespace
                 resize_backbuffer(owner,
                                   dimensions.w,
                                   dimensions.h);
+
+                // The menu strip spans the window, so it follows the
+                // new width before anything repaints against it.
+                linux::wmaker::resize_menu_bar(
+                    owner, event->xconfigure.width);
                 owner->on_native_resize(dimensions);
                 owner->on_wnd_resize.emit(dimensions);
                 linux::wmaker::schedule_repaint(
@@ -273,6 +278,15 @@ namespace native
             static_cast<unsigned int>(
                 _bounds.d.h + window_state->menu_height));
         WMSetWindowTitle(window, _title.c_str());
+
+        // WINGs publishes the size it realized a window at and
+        // nothing wider, so Window Maker offers no resize handles and
+        // an installed layout is arranged exactly once. Publish a
+        // usable range instead, the way the Win32, Cocoa, and SDL2
+        // shells are resizable.
+        WMSetWindowMinSize(window, 64, 48);
+        WMSetWindowMaxSize(window, 32767, 32767);
+
         WMSetWindowCloseAction(window, close_window, self);
         WMCreateEventHandler(
             WMWidgetView(window),

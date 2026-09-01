@@ -125,6 +125,11 @@ namespace linux::sdl2
         bool mouse_selecting = false;
     };
 
+    struct sdl2_collection
+    {
+        bool visible = false;
+    };
+
     // Render an emulated menu bar and open popup.
     void render_menu(sdl2_menu *menu,
                      native::gpx &graphics,
@@ -186,6 +191,29 @@ namespace linux::sdl2
     // Render every visible emulated editor owned by a window.
     void render_text_edits(native::wnd *, native::gpx &);
 
+    void render_collections(native::wnd *, native::gpx &);
+    bool handle_collection_mouse(native::wnd *,
+                                 int,
+                                 int,
+                                 bool,
+                                 bool,
+                                 int);
+    bool handle_collection_wheel(native::wnd *, int, int, int);
+    bool handle_collection_motion(native::wnd *, int, int);
+    bool handle_collection_key(native::wnd *, const SDL_KeyboardEvent &);
+    bool handle_collection_text(native::wnd *, const char *);
+
+    //
+    // Return the client area's vertical origin inside its window.
+    //
+    // Notes:
+    //      An emulated menu bar is painted in window coordinates
+    //      above the client area, so a window carrying one is taller
+    //      than the client it exposes. Geometry crossing the public
+    //      boundary converts through this in both directions.
+    //
+    int content_origin_y(native::wnd *window);
+
     // Return the rendered width of text in the active control font.
     int text_width(const std::string &text);
 
@@ -212,11 +240,26 @@ namespace linux::sdl2
     extern native::bindings<native::list *, sdl2_list *> list_bindings;
     extern native::bindings<native::text_edit *, sdl2_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::accordion *, sdl2_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, sdl2_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, sdl2_collection *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, sdl2_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, sdl2_collection *>
+        code_edit_bindings;
     extern std::vector<native::check *> checks;
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
     extern std::vector<native::button *> buttons;
     extern std::vector<native::text_edit *> text_edits;
+    extern std::vector<native::accordion *> accordions;
+    extern std::vector<native::icon_view *> icon_views;
+    extern std::vector<native::tree_view *> tree_views;
+    extern std::vector<native::table_view *> table_views;
+    extern std::vector<native::code_edit *> code_edits;
     extern std::vector<native::app_wnd *> windows;
 #ifdef HAVE_SDL2_TTF
     extern native::bindings<uint32_t, sdl2_font *> font_bindings;

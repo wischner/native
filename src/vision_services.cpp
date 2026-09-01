@@ -273,6 +273,38 @@ namespace vision
         set_status("Modal dialog is blocking its owner.");
     }
 
+    void vision_window::show_layout() {
+        if (!_layout.get_created())
+            _layout.create();
+        _layout.show();
+        set_status("Layout window: resize it to watch the grid "
+                   "arrange its children.");
+    }
+
+    void vision_window::show_collections() {
+        if (!_collections.get_created())
+            _collections.create();
+        _collections.show();
+        set_status("Opened the accordion, icon-view, and classic "
+                   "tree-view gallery.");
+    }
+
+    void vision_window::show_tables() {
+        if (!_tables.get_created())
+            _tables.create();
+        _tables.show();
+        set_status("Opened materialized and million-row virtual "
+                   "tables.");
+    }
+
+    void vision_window::show_code_editor() {
+        if (!_code_editor.get_created())
+            _code_editor.create();
+        _code_editor.show();
+        set_status("Opened the UTF-8 code editor with portable "
+                   "gutter and overlays.");
+    }
+
     void vision_window::set_status(const std::string &status) {
         _status = status;
         if (get_created())

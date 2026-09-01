@@ -18,8 +18,11 @@ The common operations are:
 | `clear()` | Fill the current clip |
 | `draw_line()` | Draw one line segment |
 | `draw_rect()` | Draw an outline or filled rectangle |
+| `draw_ellipse()` | Draw a portable outlined or filled ellipse |
+| `draw_polyline()` / `draw_polygon()` | Draw connected and closed point geometry |
 | `draw_text()` | Draw UTF-8 text from a top-left position |
-| `draw_img()` | Draw a complete image at a destination point |
+| `draw_img()` | Draw, crop, or scale an image |
+| `save_state()` | Restore colors, pen, font, and clip at scope exit |
 
 Calls return the context where practical, so related operations can be
 chained:
@@ -55,14 +58,47 @@ g.clear(native::rgba(255, 255, 255, 0))
 The image and its graphics context have the same lifetime; `img` is not
 copyable.
 
-Draw an image into either kind of context with the same call:
+Draw an image into either kind of context with the same call. Rectangle
+overloads scale a complete image or a cropped source rectangle; choose linear
+filtering for ordinary artwork and nearest filtering for pixel art:
 
 ```cpp
 event.g.draw_img(canvas, native::point(40, 80));
+event.g.draw_img(canvas,
+                 native::rect(40, 80, 160, 100),
+                 native::image_filter::linear);
+event.g.draw_img(canvas,
+                 native::rect(16, 16, 64, 64),
+                 native::rect(220, 80, 96, 96),
+                 native::image_filter::nearest);
 ```
 
-The current operation draws the complete source at its original size. Crop,
-scale, and interpolation policies are deliberately not implicit.
+Scaling preserves source alpha. The crop must remain inside the source image.
+
+## Scoped state and bounded text
+
+Use `save_state()` before temporary paint changes. Its move-only RAII object
+restores ink, paper, pen thickness, selected font, and clipping even when the
+scope exits early:
+
+```cpp
+{
+    auto saved = event.g.save_state();
+    event.g.set_clip(native::rect(20, 20, 180, 36))
+        .set_ink(native::rgba(32, 64, 128, 255))
+        .draw_text(
+            "A long item label",
+            native::rect(20, 20, 180, 36),
+            {native::text_align::center,
+             native::text_valign::center,
+             native::text_overflow::ellipsis,
+             true});
+}
+```
+
+Bounded text uses logical start/center/end alignment, vertical alignment,
+clipping, and optional end ellipsis. This remains plain text; rich spans and
+editable layout belong in controls.
 
 ## PNG and JPEG from files or memory
 
@@ -208,11 +244,13 @@ controls->draw_check(
     state);
 ```
 
-The available semantic primitives draw buttons, menu bars, menu titles, menu
-items, popup frames, list items, checks, radios, complete lists, and text-edit
-frames. `state` describes hot, pressed, selected, and disabled visuals.
-`defaults()` supplies backend metrics; `native_palette()` supplies colors for
-custom compositions.
+The semantic primitives draw buttons, menu bars, menu titles, menu items,
+popup frames, list items, checks, radios, complete lists, and text-edit
+frames. Advanced controls compose surfaces, row/tile selections, focus,
+disclosure indicators, separators, and scrollbar parts. `state` describes
+hot, pressed, selected, disabled, focused, and active visuals. `defaults()`
+supplies backend metrics; `native_palette()` supplies colors for custom
+compositions.
 
 The backend uses its native painter where that painter supports the target:
 Windows uses GDI control primitives, OpenMotif uses Motif shadow primitives,

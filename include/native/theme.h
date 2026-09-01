@@ -17,6 +17,53 @@
 
 namespace native
 {
+    // Selects a semantic native-looking background or frame.
+    enum class surface_kind
+    {
+        panel,
+        content,
+        inset,
+        popup,
+        header
+    };
+
+    // Selects row-shaped or tile-shaped native selection painting.
+    enum class selection_shape
+    {
+        row,
+        tile
+    };
+
+    // Selects the direction represented by a disclosure indicator.
+    enum class disclosure_state
+    {
+        collapsed,
+        expanded
+    };
+
+    // Selects a separator's logical orientation.
+    enum class separator_orientation
+    {
+        horizontal,
+        vertical
+    };
+
+    // Selects a scrollbar's logical orientation.
+    enum class scrollbar_orientation
+    {
+        horizontal,
+        vertical
+    };
+
+    // Selects one independently paintable scrollbar part.
+    enum class scrollbar_part
+    {
+        track,
+        thumb,
+        decrement,
+        increment
+    };
+
     // Defines semantic drawing operations implemented by the active
     // backend.
     class theme
@@ -29,6 +76,8 @@ namespace native
             bool pressed = false;
             bool selected = false;
             bool disabled = false;
+            bool focused = false;
+            bool active = true;
         };
 
         // Stores dimensions selected by the active platform or toolkit.
@@ -41,6 +90,20 @@ namespace native
             int check_height = 22;
             int radio_height = 22;
             int list_item_height = 20;
+            int focus_inset = 2;
+            int disclosure_size = 12;
+            int header_height = 24;
+            int header_padding_x = 6;
+            int header_gap = 4;
+            int icon_view_padding_x = 6;
+            int icon_view_padding_y = 6;
+            int icon_view_item_gap_x = 4;
+            int icon_view_item_gap_y = 4;
+            int icon_view_label_gap = 4;
+            int icon_view_min_item_width = 80;
+            int separator_extent = 1;
+            int scrollbar_extent = 16;
+            int scrollbar_min_thumb = 16;
         };
 
         // Stores colors used when a backend must emulate native
@@ -67,6 +130,15 @@ namespace native
             rgba menu_hot_text;
             rgba menu_popup_bg;
             rgba menu_popup_border;
+
+            rgba content_bg;
+            rgba content_text;
+            rgba selection_bg;
+            rgba selection_text;
+            rgba selection_inactive_bg;
+            rgba selection_inactive_text;
+            rgba separator;
+            rgba focus;
         };
 
         // Destroy the theme interface without owning its graphics
@@ -168,9 +240,79 @@ namespace native
             const rect &bounds,
             const state &element_state) = 0;
 
+        // Draw a semantic native-looking surface or frame.
+        virtual theme &draw_surface(
+            const rect &bounds,
+            surface_kind kind,
+            const state &element_state);
+
+        // Draw a row or tile selection background.
+        virtual theme &draw_selection(
+            const rect &bounds,
+            selection_shape shape,
+            const state &element_state);
+
+        // Draw a keyboard-focus indicator.
+        virtual theme &draw_focus(
+            const rect &bounds,
+            const state &element_state);
+
+        // Draw a collapsed or expanded disclosure indicator.
+        virtual theme &draw_disclosure(
+            const rect &bounds,
+            disclosure_state disclosure,
+            const state &element_state);
+
+        // Draw a native separator across its supplied bounds.
+        virtual theme &draw_separator(
+            const rect &bounds,
+            separator_orientation orientation);
+
+        // Draw one semantic native-looking scrollbar part.
+        virtual theme &draw_scrollbar_part(
+            const rect &bounds,
+            scrollbar_orientation orientation,
+            scrollbar_part part,
+            const state &element_state);
+
     protected:
         // Construct a theme that borrows its destination context.
         explicit theme(gpx &painter);
+
+        // Draw a semantic surface through portable graphics.
+        theme &draw_surface_fallback(
+            const rect &bounds,
+            surface_kind kind,
+            const state &element_state);
+
+        // Draw a semantic selection through portable graphics.
+        theme &draw_selection_fallback(
+            const rect &bounds,
+            selection_shape shape,
+            const state &element_state);
+
+        // Draw a focus indicator through portable graphics.
+        theme &draw_focus_fallback(
+            const rect &bounds,
+            const state &element_state);
+
+        // Draw a disclosure indicator through portable graphics.
+        theme &draw_disclosure_fallback(
+            const rect &bounds,
+            disclosure_state disclosure,
+            const state &element_state);
+
+        // Draw a separator through portable graphics.
+        theme &draw_separator_fallback(
+            const rect &bounds,
+            separator_orientation orientation);
+
+        // Draw a scrollbar part through portable graphics.
+        theme &draw_scrollbar_part_fallback(
+            const rect &bounds,
+            scrollbar_orientation orientation,
+            scrollbar_part part,
+            const state &element_state);
 
         // Borrowed for the lifetime of this short-lived theme instance.
         gpx &_g;

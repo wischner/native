@@ -29,6 +29,8 @@ If you are looking for a straightforward, understandable UI library, or if you w
   OPEN LOOK/XView, Window Maker/WINGs, and GEMix), Windows (WinAPI),
   Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
+- **Classic trees**: Stable-ID hierarchical `tree_view` with native
+  disclosure, selection, images, navigation, and scrolling on every backend
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, path, and filter model
 - **Clipboard and text editing**: Typed UTF-8/image clipboard transactions,
@@ -132,8 +134,8 @@ Current exercised runtime paths are:
 
 - Linux X11
 - Linux SDL2
-- Linux OPEN LOOK/XView under OpenWindows `olwm` in Xephyr
-- Linux Window Maker/WINGs under Window Maker in Xephyr
+- Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+- Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
 - Windows MinGW binaries run through Wine
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
 

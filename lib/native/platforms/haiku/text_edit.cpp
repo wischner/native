@@ -34,17 +34,15 @@ namespace
             window->Unlock();
     }
 
-    // Return the created native parent window.
-    BWindow *parent_window(native::text_edit *editor) {
+    // Return the created native parent view.
+    BView *parent_view(native::text_edit *editor) {
         native::wnd *parent = editor->get_parent();
-        BWindow *window = parent
-                              ? haiku::wnd_bindings
-                                    .handle_from_object(parent)
-                              : nullptr;
-        if (!parent || !parent->get_created() || !window)
+        BView *view = haiku::parent_view(parent);
+        if (!parent || !parent->get_created() || !view ||
+            !view->Window())
             throw std::runtime_error(
                 "Haiku: text_edit requires a created parent.");
-        return window;
+        return view;
     }
 
     // Build a candidate by replacing one byte-offset selection.
@@ -197,7 +195,8 @@ namespace native
         if (_created)
             return;
         auto *self = const_cast<text_edit *>(this);
-        BWindow *window = parent_window(self);
+        BView *parent = parent_view(self);
+        BWindow *window = parent->Window();
         const BRect frame(_bounds.p.x,
                           _bounds.p.y,
                           _bounds.x2() - 1,
@@ -205,10 +204,6 @@ namespace native
         native_text_edit_view *view = nullptr;
         BScrollView *scroll = nullptr;
         locked(window, [&] {
-            BView *content = haiku::content_view(window);
-            if (!content)
-                return;
-
             const BRect text_rect(4,
                                   4,
                                   frame.Width() - 4,
@@ -233,9 +228,9 @@ namespace native
                                          B_FANCY_BORDER);
                 scroll->MoveTo(frame.LeftTop());
                 scroll->ResizeTo(frame.Width(), frame.Height());
-                content->AddChild(scroll);
+                parent->AddChild(scroll);
             } else {
-                content->AddChild(view);
+                parent->AddChild(view);
             }
         });
         if (!view)

@@ -5,6 +5,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
+
 #include "globals.h"
 
 namespace linux::gemix
@@ -16,6 +18,11 @@ namespace linux::gemix
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
     std::vector<native::text_edit *> text_edits;
+    std::vector<native::accordion *> accordions;
+    std::vector<native::icon_view *> icon_views;
+    std::vector<native::tree_view *> tree_views;
+    std::vector<native::table_view *> table_views;
+    std::vector<native::code_edit *> code_edits;
     native::bindings<native::text_edit *, gem_text_edit *>
         text_edit_bindings;
     std::vector<native::app_wnd *> windows;
@@ -80,6 +87,11 @@ namespace linux::gemix
         radios.clear();
         lists.clear();
         text_edits.clear();
+        accordions.clear();
+        icon_views.clear();
+        tree_views.clear();
+        table_views.clear();
+        code_edits.clear();
         text_edit_bindings.clear();
         windows.clear();
         active_window = nullptr;
@@ -103,6 +115,75 @@ namespace linux::gemix
                             y,
                             static_cast<native::dim>(w),
                             static_cast<native::dim>(h));
+    }
+
+    native::rect work_rect(WORD handle) {
+        WORD x = 0;
+        WORD y = 0;
+        WORD w = 0;
+        WORD h = 0;
+
+        if (handle <= 0 ||
+            !wind_get(handle, WF_WORKXYWH, &x, &y, &w, &h))
+            return {};
+
+        return native::rect(
+            x,
+            y,
+            static_cast<native::dim>(std::max<WORD>(0, w)),
+            static_cast<native::dim>(std::max<WORD>(0, h)));
+    }
+
+    native::rect outer_rect(WORD handle) {
+        WORD x = 0;
+        WORD y = 0;
+        WORD w = 0;
+        WORD h = 0;
+
+        if (handle <= 0 ||
+            !wind_get(handle, WF_CURRXYWH, &x, &y, &w, &h))
+            return {};
+
+        return native::rect(
+            x,
+            y,
+            static_cast<native::dim>(std::max<WORD>(0, w)),
+            static_cast<native::dim>(std::max<WORD>(0, h)));
+    }
+
+    native::size outer_size_for(WORD handle,
+                                const native::size &work) {
+        WORD kind = 0;
+        WORD ignored_y = 0;
+        WORD ignored_w = 0;
+        WORD ignored_h = 0;
+        if (handle <= 0 || !wind_get(handle,
+                                     WF_KIND,
+                                     &kind,
+                                     &ignored_y,
+                                     &ignored_w,
+                                     &ignored_h))
+            return work;
+
+        WORD x = 0;
+        WORD y = 0;
+        WORD w = 0;
+        WORD h = 0;
+        if (!wind_calc(WC_BORDER,
+                       static_cast<UWORD>(kind),
+                       0,
+                       0,
+                       static_cast<WORD>(work.w),
+                       static_cast<WORD>(work.h),
+                       &x,
+                       &y,
+                       &w,
+                       &h))
+            return work;
+
+        return native::size(
+            static_cast<native::dim>(std::max<WORD>(0, w)),
+            static_cast<native::dim>(std::max<WORD>(0, h)));
     }
 
     native::rect screen_rect() {

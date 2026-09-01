@@ -71,16 +71,21 @@ namespace native
             throw std::runtime_error(
                 "GEMix: Missing window binding for app_wnd.");
 
-        wind_open(
-            handle, _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h);
-        WORD x = 0;
-        WORD y = 0;
-        WORD w = 0;
-        WORD h = 0;
-        wind_get(handle, WF_CURRXYWH, &x, &y, &w, &h);
-        const_cast<app_wnd *>(this)->_bounds = rect(x, y, w, h);
-        linux::gemix::active_window =
-            const_cast<app_wnd *>(this);
+        // Public bounds are the client area, so grow the requested
+        // size by whatever decorations this window carries before
+        // asking AES to open it.
+        const size outer =
+            linux::gemix::outer_size_for(handle, _bounds.d);
+        wind_open(handle, _bounds.p.x, _bounds.p.y, outer.w, outer.h);
+
+        // AES may grant a different rectangle than the one asked for.
+        // Report it the same way a user-driven resize is reported, so
+        // the cache and any installed layout both follow the geometry
+        // the window really has.
+        auto *self = const_cast<app_wnd *>(this);
+        self->on_native_move(linux::gemix::outer_rect(handle).p);
+        self->on_native_resize(linux::gemix::work_rect(handle).d);
+        linux::gemix::active_window = self;
         if (get_modal())
             wind_set(handle, WF_TOP, 0, 0, 0, 0);
         invalidate();

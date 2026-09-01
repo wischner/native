@@ -92,14 +92,11 @@ namespace native
             });
         }
 
-        BWindow *new_window =
-            _parent ? haiku::wnd_bindings.handle_from_object(_parent)
-                    : nullptr;
+        BView *new_parent = haiku::parent_view(_parent);
+        BWindow *new_window = new_parent ? new_parent->Window() : nullptr;
         if (new_window) {
-            with_locked_window(new_window, [&](BWindow *locked) {
-                BView *content = haiku::content_view(locked);
-                if (content)
-                    content->AddChild(control);
+            with_locked_window(new_window, [&](BWindow *) {
+                new_parent->AddChild(control);
             });
         }
     }

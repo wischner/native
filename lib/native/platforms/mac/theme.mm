@@ -98,6 +98,8 @@ namespace
             m.menu_bar_height = 22;
             m.menu_item_height =
                 std::max(20, static_cast<int>(height) + 6);
+            m.header_height =
+                std::max(20, static_cast<int>(std::ceil(height)) + 8);
             m.popup_width = 200;
             m.text_padding_x = 8;
             NSTableView *table =
@@ -137,6 +139,18 @@ namespace
             p.menu_popup_bg =
                 from_native([NSColor windowBackgroundColor]);
             p.menu_popup_border = from_native([NSColor gridColor]);
+            p.content_bg = from_native([NSColor controlBackgroundColor]);
+            p.content_text = from_native([NSColor controlTextColor]);
+            p.selection_bg =
+                from_native([NSColor selectedContentBackgroundColor]);
+            p.selection_text =
+                from_native([NSColor selectedControlTextColor]);
+            p.selection_inactive_bg = from_native(
+                [NSColor unemphasizedSelectedContentBackgroundColor]);
+            p.selection_inactive_text = from_native(
+                [NSColor unemphasizedSelectedTextColor]);
+            p.separator = from_native([NSColor separatorColor]);
+            p.focus = from_native([NSColor keyboardFocusIndicatorColor]);
             return p;
         }
 

@@ -28,6 +28,9 @@ namespace linux::wmaker
         int menu_height = 0;
     };
 
+    // Stretch a window's menu strip across a new window width.
+    void resize_menu_bar(native::app_wnd *owner, int width);
+
     // Owns one buffered Xlib graphics context.
     struct window_graphics
     {
@@ -58,6 +61,12 @@ namespace linux::wmaker
     struct native_menu
     {
         native::app_wnd *owner = nullptr;
+
+        // Fills the menu strip from edge to edge behind the buttons.
+        // The buttons only cover their own labels, and nothing else
+        // paints that row, so without this the window background
+        // shows through beside them.
+        WMFrame *background = nullptr;
         std::vector<WMPopUpButton *> popups;
         std::vector<menu_callback *> callbacks;
     };
@@ -70,6 +79,17 @@ namespace linux::wmaker
         WMText *text = nullptr;
         WMTextFieldDelegate delegate = {};
         bool suppress = false;
+    };
+
+    struct native_collection
+    {
+        WMFrame *frame = nullptr;
+        Time last_click = 0;
+        int last_item = -1;
+        native::table_row_id last_row =
+            native::invalid_table_row_id;
+        native::tree_item_id last_tree_item =
+            native::invalid_tree_item_id;
     };
 
     extern bool initialized;
@@ -88,6 +108,16 @@ namespace linux::wmaker
         menu_bindings;
     extern native::bindings<native::text_edit *, native_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::accordion *, native_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, native_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, native_collection *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, native_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, native_collection *>
+        code_edit_bindings;
 
     // Initialize the process-wide display and WINGs application screen.
     void initialize();

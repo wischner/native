@@ -159,7 +159,7 @@ namespace
                     std::ceil(maximum_advance * face.scale)))};
     }
 
-    struct text_layout
+    struct raster_text_layout
     {
         int left = 0;
         int top = 0;
@@ -169,10 +169,10 @@ namespace
         bool visible = false;
     };
 
-    text_layout layout(
+    raster_text_layout layout(
         const portable_face &face,
         const std::vector<int> &codepoints) {
-        text_layout result;
+        raster_text_layout result;
         const native::font_metrics &face_metrics = face.metrics;
         result.top = 0;
         result.bottom = face_metrics.height;
@@ -316,7 +316,8 @@ namespace native::detail
             return {};
         const portable_face &face = *found->second;
         const font_metrics &face_metrics = face.metrics;
-        const text_layout text_layout = layout(face, decode_utf8(text));
+        const raster_text_layout text_layout =
+            layout(face, decode_utf8(text));
         return {
             text_layout.visible
                 ? std::max(0, text_layout.right - text_layout.left)
@@ -337,7 +338,7 @@ namespace native::detail
             return result;
         const portable_face &face = *found->second;
         const std::vector<int> codepoints = decode_utf8(text);
-        const text_layout text_layout = layout(face, codepoints);
+        const raster_text_layout text_layout = layout(face, codepoints);
         if (!text_layout.visible)
             return result;
         const int width = text_layout.right - text_layout.left;

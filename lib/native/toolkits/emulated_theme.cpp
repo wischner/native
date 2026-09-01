@@ -250,6 +250,55 @@ namespace linux
         return *this;
     }
 
+    native::theme &emulated_theme::draw_surface(
+        const native::rect &bounds,
+        native::surface_kind kind,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_surface_fallback(bounds, kind, element_state);
+    }
+
+    native::theme &emulated_theme::draw_selection(
+        const native::rect &bounds,
+        native::selection_shape shape,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_selection_fallback(bounds, shape, element_state);
+    }
+
+    native::theme &emulated_theme::draw_focus(
+        const native::rect &bounds,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_focus_fallback(bounds, element_state);
+    }
+
+    native::theme &emulated_theme::draw_disclosure(
+        const native::rect &bounds,
+        native::disclosure_state disclosure,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_disclosure_fallback(
+            bounds, disclosure, element_state);
+    }
+
+    native::theme &emulated_theme::draw_separator(
+        const native::rect &bounds,
+        native::separator_orientation orientation) {
+        auto saved = _g.save_state();
+        return draw_separator_fallback(bounds, orientation);
+    }
+
+    native::theme &emulated_theme::draw_scrollbar_part(
+        const native::rect &bounds,
+        native::scrollbar_orientation orientation,
+        native::scrollbar_part part,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_scrollbar_part_fallback(
+            bounds, orientation, part, element_state);
+    }
+
     int emulated_theme::text_y(const native::rect &bounds) const {
         return bounds.p.y +
                std::max(0,

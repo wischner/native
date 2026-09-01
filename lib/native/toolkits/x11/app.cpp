@@ -15,6 +15,7 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../post_backend.h"
 
 namespace native
 {
@@ -24,6 +25,7 @@ namespace native
                 "X11/Athena: No Xt application context.");
 
         linux::x11::exit_requested = false;
+        detail::drain_posted_work();
 
         while (!linux::x11::exit_requested) {
             XEvent event;

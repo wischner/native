@@ -16,6 +16,7 @@
 #include <native.h>
 
 #include <X11/Xlib.h>
+#include <xview/canvas.h>
 #include <xview/file_chsr.h>
 #include <xview/frame.h>
 #include <xview/openmenu.h>
@@ -80,6 +81,18 @@ namespace linux::openlook
         bool all_selected = false;
     };
 
+    struct openlook_collection
+    {
+        Panel panel = XV_NULL;
+        Xv_Window paint_window = XV_NULL;
+        Time last_click = 0;
+        int last_item = -1;
+        native::table_row_id last_row =
+            native::invalid_table_row_id;
+        native::tree_item_id last_tree_item =
+            native::invalid_tree_item_id;
+    };
+
     // Owns one asynchronous standard XView file chooser.
     struct openlook_file_dialog
     {
@@ -106,6 +119,18 @@ namespace linux::openlook
         menu_bindings;
     extern native::bindings<native::text_edit *, openlook_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::accordion *, openlook_collection *>
+        accordion_bindings;
+    extern native::bindings<native::icon_view *, openlook_collection *>
+        icon_view_bindings;
+    extern native::bindings<native::tree_view *, openlook_collection *>
+        tree_view_bindings;
+    extern native::bindings<native::table_view *, openlook_collection *>
+        table_view_bindings;
+    extern native::bindings<native::code_edit *, openlook_collection *>
+        code_edit_bindings;
+    extern native::bindings<Xv_Window, native::wnd *>
+        collection_paint_bindings;
     extern native::bindings<
         const native::file_dialog *, openlook_file_dialog *>
         file_dialog_bindings;
@@ -118,6 +143,26 @@ namespace linux::openlook
 
     // Permit input or restore focus to the active modal dialog.
     bool permit_input(native::wnd *window);
+
+    //
+    // Size a Panel item's label so the item occupies a width.
+    //
+    // Parameters:
+    //      item        - Panel item to size.
+    //      width       - Width the item should occupy, in pixels.
+    //
+    // Notes:
+    //      An XView panel item sizes itself to its label and ignores
+    //      XV_WIDTH, so controls keep their natural width however
+    //      their bounds are set: buttons placed side by side overlap,
+    //      and a layout resizing its children has no visible effect.
+    //      PANEL_LABEL_WIDTH is honoured, but it sets the label area
+    //      rather than the item, so the toolkit's own border is added
+    //      on top. The item is measured after the label is set and
+    //      the difference taken off, which lands the item on the
+    //      requested width whatever that border costs.
+    //
+    void fit_item_width(Xv_opaque item, native::dim width);
 
     // Repaint a window synchronously without clearing its live Panel.
     void repaint_window(native::app_wnd *window,

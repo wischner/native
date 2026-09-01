@@ -70,11 +70,15 @@ namespace
             m.menu_item_height = m.menu_bar_height;
             m.text_padding_x =
                 std::max(4, GetSystemMetrics(SM_CXEDGE) * 2);
+            m.scrollbar_extent =
+                std::max(1, GetSystemMetrics(SM_CXVSCROLL));
             m.popup_width = 180;
             if (HDC hdc = GetDC(nullptr)) {
                 select_control_font(hdc);
                 TEXTMETRICW metric{};
                 if (GetTextMetricsW(hdc, &metric)) {
+                    m.header_height = std::max(
+                        20, static_cast<int>(metric.tmHeight) + 8);
                     m.popup_width = std::max(
                         120,
                         static_cast<int>(metric.tmAveCharWidth) * 24 +
@@ -113,6 +117,18 @@ namespace
                 windows::rgba_from_sys_color(COLOR_HIGHLIGHTTEXT);
             p.menu_popup_bg = windows::rgba_from_sys_color(COLOR_MENU);
             p.menu_popup_border = p.button_shadow;
+            p.content_bg = windows::rgba_from_sys_color(COLOR_WINDOW);
+            p.content_text = windows::rgba_from_sys_color(COLOR_WINDOWTEXT);
+            p.selection_bg =
+                windows::rgba_from_sys_color(COLOR_HIGHLIGHT);
+            p.selection_text =
+                windows::rgba_from_sys_color(COLOR_HIGHLIGHTTEXT);
+            p.selection_inactive_bg =
+                windows::rgba_from_sys_color(COLOR_INACTIVEBORDER);
+            p.selection_inactive_text = p.content_text;
+            p.separator =
+                windows::rgba_from_sys_color(COLOR_3DSHADOW);
+            p.focus = windows::rgba_from_sys_color(COLOR_WINDOWTEXT);
             return p;
         }
 

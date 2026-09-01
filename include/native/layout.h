@@ -181,7 +181,15 @@ namespace native
     class grid_layout_manager final : public layout_manager
     {
     public:
-        // Construct a grid with one weighted row and column.
+        //
+        // Construct a grid with no explicit tracks.
+        //
+        // Notes:
+        //      An empty grid arranges children as a single weighted
+        //      row and column. Rows and columns appended afterwards
+        //      are the only tracks the grid has, so the grid a caller
+        //      describes is the grid it gets.
+        //
         grid_layout_manager();
 
         // Construct a grid with positive counts of weighted tracks.
@@ -225,7 +233,14 @@ namespace native
         // Arrange all direct and nested children within bounds.
         void relayout(wnd *parent, const rect &bounds) override;
 
-        // Auto-place a child in the next available cell.
+        //
+        // Auto-place a child in the next free cell.
+        //
+        // Notes:
+        //      A child that already has a direct or nested placement
+        //      keeps it. Auto-placement steps over cells an explicit
+        //      placement already covers.
+        //
         void add_child(wnd *child) override;
 
         // Remove a child from direct and nested layouts.
@@ -256,6 +271,15 @@ namespace native
             int column_span = 1;
             int margin = 0;
         };
+
+        // Return whether a child already has a direct or nested cell.
+        bool has_placement(const wnd *child) const;
+
+        // Return whether an existing placement covers a cell.
+        bool cell_occupied(int row, int column) const;
+
+        // Step the auto-placement cursor on to the next cell.
+        void advance_auto_cell();
 
         std::vector<grid_length> _rows;
         std::vector<grid_length> _columns;

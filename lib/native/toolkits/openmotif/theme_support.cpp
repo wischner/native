@@ -74,6 +74,14 @@ namespace linux::openmotif
         result.menu_hot_text = result.button_bg;
         result.menu_popup_bg = result.button_bg;
         result.menu_popup_border = result.button_shadow;
+        result.content_bg = native::rgba(255, 255, 255, 255);
+        result.content_text = result.button_text;
+        result.selection_bg = result.menu_hot_bg;
+        result.selection_text = result.menu_hot_text;
+        result.selection_inactive_bg = result.button_shadow;
+        result.selection_inactive_text = result.content_text;
+        result.separator = result.button_shadow;
+        result.focus = result.button_text;
         if (!reference)
             return result;
 
@@ -134,6 +142,14 @@ namespace linux::openmotif
             result.menu_hot_text =
                 theme_pixel_color(reference, background);
         }
+        result.content_bg = result.menu_popup_bg;
+        result.content_text = result.button_text;
+        result.selection_bg = result.menu_hot_bg;
+        result.selection_text = result.menu_hot_text;
+        result.selection_inactive_bg = result.button_shadow;
+        result.selection_inactive_text = result.content_text;
+        result.separator = result.button_shadow;
+        result.focus = result.button_text;
         return result;
     }
 

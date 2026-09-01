@@ -7,23 +7,21 @@ This note lists backend-level open issues that are real today.
 - Runtime-tested in the current workflow:
   - Linux X11
   - Linux SDL2
-  - Linux OPEN LOOK/XView under `olwm` in Xephyr
-  - Linux Window Maker/WINGs under Window Maker in Xephyr
+  - Linux OpenMotif in the `Tribblix-CDE` KVM guest
+  - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+  - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - MS Windows binaries built with MinGW and run through Wine
-  - Haiku binaries built through Docker, copied to a Haiku machine, and run there
-- Build-tested but not yet runtime-tested in the current workflow:
-  - Linux OpenMotif
-- Implemented but not yet runtime-tested in the current workflow:
+  - Haiku binaries built through Docker, copied to a Haiku machine, and run
+    there
   - Apple
 - Still in progress:
   - other toolkit ports not listed above as runtime-tested
 
 ## Current open issues
 
-- Apple runtime is not yet exercised in the current workflow.
-  Platform code exists, but it is not part of the current verified build/run path.
 - Other toolkit ports are still work in progress.
-  They should stay out of the normal user workflow until they are built and exercised.
+  They should stay out of the normal user workflow until they are built and
+  exercised.
 
 ## Why this note exists
 
