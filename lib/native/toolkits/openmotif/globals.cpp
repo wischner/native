@@ -27,6 +27,8 @@ namespace linux::openmotif
     native::bindings<native::button *, motif_button *> button_bindings;
     native::bindings<native::text_edit *, motif_text_edit *>
         text_edit_bindings;
+    native::bindings<native::list *, Widget> list_content_bindings;
+    native::bindings<native::combo_box *, Widget> combo_box_bindings;
     native::bindings<native::accordion *, motif_collection *>
         accordion_bindings;
     native::bindings<native::icon_view *, motif_collection *>

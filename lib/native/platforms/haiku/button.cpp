@@ -14,6 +14,7 @@
 #include <native.h>
 #include <native/button.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -32,6 +33,46 @@ namespace
         if (!already_locked)
             window->Unlock();
     }
+
+    class native_button_view : public BButton
+    {
+    public:
+        native_button_view(BRect frame,
+                           const char *label,
+                           BMessage *message,
+                           native::button *owner)
+            : BButton(frame, "native_button", label, message)
+            , _owner(owner) {}
+
+        void Draw(BRect update) override {
+            if (!_owner || !_owner->get_created()) {
+                BButton::Draw(update);
+                return;
+            }
+            native::gpx &graphics = _owner->get_gpx();
+            auto appearance = native::theme::create(graphics);
+            const BRect frame = Bounds();
+            const native::rect bounds(
+                0,
+                0,
+                static_cast<native::dim>(frame.IntegerWidth() + 1),
+                static_cast<native::dim>(frame.IntegerHeight() + 1));
+            graphics.set_clip(native::rect(
+                static_cast<native::coord>(update.left),
+                static_cast<native::coord>(update.top),
+                static_cast<native::dim>(update.IntegerWidth() + 1),
+                static_cast<native::dim>(update.IntegerHeight() + 1)));
+            native::theme::state state;
+            state.disabled = !IsEnabled();
+            state.focused = IsFocus();
+            state.pressed = Value() == B_CONTROL_ON;
+            native::detail::control_render_access::draw(
+                *_owner, graphics, *appearance, bounds, state);
+        }
+
+    private:
+        native::button *_owner;
+    };
 
 } // namespace
 
@@ -78,10 +119,8 @@ namespace native
 
             BMessage *message = new BMessage(haiku::button_message);
             message->AddPointer(haiku::control_owner_field, self);
-            btn = new BButton(frame,
-                              "native_button",
-                              _text.c_str(),
-                              message);
+            btn = new native_button_view(
+                frame, _text.c_str(), message, self);
             parent->AddChild(btn);
         });
 
@@ -94,7 +133,7 @@ namespace native
         haiku::button_bindings.register_pair(self, h);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

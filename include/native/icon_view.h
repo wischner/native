@@ -16,10 +16,19 @@
 #include <vector>
 
 #include "graphics.h"
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    class icon_view;
+
+    namespace detail
+    {
+        class control_render_access;
+        void draw_icon_view(icon_view &control, gpx &graphics);
+    }
+
     // Selects where an icon-view label appears relative to its image.
     enum class icon_view_label_mode
     {
@@ -122,22 +131,23 @@ namespace native
         size get_content_dimensions() const;
 
         // Cache a native user selection and emit once when it changes.
-        void on_native_selection(int index);
+        virtual void on_native_selection(int index);
 
         // Emit activation for a valid enabled item.
-        void on_native_activate(int index);
+        virtual void on_native_activate(int index);
 
         // Apply one backend-originated spatial navigation command.
-        void on_native_navigation(icon_view_navigation navigation);
+        virtual void on_native_navigation(
+            icon_view_navigation navigation);
 
         // Scroll vertically by a signed pixel delta.
-        void on_native_scroll(int delta);
+        virtual void on_native_scroll(int delta);
 
         // Return whether the collection currently has keyboard focus.
         bool get_focused() const;
 
         // Cache backend focus entry or departure without a signal.
-        void on_native_focus(bool focused);
+        virtual void on_native_focus(bool focused);
 
         // Create the backend icon-view resource.
         void create() const override;
@@ -158,7 +168,81 @@ namespace native
         // Clamp scrolling and refresh layout after a resize.
         void on_bounds_changed() override;
 
+        // Apply cached item values to the created native control.
+        virtual void apply_items();
+
+        // Apply cached image dimensions to the native control.
+        virtual void apply_icon_size();
+
+        // Apply cached label placement to the native control.
+        virtual void apply_label_mode();
+
+        // Apply cached selection to the native control.
+        virtual void apply_selected_index();
+
+        // Apply cached scrolling to the native control.
+        virtual void apply_scroll_offset();
+
+        // Refresh dimensions from the current native theme.
+        virtual void synchronize_theme_metrics();
+
+        // Draw the complete icon-view background and frame.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one item's background and selection.
+        virtual void draw_item_background(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const icon_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one item's optional image inside its image box.
+        virtual void draw_item_image(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const icon_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one item's label inside its label box.
+        virtual void draw_item_label(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const icon_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw focus around one completed item.
+        virtual void draw_item_focus(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const icon_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one complete icon-view scrollbar.
+        virtual void draw_scrollbar(
+            gpx &graphics,
+            theme &appearance,
+            scrollbar_orientation orientation,
+            const rect &track,
+            const rect &thumb,
+            const theme::state &state);
+
     private:
+        friend class detail::control_render_access;
+        friend void detail::draw_icon_view(
+            icon_view &control, gpx &graphics);
+
         std::vector<icon_view_item> _items;
         size _icon_size = {48, 48};
         icon_view_label_mode _label_mode =
@@ -172,11 +256,6 @@ namespace native
         int _label_height = 20;
         int _minimum_item_width = 80;
 
-        void apply_items();
-        void apply_icon_size();
-        void apply_label_mode();
-        void apply_selected_index();
-        void apply_scroll_offset();
         void validate_index(int index) const;
         int column_count() const;
         int item_width() const;
@@ -184,6 +263,5 @@ namespace native
         int maximum_scroll_offset() const;
         int navigated_index(icon_view_navigation navigation) const;
         void ensure_selection_visible();
-        void synchronize_theme_metrics();
     };
 } // namespace native

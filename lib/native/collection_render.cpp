@@ -124,11 +124,12 @@ namespace native::detail
         auto painter = theme::create(graphics);
         const theme::metrics values = painter->defaults();
         theme::state panel_state;
-        painter->draw_surface(
+        control.draw_background(
+            graphics,
+            *painter,
             rect(0, 0,
                  control.get_dimensions().w,
                  control.get_dimensions().h),
-            surface_kind::panel,
             panel_state);
         for (std::size_t index = 0;
              index < control.get_item_count();
@@ -139,8 +140,8 @@ namespace native::detail
             state.focused = control.get_focused_index() ==
                             static_cast<int>(index);
             const rect header = control.get_header_bounds(index);
-            painter->draw_surface(
-                header, surface_kind::header, state);
+            control.draw_header_background(
+                graphics, *painter, index, item, header, state);
             const int disclosure_size = std::min(
                 values.disclosure_size,
                 std::max(1, static_cast<int>(header.d.h) - 4));
@@ -154,12 +155,8 @@ namespace native::detail
                         2),
                 static_cast<dim>(disclosure_size),
                 static_cast<dim>(disclosure_size));
-            painter->draw_disclosure(
-                disclosure,
-                item.get_expanded()
-                    ? disclosure_state::expanded
-                    : disclosure_state::collapsed,
-                state);
+            control.draw_header_disclosure(
+                graphics, *painter, index, item, disclosure, state);
             int text_x = disclosure.x2() + values.header_gap;
             if (const img *icon = item.get_icon()) {
                 const int side = std::max(
@@ -172,37 +169,29 @@ namespace native::detail
                                        values.header_gap),
                     static_cast<dim>(side),
                     static_cast<dim>(side));
-                graphics.draw_img(*icon,
-                                  fitted_bounds(*icon, icon_box),
-                                  image_filter::linear);
+                control.draw_header_image(
+                    graphics,
+                    *painter,
+                    index,
+                    item,
+                    fitted_bounds(*icon, icon_box),
+                    state);
                 text_x = icon_box.x2() + values.header_gap;
             }
             const int text_width = std::max(
                 0, header.x2() - text_x - values.header_padding_x);
-            graphics.set_font(
-                font_t::stock(font_role::control));
-            const theme::palette colors = painter->native_palette();
-            graphics.set_ink(state.disabled
-                                 ? colors.button_disabled_text
-                                 : colors.button_text)
-                .draw_text(
-                    item.get_title(),
-                    rect(static_cast<coord>(text_x),
-                         header.p.y,
-                         static_cast<dim>(text_width),
-                         header.d.h),
-                    text_layout{text_align::start,
-                                text_valign::center,
-                                text_overflow::ellipsis,
-                                true});
-            painter->draw_focus(header, state);
-            painter->draw_separator(
-                rect(header.p.x,
-                     static_cast<coord>(header.y2() - 1),
-                     header.d.w,
-                     static_cast<dim>(
-                         std::max(1, values.separator_extent))),
-                separator_orientation::horizontal);
+            control.draw_header_text(
+                graphics,
+                *painter,
+                index,
+                item,
+                rect(static_cast<coord>(text_x),
+                     header.p.y,
+                     static_cast<dim>(text_width),
+                     header.d.h),
+                state);
+            control.draw_header_border(
+                graphics, *painter, index, item, header, state);
         }
     }
 
@@ -236,8 +225,10 @@ namespace native::detail
                             control.get_dimensions().w,
                             control.get_dimensions().h);
         graphics.set_clip(graphics.get_clip().intersect(viewport));
-        painter->draw_surface(
-            viewport, surface_kind::content, theme::state{});
+        theme::state control_state;
+        control_state.focused = control.get_focused();
+        control.draw_background(
+            graphics, *painter, viewport, control_state);
         for (std::size_t index = 0;
              index < control.get_items().size();
              ++index) {
@@ -280,45 +271,35 @@ namespace native::detail
                              control.get_selected_index();
             state.disabled = !item.enabled;
             state.focused = state.selected && control.get_focused();
-            painter->draw_selection(
-                item_bounds, selection_shape::tile, state);
+            control.draw_item_background(
+                graphics, *painter, index, item, item_bounds, state);
             if (item.image) {
-                graphics.draw_img(*item.image,
-                                  fitted_bounds(*item.image,
-                                                image_bounds),
-                                  image_filter::linear);
+                control.draw_item_image(
+                    graphics,
+                    *painter,
+                    index,
+                    item,
+                    fitted_bounds(*item.image, image_bounds),
+                    state);
             }
             if (control.get_label_mode() !=
                 icon_view_label_mode::hidden) {
-                const theme::palette colors =
-                    painter->native_palette();
                 const int label_width = std::max(
                     0, item_bounds.x2() - label_position.x - padding);
                 const int label_height = std::max(
                     0, item_bounds.y2() - label_position.y - padding);
-                graphics.set_font(
-                    font_t::stock(font_role::icon_label));
-                graphics.set_ink(
-                    state.disabled
-                        ? colors.selection_inactive_text
-                        : (state.selected ? colors.selection_text
-                                          : colors.content_text));
-                text_layout layout;
-                layout.horizontal =
-                    control.get_label_mode() ==
-                            icon_view_label_mode::below
-                        ? text_align::center
-                        : text_align::start;
-                layout.vertical = text_valign::top;
-                layout.overflow = text_overflow::ellipsis;
-                graphics.draw_text(
-                    item.text,
+                control.draw_item_label(
+                    graphics,
+                    *painter,
+                    index,
+                    item,
                     rect(label_position,
                          size(static_cast<dim>(label_width),
                               static_cast<dim>(label_height))),
-                    layout);
+                    state);
             }
-            painter->draw_focus(item_bounds, state);
+            control.draw_item_focus(
+                graphics, *painter, index, item, item_bounds, state);
         }
 
         const size content = control.get_content_dimensions();
@@ -331,11 +312,6 @@ namespace native::detail
                 0,
                 static_cast<dim>(extent),
                 viewport.d.h);
-            painter->draw_scrollbar_part(
-                track,
-                scrollbar_orientation::vertical,
-                scrollbar_part::track,
-                theme::state{});
             const int thumb_height = std::max(
                 values.scrollbar_min_thumb,
                 static_cast<int>(viewport.d.h) * viewport.d.h /
@@ -347,14 +323,16 @@ namespace native::detail
                                           (viewport.d.h - thumb_height) /
                                           maximum_scroll
                                     : 0;
-            painter->draw_scrollbar_part(
+            control.draw_scrollbar(
+                graphics,
+                *painter,
+                scrollbar_orientation::vertical,
+                track,
                 rect(track.p.x,
                      static_cast<coord>(thumb_y),
                      track.d.w,
                      static_cast<dim>(thumb_height)),
-                scrollbar_orientation::vertical,
-                scrollbar_part::thumb,
-                theme::state{});
+                control_state);
         }
     }
 
@@ -379,15 +357,19 @@ namespace native::detail
     void draw_tree_view(tree_view &control, gpx &graphics) {
         auto painter = theme::create(graphics);
         const theme::metrics values = painter->defaults();
-        const theme::palette colors = painter->native_palette();
+        // A child can be created before its modeless parent has a usable
+        // graphics context.  Reapply an unoverridden native default here,
+        // when the active toolkit is certain to be available.
+        control.apply_theme_metrics(values);
         const rect viewport(0,
                             0,
                             control.get_dimensions().w,
                             control.get_dimensions().h);
         graphics.set_clip(graphics.get_clip().intersect(viewport));
-        painter->draw_surface(
-            viewport, surface_kind::content, theme::state{});
-        graphics.set_font(font_t::stock(font_role::control));
+        theme::state control_state;
+        control_state.focused = control.get_focused();
+        control.draw_background(
+            graphics, *painter, viewport, control_state);
 
         for (std::size_t index = 0;
              index < control.get_visible_item_count();
@@ -405,42 +387,28 @@ namespace native::detail
                              control.get_selected_item();
             state.disabled = !item.enabled;
             state.focused = state.selected && control.get_focused();
-            painter->draw_selection(
-                row, selection_shape::row, state);
+            control.draw_row_background(
+                graphics, *painter, visible, item, row, state);
 
             const rect disclosure =
                 control.get_disclosure_bounds(index);
-            const int center_x = disclosure.p.x +
-                                 disclosure.d.w / 2;
-            const int center_y = row.p.y + row.d.h / 2;
-            if (control.get_lines_visible()) {
-                graphics.set_ink(colors.separator).set_pen(1);
-                if (visible.depth > 0) {
-                    graphics.draw_line(
-                        point(static_cast<coord>(
-                                  center_x - disclosure.d.w),
-                              static_cast<coord>(center_y)),
-                        point(static_cast<coord>(center_x),
-                              static_cast<coord>(center_y)));
-                }
-                if (!item.children.empty()) {
-                    graphics.draw_line(
-                        point(static_cast<coord>(center_x),
-                              static_cast<coord>(disclosure.y2())),
-                        point(static_cast<coord>(center_x),
-                              static_cast<coord>(row.y2())));
-                }
-            }
-            if (!item.children.empty()) {
-                painter->draw_disclosure(
-                    disclosure,
-                    item.expanded
-                        ? disclosure_state::expanded
-                        : disclosure_state::collapsed,
-                    state);
-            }
+            control.draw_connectors(
+                graphics,
+                *painter,
+                visible,
+                item,
+                row,
+                disclosure,
+                state);
+            control.draw_disclosure(
+                graphics,
+                *painter,
+                visible,
+                item,
+                disclosure,
+                state);
 
-            int x = disclosure.x2() + values.header_gap;
+            int x = disclosure.x2() + control._item_gap;
             if (item.image) {
                 const size icon_size = control.get_icon_size();
                 const rect icon_box(
@@ -452,32 +420,31 @@ namespace native::detail
                             2),
                     icon_size.w,
                     icon_size.h);
-                graphics.draw_img(*item.image,
-                                  fitted_bounds(*item.image,
-                                                icon_box),
-                                  image_filter::linear);
-                x = icon_box.x2() + values.header_gap;
+                control.draw_item_image(
+                    graphics,
+                    *painter,
+                    visible,
+                    item,
+                    fitted_bounds(*item.image, icon_box),
+                    state);
+                x = icon_box.x2() + control._item_gap;
             }
             const int width = std::max(
                 0,
                 static_cast<int>(row.d.w) - x -
-                    values.header_padding_x);
-            graphics.set_ink(
-                state.disabled
-                    ? colors.selection_inactive_text
-                    : (state.selected ? colors.selection_text
-                                      : colors.content_text));
-            graphics.draw_text(
-                item.text,
+                    control._horizontal_padding);
+            control.draw_item_text(
+                graphics,
+                *painter,
+                visible,
+                item,
                 rect(static_cast<coord>(x),
                      row.p.y,
                      static_cast<dim>(width),
                      row.d.h),
-                text_layout{text_align::start,
-                            text_valign::center,
-                            text_overflow::ellipsis,
-                            false});
-            painter->draw_focus(row, state);
+                state);
+            control.draw_row_focus(
+                graphics, *painter, visible, item, row, state);
         }
 
         const int row_height = control.get_visible_item_count() > 0
@@ -502,11 +469,6 @@ namespace native::detail
                 0,
                 static_cast<dim>(extent),
                 viewport.d.h);
-            painter->draw_scrollbar_part(
-                track,
-                scrollbar_orientation::vertical,
-                scrollbar_part::track,
-                theme::state{});
             const int thumb_height = std::max(
                 values.scrollbar_min_thumb,
                 static_cast<int>(viewport.d.h) * viewport.d.h /
@@ -518,14 +480,16 @@ namespace native::detail
                                           (viewport.d.h - thumb_height) /
                                           maximum_scroll
                                     : 0;
-            painter->draw_scrollbar_part(
+            control.draw_scrollbar(
+                graphics,
+                *painter,
+                scrollbar_orientation::vertical,
+                track,
                 rect(track.p.x,
                      static_cast<coord>(thumb_y),
                      track.d.w,
                      static_cast<dim>(thumb_height)),
-                scrollbar_orientation::vertical,
-                scrollbar_part::thumb,
-                theme::state{});
+                control_state);
         }
     }
 

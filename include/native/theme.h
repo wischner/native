@@ -24,7 +24,8 @@ namespace native
         content,
         inset,
         popup,
-        header
+        header,
+        table_header
     };
 
     // Selects row-shaped or tile-shaped native selection painting.
@@ -39,6 +40,31 @@ namespace native
     {
         collapsed,
         expanded
+    };
+
+    // Selects the direction represented by a table sort indicator.
+    enum class sort_indicator_state
+    {
+        ascending,
+        descending
+    };
+
+    // Selects one compact tool-window caption button.
+    enum class caption_button_kind
+    {
+        close,
+        pin,
+        unpin
+    };
+
+    // Selects one target in a docking-guide compass.
+    enum class dock_guide_kind
+    {
+        center,
+        left,
+        right,
+        top,
+        bottom
     };
 
     // Selects a separator's logical orientation.
@@ -90,8 +116,26 @@ namespace native
             int check_height = 22;
             int radio_height = 22;
             int list_item_height = 20;
+            // Default full table-row height, including native vertical
+            // breathing room. An explicit table_view row height overrides
+            // this value.
+            int table_row_height = 20;
+            // Width of a final inset table-viewport relief drawn after all
+            // table parts. Zero leaves the frame to a native peer or theme.
+            int table_outer_border_extent = 0;
             int focus_inset = 2;
             int disclosure_size = 12;
+            // Whether a tree draws classic hierarchy connector branches by
+            // default. Controls retain an explicit set_lines_visible()
+            // override across later native metric synchronization.
+            bool tree_lines_visible = true;
+            // Tree-specific geometry. Negative/zero sentinel values retain
+            // the generic list/header-derived geometry.
+            int tree_row_height = 0;
+            int tree_horizontal_padding = -1;
+            int tree_indent_width = 0;
+            int tree_item_gap = -1;
+            int tree_icon_vertical_padding = 4;
             int header_height = 24;
             int header_padding_x = 6;
             int header_gap = 4;
@@ -104,6 +148,15 @@ namespace native
             int separator_extent = 1;
             int scrollbar_extent = 16;
             int scrollbar_min_thumb = 16;
+            // Native table implementations that conventionally consume
+            // unused header space can stretch the trailing visible column
+            // without changing its semantic/model width.
+            bool table_fill_last_column = false;
+            // Width of an interactive docking boundary. Decorative
+            // separators remain governed by separator_extent.
+            int dock_splitter_extent = 7;
+            int dock_guide_size = 32;
+            int dock_guide_gap = 2;
         };
 
         // Stores colors used when a backend must emulate native
@@ -132,6 +185,9 @@ namespace native
             rgba menu_popup_border;
 
             rgba content_bg;
+            // Optional native alternating-row background. A transparent
+            // value asks the shared table painter to derive one.
+            rgba content_alt_bg;
             rgba content_text;
             rgba selection_bg;
             rgba selection_text;
@@ -263,6 +319,24 @@ namespace native
             disclosure_state disclosure,
             const state &element_state);
 
+        // Draw an ascending or descending native sort indicator.
+        virtual theme &draw_sort_indicator(
+            const rect &bounds,
+            sort_indicator_state direction,
+            const state &element_state);
+
+        // Draw one native compact-caption command button.
+        virtual theme &draw_caption_button(
+            const rect &bounds,
+            caption_button_kind kind,
+            const state &element_state);
+
+        // Draw one native-looking docking-guide target.
+        virtual theme &draw_dock_guide(
+            const rect &bounds,
+            dock_guide_kind kind,
+            const state &element_state);
+
         // Draw a native separator across its supplied bounds.
         virtual theme &draw_separator(
             const rect &bounds,
@@ -300,6 +374,19 @@ namespace native
         theme &draw_disclosure_fallback(
             const rect &bounds,
             disclosure_state disclosure,
+            const state &element_state);
+
+        // Draw a sort indicator through portable graphics.
+        theme &draw_sort_indicator_fallback(
+            const rect &bounds,
+            sort_indicator_state direction,
+            const state &element_state);
+
+        // Draw a docking-guide target through portable graphics and the
+        // backend's native button renderer.
+        theme &draw_dock_guide_fallback(
+            const rect &bounds,
+            dock_guide_kind kind,
             const state &element_state);
 
         // Draw a separator through portable graphics.

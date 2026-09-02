@@ -12,6 +12,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -60,32 +61,67 @@ namespace
     }
 }
 
+@interface native_icon_item_view : NSView {
+@public
+    void *_owner;
+    NSInteger _index;
+    BOOL _selected;
+}
+@end
+
+@implementation native_icon_item_view
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::icon_view *>(_owner);
+    if (!owner || !owner->get_created() || _index < 0 ||
+        _index >= static_cast<NSInteger>(owner->get_items().size())) {
+        [super drawRect:dirty];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const NSRect frame = [self bounds];
+    const native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(native::rect(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.height))));
+    native::theme::state state;
+    state.selected = _selected == YES;
+    state.disabled = !owner->get_items()[_index].enabled;
+    state.focused = state.selected &&
+        [[self window] firstResponder] != nil;
+    native::detail::control_render_access::draw_icon_item(
+        *owner,
+        graphics,
+        *appearance,
+        static_cast<std::size_t>(_index),
+        owner->get_items()[_index],
+        bounds,
+        state);
+}
+@end
+
 @interface native_icon_collection_item : NSCollectionViewItem
 @end
 
 @implementation native_icon_collection_item
 - (void)loadView {
-    NSView *container = [[NSView alloc]
+    native_icon_item_view *container = [[native_icon_item_view alloc]
         initWithFrame:NSMakeRect(0, 0, 96, 92)];
-    NSImageView *image = [[NSImageView alloc]
-        initWithFrame:NSMakeRect(24, 28, 48, 48)];
-    [image setImageScaling:NSImageScaleProportionallyDown];
-    NSTextField *label = [[NSTextField alloc]
-        initWithFrame:NSMakeRect(2, 2, 92, 22)];
-    [label setBezeled:NO];
-    [label setEditable:NO];
-    [label setSelectable:NO];
-    [label setDrawsBackground:NO];
-    [label setAlignment:NSTextAlignmentCenter];
-    [label setLineBreakMode:NSLineBreakByTruncatingTail];
-    [container addSubview:image];
-    [container addSubview:label];
     [self setView:container];
-    [self setImageView:image];
-    [self setTextField:label];
-    [image release];
-    [label release];
     [container release];
+}
+- (void)setSelected:(BOOL)selected {
+    [super setSelected:selected];
+    native_icon_item_view *view =
+        static_cast<native_icon_item_view *>([self view]);
+    view->_selected = selected;
+    [view setNeedsDisplay:YES];
 }
 @end
 
@@ -96,6 +132,30 @@ namespace
 @end
 
 @implementation native_icon_collection_view
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::icon_view *>(_owner);
+    if (!owner || !owner->get_created()) {
+        [super drawRect:dirty];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const NSRect frame = [self bounds];
+    const native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(native::rect(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.height))));
+    native::theme::state state;
+    state.focused = [[self window] firstResponder] == self;
+    native::detail::control_render_access::draw_icon_background(
+        *owner, graphics, *appearance, bounds, state);
+}
 - (void)mouseDown:(NSEvent *)event {
     [super mouseDown:event];
     if ([event clickCount] < 2)
@@ -147,6 +207,12 @@ namespace
         return item;
     }
     const native::icon_view_item &value = owner->get_items()[index];
+    native_icon_item_view *item_view =
+        static_cast<native_icon_item_view *>([item view]);
+    item_view->_owner = owner;
+    item_view->_index = index;
+    item_view->_selected = [item isSelected];
+    [item_view setNeedsDisplay:YES];
     [item.imageView setImage:
                         index < static_cast<NSInteger>(binding->images.size())
                             ? binding->images[index]
@@ -354,7 +420,7 @@ namespace native
         rebuild_images(*self);
         update_layout(*self);
         self->apply_selected_index();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

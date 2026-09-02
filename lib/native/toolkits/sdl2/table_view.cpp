@@ -31,7 +31,7 @@ namespace native
         linux::sdl2::table_views.push_back(self);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

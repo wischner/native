@@ -9,6 +9,7 @@
 #include <Window.h>
 #include <native.h>
 #include <native/radio.h>
+#include "../../control_render_access.h"
 #include "globals.h"
 namespace
 {
@@ -41,6 +42,32 @@ namespace
             if (_owner)
                 _owner->on_native_selected();
             return BRadioButton::Invoke(m);
+        }
+
+        void Draw(BRect update) override {
+            if (!_owner || !_owner->get_created()) {
+                BRadioButton::Draw(update);
+                return;
+            }
+            native::gpx &graphics = _owner->get_gpx();
+            auto appearance = native::theme::create(graphics);
+            const BRect frame = Bounds();
+            const native::rect bounds(
+                0,
+                0,
+                static_cast<native::dim>(frame.IntegerWidth() + 1),
+                static_cast<native::dim>(frame.IntegerHeight() + 1));
+            graphics.set_clip(native::rect(
+                static_cast<native::coord>(update.left),
+                static_cast<native::coord>(update.top),
+                static_cast<native::dim>(update.IntegerWidth() + 1),
+                static_cast<native::dim>(update.IntegerHeight() + 1)));
+            native::theme::state state;
+            state.disabled = !IsEnabled();
+            state.focused = IsFocus();
+            state.pressed = Value() == B_CONTROL_ON;
+            native::detail::control_render_access::draw(
+                *_owner, graphics, *appearance, bounds, state);
         }
 
     private:
@@ -88,7 +115,7 @@ namespace native
         b->view = v;
         haiku::radio_bindings.register_pair(self, b);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void radio::show() const {
         auto *b = haiku::radio_bindings.object_from_handle(

@@ -22,7 +22,8 @@ namespace linux::openmotif
         if (!window_graphics)
             return {};
         native::wnd *window = window_graphics->window();
-        return {wnd_bindings.handle_from_object(window),
+        return {window,
+                wnd_bindings.handle_from_object(window),
                 wnd_gpx_bindings.object_from_handle(window)};
     }
 

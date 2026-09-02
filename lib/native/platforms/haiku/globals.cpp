@@ -8,6 +8,7 @@
 #include <Application.h>
 #include <CheckBox.h>
 #include <ListView.h>
+#include <OptionPopUp.h>
 #include <RadioButton.h>
 #include <ScrollView.h>
 #include <TextView.h>
@@ -37,6 +38,8 @@ namespace haiku
     native::bindings<native::check *, haiku_check *> check_bindings;
     native::bindings<native::radio *, haiku_radio *> radio_bindings;
     native::bindings<native::list *, haiku_list *> list_bindings;
+    native::bindings<native::combo_box *, haiku_combo_box *>
+        combo_box_bindings;
     native::bindings<native::accordion *, haiku_collection *>
         accordion_bindings;
     native::bindings<native::icon_view *, haiku_collection *>
@@ -71,6 +74,10 @@ namespace haiku
         }
         if (auto *list = dynamic_cast<native::list *>(control)) {
             auto *binding = list_bindings.object_from_handle(list);
+            return binding ? binding->view : nullptr;
+        }
+        if (auto *combo = dynamic_cast<native::combo_box *>(control)) {
+            auto *binding = combo_box_bindings.object_from_handle(combo);
             return binding ? binding->view : nullptr;
         }
         if (auto *accordion =

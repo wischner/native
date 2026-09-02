@@ -5,6 +5,7 @@ interface library. It starts with the smallest possible window and then
 introduces painting, input events, menus, controls, layouts, independent
 windows, system dialogs, graphics, fonts, images, clipboard access, text
 editing, collection and tree controls, and virtual multi-column tables.
+It also covers persistent split, tabbed, and floating docking workspaces.
 
 The first chapters preserve the former runnable examples as maintained
 documentation while the repository itself builds only the `vision`
@@ -42,6 +43,8 @@ controls.
 13. [Collection and disclosure controls](programming-native/13-collection-and-disclosure-controls.md)
 14. [Advanced table views](programming-native/14-advanced-table-views.md)
 15. [Source editing](programming-native/15-source-editing.md)
+16. [Docking workspaces](programming-native/16-docking-workspaces.md)
+17. [Input, dialogs, and window chrome](programming-native/17-input-dialogs-and-window-chrome.md)
 
 ## Building the repository program
 

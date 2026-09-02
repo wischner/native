@@ -8,6 +8,7 @@
 
 #include "vision_window.h"
 
+#include <algorithm>
 #include <charconv>
 #include <cctype>
 #include <cstdint>
@@ -18,6 +19,14 @@
 
 namespace
 {
+    constexpr int dock_project_left_command = 602;
+    constexpr int dock_close_properties_command = 603;
+    constexpr int dock_show_properties_command = 604;
+    constexpr int dock_save_layout_command = 605;
+    constexpr int dock_restore_layout_command = 606;
+    constexpr int dock_auto_hide_project_command = 607;
+    constexpr int dock_pin_project_command = 608;
+
     // Build one alpha-bearing procedural thumbnail using only the
     // public portable graphics API.
     std::shared_ptr<const native::img> make_thumbnail(
@@ -411,6 +420,7 @@ namespace vision
               make_items("Background", 14, 137), 0, 0, 330, 300)
         , _libraries(20, 52, 330, 390)
         , _tree(make_tree_items(), 370, 52, 370, 390)
+        , _three_dimensional("3-D outline", 600, 12, 140, 28)
         , _status("Select, expand, or double-click an item.") {
         _libraries.set_mode(native::accordion_mode::single);
         _libraries.add_item("Shapes", _shapes);
@@ -433,6 +443,8 @@ namespace vision
             this, &feature_collections::on_tree_expanded);
         _tree.on_item_activate.connect(
             this, &feature_collections::on_tree_activated);
+        _three_dimensional.on_change.connect(
+            this, &feature_collections::on_tree_presentation);
     }
 
     bool feature_collections::on_create() {
@@ -442,6 +454,9 @@ namespace vision
         _tree.set_parent(this);
         _tree.create();
         _tree.show();
+        _three_dimensional.set_parent(this);
+        _three_dimensional.create();
+        _three_dimensional.show();
         return true;
     }
 
@@ -501,6 +516,19 @@ namespace vision
         return true;
     }
 
+    bool feature_collections::on_tree_presentation(
+        bool three_dimensional) {
+        _tree.set_presentation(
+            three_dimensional
+                ? native::tree_view_presentation::three_dimensional
+                : native::tree_view_presentation::native);
+        _status = three_dimensional
+                      ? "Using the optional 3-D Motif outline."
+                      : "Using the native CDE InfoLib outline.";
+        invalidate();
+        return true;
+    }
+
     feature_tables::feature_tables(native::app_wnd &owner)
         : native::modeless_wnd(owner, "Vision Table View",
                                250, 100, 800, 650)
@@ -556,6 +584,7 @@ namespace vision
 
         on_wnd_create.connect(this, &feature_tables::on_create);
         on_wnd_paint.connect(this, &feature_tables::on_paint);
+        on_wnd_resize.connect(this, &feature_tables::on_resize);
         _alternating.on_change.connect(
             this, &feature_tables::on_alternating);
         _grid.on_change.connect(this, &feature_tables::on_grid);
@@ -574,6 +603,7 @@ namespace vision
     }
 
     bool feature_tables::on_create() {
+        layout_controls(get_dimensions());
         for (native::wnd *control : {
                  static_cast<native::wnd *>(&_alternating),
                  static_cast<native::wnd *>(&_grid),
@@ -590,15 +620,58 @@ namespace vision
         return true;
     }
 
+    bool feature_tables::on_resize(native::size dimensions) {
+        layout_controls(dimensions);
+        invalidate();
+        return true;
+    }
+
+    void feature_tables::layout_controls(native::size dimensions) {
+        constexpr int side_margin = 20;
+        constexpr int table_top = 72;
+        constexpr int between_tables = 58;
+        constexpr int bottom_reserve = 70;
+        constexpr int find_width = 120;
+        constexpr int search_x = 460;
+
+        const int client_width = static_cast<int>(dimensions.w);
+        const int client_height = static_cast<int>(dimensions.h);
+        const int table_width = std::max(
+            80, client_width - side_margin * 2);
+        const int table_pool = std::max(
+            2,
+            client_height - table_top - between_tables - bottom_reserve);
+        const int first_height = std::max(1, table_pool * 2 / 3);
+        const int second_height = std::max(1, table_pool - first_height);
+        const int second_top = table_top + first_height + between_tables;
+        const int bottom_top = second_top + second_height + 14;
+
+        const int find_x = std::max(search_x + 90,
+                                    client_width - side_margin - find_width);
+        const int search_width = std::max(80, find_x - search_x - 10);
+        _search.set_bounds(native::rect(
+            search_x, 16, search_width, 28));
+        _find.set_bounds(native::rect(
+            find_x, 16, find_width, 28));
+        _table.set_bounds(native::rect(
+            side_margin, table_top, table_width, first_height));
+        _million_table.set_bounds(native::rect(
+            side_margin, second_top, table_width, second_height));
+        _scroll.set_bounds(native::rect(
+            side_margin, bottom_top, 190, 28));
+    }
+
     bool feature_tables::on_paint(native::wnd_paint_event event) {
         event.g.set_ink(native::rgba(0, 0, 0, 255));
         event.g.draw_text(
             "120 materialized rows, four columns, icons, and two groups",
-            native::point(20, 50));
+            native::point(20, _table.get_bounds().p.y - 22));
         event.g.draw_text(
             "Virtual model: 1,000,000 generated rows",
-            native::point(20, 402));
-        event.g.draw_text(_status, native::point(226, 600));
+            native::point(20, _million_table.get_bounds().p.y - 28));
+        event.g.draw_text(
+            _status,
+            native::point(226, _scroll.get_bounds().p.y + 6));
         return true;
     }
 
@@ -808,6 +881,339 @@ namespace vision
         _editor.insert(_editor.get_caret_offset(), item.insert);
         _status = "Accepted completion: " + item.label + ".";
         invalidate();
+        return true;
+    }
+
+    feature_docking::feature_docking(native::app_wnd &owner)
+        : native::modeless_wnd(owner,
+                               "Vision Docking Workspace",
+                               150,
+                               80,
+                               900,
+                               620)
+        , _project(make_tree_items())
+        , _editor(
+              "#include <native.h>\n\n"
+              "int program(int, char **) {\n"
+              "    // Drag a tab, resize a splitter, or float a pane.\n"
+              "    return 0;\n"
+              "}\n")
+        , _output(
+              "Build output\n"
+              "Docked controls retain their portable model state.\n",
+              native::text_edit_mode::multi_line)
+        , _dock(*this) {
+        native::table_column property;
+        property.id = 1;
+        property.title = "Property";
+        property.width = 130;
+        native::table_column value;
+        value.id = 2;
+        value.title = "Value";
+        value.width = 170;
+        _property_store.set_rows({
+            {1, {{1, {"Language", nullptr}},
+                 {2, {"C++20", nullptr}}}},
+            {2, {{1, {"Backend", nullptr}},
+                 {2, {"Native", nullptr}}}},
+            {3, {{1, {"Layout", nullptr}},
+                 {2, {"Docking", nullptr}}}},
+            {4, {{1, {"Persistence", nullptr}},
+                {2, {"NDOCK2", nullptr}}}}
+        });
+        _properties.set_columns({property, value})
+            .set_model(&_property_store)
+            .set_grid_lines(native::table_grid_lines::both);
+        _output.set_read_only(true);
+        _editor.set_language("cpp").set_show_line_numbers(true);
+
+        menu << "Panes"
+             << (native::menu_items("Float Project")
+                 << std::pair<int, std::string>(
+                        dock_project_left_command,
+                        "Dock Project Left")
+                 << std::pair<int, std::string>(
+                        dock_auto_hide_project_command,
+                        "Auto-hide Project")
+                 << std::pair<int, std::string>(
+                        dock_pin_project_command,
+                        "Pin Project")
+                 << std::pair<int, std::string>(
+                        dock_close_properties_command,
+                        "Close Properties")
+                 << std::pair<int, std::string>(
+                        dock_show_properties_command,
+                        "Show Properties")
+                 << std::pair<int, std::string>(
+                        dock_save_layout_command,
+                        "Save Layout")
+                 << std::pair<int, std::string>(
+                        dock_restore_layout_command,
+                        "Restore Layout"));
+        _float_project_command = menu.tops()[0].items[0].id;
+
+        on_wnd_create.connect(this, &feature_docking::on_create);
+        on_menu.connect(this, &feature_docking::on_menu_command);
+        _dock.on_change.connect(
+            this, &feature_docking::on_dock_change);
+    }
+
+    void feature_docking::install_default_layout() {
+        native::dock_pane editor(2, "Editor", _editor);
+        editor.closable = false;
+        editor.minimum_size = native::size(280, 180);
+        native::dock_pane project(1, "Project", _project);
+        project.minimum_size = native::size(160, 150);
+        native::dock_pane properties(3, "Properties", _properties);
+        properties.minimum_size = native::size(190, 150);
+        native::dock_pane output(4, "Output", _output);
+        output.minimum_size = native::size(260, 100);
+
+        _dock.add_pane(editor)
+            .add_pane(project, native::dock_position::left, 2)
+            .add_pane(properties, native::dock_position::right, 2)
+            .add_pane(output, native::dock_position::bottom, 2);
+        _saved_layout = _dock.serialize_layout();
+    }
+
+    bool feature_docking::on_create() {
+        if (!_dock.get_layout().get_pane(2)) {
+            install_default_layout();
+        } else {
+            // Reconcile native children after the modeless surface was
+            // closed and later created again.
+            _dock.set_layout_state(_dock.get_layout_state());
+        }
+        return true;
+    }
+
+    bool feature_docking::on_menu_command(int command) {
+        if (command == _float_project_command) {
+            const native::point position = get_position();
+            _dock.float_pane(
+                1,
+                native::rect(
+                    static_cast<native::coord>(position.x + 60),
+                    static_cast<native::coord>(position.y + 70),
+                    320,
+                    420));
+            set_title("Vision Docking Workspace - Project floated");
+        } else if (command == dock_project_left_command) {
+            _dock.dock(1, native::dock_position::left, 2);
+            set_title("Vision Docking Workspace - Project docked");
+        } else if (command == dock_auto_hide_project_command) {
+            _dock.auto_hide_pane(1, native::dock_position::left);
+            set_title("Vision Docking Workspace - Project auto-hidden");
+        } else if (command == dock_pin_project_command) {
+            if (_dock.get_layout().get_pane_location(1) ==
+                native::dock_pane_location::auto_hidden) {
+                _dock.pin_pane(1,
+                               native::dock_position::left,
+                               2);
+            }
+            set_title("Vision Docking Workspace - Project pinned");
+        } else if (command == dock_close_properties_command) {
+            _dock.close_pane(3);
+            set_title("Vision Docking Workspace - Properties closed");
+        } else if (command == dock_show_properties_command) {
+            _dock.show_pane(3, native::dock_position::right, 2);
+            set_title("Vision Docking Workspace - Properties shown");
+        } else if (command == dock_save_layout_command) {
+            _saved_layout = _dock.serialize_layout();
+            set_title("Vision Docking Workspace - Layout saved");
+        } else if (command == dock_restore_layout_command) {
+            if (!_saved_layout.empty())
+                _dock.restore_layout(_saved_layout);
+            set_title("Vision Docking Workspace - Layout restored");
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool feature_docking::on_dock_change(native::dock_event event) {
+        const char *action = "changed";
+        switch (event.action) {
+        case native::dock_action::activated:
+            action = "activated";
+            break;
+        case native::dock_action::docked:
+            action = "docked";
+            break;
+        case native::dock_action::floated:
+            action = "floated";
+            break;
+        case native::dock_action::closed:
+            action = "closed";
+            break;
+        case native::dock_action::shown:
+            action = "shown";
+            break;
+        case native::dock_action::tab_reordered:
+            action = "tab reordered";
+            break;
+        case native::dock_action::split_resized:
+            action = "split resized";
+            break;
+        case native::dock_action::auto_hidden:
+            action = "auto-hidden";
+            break;
+        case native::dock_action::pinned:
+            action = "pinned";
+            break;
+        case native::dock_action::auto_hide_revealed:
+            action = "auto-hide revealed";
+            break;
+        case native::dock_action::auto_hide_collapsed:
+            action = "auto-hide collapsed";
+            break;
+        case native::dock_action::layout_restored:
+            action = "layout restored";
+            break;
+        }
+        set_title(std::string("Vision Docking Workspace - ") + action);
+        return true;
+    }
+
+    feature_input_chrome::feature_input_chrome(native::app_wnd &owner)
+        : native::modeless_wnd(owner, "Vision Input and Window Chrome",
+                               170, 150, 650, 430)
+        , _selection_combo({"CDE", "OpenLook", "Window Maker", "Haiku"},
+                           native::combo_box_style::drop_down_list,
+                           60, 74, 230, 28)
+        , _editable_combo({"10 mm", "25 mm", "50 mm", "100 mm"},
+                          native::combo_box_style::editable,
+                          60, 118, 230, 28)
+        , _list_box({"One", "Two", "Three", "Four", "Five"},
+                    60, 174, 230, 146)
+        , _choose_folder("Select folder...", 330, 74, 150, 30)
+        , _show_message("Three-button message...", 330, 118, 190, 30)
+        , _directory(*this, "Select a Workspace Folder")
+        , _horizontal_ruler(*this, native::window_edge::top, 24)
+        , _vertical_ruler(*this, native::window_edge::left, 34)
+        , _status_bar(*this, 24) {
+        _selection_combo.set_selected_index(0);
+        _editable_combo.set_text("25 mm");
+        _list_box.set_selected_index(1);
+        _horizontal_ruler.set_minor_tick(10).set_major_tick(50)
+            .set_track_mouse(true);
+        _vertical_ruler.set_minor_tick(10).set_major_tick(50)
+            .set_track_mouse(true);
+        _status_bar.set_parts({
+            {"Ready", 0}, {"minor 10 / major 50", 180}});
+
+        on_wnd_create.connect(this, &feature_input_chrome::on_create);
+        on_wnd_paint.connect(this, &feature_input_chrome::on_paint);
+        _selection_combo.on_selection_change.connect(
+            this, &feature_input_chrome::on_combo_selection);
+        _editable_combo.on_text_change.connect(
+            this, &feature_input_chrome::on_combo_text);
+        _list_box.on_selection_change.connect(
+            this, &feature_input_chrome::on_list_selection);
+        _choose_folder.on_click.connect(
+            this, &feature_input_chrome::on_choose_folder);
+        _show_message.on_click.connect(
+            this, &feature_input_chrome::on_show_message);
+        _directory.on_modal_close.connect(
+            this, &feature_input_chrome::on_folder_selected);
+        _horizontal_ruler.on_tracking.connect(
+            this, &feature_input_chrome::on_ruler_tracking);
+        _vertical_ruler.on_tracking.connect(
+            this, &feature_input_chrome::on_ruler_tracking);
+    }
+
+    bool feature_input_chrome::on_create() {
+        for (native::wnd *control : {
+                 static_cast<native::wnd *>(&_selection_combo),
+                 static_cast<native::wnd *>(&_editable_combo),
+                 static_cast<native::wnd *>(&_list_box),
+                 static_cast<native::wnd *>(&_choose_folder),
+                 static_cast<native::wnd *>(&_show_message)}) {
+            control->set_parent(this);
+            control->create();
+            control->show();
+        }
+        return true;
+    }
+
+    bool feature_input_chrome::on_paint(native::wnd_paint_event event) {
+        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.draw_text("Selection-only combo box",
+                          native::point(60, 52));
+        event.g.draw_text("Editable combo box",
+                          native::point(60, 98));
+        event.g.draw_text("Native list_box",
+                          native::point(60, 152));
+        event.g.draw_text(
+            "The rulers and status bar occupy non-client edge strips.",
+            native::point(330, 184));
+        event.g.draw_text(
+            "Move the pointer over the client to update ruler tracking.",
+            native::point(330, 208));
+        event.g.draw_text(
+            "Open/save dialogs remain available in the main gallery.",
+            native::point(330, 246));
+        return true;
+    }
+
+    bool feature_input_chrome::on_combo_selection(int index) {
+        const auto &items = _selection_combo.get_items();
+        if (index >= 0 && index < static_cast<int>(items.size()))
+            _status_bar.set_parts({{"Combo: " + items[index], 0},
+                                   {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_combo_text(std::string text) {
+        _status_bar.set_parts({{"Typed: " + text, 0},
+                               {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_list_selection(int index) {
+        _status_bar.set_parts({
+            {"List row " + std::to_string(index+1), 0},
+            {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_choose_folder() {
+        _directory.create();
+        _directory.show();
+        return true;
+    }
+
+    bool feature_input_chrome::on_folder_selected(
+        native::dialog_result result) {
+        _status_bar.set_parts({
+            {result == native::dialog_result::accepted
+                 ? "Folder: " + _directory.get_path()
+                 : "Folder selection cancelled",
+             0},
+            {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_show_message() {
+        const native::message_box_result result = native::message_box::show(
+            *this,
+            "This is a standard three-button message dialog.",
+            "Native Message Box",
+            native::message_box_buttons::yes_no_cancel,
+            native::message_box_icon::question);
+        const char *name = result == native::message_box_result::yes ? "Yes"
+            : result == native::message_box_result::no ? "No"
+            : result == native::message_box_result::cancel ? "Cancel"
+            : result == native::message_box_result::ok ? "OK" : "None";
+        _status_bar.set_parts({{std::string("Message result: ")+name, 0},
+                               {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_ruler_tracking(double value) {
+        _status_bar.set_parts({
+            {"Ruler: " + std::to_string(static_cast<int>(value)), 0},
+            {"minor 10 / major 50", 180}});
         return true;
     }
 

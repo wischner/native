@@ -92,6 +92,64 @@ namespace native
             bounds, disclosure, element_state);
     }
 
+    theme &theme::draw_sort_indicator(
+        const rect &bounds,
+        sort_indicator_state direction,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_sort_indicator_fallback(
+            bounds, direction, element_state);
+    }
+
+    theme &theme::draw_caption_button(
+        const rect &bounds,
+        caption_button_kind kind,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        const palette colors = native_palette();
+        draw_button(bounds, std::string(), element_state);
+        const int inset = std::max(
+            2, std::min<int>(bounds.d.w, bounds.d.h) / 4);
+        _g.set_pen(element_state.pressed ? 2 : 1)
+            .set_ink(element_state.disabled ? colors.button_disabled_text
+                                            : colors.button_text);
+        if (kind == caption_button_kind::close) {
+            _g.draw_line(
+                  point(bounds.p.x + inset, bounds.p.y + inset),
+                  point(bounds.x2() - inset - 1,
+                        bounds.y2() - inset - 1))
+                .draw_line(
+                  point(bounds.x2() - inset - 1, bounds.p.y + inset),
+                  point(bounds.p.x + inset,
+                        bounds.y2() - inset - 1));
+            return *this;
+        }
+        const int center_x = bounds.p.x + bounds.d.w / 2;
+        const int top = bounds.p.y + inset;
+        const int half = std::max(2, inset);
+        _g.draw_line(point(center_x - half, top),
+                     point(center_x + half, top))
+            .draw_line(point(center_x - half, top),
+                       point(center_x, top + half))
+            .draw_line(point(center_x + half, top),
+                       point(center_x, top + half))
+            .draw_line(
+                point(center_x, top + half),
+                point(kind == caption_button_kind::pin
+                          ? center_x
+                          : center_x + half,
+                      bounds.y2() - 2));
+        return *this;
+    }
+
+    theme &theme::draw_dock_guide(
+        const rect &bounds,
+        dock_guide_kind kind,
+        const state &element_state) {
+        auto saved = _g.save_state();
+        return draw_dock_guide_fallback(bounds, kind, element_state);
+    }
+
     theme &theme::draw_separator(
         const rect &bounds,
         separator_orientation orientation) {
@@ -132,6 +190,7 @@ namespace native
             border = colors.menu_popup_border;
             break;
         case surface_kind::header:
+        case surface_kind::table_header:
             fill = element_state.pressed
                        ? colors.button_pressed_bg
                        : (element_state.hot ? colors.button_hot_bg
@@ -196,8 +255,142 @@ namespace native
         _g.set_pen(1)
             .set_ink(element_state.disabled
                          ? colors.button_disabled_text
-                         : colors.button_text)
+                         : (element_state.selected
+                                ? colors.selection_text
+                                : colors.button_text))
             .draw_polygon(triangle, true);
+        return *this;
+    }
+
+    theme &theme::draw_sort_indicator_fallback(
+        const rect &bounds,
+        sort_indicator_state direction,
+        const state &element_state) {
+        if (!bounds.d.w || !bounds.d.h)
+            return *this;
+        const palette colors = native_palette();
+        const int side = std::max(
+            3, std::min<int>(bounds.d.w, bounds.d.h));
+        const int left = bounds.p.x +
+                         (static_cast<int>(bounds.d.w) - side) / 2;
+        const int top = bounds.p.y +
+                        (static_cast<int>(bounds.d.h) - side) / 2;
+        const int right = left + side - 1;
+        const int bottom = top + side - 1;
+        const int middle = left + side / 2;
+        const std::vector<point> arrow =
+            direction == sort_indicator_state::ascending
+                ? std::vector<point>{
+                      point(static_cast<coord>(left),
+                            static_cast<coord>(bottom)),
+                      point(static_cast<coord>(right),
+                            static_cast<coord>(bottom)),
+                      point(static_cast<coord>(middle),
+                            static_cast<coord>(top))}
+                : std::vector<point>{
+                      point(static_cast<coord>(left),
+                            static_cast<coord>(top)),
+                      point(static_cast<coord>(right),
+                            static_cast<coord>(top)),
+                      point(static_cast<coord>(middle),
+                            static_cast<coord>(bottom))};
+        _g.set_pen(1)
+            .set_ink(element_state.disabled
+                         ? colors.button_disabled_text
+                         : colors.button_text)
+            .draw_polygon(arrow, true);
+        return *this;
+    }
+
+    theme &theme::draw_dock_guide_fallback(
+        const rect &bounds,
+        dock_guide_kind kind,
+        const state &element_state) {
+        if (!bounds.d.w || !bounds.d.h)
+            return *this;
+
+        state button_state = element_state;
+        button_state.pressed = button_state.pressed ||
+                               button_state.selected;
+        draw_button(bounds, std::string(), button_state);
+
+        const palette colors = native_palette();
+        const rgba foreground = button_state.disabled
+                                    ? colors.button_disabled_text
+                                    : (button_state.pressed
+                                           ? colors.button_pressed_text
+                                           : (button_state.hot
+                                                  ? colors.button_hot_text
+                                                  : colors.button_text));
+        const int side = std::min<int>(bounds.d.w, bounds.d.h);
+        const int radius = std::max(2, side / 6);
+        const int offset = button_state.pressed ? 1 : 0;
+        const int center_x = bounds.p.x + bounds.d.w / 2 + offset;
+        const int center_y = bounds.p.y + bounds.d.h / 2 + offset;
+        _g.set_pen(1).set_ink(foreground);
+
+        if (kind == dock_guide_kind::center) {
+            const int width = std::max(7, side / 2);
+            const int height = std::max(6, side / 2 - 1);
+            const rect pane(
+                static_cast<coord>(center_x - width / 2),
+                static_cast<coord>(center_y - height / 2),
+                static_cast<dim>(width),
+                static_cast<dim>(height));
+            _g.draw_rect(pane, false)
+                .draw_line(
+                    point(pane.p.x,
+                          static_cast<coord>(pane.p.y +
+                                             std::max(2, height / 3))),
+                    point(static_cast<coord>(pane.x2() - 1),
+                          static_cast<coord>(pane.p.y +
+                                             std::max(2, height / 3))));
+            return *this;
+        }
+
+        std::vector<point> arrow;
+        switch (kind) {
+        case dock_guide_kind::left:
+            arrow = {
+                point(static_cast<coord>(center_x - radius),
+                      static_cast<coord>(center_y)),
+                point(static_cast<coord>(center_x + radius),
+                      static_cast<coord>(center_y - radius)),
+                point(static_cast<coord>(center_x + radius),
+                      static_cast<coord>(center_y + radius))};
+            break;
+        case dock_guide_kind::right:
+            arrow = {
+                point(static_cast<coord>(center_x + radius),
+                      static_cast<coord>(center_y)),
+                point(static_cast<coord>(center_x - radius),
+                      static_cast<coord>(center_y - radius)),
+                point(static_cast<coord>(center_x - radius),
+                      static_cast<coord>(center_y + radius))};
+            break;
+        case dock_guide_kind::top:
+            arrow = {
+                point(static_cast<coord>(center_x),
+                      static_cast<coord>(center_y - radius)),
+                point(static_cast<coord>(center_x - radius),
+                      static_cast<coord>(center_y + radius)),
+                point(static_cast<coord>(center_x + radius),
+                      static_cast<coord>(center_y + radius))};
+            break;
+        case dock_guide_kind::bottom:
+            arrow = {
+                point(static_cast<coord>(center_x),
+                      static_cast<coord>(center_y + radius)),
+                point(static_cast<coord>(center_x - radius),
+                      static_cast<coord>(center_y - radius)),
+                point(static_cast<coord>(center_x + radius),
+                      static_cast<coord>(center_y - radius))};
+            break;
+        case dock_guide_kind::center:
+            break;
+        }
+        if (!arrow.empty())
+            _g.draw_polygon(arrow, true);
         return *this;
     }
 

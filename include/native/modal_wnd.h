@@ -69,6 +69,9 @@ namespace native
         // End the dialog with an explicit accepted or cancelled result.
         void close(dialog_result result) const;
 
+        // Notify completion of one native modal session.
+        virtual void on_native_modal_close(dialog_result result);
+
         // Emits once when an active modal session has ended.
         signal<dialog_result> on_modal_close;
 

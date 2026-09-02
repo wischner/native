@@ -323,6 +323,107 @@ namespace
                "SDL constrains top-level placement to its work area");
         window.destroy();
     }
+
+    // Exercise native child reparenting and modeless floating shells
+    // through the portable docking host.
+    void test_docking_lifecycle() {
+        native::app_wnd owner(
+            "Docking", native::rect(30, 30, 720, 480));
+        native::button project("Project");
+        native::text_edit editor(
+            "Docking editor", native::text_edit_mode::multi_line);
+        native::list output({"Build", "Tests", "Ready"});
+
+        owner.create();
+        owner.show();
+        {
+            native::dock_host docks(owner);
+            int changes = 0;
+            docks.on_change.connect([&](native::dock_event) {
+                ++changes;
+                return false;
+            });
+            docks.add_pane(native::dock_pane(1, "Project", project))
+                .add_pane(native::dock_pane(2, "Editor", editor),
+                          native::dock_position::right,
+                          1)
+                .add_pane(native::dock_pane(3, "Output", output),
+                          native::dock_position::bottom,
+                          2);
+            expect(project.get_created() && editor.get_created() &&
+                       output.get_created(),
+                   "dock host creates active native pane controls");
+
+            // A tab press activates its pane and therefore relays out the
+            // host. Exercise the complete gesture synchronously so cached
+            // hit-test records cannot accidentally survive that relayout.
+            native::point tab_position;
+            bool found_tab = false;
+            for (const native::dock_layout_region &region :
+                 docks.get_layout().get_regions()) {
+                for (const native::dock_tab_region &tab : region.tabs) {
+                    if (tab.pane != 1)
+                        continue;
+                    tab_position = native::point(
+                        tab.bounds.p.x + tab.bounds.d.w / 2,
+                        tab.bounds.p.y + tab.bounds.d.h / 2);
+                    found_tab = true;
+                    break;
+                }
+                if (found_tab)
+                    break;
+            }
+            expect(found_tab, "dock layout exposes pane tab hit regions");
+            if (found_tab) {
+                owner.on_mouse_click.emit(native::mouse_event(
+                    native::mouse_button::left,
+                    native::mouse_action::press,
+                    tab_position));
+                owner.on_mouse_move.emit(native::point(
+                    tab_position.x + 8, tab_position.y));
+                owner.on_mouse_click.emit(native::mouse_event(
+                    native::mouse_button::left,
+                    native::mouse_action::release,
+                    tab_position));
+                expect(docks.get_layout().get_pane_location(1) ==
+                           native::dock_pane_location::docked,
+                       "tab drag press survives activation relayout");
+                changes = 0;
+            }
+
+            docks.float_pane(1, native::rect(90, 90, 300, 260));
+            expect(project.get_created() &&
+                       project.get_parent() != &owner &&
+                       docks.get_layout().get_pane_location(1) ==
+                           native::dock_pane_location::floating,
+                   "floating reparents and recreates pane content in a "
+                   "modeless shell");
+
+            const std::string saved = docks.serialize_layout();
+            docks.dock(1, native::dock_position::left, 2)
+                .close_pane(3);
+            expect(project.get_parent() == &owner &&
+                       project.get_created() &&
+                       !output.get_created(),
+                   "redocking reparents native content and closing hides "
+                   "its native resource");
+            docks.restore_layout(saved);
+            expect(docks.serialize_layout() == saved &&
+                       changes == 0,
+                   "runtime persistence restores floats without emitting "
+                   "user-action signals");
+
+            // Return every pane to the owner before its teardown; this
+            // also exercises a second complete floating transition.
+            docks.dock(1, native::dock_position::left, 2)
+                .show_pane(3, native::dock_position::bottom, 2);
+        }
+        expect(project.get_parent() == nullptr &&
+                   editor.get_parent() == nullptr &&
+                   output.get_parent() == nullptr,
+               "dock host destruction detaches every borrowed control");
+        owner.destroy();
+    }
 } // namespace
 
 int main() {
@@ -331,6 +432,7 @@ int main() {
         test_clipboard_and_text_edit();
         test_unavailable_file_dialogs();
         test_window_placement();
+        test_docking_lifecycle();
     } catch (const std::exception &error) {
         std::cerr << "FAILED: unexpected exception: " << error.what()
                   << '\n';

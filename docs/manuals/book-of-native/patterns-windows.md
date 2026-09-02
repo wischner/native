@@ -74,6 +74,14 @@ releases graphics resources, removes bindings, destroys the native resource,
 and clears the created state. Destruction initiated by a toolkit must converge
 on the same shared state through `on_native_destroy()`.
 
+The same rule applies to a window-manager close command. A backend must not
+leave the portable object marked as created after its native window has been
+dismissed. Closing and then opening the same object is a fresh
+`create()`/`show()` lifecycle; on OPEN LOOK both XView `ACTION_CLOSE` and
+`ACTION_DISMISS` follow this path. OPEN LOOK owned windows are XView subframes
+of their owner so dismissing one cannot be interpreted as quitting the root
+application frame.
+
 ## Parent and child relationships
 
 Parents and children refer to one another but do not own one another. The
@@ -145,6 +153,11 @@ Backends express this relationship with their native concept: an owned Win32
 top-level window, an Xt transient shell, an AppKit child window, a Haiku
 floating subset, a WINGs top-level window tracked through the portable owner
 graph, or an event-loop association on toolkits without native ownership.
+
+`app_wnd::get_native_title_visible()` returns `true` by default. A specialized
+compact tool window may override it before native creation and paint one
+client caption instead. Docking floating panes use this hook on OPEN LOOK so
+the draggable tool caption is not duplicated by an outer OLWM title.
 
 ## Modal dialogs
 

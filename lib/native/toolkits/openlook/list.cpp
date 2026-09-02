@@ -149,7 +149,7 @@ namespace native
                    nullptr);
         }
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void list::show() const {

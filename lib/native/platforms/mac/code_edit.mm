@@ -35,7 +35,7 @@
         static_cast<native::dim>(dirty.size.height));
     native::gpx &graphics = _owner->get_gpx();
     graphics.set_clip(invalid);
-    _owner->on_wnd_paint.emit(
+    _owner->on_native_paint(
         native::wnd_paint_event(invalid, graphics));
 }
 
@@ -64,7 +64,7 @@
 - (void)mouseDown:(NSEvent *)event {
     [[self window] makeFirstResponder:self];
     if (_owner) {
-        _owner->on_mouse_click.emit(native::mouse_event(
+        _owner->on_native_mouse_click(native::mouse_event(
             native::mouse_button::left,
             native::mouse_action::press,
             [self localPoint:event]));
@@ -73,7 +73,7 @@
 
 - (void)mouseUp:(NSEvent *)event {
     if (_owner) {
-        _owner->on_mouse_click.emit(native::mouse_event(
+        _owner->on_native_mouse_click(native::mouse_event(
             native::mouse_button::left,
             native::mouse_action::release,
             [self localPoint:event]));
@@ -82,13 +82,13 @@
 
 - (void)mouseMoved:(NSEvent *)event {
     if (_owner)
-        _owner->on_mouse_move.emit([self localPoint:event]);
+        _owner->on_native_mouse_move([self localPoint:event]);
 }
 
 - (void)scrollWheel:(NSEvent *)event {
     if (!_owner)
         return;
-    _owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+    _owner->on_native_mouse_wheel(native::mouse_wheel_event(
         [self localPoint:event],
         static_cast<native::coord>([event scrollingDeltaY]),
         native::wheel_direction::vertical));
@@ -209,7 +209,7 @@ namespace native
         mac::code_edit_bindings.register_pair(self, binding);
         _created = true;
         self->invalidate();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void code_edit::show() const {

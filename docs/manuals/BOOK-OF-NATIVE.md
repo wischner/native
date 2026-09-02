@@ -85,7 +85,17 @@ the same commit.
     Canonical source storage, overlays, lexers, completion, shared painting,
     and backend input translation. Expands Architecture Section 14.
 
-16. [Feature matrix](book-of-native/feature-matrix.md)
+16. [Patterns: docking workspaces](book-of-native/patterns-docking.md)
+    Split/tab layout ownership, native content transitions, floating shells,
+    interaction, themed painting, and persistence. Expands Architecture
+    Section 16.
+
+17. [Patterns: input, standard dialogs, and window chrome](book-of-native/patterns-input-dialogs-window-chrome.md)
+    Combo and list boxes, directory and message dialogs, non-client rulers,
+    status bars, native adaptation, and extensibility. Expands Architecture
+    Section 17.
+
+18. [Feature matrix](book-of-native/feature-matrix.md)
     Per-backend feature and test status for what is implemented now.
 
 For a tutorial organized around complete programs, see

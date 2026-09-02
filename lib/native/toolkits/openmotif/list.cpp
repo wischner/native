@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <X11/Intrinsic.h>
 #include <Xm/List.h>
+#include <Xm/ScrolledW.h>
 #include <native.h>
 #include <native/list.h>
 #include "globals.h"
@@ -41,19 +42,22 @@ namespace
         for (auto v : values)
             XmStringFree(v);
     }
+
+    Widget content_for(native::list *owner) {
+        return linux::openmotif::list_content_bindings
+            .object_from_handle(owner);
+    }
 } // namespace
 namespace native
 {
     void list::apply_items() {
-        Widget w =
-            linux::openmotif::wnd_bindings.handle_from_object(this);
+        Widget w = content_for(this);
         if (!w)
             throw std::runtime_error("Motif: Missing list widget.");
         replace(w, _items);
     }
     void list::apply_selected_index() {
-        Widget w =
-            linux::openmotif::wnd_bindings.handle_from_object(this);
+        Widget w = content_for(this);
         if (!w)
             throw std::runtime_error("Motif: Missing list widget.");
         XmListDeselectAllItems(w);
@@ -63,38 +67,45 @@ namespace native
     void list::create() const {
         if (_created)
             return;
-        Widget w = XtVaCreateWidget("list",
-                                    xmListWidgetClass,
-                                    parent_of(const_cast<list *>(this)),
-                                    XmNx,
-                                    _bounds.p.x,
-                                    XmNy,
-                                    _bounds.p.y,
-                                    XmNwidth,
-                                    _bounds.d.w,
-                                    XmNheight,
-                                    _bounds.d.h,
-                                    XmNselectionPolicy,
-                                    XmBROWSE_SELECT,
-                                    XmNlistSizePolicy,
-                                    XmCONSTANT,
-                                    nullptr);
-        if (!w)
-            throw std::runtime_error("Motif: Failed to create list.");
         auto *self = const_cast<list *>(this);
-        linux::openmotif::wnd_bindings.register_pair(w, self);
+        Widget scroller = XtVaCreateWidget(
+            "listScroll",
+            xmScrolledWindowWidgetClass,
+            parent_of(self),
+            XmNx,
+            _bounds.p.x,
+            XmNy,
+            _bounds.p.y,
+            XmNwidth,
+            _bounds.d.w,
+            XmNheight,
+            _bounds.d.h,
+            XmNscrollingPolicy,
+            XmAUTOMATIC,
+            XmNscrollBarDisplayPolicy,
+            XmDYNAMIC,
+            nullptr);
+        Widget w = XtVaCreateManagedWidget(
+            "list",
+            xmListWidgetClass,
+            scroller,
+            XmNselectionPolicy,
+            XmBROWSE_SELECT,
+            XmNlistSizePolicy,
+            XmCONSTANT,
+            XmNnavigationType,
+            XmTAB_GROUP,
+            nullptr);
+        if (!scroller || !w)
+            throw std::runtime_error("Motif: Failed to create list.");
+        linux::openmotif::wnd_bindings.register_pair(scroller, self);
+        linux::openmotif::list_content_bindings.register_pair(self, w);
         XtAddCallback(w, XmNbrowseSelectionCallback, changed, self);
         replace(w, _items);
-        XtVaSetValues(w,
-                      XmNwidth,
-                      _bounds.d.w,
-                      XmNheight,
-                      _bounds.d.h,
-                      nullptr);
         if (_selected_index >= 0)
             XmListSelectPos(w, _selected_index + 1, False);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         Widget w = linux::openmotif::wnd_bindings.handle_from_object(
@@ -109,7 +120,11 @@ namespace native
         auto *self = const_cast<list *>(this);
         Widget w =
             linux::openmotif::wnd_bindings.handle_from_object(self);
+        Widget content = content_for(self);
         self->on_native_destroy();
+        if (content)
+            linux::openmotif::list_content_bindings
+                .unregister_by_handle(self);
         if (w) {
             linux::openmotif::wnd_bindings.unregister_by_handle(w);
             XtDestroyWidget(w);

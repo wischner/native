@@ -31,7 +31,7 @@ namespace native
         linux::openlook::tree_view_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void tree_view::show() const {

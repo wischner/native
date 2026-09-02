@@ -14,6 +14,7 @@
 #include <native/text_edit.h>
 #include <native/theme.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -28,7 +29,8 @@ namespace
         native::theme::state frame_state;
         frame_state.selected = binding->focused;
         frame_state.disabled = owner->get_read_only();
-        painter->draw_text_edit_frame(bounds, frame_state);
+        native::detail::control_render_access::draw(
+            *owner, g, *painter, bounds, frame_state);
         if (bounds.d.w <= 8 || bounds.d.h <= 8)
             return;
 

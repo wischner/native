@@ -17,6 +17,12 @@ A handler returns `true` when it has handled the event and wants signal
 propagation to stop. Signal connections do not transfer ownership of the
 target object, so the connected window must remain alive.
 
+`on_mouse_move` positions are in client coordinates. Native backends also
+retain the matching absolute position; `get_mouse_screen_position()` returns
+the screen point from the latest motion notification. This is useful for
+interactions that move their own top-level window, where adding client
+coordinates to a changing window origin would accumulate error.
+
 ## Persistent drawing state
 
 Paint handlers should not assume that previous pixels remain available. The

@@ -20,7 +20,11 @@ namespace linux::openmotif
     struct motif_collection;
 
     // Create an unmanaged Motif drawing-area collection host.
-    Widget create_collection_host(native::wnd &owner);
+    Widget create_collection_host(native::wnd &owner,
+                                  motif_collection &state);
+
+    // Destroy native scrollbar peers owned beside a collection host.
+    void destroy_collection_scrollbars(motif_collection &state);
 
     // Destroy a collection host and notify its portable owner.
     void destroy_collection_host(native::wnd &owner,

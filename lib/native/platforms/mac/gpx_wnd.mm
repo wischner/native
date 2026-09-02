@@ -74,7 +74,10 @@ namespace native
     gpx_wnd::gpx_wnd(const wnd *window, point offset)
         : _wnd(const_cast<wnd *>(window))
         , _offset(offset) {
+        NSView *control_view = mac::view_from_control(_wnd);
         NSWindow *nswin = mac::wnd_bindings.handle_from_object(_wnd);
+        if (!nswin && control_view)
+            nswin = [control_view window];
         if (!nswin)
             throw std::runtime_error(
                 "macOS: No NSWindow available for gpx_wnd");
@@ -83,7 +86,8 @@ namespace native
         auto *cache = mac::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache) {
             cache = new mac::mac_gpx();
-            cache->view = [nswin contentView];
+            cache->view = control_view ? control_view
+                                       : [nswin contentView];
             mac::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
         const size dimensions = window->get_dimensions();

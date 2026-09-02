@@ -21,6 +21,7 @@
 #include <xview/frame.h>
 #include <xview/openmenu.h>
 #include <xview/panel.h>
+#include <xview/scrollbar.h>
 #include <xview/sel_pkg.h>
 
 #include "xview_compat.h"
@@ -80,11 +81,20 @@ namespace linux::openlook
         bool suppress = false;
         bool all_selected = false;
     };
+    struct openlook_combo_box
+    {
+        Panel_item text = XV_NULL;
+        Panel_item choice = XV_NULL;
+        bool suppress = false;
+    };
 
     struct openlook_collection
     {
         Panel panel = XV_NULL;
         Xv_Window paint_window = XV_NULL;
+        Scrollbar vertical_scrollbar = XV_NULL;
+        Scrollbar horizontal_scrollbar = XV_NULL;
+        bool synchronizing_scrollbars = false;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =
@@ -119,6 +129,8 @@ namespace linux::openlook
         menu_bindings;
     extern native::bindings<native::text_edit *, openlook_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::combo_box *, openlook_combo_box *>
+        combo_box_bindings;
     extern native::bindings<native::accordion *, openlook_collection *>
         accordion_bindings;
     extern native::bindings<native::icon_view *, openlook_collection *>
@@ -143,6 +155,9 @@ namespace linux::openlook
 
     // Permit input or restore focus to the active modal dialog.
     bool permit_input(native::wnd *window);
+
+    // Return the exact menu-mark glyph dimensions recorded by OLGX.
+    native::size menu_mark_dimensions(const void *information);
 
     //
     // Size a Panel item's label so the item occupies a width.

@@ -25,6 +25,8 @@ native::tree_view files({
        {{"main.cpp", nullptr, 121}}, false}}, true},
     {"README.md", nullptr, 200}
 }, native::rect(0, 0, 320, 360));
+
+files.set_presentation(native::tree_view_presentation::native);
 ```
 
 Use `invalid_tree_item_id` for no selection. Programmatic selection and
@@ -53,8 +55,22 @@ uses the platform's normal branch behavior and activates the item.
 
 `reveal_item()` expands ancestors and scrolls the item into view.
 `set_lines_visible()` controls classic connector lines where the native peer
-offers that choice. Replacing items retains selection by stable ID when the
-item survives.
+offers that choice. The native default is theme-specific: Window Maker uses
+indentation and transparent right/down disclosure triangles without connector
+branches. An explicit `set_lines_visible()` choice survives later native-theme
+metric synchronization. Replacing items retains selection by stable ID when
+the item survives.
+
+`set_presentation()` selects the normal platform presentation or the optional
+`three_dimensional` outline. On CDE, `native` follows the InfoLib Book List:
+the live CDE data colors, flat full-width selection, compact right/down
+triangles, uniform row geometry, and vertically centered icons and text. The
+three-dimensional choice retains the Motif `XmContainer` outline for software
+that wants that later Motif style.
+
+On CDE, overflowing lists, icon views, trees, and tables expose native Motif
+scrollbars. Their values remain synchronized with the portable scroll state,
+so wheel, keyboard, and scrollbar navigation reveal the same items.
 
 ## Icon items and image ownership
 
@@ -159,6 +175,27 @@ accessibility. Custom mappings remain keyboard-focusable, expose visible
 focus, and retain selected, disabled, and expanded state. A native widget may
 vary spacing, font metrics, selection shape, and scrollbar details without
 changing the model contract.
+
+On OPEN LOOK, the canvas-backed icon and tree hosts attach genuine XView
+`Scrollbar` objects. Their elevator and cable update the portable scroll
+offset, while programmatic scrolling updates the native view position. The
+portable renderer reserves the XView scrollbar extent but does not paint a
+second, emulated track beneath it.
+
+OPEN LOOK disclosure marks are centered using the actual OLGX glyph metrics,
+not an assumed triangle size. Tree connector lines terminate before the mark
+and continue below it only for an expanded branch, keeping normal and selected
+row glyphs unobstructed.
+
+On Window Maker, collection content uses the desktop panel gray rather than
+an editor-white surface. Accordion and group headers share the raised dark-gray
+header role used by native Window Maker tables and tabs. Icon and tree hosts
+attach genuine WINGs vertical scrollers; the native child occupies the extent
+reserved by the semantic renderer, and the portable scrollbar painter is
+suppressed rather than drawn underneath it.
+WINGs stock disclosure arrows are composited as transparent glyphs over the
+row or accordion header. Their embedded pixmap paper is not copied, so normal,
+selected, collapsed, and expanded indicators retain the surrounding surface.
 
 The Vision application's **Collection controls** window demonstrates a
 Libraries accordion with enough alpha-bearing thumbnails to force scrolling

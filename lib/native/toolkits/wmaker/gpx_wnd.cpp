@@ -11,6 +11,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 
 #include <native/graphics.h>
 
@@ -62,6 +63,21 @@ namespace
             static_cast<unsigned short>(color.a * 257U),
             False);
     }
+
+    native::rgba window_surface_color() {
+        auto *screen = reinterpret_cast<W_Screen *>(
+            linux::wmaker::screen);
+        if (!screen || !screen->gray)
+            return native::rgba(174, 170, 174, 255);
+        return native::rgba(
+            static_cast<std::uint8_t>(
+                WMRedComponentOfColor(screen->gray) >> 8),
+            static_cast<std::uint8_t>(
+                WMGreenComponentOfColor(screen->gray) >> 8),
+            static_cast<std::uint8_t>(
+                WMBlueComponentOfColor(screen->gray) >> 8),
+            255);
+    }
 } // namespace
 
 namespace native
@@ -73,6 +89,7 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: no display for graphics.");
         }
+        set_paper(window_surface_color());
         auto *cache = linux::wmaker::graphics_bindings
                           .object_from_handle(_wnd);
         if (!cache) {
@@ -102,8 +119,10 @@ namespace native
             XSetForeground(
                 linux::wmaker::display,
                 cache->gc,
-                WhitePixel(linux::wmaker::display,
-                           DefaultScreen(linux::wmaker::display)));
+                detail::x_pixel(
+                    DefaultVisual(linux::wmaker::display,
+                                  DefaultScreen(linux::wmaker::display)),
+                    get_paper()));
             XFillRectangle(linux::wmaker::display,
                            cache->backbuffer,
                            cache->gc,

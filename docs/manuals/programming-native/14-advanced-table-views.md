@@ -36,9 +36,39 @@ table.set_columns({name, size})
      .set_grid_lines(native::table_grid_lines::horizontal);
 ```
 
+Rows use the active backend's native table height by default. Set a complete
+row height when an application needs denser or roomier rows, and clear it to
+return to the native default:
+
+```cpp
+table.set_row_height(28);          // Text, image, and selection are 28 px high.
+table.set_row_height(std::nullopt); // Restore the backend-native table height.
+```
+
+This is the full row and selection rectangle, not extra text padding. Window
+Maker defaults to the taller row spacing used by its reference Task Manager.
+Its table also receives a final one-pixel inset viewport relief after headers
+are laid out, so edge-aligned header cells cannot erase the black top/left and
+white bottom/right edges. Native scrollbar reservations are excluded from
+that relief because the WINGs scrollers carry their own frames.
+
 `table_view` borrows its model, and each `table_cell` borrows its optional
 image. Keep both alive longer than the view. `table_store` owns the row and
 string values and is convenient for small and medium data sets.
+
+Alternating rows use colors supplied by the active native theme. OPEN LOOK
+uses the XView control CMS light-grey background and highlight-white pair;
+selection retains the toolkit's inverse black highlight. Its native vertical
+scrollbar occupies the right-hand reserved strip below the table header.
+Window Maker tables use the reference desktop's light-gray list body and
+alternating row, dark inactive-selection highlight, and raised dark-gray
+header role instead of editor white. They attach genuine WINGs vertical and
+horizontal scrollers. When all semantic columns fit, the trailing visible
+column consumes unused viewport width without changing its configured width;
+horizontal overflow retains the configured widths.
+Collapsible Window Maker group rows use compact filled right/down disclosure
+triangles, matching native task-list groups without importing the opaque
+resource-paper square carried by the WINGs arrow pixmaps.
 
 ## Groups, selection, and sorting
 

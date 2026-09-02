@@ -10,10 +10,16 @@
 
 #include <string>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     // Represents a clickable native or emulated push button.
     class button : public wnd
     {
@@ -42,6 +48,9 @@ namespace native
         // Change the label and update a created native button.
         button &set_text(const std::string &text);
 
+        // Accept a native user activation and emit on_click.
+        virtual void on_native_click();
+
         // Create the backend button resource.
         void create() const override;
 
@@ -54,10 +63,20 @@ namespace native
         // Emits when the user activates the button.
         signal<> on_click;
 
-    private:
-        std::string _text;
+    protected:
+        // Draw the complete button using the active native theme.
+        virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
 
         // Apply the cached label to a created backend button.
-        void apply_text();
+        virtual void apply_text();
+
+    private:
+        friend class detail::control_render_access;
+
+        std::string _text;
     };
 } // namespace native

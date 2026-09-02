@@ -31,7 +31,15 @@ rather than becoming a million-widget allocation.
 - Haiku links its Open Tracker-licensed `BColumnListView` implementation for
   materialized data and uses a `BControlLook` viewport host for virtual data.
 - Athena, XView/OLGX, WINGs, SDL2, and GEM use backend-owned hosts and theme
-  resources when their toolkit has no complete table widget.
+  resources when their toolkit has no complete table widget. The XView host
+  attaches genuine east-side and bottom `Scrollbar` objects to the exact
+  extents reserved by the semantic renderer and obtains alternating-row
+  grey/white colors from its control CMS. The WINGs host likewise attaches
+  real vertical and horizontal scrollers, uses the Window Maker session's
+  gray list/header/selection roles, and stretches the trailing visible column
+  over unused viewport width without changing semantic column geometry. Group
+  disclosure uses the native compact filled right/down triangle so the WINGs
+  stock pixmap's resource paper cannot erase or box the indicator.
 
 Each adapter applies cached state during creation. Programmatic changes do not
 emit action signals; translated user actions update the portable cache and

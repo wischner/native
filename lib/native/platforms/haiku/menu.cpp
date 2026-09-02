@@ -119,6 +119,10 @@ namespace native
         for (const auto &top : _tops) {
             BMenu *sub = new BMenu(top.title.c_str());
             for (const auto &item : top.items) {
+                if (item.separator) {
+                    sub->AddSeparatorItem();
+                    continue;
+                }
                 BMessage *msg =
                     new BMessage(static_cast<uint32>(item.id));
                 sub->AddItem(new BMenuItem(item.label.c_str(), msg));

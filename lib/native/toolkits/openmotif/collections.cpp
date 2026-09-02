@@ -6,12 +6,15 @@
 //
 
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
 #include <Xm/DrawingA.h>
+#include <Xm/ScrollBar.h>
 
 #include <native.h>
 
@@ -37,6 +40,255 @@ namespace
             return linux::openmotif::code_edit_bindings
                 .object_from_handle(editor);
         return nullptr;
+    }
+
+    int saturated_int(std::size_t value) {
+        return value > static_cast<std::size_t>(
+                           std::numeric_limits<int>::max())
+                   ? std::numeric_limits<int>::max()
+                   : static_cast<int>(value);
+    }
+
+    void configure_scrollbar(Widget scrollbar,
+                             bool visible,
+                             int x,
+                             int y,
+                             int width,
+                             int height,
+                             int total,
+                             int page,
+                             int value,
+                             int increment) {
+        if (!scrollbar)
+            return;
+        if (!visible) {
+            if (XtIsManaged(scrollbar))
+                XtUnmanageChild(scrollbar);
+            return;
+        }
+        const int object = std::max(1, total);
+        const int slider = std::clamp(page, 1, object);
+        const int position = std::clamp(
+            value, 0, std::max(0, object - slider));
+        XtVaSetValues(scrollbar,
+                      XmNx,
+                      std::max(0, x),
+                      XmNy,
+                      std::max(0, y),
+                      XmNwidth,
+                      std::max(1, width),
+                      XmNheight,
+                      std::max(1, height),
+                      XmNminimum,
+                      0,
+                      XmNmaximum,
+                      object,
+                      XmNvalue,
+                      position,
+                      XmNsliderSize,
+                      slider,
+                      XmNincrement,
+                      std::clamp(increment, 1, object),
+                      XmNpageIncrement,
+                      slider,
+                      nullptr);
+        if (!XtIsManaged(scrollbar))
+            XtManageChild(scrollbar);
+        if (XtIsRealized(scrollbar))
+            XRaiseWindow(linux::openmotif::cached_display,
+                         XtWindow(scrollbar));
+    }
+
+    void synchronize_scrollbars(
+        native::wnd &owner,
+        linux::openmotif::motif_collection &state) {
+        if (state.synchronizing_scrollbars ||
+            (!state.vertical_scrollbar &&
+             !state.horizontal_scrollbar)) {
+            return;
+        }
+        state.synchronizing_scrollbars = true;
+        const native::rect bounds = owner.get_bounds();
+        const int width = std::max(1, static_cast<int>(bounds.d.w));
+        const int height = std::max(1, static_cast<int>(bounds.d.h));
+        int extent = 16;
+        int header = 0;
+        int row_height = 20;
+        if (owner.get_created()) {
+            auto appearance = native::theme::create(owner.get_gpx());
+            const native::theme::metrics metrics = appearance->defaults();
+            extent = std::max(1, metrics.scrollbar_extent);
+            header = metrics.header_height;
+            row_height = std::max(1, metrics.table_row_height);
+        }
+
+        if (auto *icons = dynamic_cast<native::icon_view *>(&owner)) {
+            const int total = std::max(
+                1,
+                static_cast<int>(icons->get_content_dimensions().h));
+            configure_scrollbar(state.vertical_scrollbar,
+                                total > height,
+                                bounds.p.x + width - extent,
+                                bounds.p.y,
+                                extent,
+                                height,
+                                total,
+                                height,
+                                icons->get_scroll_offset(),
+                                24);
+        } else if (auto *tree =
+                       dynamic_cast<native::tree_view *>(&owner)) {
+            const std::size_t count = tree->get_visible_item_count();
+            const int row = count > 0
+                                ? std::max<int>(
+                                      1,
+                                      tree->get_row_bounds(0).d.h)
+                                : 1;
+            const std::size_t limit =
+                static_cast<std::size_t>(
+                    std::numeric_limits<int>::max()) /
+                static_cast<std::size_t>(row);
+            const int total = count > limit
+                                  ? std::numeric_limits<int>::max()
+                                  : std::max(
+                                        1,
+                                        static_cast<int>(count) * row);
+            configure_scrollbar(state.vertical_scrollbar,
+                                total > height,
+                                bounds.p.x + width - extent,
+                                bounds.p.y,
+                                extent,
+                                height,
+                                total,
+                                height,
+                                tree->get_scroll_offset(),
+                                row);
+        } else if (auto *table =
+                       dynamic_cast<native::table_view *>(&owner)) {
+            header = table->get_header_visible() ? header : 0;
+            row_height = table->get_row_height()
+                             ? std::max<int>(
+                                   1, *table->get_row_height())
+                             : row_height;
+            int content_width = 0;
+            for (const native::table_column &column :
+                 table->get_columns()) {
+                if (!column.visible)
+                    continue;
+                const int column_width = column.width;
+                content_width = content_width >
+                                        std::numeric_limits<int>::max() -
+                                            column_width
+                                    ? std::numeric_limits<int>::max()
+                                    : content_width + column_width;
+            }
+            content_width = std::max(1, content_width);
+            int body_width = width;
+            int body_height = std::max(0, height - header);
+            const std::size_t rows = table->get_display_row_count();
+            const bool needs_vertical =
+                rows > static_cast<std::size_t>(
+                           std::max(0, body_height) / row_height);
+            const bool vertical =
+                table->get_vertical_scrollbar_policy() ==
+                    native::scrollbar_policy::always ||
+                (table->get_vertical_scrollbar_policy() ==
+                     native::scrollbar_policy::automatic &&
+                 needs_vertical);
+            if (vertical)
+                body_width = std::max(0, body_width - extent);
+            const bool needs_horizontal = content_width > body_width;
+            const bool horizontal =
+                table->get_horizontal_scrollbar_policy() ==
+                    native::scrollbar_policy::always ||
+                (table->get_horizontal_scrollbar_policy() ==
+                     native::scrollbar_policy::automatic &&
+                 needs_horizontal);
+            if (horizontal)
+                body_height = std::max(0, body_height - extent);
+            const int page_rows = std::max(
+                1, body_height / row_height);
+            configure_scrollbar(
+                state.vertical_scrollbar,
+                vertical,
+                bounds.p.x + body_width,
+                bounds.p.y + header,
+                extent,
+                body_height,
+                std::max(1, saturated_int(rows)),
+                page_rows,
+                saturated_int(table->get_vertical_scroll_row()),
+                1);
+            configure_scrollbar(
+                state.horizontal_scrollbar,
+                horizontal,
+                bounds.p.x,
+                bounds.p.y + header + body_height,
+                body_width,
+                extent,
+                content_width,
+                std::max(1, body_width),
+                table->get_horizontal_scroll_offset(),
+                20);
+        }
+        state.synchronizing_scrollbars = false;
+    }
+
+    void scrollbar_changed(Widget widget,
+                           XtPointer client_data,
+                           XtPointer call_data) {
+        auto *owner = static_cast<native::wnd *>(client_data);
+        auto *scroll = static_cast<XmScrollBarCallbackStruct *>(call_data);
+        auto *state = owner ? binding(*owner) : nullptr;
+        if (!owner || !scroll || !state ||
+            state->synchronizing_scrollbars) {
+            return;
+        }
+        if (widget == state->vertical_scrollbar) {
+            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
+                icons->set_scroll_offset(scroll->value);
+            else if (auto *tree =
+                         dynamic_cast<native::tree_view *>(owner))
+                tree->set_scroll_offset(scroll->value);
+            else if (auto *table =
+                         dynamic_cast<native::table_view *>(owner)) {
+                table->on_native_scroll(
+                    static_cast<std::size_t>(std::max(0, scroll->value)),
+                    table->get_horizontal_scroll_offset());
+            }
+        } else if (widget == state->horizontal_scrollbar) {
+            if (auto *table =
+                    dynamic_cast<native::table_view *>(owner)) {
+                table->on_native_scroll(
+                    table->get_vertical_scroll_row(),
+                    std::max(0, scroll->value));
+            }
+        }
+    }
+
+    Widget create_scrollbar(Widget parent,
+                            native::wnd &owner,
+                            unsigned char orientation) {
+        Widget result = XtVaCreateWidget(
+            orientation == XmVERTICAL
+                ? "collectionVerticalScroll"
+                : "collectionHorizontalScroll",
+            xmScrollBarWidgetClass,
+            parent,
+            XmNorientation,
+            orientation,
+            XmNnavigationType,
+            XmTAB_GROUP,
+            nullptr);
+        XtAddCallback(result,
+                      XmNvalueChangedCallback,
+                      scrollbar_changed,
+                      &owner);
+        XtAddCallback(result,
+                      XmNdragCallback,
+                      scrollbar_changed,
+                      &owner);
+        return result;
     }
 
     void resize_backbuffer(native::wnd &owner,
@@ -74,11 +326,13 @@ namespace
                       &height,
                       nullptr);
         auto &graphics = owner.get_gpx();
+        if (auto *state = binding(owner))
+            synchronize_scrollbars(owner, *state);
         resize_backbuffer(owner, widget, width, height);
         native::rect invalid(0, 0, width, height);
         graphics.set_clip(invalid);
         native::wnd_paint_event event(invalid, graphics);
-        owner.on_wnd_paint.emit(event);
+        owner.on_native_paint(event);
         auto *cache = linux::openmotif::wnd_gpx_bindings
                           .object_from_handle(&owner);
         if (!cache || !cache->gc || !cache->backbuffer)
@@ -264,6 +518,8 @@ namespace
                               event->xconfigure.height);
             owner->on_native_resize(native::size(
                 event->xconfigure.width, event->xconfigure.height));
+            if (auto *state = binding(*owner))
+                synchronize_scrollbars(*owner, *state);
             break;
         case FocusIn:
         case FocusOut: {
@@ -355,14 +611,14 @@ namespace
             break;
             }
         case MotionNotify:
-            owner->on_mouse_move.emit(native::point(
+            owner->on_native_mouse_move(native::point(
                 event->xmotion.x, event->xmotion.y));
             break;
         case ButtonPress:
         case ButtonRelease:
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
-                owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                owner->on_native_mouse_wheel(native::mouse_wheel_event(
                     native::point(event->xbutton.x, event->xbutton.y),
                     event->xbutton.button == Button4 ? 24 : -24,
                     native::wheel_direction::vertical));
@@ -372,7 +628,7 @@ namespace
                 break;
             if (event->type == ButtonPress)
                 XmProcessTraversal(widget, XmTRAVERSE_CURRENT);
-            owner->on_mouse_click.emit(native::mouse_event(
+            owner->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 event->type == ButtonPress
                     ? native::mouse_action::press
@@ -440,7 +696,9 @@ namespace
         }
     }
 
-    Widget create_host(native::wnd &owner) {
+    Widget create_host(
+        native::wnd &owner,
+        linux::openmotif::motif_collection &state) {
         native::wnd *parent = owner.get_parent();
         Widget parent_widget = parent
                                    ? linux::openmotif::wnd_bindings
@@ -462,6 +720,8 @@ namespace
             bounds.d.w,
             XmNheight,
             bounds.d.h,
+            XmNresizePolicy,
+            XmRESIZE_NONE,
             XmNnavigationType,
             XmTAB_GROUP,
             nullptr);
@@ -477,6 +737,16 @@ namespace
                           handle_event,
                           &owner);
         linux::openmotif::wnd_bindings.register_pair(widget, &owner);
+        if (dynamic_cast<native::icon_view *>(&owner) ||
+            dynamic_cast<native::tree_view *>(&owner) ||
+            dynamic_cast<native::table_view *>(&owner)) {
+            state.vertical_scrollbar = create_scrollbar(
+                parent_widget, owner, XmVERTICAL);
+        }
+        if (dynamic_cast<native::table_view *>(&owner)) {
+            state.horizontal_scrollbar = create_scrollbar(
+                parent_widget, owner, XmHORIZONTAL);
+        }
         return widget;
     }
 
@@ -485,6 +755,7 @@ namespace
         owner.on_native_destroy();
         if (!state)
             return;
+        linux::openmotif::destroy_collection_scrollbars(*state);
         if (state->widget) {
             linux::openmotif::wnd_bindings.unregister_by_handle(
                 state->widget);
@@ -496,8 +767,18 @@ namespace
 
 namespace linux::openmotif
 {
-    Widget create_collection_host(native::wnd &owner) {
-        return create_host(owner);
+    Widget create_collection_host(native::wnd &owner,
+                                  motif_collection &state) {
+        return create_host(owner, state);
+    }
+
+    void destroy_collection_scrollbars(motif_collection &state) {
+        if (state.vertical_scrollbar)
+            XtDestroyWidget(state.vertical_scrollbar);
+        if (state.horizontal_scrollbar)
+            XtDestroyWidget(state.horizontal_scrollbar);
+        state.vertical_scrollbar = nullptr;
+        state.horizontal_scrollbar = nullptr;
     }
 
     void destroy_collection_host(native::wnd &owner,
@@ -515,12 +796,12 @@ namespace native
             return;
         auto *self = const_cast<accordion *>(this);
         auto *state = new linux::openmotif::motif_collection();
-        state->widget = create_host(*self);
+        state->widget = create_host(*self, *state);
         linux::openmotif::accordion_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void accordion::show() const {
@@ -530,6 +811,10 @@ namespace native
         if (!_created || !state || !state->widget)
             throw std::runtime_error("Motif: accordion is not created.");
         XtManageChild(state->widget);
+        if (XtIsRealized(state->widget)) {
+            XRaiseWindow(linux::openmotif::cached_display,
+                         XtWindow(state->widget));
+        }
     }
 
     void accordion::destroy() const {
@@ -553,11 +838,11 @@ namespace native
             return;
         auto *self = const_cast<icon_view *>(this);
         auto *state = new linux::openmotif::motif_collection();
-        state->widget = create_host(*self);
+        state->widget = create_host(*self, *state);
         linux::openmotif::icon_view_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

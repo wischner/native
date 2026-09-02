@@ -155,7 +155,7 @@ namespace native
                  static_cast<dim>(
                      std::max(1, window_height - menu_height))));
 
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void app_wnd::show() const {

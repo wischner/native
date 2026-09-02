@@ -296,7 +296,9 @@ namespace
 
 namespace linux::openmotif
 {
-    void show_file_dialog(native::file_dialog &dialog, bool save) {
+    void show_file_dialog(native::file_dialog &dialog,
+                          bool save,
+                          bool directory) {
         native::app_wnd *owner = dialog.get_owner();
         Widget owner_shell =
             owner ? shell_bindings.handle_from_object(owner)
@@ -315,6 +317,12 @@ namespace linux::openmotif
         ++count;
         XtSetArg(arguments[count], XmNautoUnmanage, False);
         ++count;
+        if (directory) {
+            XtSetArg(arguments[count],
+                     XmNfileTypeMask,
+                     XmFILE_DIRECTORY);
+            ++count;
+        }
 
         XmString title =
             XmStringCreateLocalized(
@@ -331,7 +339,8 @@ namespace linux::openmotif
         Widget widget = XmCreateFileSelectionDialog(
             owner_shell,
             const_cast<char *>(save ? "save_file_dialog"
-                                    : "open_file_dialog"),
+                              : directory ? "directory_dialog"
+                                          : "open_file_dialog"),
             arguments,
             count);
         XmStringFree(mask);

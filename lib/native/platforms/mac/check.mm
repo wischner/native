@@ -5,10 +5,47 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #import <AppKit/AppKit.h>
+#include <algorithm>
 #include <stdexcept>
 #include <native.h>
 #include <native/check.h>
+#include "../../control_render_access.h"
 #include "globals.h"
+
+@interface native_check_view : NSButton {
+@public
+    void *_nativeOwner;
+}
+@end
+
+@implementation native_check_view
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::check *>(_nativeOwner);
+    if (!owner || !owner->get_created()) {
+        [super drawRect:dirty];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const NSRect frame = [self bounds];
+    const native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(native::rect(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.height))));
+    native::theme::state state;
+    state.disabled = ![self isEnabled];
+    state.focused = [[self window] firstResponder] == self;
+    state.pressed = [self isHighlighted];
+    native::detail::control_render_access::draw(
+        *owner, graphics, *appearance, bounds, state);
+}
+@end
 @interface native_check_target : NSObject {
 @public
     void *_owner;
@@ -56,11 +93,12 @@ namespace native
         if (_created)
             return;
         auto *self = const_cast<check *>(this);
-        NSButton *b =
-            [[NSButton alloc] initWithFrame:NSMakeRect(_bounds.p.x,
-                                                       _bounds.p.y,
-                                                       _bounds.d.w,
-                                                       _bounds.d.h)];
+        native_check_view *b = [[native_check_view alloc]
+            initWithFrame:NSMakeRect(_bounds.p.x,
+                                     _bounds.p.y,
+                                     _bounds.d.w,
+                                     _bounds.d.h)];
+        b->_nativeOwner = self;
         [b setButtonType:NSButtonTypeSwitch];
         [b setTitle:text(_text)];
         [b setState:_checked ? NSControlStateValueOn
@@ -75,7 +113,7 @@ namespace native
         h->target = t;
         mac::check_bindings.register_pair(self, h);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void check::show() const {
         auto *b = mac::check_bindings.object_from_handle(

@@ -176,8 +176,9 @@ namespace
             size_t popup_width = 0;
 
             for (const auto &item : top.items) {
-                popup_width =
-                    std::max(popup_width, item.label.size() + 3u);
+                if (!item.separator)
+                    popup_width =
+                        std::max(popup_width, item.label.size() + 3u);
             }
             if (popup_width < 8u) {
                 popup_width = 8u;
@@ -224,14 +225,22 @@ namespace
                     NIL,
                     G_STRING,
                     NONE,
-                    NORMAL,
+                    item.separator ? DISABLED : NORMAL,
                     store_string(
-                        state, menu_item_text(item.label, popup_width)),
+                        state,
+                        item.separator
+                            ? menu_item_text(
+                                  std::string(
+                                      popup_width > 3 ? popup_width-3 : 1,
+                                      '-'),
+                                  popup_width)
+                            : menu_item_text(item.label, popup_width)),
                     0,
                     static_cast<WORD>(item_i),
                     static_cast<WORD>(popup_width),
                     1);
-                state.object_to_item_id[current_index] = item.id;
+                if (!item.separator)
+                    state.object_to_item_id[current_index] = item.id;
             }
 
             title_x += title_width;

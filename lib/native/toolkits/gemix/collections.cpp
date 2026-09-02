@@ -97,13 +97,6 @@ namespace linux::gemix
 
     void render_collections(native::app_wnd *parent,
                             native::gpx &graphics) {
-        for (auto *control : accordions) {
-            if (control && control->get_created() &&
-                root_of(control) == parent) {
-                native::detail::draw_accordion_at(
-                    *control, graphics, origin_in_root(*control));
-            }
-        }
         for (auto *control : icon_views) {
             if (control && control->get_created() &&
                 root_of(control) == parent) {
@@ -132,6 +125,15 @@ namespace linux::gemix
                     *control, graphics, origin_in_root(*control));
             }
         }
+        // Match the native child-window stacking order. Docking creates
+        // transient empty accordions as its raised guide surfaces.
+        for (auto *control : accordions) {
+            if (control && control->get_created() &&
+                root_of(control) == parent) {
+                native::detail::draw_accordion_at(
+                    *control, graphics, origin_in_root(*control));
+            }
+        }
     }
 
     bool activate_collection(native::app_wnd *parent,
@@ -144,7 +146,7 @@ namespace linux::gemix
                 continue;
             clear_focus(parent);
             control->on_native_focus(true);
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 native::mouse_action::press,
                 local_point(*control, point)));
@@ -472,7 +474,7 @@ namespace linux::gemix
             native::code_edit *control = *iterator;
             if (control && control->get_created() &&
                 root_of(control) == parent && hit(*control, point)) {
-                control->on_mouse_move.emit(
+                control->on_native_mouse_move(
                     local_point(*control, point));
                 return true;
             }
@@ -496,7 +498,7 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void accordion::show() const {
@@ -533,7 +535,7 @@ namespace native
         linux::gemix::icon_views.push_back(self);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

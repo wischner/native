@@ -30,6 +30,8 @@ namespace linux::sdl2
     native::bindings<native::check *, sdl2_check *> check_bindings;
     native::bindings<native::radio *, sdl2_radio *> radio_bindings;
     native::bindings<native::list *, sdl2_list *> list_bindings;
+    native::bindings<native::combo_box *, sdl2_combo_box *>
+        combo_box_bindings;
     native::bindings<native::text_edit *, sdl2_text_edit *>
         text_edit_bindings;
     native::bindings<native::accordion *, sdl2_collection *>
@@ -45,6 +47,7 @@ namespace linux::sdl2
     std::vector<native::check *> checks;
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
+    std::vector<native::combo_box *> combo_boxes;
     std::vector<native::button *> buttons;
     std::vector<native::text_edit *> text_edits;
     std::vector<native::accordion *> accordions;

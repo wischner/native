@@ -11,6 +11,8 @@
 #include <memory>
 
 #include <windows.h>
+#include <uxtheme.h>
+#include <vssym32.h>
 
 #include <native.h>
 #include <native/theme.h>
@@ -138,7 +140,7 @@ namespace
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (!hwnd)
                 return draw_button_fallback(r, text, s);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
 
@@ -168,7 +170,7 @@ namespace
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE |
                           DT_END_ELLIPSIS);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 
@@ -176,7 +178,7 @@ namespace
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (!hwnd)
                 return draw_menu_bar_fallback(r);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
             apply_clip(hdc, _g);
@@ -184,7 +186,7 @@ namespace
             FillRect(hdc, &bounds, GetSysColorBrush(COLOR_MENU));
             DrawEdge(hdc, &bounds, EDGE_ETCHED, BF_BOTTOM);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 
@@ -204,7 +206,7 @@ namespace
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (!hwnd)
                 return draw_popup_fallback(r);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
             apply_clip(hdc, _g);
@@ -212,7 +214,7 @@ namespace
             FillRect(hdc, &bounds, GetSysColorBrush(COLOR_MENU));
             DrawEdge(hdc, &bounds, EDGE_RAISED, BF_RECT);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 
@@ -240,8 +242,8 @@ namespace
                          const state &s) override {
             saved_state saved(_g);
             native::rect content = r;
-            if (HWND hwnd = windows::hwnd_from_gpx(_g)) {
-                HDC hdc = GetDC(hwnd);
+            if (windows::hwnd_from_gpx(_g)) {
+                HDC hdc = windows::acquire_gpx_dc(_g);
                 if (hdc) {
                     apply_clip(hdc, _g);
                     RECT bounds = windows::to_rect(r);
@@ -255,7 +257,7 @@ namespace
                         std::max(0L, bounds.right - bounds.left),
                         std::max(0L, bounds.bottom - bounds.top));
                     SelectClipRgn(hdc, nullptr);
-                    ReleaseDC(hwnd, hdc);
+                    windows::release_gpx_dc(_g, hdc);
                 }
             } else {
                 const palette p = native_palette();
@@ -299,7 +301,7 @@ namespace
             saved_state saved(_g);
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (hwnd) {
-                HDC hdc = GetDC(hwnd);
+                HDC hdc = windows::acquire_gpx_dc(_g);
                 if (hdc) {
                     apply_clip(hdc, _g);
                     RECT bounds = windows::to_rect(r);
@@ -313,7 +315,7 @@ namespace
                              EDGE_SUNKEN,
                              BF_RECT);
                     SelectClipRgn(hdc, nullptr);
-                    ReleaseDC(hwnd, hdc);
+                    windows::release_gpx_dc(_g, hdc);
                     return *this;
                 }
             }
@@ -323,6 +325,101 @@ namespace
                 .draw_rect(r, true)
                 .set_ink(p.button_shadow)
                 .draw_rect(r, false);
+            return *this;
+        }
+
+        theme &draw_disclosure(
+            const native::rect &r,
+            native::disclosure_state disclosure,
+            const state &s) override {
+            HWND hwnd = windows::hwnd_from_gpx(_g);
+            if (!hwnd)
+                return draw_disclosure_fallback(r, disclosure, s);
+            HDC hdc = windows::acquire_gpx_dc(_g);
+            HTHEME visual = OpenThemeData(hwnd, L"TreeView");
+            if (!hdc || !visual) {
+                if (visual)
+                    CloseThemeData(visual);
+                if (hdc)
+                    windows::release_gpx_dc(_g, hdc);
+                return draw_disclosure_fallback(r, disclosure, s);
+            }
+            apply_clip(hdc, _g);
+            RECT bounds = windows::to_rect(r);
+            DrawThemeBackground(
+                visual,
+                hdc,
+                TVP_GLYPH,
+                disclosure == native::disclosure_state::expanded
+                    ? GLPS_OPENED
+                    : GLPS_CLOSED,
+                &bounds,
+                nullptr);
+            SelectClipRgn(hdc, nullptr);
+            CloseThemeData(visual);
+            windows::release_gpx_dc(_g, hdc);
+            (void)s;
+            return *this;
+        }
+
+        theme &draw_sort_indicator(
+            const native::rect &r,
+            native::sort_indicator_state direction,
+            const state &s) override {
+            HWND hwnd = windows::hwnd_from_gpx(_g);
+            if (!hwnd)
+                return draw_sort_indicator_fallback(r, direction, s);
+            HDC hdc = windows::acquire_gpx_dc(_g);
+            HTHEME visual = OpenThemeData(hwnd, L"Header");
+            if (!hdc || !visual) {
+                if (visual)
+                    CloseThemeData(visual);
+                if (hdc)
+                    windows::release_gpx_dc(_g, hdc);
+                return draw_sort_indicator_fallback(r, direction, s);
+            }
+            apply_clip(hdc, _g);
+            RECT bounds = windows::to_rect(r);
+            DrawThemeBackground(
+                visual,
+                hdc,
+                HP_HEADERSORTARROW,
+                direction == native::sort_indicator_state::ascending
+                    ? HSAS_SORTEDUP
+                    : HSAS_SORTEDDOWN,
+                &bounds,
+                nullptr);
+            SelectClipRgn(hdc, nullptr);
+            CloseThemeData(visual);
+            windows::release_gpx_dc(_g, hdc);
+            (void)s;
+            return *this;
+        }
+
+        theme &draw_caption_button(
+            const native::rect &r,
+            native::caption_button_kind kind,
+            const state &s) override {
+            if (kind != native::caption_button_kind::close)
+                return native::theme::draw_caption_button(r, kind, s);
+            HWND hwnd = windows::hwnd_from_gpx(_g);
+            if (!hwnd)
+                return native::theme::draw_caption_button(r, kind, s);
+            HDC hdc = windows::acquire_gpx_dc(_g);
+            if (!hdc)
+                return *this;
+            apply_clip(hdc, _g);
+            RECT bounds = windows::to_rect(r);
+            UINT flags = DFCS_CAPTIONCLOSE;
+            if (s.pressed)
+                flags |= DFCS_PUSHED;
+            if (s.hot)
+                flags |= DFCS_HOT;
+            if (s.disabled)
+                flags |= DFCS_INACTIVE;
+            DrawFrameControl(hdc, &bounds, DFC_CAPTION, flags);
+            SelectClipRgn(hdc, nullptr);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 
@@ -378,11 +475,13 @@ namespace
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (!hwnd)
                 return draw_selection_fallback(r, text, s, radio);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
 
             apply_clip(hdc, _g);
+            RECT background = windows::to_rect(r);
+            FillRect(hdc, &background, GetSysColorBrush(COLOR_BTNFACE));
             const native::rect indicator = indicator_bounds(r);
             RECT mark = windows::to_rect(indicator);
             UINT flags = radio ? DFCS_BUTTONRADIO : DFCS_BUTTONCHECK;
@@ -411,7 +510,7 @@ namespace
                       DT_LEFT | DT_VCENTER | DT_SINGLELINE |
                           DT_END_ELLIPSIS);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 
@@ -544,7 +643,7 @@ namespace
             const bool active = s.hot || s.selected;
             if (!hwnd)
                 return draw_menu_entry_fallback(r, text, s, title);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
             apply_clip(hdc, _g);
@@ -569,7 +668,7 @@ namespace
                       DT_LEFT | DT_VCENTER | DT_SINGLELINE |
                           DT_END_ELLIPSIS);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             (void)title;
             return *this;
         }
@@ -608,7 +707,7 @@ namespace
             HWND hwnd = windows::hwnd_from_gpx(_g);
             if (!hwnd)
                 return draw_list_entry_fallback(r, text, s);
-            HDC hdc = GetDC(hwnd);
+            HDC hdc = windows::acquire_gpx_dc(_g);
             if (!hdc)
                 return *this;
             apply_clip(hdc, _g);
@@ -634,7 +733,7 @@ namespace
                       DT_LEFT | DT_VCENTER | DT_SINGLELINE |
                           DT_END_ELLIPSIS);
             SelectClipRgn(hdc, nullptr);
-            ReleaseDC(hwnd, hdc);
+            windows::release_gpx_dc(_g, hdc);
             return *this;
         }
 

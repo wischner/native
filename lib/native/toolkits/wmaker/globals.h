@@ -49,12 +49,16 @@ namespace linux::wmaker
         bool owned = false;
     };
 
-    // Routes one native popup selection to a portable menu command.
+    struct native_menu;
+
+    // Routes one persistent menu-bar title to its popup model.
     struct menu_callback
     {
-        native::app_wnd *owner = nullptr;
-        WMPopUpButton *popup = nullptr;
-        std::vector<int> item_ids;
+        native_menu *menu = nullptr;
+        WMFrame *title_widget = nullptr;
+        std::size_t top_index = 0;
+        WMFont *font = nullptr;
+        bool hot = false;
     };
 
     // Owns a row of WINGs pull-down buttons.
@@ -67,8 +71,19 @@ namespace linux::wmaker
         // paints that row, so without this the window background
         // shows through beside them.
         WMFrame *background = nullptr;
-        std::vector<WMPopUpButton *> popups;
+        // One native dark rule separating the menu strip from client content.
+        WMFrame *separator = nullptr;
+        std::vector<WMFrame *> titles;
         std::vector<menu_callback *> callbacks;
+        std::vector<native::main_menu::top_entry> tops;
+        Window popup = None;
+        int open_top = -1;
+        int hot_item = -1;
+        int popup_width = 0;
+        int popup_height = 0;
+        int popup_x = 0;
+        int popup_y = 0;
+        int item_height = 0;
     };
 
     // Owns a WINGs single-line or multiline text widget adapter.
@@ -80,10 +95,22 @@ namespace linux::wmaker
         WMTextFieldDelegate delegate = {};
         bool suppress = false;
     };
+    struct native_combo_box
+    {
+        WMFrame *frame = nullptr;
+        WMPopUpButton *popup = nullptr;
+        WMTextField *field = nullptr;
+        WMTextFieldDelegate delegate = {};
+        bool suppress = false;
+    };
 
     struct native_collection
     {
         WMFrame *frame = nullptr;
+        WMScroller *vertical_scroller = nullptr;
+        WMScroller *horizontal_scroller = nullptr;
+        bool vertical_visible = false;
+        bool horizontal_visible = false;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =
@@ -96,6 +123,8 @@ namespace linux::wmaker
     extern bool exit_requested;
     extern Display *display;
     extern WMScreen *screen;
+    extern WMColor *list_selection_background;
+    extern WMColor *list_selection_text;
 
     extern native::bindings<WMWidget *, native::wnd *> wnd_bindings;
     extern native::bindings<native::app_wnd *, window_state *>
@@ -108,6 +137,8 @@ namespace linux::wmaker
         menu_bindings;
     extern native::bindings<native::text_edit *, native_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::combo_box *, native_combo_box *>
+        combo_box_bindings;
     extern native::bindings<native::accordion *, native_collection *>
         accordion_bindings;
     extern native::bindings<native::icon_view *, native_collection *>
@@ -150,4 +181,11 @@ namespace linux::wmaker
 
     // Drain callbacks queued by WINGs actions and event handlers.
     void dispatch_deferred();
+
+    // Consume raw events belonging to the persistent application menu or
+    // its keyboard mnemonics/accelerators before WINGs dispatch.
+    bool handle_menu_event(XEvent &event);
+
+    // Remember the focused top level for application-menu shortcuts.
+    void activate_menu_owner(native::app_wnd *owner);
 } // namespace linux::wmaker

@@ -290,6 +290,23 @@ namespace
         expect(sorts == 1 && view.get_sort()->direction ==
                                  native::sort_direction::descending,
                "native sort requests toggle direction and emit once");
+
+        expect(!view.get_row_height(),
+               "table rows use the native theme height by default");
+        view.set_row_height(28);
+        expect(view.get_row_height() == 28,
+               "table row height is explicitly configurable");
+        view.set_row_height(std::nullopt);
+        expect(!view.get_row_height(),
+               "clearing table row height restores the native default");
+        bool rejected_height = false;
+        try {
+            view.set_row_height(0);
+        } catch (const std::invalid_argument &) {
+            rejected_height = true;
+        }
+        expect(rejected_height,
+               "table row height rejects a zero-sized selection row");
     }
 } // namespace
 

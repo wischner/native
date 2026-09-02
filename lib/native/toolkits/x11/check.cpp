@@ -91,7 +91,7 @@ namespace native
         XtAddCallback(widget, XtNcallback, check_changed, self);
         linux::x11::wnd_bindings.register_pair(widget, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void check::show() const {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(

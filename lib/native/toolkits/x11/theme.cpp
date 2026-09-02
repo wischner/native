@@ -132,6 +132,7 @@ namespace
             result.check_height = row_height + 4;
             result.radio_height = row_height + 4;
             result.list_item_height = row_height;
+            result.table_row_height = result.list_item_height;
             result.header_height = row_height + 4;
             return result;
         }

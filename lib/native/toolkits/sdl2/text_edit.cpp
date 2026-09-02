@@ -409,7 +409,7 @@ namespace native
         linux::sdl2::text_edit_bindings.register_pair(self, binding);
         linux::sdl2::text_edits.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {

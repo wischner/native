@@ -25,7 +25,19 @@ namespace linux::sdl2
     }
 
     static const int menu_item_height = 20;
+    static const int menu_separator_height = 9;
     static const int popup_width = 180;
+
+    static int row_height(const native::main_menu::menu_entry &item) {
+        return item.separator ? menu_separator_height : menu_item_height;
+    }
+
+    static int popup_height(const sdl2_menu::top_entry &top) {
+        int height = 2;
+        for (const auto &item : top.items)
+            height += row_height(item);
+        return height;
+    }
 
     static int hit_top_index(sdl2_menu *m, int x) {
         if (!m)
@@ -46,17 +58,21 @@ namespace linux::sdl2
             return -1;
 
         const auto &top = m->tops[m->open_idx];
-        const int popup_h =
-            static_cast<int>(top.items.size()) * menu_item_height + 2;
+        const int popup_h = popup_height(top);
 
         if (!(x >= m->popup_x && x < m->popup_x + popup_width &&
               y >= m->popup_y && y < m->popup_y + popup_h))
             return -1;
 
-        const int idx = (y - (m->popup_y + 1)) / menu_item_height;
-        if (idx < 0 || idx >= static_cast<int>(top.items.size()))
-            return -1;
-        return idx;
+        int row_y = m->popup_y+1;
+        for (std::size_t index = 0; index < top.items.size(); ++index) {
+            const int height = row_height(top.items[index]);
+            if (y >= row_y && y < row_y+height)
+                return top.items[index].separator
+                    ? -1 : static_cast<int>(index);
+            row_y += height;
+        }
+        return -1;
     }
 
     // Public render_menu — called from app.cpp render loop
@@ -94,28 +110,39 @@ namespace linux::sdl2
         if (m->open_idx >= 0 &&
             m->open_idx < static_cast<int>(m->tops.size())) {
             auto &top = m->tops[m->open_idx];
-            int popup_h =
-                static_cast<int>(top.items.size()) * menu_item_height +
-                2;
+            const int popup_h = popup_height(top);
             painter->draw_popup_frame(
                 native::rect(m->popup_x,
                              m->popup_y,
                              static_cast<native::dim>(popup_width),
                              static_cast<native::dim>(popup_h)));
 
-            for (int i = 0; i < static_cast<int>(top.items.size());
-                 ++i) {
+            int row_y = m->popup_y+1;
+            for (int i = 0; i < static_cast<int>(top.items.size()); ++i) {
+                const auto &item = top.items[static_cast<std::size_t>(i)];
+                const int height = row_height(item);
+                if (item.separator) {
+                    painter->draw_separator(
+                        native::rect(m->popup_x+6,
+                                     static_cast<native::coord>(row_y+height/2),
+                                     static_cast<native::dim>(popup_width-12),
+                                     2),
+                        native::separator_orientation::horizontal);
+                    row_y += height;
+                    continue;
+                }
                 native::theme::state st;
                 st.selected = (m->hover_item == i);
                 st.hot = (m->hover_item == i);
                 painter->draw_menu_item(
                     native::rect(
                         m->popup_x + 1,
-                        m->popup_y + 1 + i * menu_item_height,
+                        row_y,
                         static_cast<native::dim>(popup_width - 2),
-                        static_cast<native::dim>(menu_item_height)),
-                    top.items[i].second,
+                        static_cast<native::dim>(height)),
+                    item.label,
                     st);
+                row_y += height;
             }
         }
     }
@@ -183,11 +210,11 @@ namespace linux::sdl2
             const int item_idx = hit_popup_item_index(m, x, y);
             if (item_idx >= 0 &&
                 item_idx < static_cast<int>(top.items.size())) {
-                int item_id = top.items[item_idx].first;
+                int item_id = top.items[item_idx].id;
                 m->open_idx = -1;
                 m->hover_item = -1;
                 if (m->owner)
-                    m->owner->on_menu.emit(item_id);
+                    m->owner->on_native_menu(item_id);
                 return true;
             }
 
@@ -241,7 +268,7 @@ namespace native
             te.x1 = x + linux::sdl2::text_width_est(top.title);
             x = te.x1;
             for (const auto &item : top.items)
-                te.items.push_back({item.id, item.label});
+                te.items.push_back(item);
             sm->tops.push_back(std::move(te));
         }
 

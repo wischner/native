@@ -9,10 +9,16 @@
 
 #include <string>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     class radio : public wnd
     {
     public:
@@ -49,7 +55,7 @@ namespace native
 
         // Select this control after a native user action and notify
         // changes.
-        void on_native_selected();
+        virtual void on_native_selected();
 
         // Create the backend radio resource.
         void create() const override;
@@ -63,12 +69,30 @@ namespace native
         // Emits selection changes caused by a user action in the group.
         signal<bool> on_change;
 
+    protected:
+        // Draw the complete radio using the active native theme.
+        virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Apply the cached label to a created native control.
+        virtual void apply_text();
+
+        // Apply the cached selected state to a native control.
+        virtual void apply_selected();
+
+        // Select this radio and update its sibling group.
+        virtual void select_exclusive(bool notify);
+
+        // Notify one user-originated group state transition.
+        virtual void selection_changed(bool selected);
+
     private:
+        friend class detail::control_render_access;
+
         std::string _text;
         bool _selected = false;
-
-        void apply_text();
-        void apply_selected();
-        void select_exclusive(bool notify);
     };
 } // namespace native

@@ -10,6 +10,8 @@
 #include <X11/Xutil.h>
 #include <WINGs/WINGs.h>
 
+#include <algorithm>
+
 #include <native/graphics.h>
 
 #include "../../gpx_img.h"
@@ -123,8 +125,45 @@ namespace native
                     const bool changed = converted.r != old.r ||
                                          converted.g != old.g ||
                                          converted.b != old.b;
-                    converted.a = changed ? _ink.a : old.a;
-                    old = converted;
+                    if (!changed)
+                        continue;
+
+                    if (old.a == 0) {
+                        // X/WINGs draws into an opaque pixmap. Recover the
+                        // glyph coverage from the color interpolation rather
+                        // than making every antialiased fringe pixel opaque;
+                        // rotated native text otherwise gains a bright halo
+                        // and becomes illegible on docking edge tabs.
+                        const auto coverage = [](std::uint8_t paper,
+                                                 std::uint8_t ink,
+                                                 std::uint8_t result) {
+                            const int span = static_cast<int>(ink) - paper;
+                            if (span == 0)
+                                return 0;
+                            const int delta =
+                                static_cast<int>(result) - paper;
+                            return std::clamp(
+                                (delta * 255 + span / 2) / span,
+                                0,
+                                255);
+                        };
+                        int alpha = 0;
+                        alpha = std::max(
+                            alpha, coverage(old.r, _ink.r, converted.r));
+                        alpha = std::max(
+                            alpha, coverage(old.g, _ink.g, converted.g));
+                        alpha = std::max(
+                            alpha, coverage(old.b, _ink.b, converted.b));
+                        old = rgba(
+                            _ink.r,
+                            _ink.g,
+                            _ink.b,
+                            static_cast<std::uint8_t>(
+                                (alpha * _ink.a + 127) / 255));
+                    } else {
+                        converted.a = old.a;
+                        old = converted;
+                    }
                 }
             }
             XDestroyImage(result);

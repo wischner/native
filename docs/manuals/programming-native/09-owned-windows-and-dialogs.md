@@ -93,10 +93,10 @@ the last one restores the owner and its modeless windows.
 
 ## Standard file dialogs
 
-`open_file_dialog` and `save_file_dialog` apply the modal-window contract to
-the standard chooser supplied by each platform or toolkit. They are logical
-windows: they have an owner, lifecycle, result, and completion signal, but no
-paintable client rectangle.
+`open_file_dialog`, `save_file_dialog`, and `directory_dialog` apply the
+modal-window contract to the standard chooser supplied by each platform or
+toolkit. They are logical windows: they have an owner, lifecycle, result, and
+completion signal, but no paintable client rectangle.
 
 Keep a chooser as a member rather than a local variable. Some backends finish
 from a later native event, while others finish before `show()` returns.
@@ -247,5 +247,10 @@ The WINGs chooser is the toolkit's standard owner-modal browser panel. It
 navigates directories and edits the selected leaf using native WINGs widgets.
 WINGs 0.96 returns one path, so a multiple-selection request degrades to a
 single accepted path.
+
+`directory_dialog` uses the corresponding folder-selection mode of each
+standard chooser. Its `set_allow_multiple()` request is preserved where the
+native panel supports it and conservatively returns one folder on older
+single-path selectors.
 
 Next: [Graphics, images, fonts, and themes](10-graphics-images-fonts-themes.md).

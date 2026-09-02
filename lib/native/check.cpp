@@ -9,6 +9,7 @@
 
 #include <native.h>
 #include <native/check.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -62,5 +63,15 @@ namespace native
             return;
         _checked = checked;
         on_change.emit(_checked);
+    }
+
+    void check::draw_control(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        theme::state effective = state;
+        effective.selected = _checked;
+        appearance.draw_check(bounds, _text, effective);
     }
 } // namespace native

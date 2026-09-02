@@ -8,6 +8,15 @@ window is created so the backend can attach it during window creation.
 The stream-style interface alternates a top-level title with a
 `menu_items()` group. A string creates an automatically numbered item. A
 `std::pair<int, std::string>` assigns an explicit command identifier.
+Insert `native::menu_separator` between related command groups. Separators
+have no command identifier and cannot emit `on_menu`.
+
+Place `&` before a character to select its keyboard mnemonic and write `&&`
+for a literal ampersand. Append a tab and an accelerator name such as
+`\tCtrl+O` when an item has a keyboard shortcut. The model removes that
+markup from the visible label and gives each backend the mnemonic position
+and shortcut separately. A label without an explicit `&` uses its first
+character as a compatibility mnemonic.
 
 The `on_menu` signal emits the identifier selected by the user. Commands that
 matter to application logic should use explicit IDs.
@@ -32,20 +41,21 @@ public:
     menu_window()
         : native::app_wnd(
               "Menu Example", 100, 100, 640, 480) {
-        menu << "File"
-             << (native::menu_items("New")
+        menu << "&File"
+             << (native::menu_items("&New")
                      << std::make_pair(
-                            1, std::string("Open..."))
+                            1, std::string("&Open...\tCtrl+O"))
                      << std::make_pair(
-                            2, std::string("Save"))
+                            2, std::string("&Save\tCtrl+S"))
+                     << native::menu_separator
                      << std::make_pair(
-                            99, std::string("Exit")))
-             << "Edit"
-             << (native::menu_items("Cut")
-                     << std::string("Copy")
-                     << std::string("Paste"))
-             << "Help"
-             << (native::menu_items("About...")
+                            99, std::string("E&xit\tAlt+F4")))
+             << "&Edit"
+             << (native::menu_items("Cu&t\tCtrl+X")
+                     << std::string("&Copy\tCtrl+C")
+                     << std::string("&Paste\tCtrl+V"))
+             << "&Help"
+             << (native::menu_items("&About...")
                      << std::make_pair(
                             100, std::string("License")));
 
@@ -99,7 +109,12 @@ objects described in Chapter 9.
 
 The OPEN LOOK backend materializes this model as XView Panel menu buttons and
 OpenMenu command menus, so menu interaction remains inside the XView notifier.
-The Window Maker backend uses WINGs pull-down `WMPopUpButton` widgets and
-delivers their command identifiers after the WINGs dispatcher returns.
+The Window Maker backend uses a click-persistent, context-menu-style popup:
+one click opens it and it remains visible until a command, another menu, or an
+outside click is chosen. It sizes to its labels, underlines mnemonics,
+right-aligns accelerator names, and supports Alt plus a top-level mnemonic,
+arrow navigation, item mnemonics, and registered accelerators. This matches
+Window Maker application menus rather than the press-drag selection behavior
+of a WINGs `WMPopUpButton`.
 
 Next: [Buttons and control lifecycle](04-buttons.md).

@@ -16,6 +16,8 @@
 #include <native/modal_wnd.h>
 #include <native/screen.h>
 
+#include <WINGs/WINGsP.h>
+
 namespace linux::wmaker
 {
     namespace
@@ -27,6 +29,8 @@ namespace linux::wmaker
     bool exit_requested = false;
     Display *display = nullptr;
     WMScreen *screen = nullptr;
+    WMColor *list_selection_background = nullptr;
+    WMColor *list_selection_text = nullptr;
 
     native::bindings<WMWidget *, native::wnd *> wnd_bindings;
     native::bindings<native::app_wnd *, window_state *>
@@ -37,6 +41,8 @@ namespace linux::wmaker
     native::bindings<std::uint32_t, native_menu *> menu_bindings;
     native::bindings<native::text_edit *, native_text_edit *>
         text_edit_bindings;
+    native::bindings<native::combo_box *, native_combo_box *>
+        combo_box_bindings;
     native::bindings<native::accordion *, native_collection *>
         accordion_bindings;
     native::bindings<native::icon_view *, native_collection *>
@@ -72,6 +78,24 @@ namespace linux::wmaker
             throw std::runtime_error(
                 "Window Maker/WINGs: unable to create a screen.");
         }
+        // Match the desktop's inactive-title/window gray. WINGs otherwise
+        // uses a historical slightly purple gray that visibly disagrees
+        // with the Window Maker session's native applications.
+        auto *private_screen = reinterpret_cast<W_Screen *>(screen);
+        WMColor *panel_gray = WMCreateRGBColor(
+            screen, 0xaaaa, 0xaaaa, 0xaaaa, False);
+        if (panel_gray) {
+            WMReleaseColor(private_screen->gray);
+            private_screen->gray = panel_gray;
+        }
+        // WINGs paints selected WMList rows white by default. Keep the
+        // native list widget and its input/scroller behavior, but expose the
+        // same selection colors used by the Window Maker collection and
+        // table adapters to its supported user-draw callback.
+        list_selection_background = WMCreateRGBColor(
+            screen, 0x5555, 0x5555, 0x5555, False);
+        list_selection_text = WMCreateRGBColor(
+            screen, 0xd7d7, 0xd7d7, 0xd7d7, False);
         initialized = true;
     }
 

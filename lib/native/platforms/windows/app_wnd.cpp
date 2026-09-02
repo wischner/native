@@ -102,7 +102,7 @@ namespace native
         _created = true;
         const_cast<app_wnd *>(this)->menu.attach(
             *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_wnd_create.emit();
+        const_cast<app_wnd *>(this)->on_native_create();
     }
 
     void app_wnd::show() const {

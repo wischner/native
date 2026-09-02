@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <native.h>
+#include <native/non_client.h>
 #include <native/wnd.h>
 
 namespace
@@ -45,7 +46,8 @@ namespace native
     wnd::wnd(coord x, coord y, dim width, dim height)
         : _created(false)
         , _bounds(x, y, width, height)
-        , _parent(nullptr) {}
+        , _parent(nullptr)
+        , _mouse_screen_position(x, y) {}
 
     wnd::wnd(const point &position, const size &dimensions)
         : wnd(position.x, position.y, dimensions.w, dimensions.h) {}
@@ -54,6 +56,12 @@ namespace native
         : wnd(bounds.p, bounds.d) {}
 
     wnd::~wnd() {
+        for (non_client *element : _non_client) {
+            if (element && element->_owner == this)
+                element->_owner = nullptr;
+        }
+        _non_client.clear();
+
         if (_parent) {
             wnd *old_parent = _parent;
             _parent = nullptr;
@@ -112,6 +120,41 @@ namespace native
 
     rect wnd::get_bounds() const {
         return _bounds;
+    }
+
+    rect wnd::get_client_bounds() const {
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+
+        for (const non_client *element : _non_client) {
+            if (!element || !element->_visible)
+                continue;
+            switch (element->_edge) {
+            case window_edge::top:
+                top += element->_extent;
+                break;
+            case window_edge::right:
+                right += element->_extent;
+                break;
+            case window_edge::bottom:
+                bottom += element->_extent;
+                break;
+            case window_edge::left:
+                left += element->_extent;
+                break;
+            }
+        }
+
+        const int width = std::max(0,
+            static_cast<int>(_bounds.d.w) - left - right);
+        const int height = std::max(0,
+            static_cast<int>(_bounds.d.h) - top - bottom);
+        return rect(static_cast<coord>(left),
+                    static_cast<coord>(top),
+                    static_cast<dim>(width),
+                    static_cast<dim>(height));
     }
 
     wnd &wnd::set_bounds(const rect &bounds) {
@@ -198,8 +241,13 @@ namespace native
         return !window || window->get_input_enabled();
     }
 
+    void wnd::on_native_create() {
+        on_wnd_create.emit();
+    }
+
     void wnd::on_native_move(const point &position) {
         _bounds.p = position;
+        on_wnd_move.emit(position);
     }
 
     void wnd::on_native_destroy() {
@@ -213,12 +261,65 @@ namespace native
     }
 
     void wnd::on_native_resize(const size &dimensions) {
-        if (_bounds.d.w == dimensions.w && _bounds.d.h == dimensions.h)
-            return;
+        if (_bounds.d.w != dimensions.w ||
+            _bounds.d.h != dimensions.h) {
+            _bounds.d = dimensions;
+            relayout_children();
+            on_bounds_changed();
+        }
+        on_wnd_resize.emit(dimensions);
+    }
 
-        _bounds.d = dimensions;
-        relayout_children();
-        on_bounds_changed();
+    void wnd::on_native_paint(wnd_paint_event event) {
+        on_wnd_paint.emit(event);
+
+        if (!_non_client.empty()) {
+            for (non_client *element : _non_client) {
+                if (element && element->_visible)
+                    element->draw(event.g, non_client_bounds(element));
+            }
+        }
+    }
+
+    void wnd::on_native_mouse_move(const point &position) {
+        if (!_mouse_screen_position_exact) {
+            point screen_position = position;
+            const wnd *current = this;
+            while (current) {
+                screen_position.x = static_cast<coord>(
+                    screen_position.x + current->get_position().x);
+                screen_position.y = static_cast<coord>(
+                    screen_position.y + current->get_position().y);
+                current = current->get_parent();
+            }
+            _mouse_screen_position = screen_position;
+        }
+        _mouse_screen_position_exact = false;
+        on_mouse_move.emit(position);
+        for (non_client *element : _non_client) {
+            if (element && element->_visible)
+                element->track_pointer(position);
+        }
+    }
+
+    void wnd::on_native_mouse_move(
+        const point &position,
+        const point &screen_position) {
+        _mouse_screen_position = screen_position;
+        _mouse_screen_position_exact = true;
+        on_native_mouse_move(position);
+    }
+
+    point wnd::get_mouse_screen_position() const {
+        return _mouse_screen_position;
+    }
+
+    void wnd::on_native_mouse_click(mouse_event event) {
+        on_mouse_click.emit(event);
+    }
+
+    void wnd::on_native_mouse_wheel(mouse_wheel_event event) {
+        on_mouse_wheel.emit(event);
     }
 
     wnd &wnd::set_layout(std::unique_ptr<layout_manager> layout) {
@@ -240,7 +341,79 @@ namespace native
             return;
 
         const scoped_flag pass(_layout_suspended);
-        _layout->relayout(this, rect({0, 0}, _bounds.d));
+        _layout->relayout(this, get_client_bounds());
+    }
+
+    void wnd::attach_non_client(non_client *element) {
+        if (!element || std::find(_non_client.begin(),
+                                  _non_client.end(), element) !=
+                            _non_client.end())
+            return;
+        _non_client.push_back(element);
+        relayout_children();
+        invalidate();
+    }
+
+    void wnd::detach_non_client(non_client *element) {
+        const auto found = std::find(_non_client.begin(),
+                                     _non_client.end(), element);
+        if (found == _non_client.end())
+            return;
+        _non_client.erase(found);
+        relayout_children();
+        invalidate();
+    }
+
+    rect wnd::non_client_bounds(const non_client *target) const {
+        int left_total = 0;
+        int top_total = 0;
+        int right_total = 0;
+        int bottom_total = 0;
+        for (const non_client *element : _non_client) {
+            if (!element || !element->_visible)
+                continue;
+            switch (element->_edge) {
+            case window_edge::top: top_total += element->_extent; break;
+            case window_edge::right: right_total += element->_extent; break;
+            case window_edge::bottom: bottom_total += element->_extent; break;
+            case window_edge::left: left_total += element->_extent; break;
+            }
+        }
+
+        int before = 0;
+        for (const non_client *element : _non_client) {
+            if (element == target)
+                break;
+            if (element && element->_visible &&
+                element->_edge == target->_edge)
+                before += element->_extent;
+        }
+
+        const int width = static_cast<int>(_bounds.d.w);
+        const int height = static_cast<int>(_bounds.d.h);
+        switch (target->_edge) {
+        case window_edge::top:
+            return rect(static_cast<coord>(left_total),
+                        static_cast<coord>(before),
+                        static_cast<dim>(std::max(0, width-left_total-right_total)),
+                        static_cast<dim>(target->_extent));
+        case window_edge::right:
+            return rect(static_cast<coord>(width-before-target->_extent),
+                        static_cast<coord>(top_total),
+                        static_cast<dim>(target->_extent),
+                        static_cast<dim>(std::max(0, height-top_total-bottom_total)));
+        case window_edge::bottom:
+            return rect(static_cast<coord>(left_total),
+                        static_cast<coord>(height-before-target->_extent),
+                        static_cast<dim>(std::max(0, width-left_total-right_total)),
+                        static_cast<dim>(target->_extent));
+        case window_edge::left:
+            return rect(static_cast<coord>(before),
+                        static_cast<coord>(top_total),
+                        static_cast<dim>(target->_extent),
+                        static_cast<dim>(std::max(0, height-top_total-bottom_total)));
+        }
+        return {};
     }
 
     void wnd::on_bounds_changed() {}

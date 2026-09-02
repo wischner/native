@@ -13,11 +13,41 @@ The theme API describes what is being drawn rather than how one toolkit draws
 it. Its primitives include complete buttons, checks, radios, lists, menu bars
 and menu items, popup frames, and list items. Reusable advanced parts cover
 surfaces, selections, focus, disclosures, separators, and scrollbars. The
+facade also provides compact caption buttons and docking-guide targets. The
 backend decides how each primitive is decomposed for its native painter.
 
 Theme primitives paint only. Live controls, including `accordion` and
 `icon_view`, and `tree_view`, remain `wnd` subclasses and use native widgets
 when available.
+
+Every public control is inheritable. Its protected virtual painting stages are
+the owner-draw contract: simple controls expose a complete control stage, while
+collections split rows, cells, images, text, borders, disclosures, focus, and
+scrollbars into separate stages. The default pixels are drawn inside the base
+virtual method. A derived implementation can therefore replace a part, or add
+to it by calling base:
+
+```cpp
+void result_table::draw_cell_content(
+    native::gpx &graphics,
+    native::theme &appearance,
+    native::table_row_id row,
+    std::size_t model_row,
+    const native::table_column &column,
+    const native::table_cell &cell,
+    const native::rect &bounds,
+    const native::theme::state &state) {
+    native::table_view::draw_cell_content(
+        graphics, appearance, row, model_row,
+        column, cell, bounds, state);
+    // Draw an application-specific decoration after native content.
+}
+```
+
+Renderers invoke these stages directly; they do not draw a default and then
+call an owner hook. Native backends enter them through the platform's normal
+custom-draw, cell/view, expose, or repaint facility, keeping native input and
+metrics while allowing the same derived C++ class on every backend.
 
 Interaction is also expressed semantically:
 
@@ -91,9 +121,9 @@ draw the primitive. Every backend must provide a usable result.
 ## Palette and metrics
 
 The facade exposes backend-selected control metrics and a native palette.
-These values provide menu and header heights, disclosure and icon-grid
-spacing, scrollbar dimensions, padding, popup dimensions, and state-sensitive
-colors to portable rendering code.
+These values provide menu and header heights, disclosure, icon-grid and
+docking-guide spacing, scrollbar dimensions, padding, popup dimensions, and
+state-sensitive colors to portable rendering code.
 
 Defaults are only a fallback. A backend should obtain colors, fonts, spacing,
 and dimensions from its toolkit whenever possible. Hard-coded values copied

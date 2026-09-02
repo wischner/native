@@ -72,7 +72,7 @@ namespace native
         SendMessageW(
             h, LB_SETCURSEL, static_cast<WPARAM>(_selected_index), 0);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         HWND h = windows::wnd_bindings.handle_from_object(

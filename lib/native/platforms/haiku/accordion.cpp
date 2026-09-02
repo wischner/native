@@ -30,7 +30,7 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void accordion::show() const {

@@ -105,7 +105,7 @@ namespace native
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void radio::show() const {

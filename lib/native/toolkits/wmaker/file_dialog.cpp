@@ -62,7 +62,9 @@ namespace
 
 namespace linux::wmaker
 {
-    void show_file_dialog(native::file_dialog &dialog, bool save) {
+    void show_file_dialog(native::file_dialog &dialog,
+                          bool save,
+                          bool directory) {
         native::app_wnd *owner = dialog.get_owner();
         window_state *owner_state = owner ? state(owner) : nullptr;
         if (!owner_state || !owner_state->window) {
@@ -83,8 +85,8 @@ namespace linux::wmaker
             reinterpret_cast<file_panel_prefix *>(panel);
         WMSetWindowTitle(panel_prefix->window,
                          dialog.get_title().c_str());
-        WMSetFilePanelCanChooseFiles(panel, True);
-        WMSetFilePanelCanChooseDirectories(panel, False);
+        WMSetFilePanelCanChooseFiles(panel, directory ? False : True);
+        WMSetFilePanelCanChooseDirectories(panel, directory ? True : False);
         WMSetFilePanelAutoCompletion(panel, True);
         const std::string path = initial_path(dialog, save);
         const int accepted = WMRunModalFilePanelForDirectory(

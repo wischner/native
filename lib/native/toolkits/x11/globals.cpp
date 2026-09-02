@@ -28,6 +28,8 @@ namespace linux::x11
     native::bindings<uint32_t, xaw_menu *> menu_bindings;
     native::bindings<native::button *, xaw_button *> button_bindings;
     native::bindings<native::list *, xaw_list *> list_bindings;
+    native::bindings<native::combo_box *, xaw_combo_box *>
+        combo_box_bindings;
     native::bindings<native::accordion *, xaw_collection *>
         accordion_bindings;
     native::bindings<native::icon_view *, xaw_collection *>

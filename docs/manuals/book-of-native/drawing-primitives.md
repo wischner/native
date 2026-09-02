@@ -357,16 +357,19 @@ Overloads without a state argument draw the default state.
 | `draw_radio(bounds, text, state)` | A complete radio; `state.selected` is chosen |
 | `draw_list(bounds, items, selected_index, state)` | A framed single-selection list |
 | `draw_text_edit_frame(bounds, state)` | An empty text-edit frame; `state.selected` is focused |
-| `draw_surface(bounds, kind, state)` | A panel, content, inset, popup, or header surface |
+| `draw_surface(bounds, kind, state)` | A panel, content, inset, popup, header, or table-header surface |
 | `draw_selection(bounds, shape, state)` | A row or tile selection background |
 | `draw_focus(bounds, state)` | A keyboard-focus indicator |
 | `draw_disclosure(bounds, disclosure, state)` | A collapsed or expanded indicator |
+| `draw_sort_indicator(bounds, direction, state)` | A native table sort indicator |
+| `draw_caption_button(bounds, kind, state)` | A compact close, pin, or unpin button |
+| `draw_dock_guide(bounds, kind, state)` | One native-themed docking-compass target |
 | `draw_separator(bounds, orientation)` | A native-looking separator |
 | `draw_scrollbar_part(bounds, orientation, part, state)` | A track, thumb, or step part |
 
 The caller supplies the rectangles. `defaults()` returns backend-selected
-values for menu, header, disclosure, icon-grid, focus, separator, and
-scrollbar geometry as well as established control dimensions.
+values for menu, header, disclosure, icon-grid, docking-guide, focus,
+separator, and scrollbar geometry as well as established control dimensions.
 `native_palette()` exposes backend-selected colors for a portable composition,
 but semantic drawing operations should be preferred when one already exists.
 

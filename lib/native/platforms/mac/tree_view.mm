@@ -15,6 +15,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -110,6 +111,72 @@ namespace
 }
 @end
 
+@interface native_tree_cell_view : NSView {
+@public
+    void *_owner;
+    native::tree_item_id _item;
+}
+@end
+
+@implementation native_tree_cell_view
+- (BOOL)isFlipped { return YES; }
+
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::tree_view *>(_owner);
+    if (!owner || !owner->get_created() ||
+        _item == native::invalid_tree_item_id) {
+        [super drawRect:dirty];
+        return;
+    }
+    std::size_t visible_index = 0;
+    for (; visible_index < owner->get_visible_item_count();
+         ++visible_index) {
+        if (owner->get_visible_item(visible_index).id == _item)
+            break;
+    }
+    if (visible_index >= owner->get_visible_item_count())
+        return;
+    const native::tree_view_visible_item visible =
+        owner->get_visible_item(visible_index);
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const native::theme::metrics metrics = appearance->defaults();
+    const native::rect portable_row =
+        owner->get_row_bounds(visible_index);
+    const native::rect portable_disclosure =
+        owner->get_disclosure_bounds(visible_index);
+    const int native_indent =
+        portable_disclosure.x2() - portable_row.p.x +
+        metrics.header_gap;
+    native::rect bounds(
+        static_cast<native::coord>(-native_indent),
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(
+            0, [self bounds].size.width + native_indent)),
+        static_cast<native::dim>(std::max<CGFloat>(
+            0, [self bounds].size.height)));
+    graphics.set_clip(native::rect(
+        0,
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(
+            0, [self bounds].size.width)),
+        bounds.d.h));
+    native::theme::state state;
+    state.selected = owner->get_selected_item() == _item;
+    state.disabled = !owner->get_item(_item).enabled;
+    state.focused = [[self window] firstResponder] != nil;
+    native::detail::control_render_access::draw_tree_row(
+        *owner,
+        graphics,
+        *appearance,
+        visible_index,
+        owner->get_item(_item),
+        visible.depth,
+        bounds,
+        state);
+}
+@end
+
 @interface native_tree_adapter
     : NSObject <NSOutlineViewDataSource, NSOutlineViewDelegate> {
 @public
@@ -152,6 +219,28 @@ namespace
     const native::tree_item_id id = item_id(item);
     return owner && id != native::invalid_tree_item_id &&
            !owner->get_item(id).children.empty();
+}
+
+- (NSView *)outlineView:(NSOutlineView *)outline
+    viewForTableColumn:(NSTableColumn *)column
+                  item:(id)item {
+    (void)column;
+    auto *owner = static_cast<native::tree_view *>(_owner);
+    const native::tree_item_id id = item_id(item);
+    if (!owner || id == native::invalid_tree_item_id)
+        return nil;
+    NSString *identifier = @"native_tree_cell";
+    native_tree_cell_view *cell = [outline
+        makeViewWithIdentifier:identifier owner:self];
+    if (!cell) {
+        cell = [[[native_tree_cell_view alloc]
+            initWithFrame:NSMakeRect(0, 0, 180, 20)] autorelease];
+        [cell setIdentifier:identifier];
+    }
+    cell->_owner = owner;
+    cell->_item = id;
+    [cell setNeedsDisplay:YES];
+    return cell;
 }
 
 - (id)outlineView:(NSOutlineView *)outline
@@ -427,7 +516,7 @@ namespace native
                                   _row_height, _icon_size.h + 2)];
         self->apply_items();
         self->apply_selection();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void tree_view::show() const {

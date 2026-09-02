@@ -33,7 +33,7 @@ namespace native
         haiku::icon_view_bindings.register_pair(self, binding);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

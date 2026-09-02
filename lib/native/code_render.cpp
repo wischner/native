@@ -17,6 +17,7 @@
 #include <native/theme.h>
 
 #include "code_document.h"
+#include "control_render_access.h"
 #include "text_util.h"
 
 namespace
@@ -128,7 +129,9 @@ namespace
                    .width;
     }
 
-    void draw_text_segment(native::gpx &graphics,
+    void draw_text_segment(native::code_edit &editor,
+                           native::gpx &graphics,
+                           native::theme &painter,
                            const std::string &source,
                            std::size_t line_start,
                            std::size_t begin,
@@ -143,7 +146,8 @@ namespace
                            native::rgba selection_text) {
         const auto draw_piece = [&](std::size_t piece_begin,
                                     std::size_t piece_end,
-                                    native::rgba ink) {
+                                    native::rgba ink,
+                                    bool selected) {
             if (piece_begin >= piece_end)
                 return;
             const measured_text measured = measure_range(
@@ -162,45 +166,35 @@ namespace
                                           tab_width,
                                           graphics,
                                           text_x);
-            graphics.set_ink(ink).draw_text(
+            native::theme::state state;
+            state.selected = selected;
+            state.focused = editor.get_focused();
+            native::detail::control_render_access::draw_text_content(
+                editor,
+                graphics,
+                painter,
+                native::text_span{piece_begin, piece_end},
                 measured.display,
                 native::point(static_cast<native::coord>(x),
-                              static_cast<native::coord>(y + 1)));
-            if (bold) {
-                graphics.draw_text(
-                    measured.display,
-                    native::point(static_cast<native::coord>(x + 1),
-                                  static_cast<native::coord>(y + 1)));
-            }
+                              static_cast<native::coord>(y + 1)),
+                ink,
+                bold,
+                state);
         };
 
         if (selection.end <= begin || selection.start >= end) {
-            draw_piece(begin, end, foreground);
+            draw_piece(begin, end, foreground, false);
             return;
         }
         const std::size_t selected_begin =
             std::max(begin, selection.start);
         const std::size_t selected_end =
             std::min(end, selection.end);
-        draw_piece(begin, selected_begin, foreground);
-        draw_piece(selected_begin, selected_end, selection_text);
-        draw_piece(std::max(begin, selected_end), end, foreground);
-    }
-
-    native::rgba diagnostic_color(
-        const native::code_theme &code_theme,
-        native::diagnostic_severity severity) {
-        if (severity == native::diagnostic_severity::hint)
-            return selected_color(code_theme.diagnostic_hint,
-                                  native::rgba(95, 125, 135, 255));
-        if (severity == native::diagnostic_severity::info)
-            return selected_color(code_theme.diagnostic_info,
-                                  native::rgba(35, 105, 180, 255));
-        if (severity == native::diagnostic_severity::warning)
-            return selected_color(code_theme.diagnostic_warning,
-                                  native::rgba(205, 125, 0, 255));
-        return selected_color(code_theme.diagnostic_error,
-                              native::rgba(190, 35, 35, 255));
+        draw_piece(begin, selected_begin, foreground, false);
+        draw_piece(
+            selected_begin, selected_end, selection_text, true);
+        draw_piece(
+            std::max(begin, selected_end), end, foreground, false);
     }
 
     native::rgba style_foreground(
@@ -218,47 +212,8 @@ namespace
             fallback);
     }
 
-    void draw_marker(native::gpx &graphics,
-                     native::theme &painter,
-                     const native::line_marker &marker,
-                     int origin_x,
-                     int y,
-                     int line_height,
-                     native::rgba color) {
-        const int side = std::max(5, std::min(11, line_height - 4));
-        const native::rect bounds(
-            static_cast<native::coord>(origin_x + (18 - side) / 2),
-            static_cast<native::coord>(y + (line_height - side) / 2),
-            static_cast<native::dim>(side),
-            static_cast<native::dim>(side));
-        graphics.set_ink(color).set_pen(1);
-        if (marker.kind == native::marker_kind::breakpoint) {
-            graphics.draw_ellipse(bounds, true);
-        } else if (marker.kind ==
-                   native::marker_kind::breakpoint_disabled) {
-            graphics.draw_ellipse(bounds, false);
-        } else if (marker.kind == native::marker_kind::current_line) {
-            graphics.draw_polygon(
-                {native::point(bounds.p.x, bounds.p.y),
-                 native::point(bounds.x2(),
-                               static_cast<native::coord>(
-                                   bounds.p.y + side / 2)),
-                 native::point(bounds.p.x, bounds.y2())},
-                true);
-        } else if (marker.kind == native::marker_kind::bookmark) {
-            graphics.draw_rect(bounds, true);
-        } else {
-            native::theme::state state;
-            painter.draw_disclosure(
-                bounds,
-                marker.kind == native::marker_kind::fold_closed
-                    ? native::disclosure_state::collapsed
-                    : native::disclosure_state::expanded,
-                state);
-        }
-    }
-
     void draw_completion(native::code_edit &editor,
+                         native::gpx &graphics,
                          native::theme &painter,
                          const editor_metrics &metrics,
                          native::point origin,
@@ -294,33 +249,38 @@ namespace
         if (y + popup_height > editor.get_dimensions().h)
             y = std::max(0, caret_y - popup_height);
         native::theme::state popup_state;
-        painter.draw_surface(
-            native::rect(
+        const native::rect popup_bounds(
                 static_cast<native::coord>(origin.x + x),
                 static_cast<native::coord>(origin.y + y),
                 static_cast<native::dim>(popup_width),
-                static_cast<native::dim>(popup_height)),
-            native::surface_kind::popup,
-            popup_state);
+                static_cast<native::dim>(popup_height));
+        native::detail::control_render_access::
+            draw_completion_background(
+                editor,
+                graphics,
+                painter,
+                popup_bounds,
+                popup_state);
         for (int index = 0; index < count; ++index) {
             const int item_index = first + index;
             native::theme::state item_state;
             item_state.selected = item_index == selected;
-            std::string label = items[
-                static_cast<std::size_t>(item_index)].label;
-            const std::string &detail = items[
-                static_cast<std::size_t>(item_index)].detail;
-            if (!detail.empty())
-                label += "  " + detail;
-            painter.draw_list_item(
-                native::rect(
+            const auto semantic_index =
+                static_cast<std::size_t>(item_index);
+            native::detail::control_render_access::
+                draw_completion_item(
+                    editor,
+                    graphics,
+                    painter,
+                    semantic_index,
+                    items[semantic_index],
+                    native::rect(
                     static_cast<native::coord>(origin.x + x + 1),
                     static_cast<native::coord>(origin.y + y + 1 +
                                                index * row_height),
                     static_cast<native::dim>(popup_width - 2),
                     static_cast<native::dim>(row_height)),
-                label,
-                item_state);
+                    item_state);
         }
     }
 } // namespace
@@ -341,27 +301,16 @@ namespace native
         theme::state editor_state;
         editor_state.focused = editor._focused;
         editor_state.disabled = editor._read_only;
-        painter->draw_surface(outer, surface_kind::inset, editor_state);
-
-        const rgba gutter_bg = selected_color(
-            colors.gutter_background, palette.button_bg);
-        const rgba gutter_text = selected_color(
-            colors.gutter_text, palette.button_disabled_text);
-        const rgba marker_color = selected_color(
-            colors.marker, rgba(190, 35, 35, 255));
-        graphics.set_ink(gutter_bg).draw_rect(
+        editor.draw_editor_background(
+            graphics, *painter, outer, editor_state);
+        editor.draw_gutter(
+            graphics,
+            *painter,
             rect(origin.x,
                  origin.y,
                  static_cast<dim>(values.gutter_width),
                  dimensions.h),
-            true);
-        painter->draw_separator(
-            rect(static_cast<coord>(origin.x +
-                                    values.gutter_width - 1),
-                 origin.y,
-                 1,
-                 dimensions.h),
-            separator_orientation::vertical);
+            editor_state);
 
         const std::string &source = editor._document->text();
         const int visible_lines = std::max(
@@ -396,36 +345,39 @@ namespace native
             const int y = origin.y + local_y;
             const std::size_t begin = editor._document->line_start(line);
             const std::size_t end = editor._document->line_end(line);
+            const bool native_current_line =
+                line == caret_line && colors.current_line.a == 0;
 
             if (line == caret_line) {
-                graphics.set_ink(selected_color(
-                    colors.current_line,
-                    palette.selection_inactive_bg))
-                    .draw_rect(
-                        rect(static_cast<coord>(origin.x +
-                                                values.gutter_width),
-                             static_cast<coord>(y),
-                             static_cast<dim>(
-                                 std::max(0,
-                                     static_cast<int>(dimensions.w) -
-                                         values.gutter_width)),
-                             static_cast<dim>(values.line_height)),
-                        true);
+                theme::state line_state = editor_state;
+                line_state.selected = native_current_line;
+                editor.draw_line_background(
+                    graphics,
+                    *painter,
+                    line,
+                    rect(static_cast<coord>(origin.x +
+                                            values.gutter_width),
+                         static_cast<coord>(y),
+                         static_cast<dim>(
+                             std::max(0,
+                                 static_cast<int>(dimensions.w) -
+                                     values.gutter_width)),
+                         static_cast<dim>(values.line_height)),
+                    line_state);
             }
 
             if (editor.get_show_line_numbers()) {
-                graphics.set_ink(gutter_text).draw_text(
-                    std::to_string(line + 1),
+                editor.draw_line_number(
+                    graphics,
+                    *painter,
+                    line,
                     rect(static_cast<coord>(origin.x +
                                             values.marker_width),
                          static_cast<coord>(y),
                          static_cast<dim>(values.gutter_width -
                                           values.marker_width - 4),
                          static_cast<dim>(values.line_height)),
-                    text_layout{text_align::end,
-                                text_valign::center,
-                                text_overflow::clip,
-                                true});
+                    editor_state);
             }
 
             while (marker_index < markers.size() &&
@@ -435,13 +387,20 @@ namespace native
             std::size_t line_marker_index = marker_index;
             while (line_marker_index < markers.size() &&
                    markers[line_marker_index].line == line) {
-                draw_marker(graphics,
-                            *painter,
-                            markers[line_marker_index],
-                            origin.x,
-                            y,
-                            values.line_height,
-                            marker_color);
+                const int side = std::max(
+                    5, std::min(11, values.line_height - 4));
+                editor.draw_marker(
+                    graphics,
+                    *painter,
+                    markers[line_marker_index],
+                    rect(static_cast<coord>(
+                             origin.x +
+                             (values.marker_width - side) / 2),
+                         static_cast<coord>(
+                             y + (values.line_height - side) / 2),
+                         static_cast<dim>(side),
+                         static_cast<dim>(side)),
+                    editor_state);
                 ++line_marker_index;
             }
             marker_index = line_marker_index;
@@ -483,12 +442,16 @@ namespace native
                     editor._tab_width,
                     graphics,
                     values.text_x);
-                graphics.set_ink(style.background).draw_rect(
+                editor.draw_style_background(
+                    graphics,
+                    *painter,
+                    run,
+                    style,
                     rect(static_cast<coord>(x1),
                          static_cast<coord>(y),
                          static_cast<dim>(std::max(1, x2 - x1)),
                          static_cast<dim>(values.line_height)),
-                    true);
+                    editor_state);
             }
 
             const std::size_t selected_begin =
@@ -513,12 +476,14 @@ namespace native
                     editor._tab_width,
                     graphics,
                     values.text_x);
-                painter->draw_selection(
+                editor.draw_selection(
+                    graphics,
+                    *painter,
+                    text_span{selected_begin, selected_end},
                     rect(static_cast<coord>(x1),
                          static_cast<coord>(y),
                          static_cast<dim>(std::max(1, x2 - x1)),
                          static_cast<dim>(values.line_height)),
-                    selection_shape::row,
                     selection_state);
             }
 
@@ -538,7 +503,9 @@ namespace native
                 const std::size_t styled_begin =
                     std::max({offset, begin, run.span.start});
                 if (offset < styled_begin) {
-                    draw_text_segment(graphics,
+                    draw_text_segment(editor,
+                                      graphics,
+                                      *painter,
                                       source,
                                       begin,
                                       offset,
@@ -547,7 +514,9 @@ namespace native
                                       values.text_x,
                                       origin.x,
                                       y,
-                                      palette.content_text,
+                                      native_current_line
+                                          ? palette.selection_text
+                                          : palette.content_text,
                                       false,
                                       selection,
                                       selected_text);
@@ -563,7 +532,9 @@ namespace native
                                   run.style_id)]
                             : nullptr;
                     draw_text_segment(
+                        editor,
                         graphics,
+                        *painter,
                         source,
                         begin,
                         styled_begin,
@@ -572,10 +543,12 @@ namespace native
                         values.text_x,
                         origin.x,
                         y,
-                        style_foreground(
-                            colors,
-                            run.style_id,
-                            palette.content_text),
+                        native_current_line
+                            ? palette.selection_text
+                            : style_foreground(
+                                  colors,
+                                  run.style_id,
+                                  palette.content_text),
                         style && style->bold,
                         selection,
                         selected_text);
@@ -583,7 +556,9 @@ namespace native
                 }
             }
             if (offset < end) {
-                draw_text_segment(graphics,
+                draw_text_segment(editor,
+                                  graphics,
+                                  *painter,
                                   source,
                                   begin,
                                   offset,
@@ -592,7 +567,9 @@ namespace native
                                   values.text_x,
                                   origin.x,
                                   y,
-                                  palette.content_text,
+                                  native_current_line
+                                      ? palette.selection_text
+                                      : palette.content_text,
                                   false,
                                   selection,
                                   selected_text);
@@ -627,14 +604,15 @@ namespace native
                     editor._tab_width,
                     graphics,
                     values.text_x);
-                graphics.set_ink(diagnostic_color(
-                    colors, item.severity)).draw_line(
-                        point(static_cast<coord>(x1),
-                              static_cast<coord>(
-                                  y + values.line_height - 2)),
-                        point(static_cast<coord>(std::max(x1 + 1, x2)),
-                              static_cast<coord>(
-                                  y + values.line_height - 2)));
+                editor.draw_diagnostic(
+                    graphics,
+                    *painter,
+                    item,
+                    rect(static_cast<coord>(x1),
+                         static_cast<coord>(y),
+                         static_cast<dim>(std::max(1, x2 - x1)),
+                         static_cast<dim>(values.line_height - 1)),
+                    editor_state);
             }
         }
 
@@ -653,17 +631,24 @@ namespace native
             caret_y = (caret_line - editor._first_visible_line) *
                       values.line_height;
             if (editor._focused) {
-                graphics.set_ink(palette.content_text).draw_line(
-                    point(static_cast<coord>(origin.x + caret_x),
-                          static_cast<coord>(origin.y + caret_y + 1)),
-                    point(static_cast<coord>(origin.x + caret_x),
-                          static_cast<coord>(origin.y + caret_y +
-                                             values.line_height - 2)));
+                theme::state caret_state = editor_state;
+                caret_state.selected = colors.current_line.a == 0;
+                editor.draw_caret(
+                    graphics,
+                    *painter,
+                    rect(static_cast<coord>(origin.x + caret_x),
+                         static_cast<coord>(origin.y + caret_y + 1),
+                         1,
+                         static_cast<dim>(
+                             std::max(1, values.line_height - 2))),
+                    caret_state);
             }
         }
 
-        painter->draw_focus(outer, editor_state);
+        editor.draw_editor_focus(
+            graphics, *painter, outer, editor_state);
         draw_completion(editor,
+                        graphics,
                         *painter,
                         values,
                         origin,

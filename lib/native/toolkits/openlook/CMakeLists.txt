@@ -44,9 +44,11 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/clipboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/directory_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.cpp
@@ -58,6 +60,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/message_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp

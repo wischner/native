@@ -13,6 +13,7 @@
 #include <native.h>
 #include <native/wnd.h>
 
+#include "../../control_render_access.h"
 #include "gpx_wnd.h"
 #include "globals.h"
 
@@ -112,20 +113,25 @@ namespace windows
                 }
             }
             wnd->on_native_move(position);
-            wnd->on_wnd_move.emit(position);
             break;
         }
 
         case WM_SIZE: {
             native::size s(LOWORD(lparam), HIWORD(lparam));
             wnd->on_native_resize(s);
-            wnd->on_wnd_resize.emit(s);
             break;
         }
 
         case WM_MOUSEMOVE:
-            wnd->on_mouse_move.emit(native::point(
-                GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)));
+            {
+                POINT screen{
+                    GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+                ClientToScreen(hwnd, &screen);
+                wnd->on_native_mouse_move(
+                    native::point(GET_X_LPARAM(lparam),
+                                  GET_Y_LPARAM(lparam)),
+                    native::point(screen.x, screen.y));
+            }
             break;
 
         case WM_LBUTTONDOWN:
@@ -148,14 +154,18 @@ namespace windows
                          : native::mouse_action::release;
 
             if (btn != native::mouse_button::none) {
-                if (is_press)
+                if (is_press) {
                     SetFocus(hwnd);
+                    SetCapture(hwnd);
+                } else if (GetCapture() == hwnd) {
+                    ReleaseCapture();
+                }
                 native::mouse_event me(
                     btn,
                     act,
                     native::point(GET_X_LPARAM(lparam),
                                   GET_Y_LPARAM(lparam)));
-                wnd->on_mouse_click.emit(me);
+                wnd->on_native_mouse_click(me);
                 if (message == WM_LBUTTONDBLCLK) {
                     if (auto *icons =
                             dynamic_cast<native::icon_view *>(wnd)) {
@@ -345,7 +355,7 @@ namespace windows
                 static_cast<native::coord>(
                     GET_WHEEL_DELTA_WPARAM(wparam)),
                 wdir);
-            wnd->on_mouse_wheel.emit(wheel);
+            wnd->on_native_mouse_wheel(wheel);
             break;
         }
 
@@ -363,11 +373,71 @@ namespace windows
             auto &g = wnd->get_gpx().set_clip(r);
             g.clear(native::rgba(255, 255, 255, 255));
             native::wnd_paint_event e{r, g};
-            wnd->on_wnd_paint.emit(e);
+            wnd->on_native_paint(e);
 
             EndPaint(hwnd, &ps);
             return 0;
         }
+
+        case WM_DRAWITEM:
+            if (lparam != 0) {
+                auto *drawing = reinterpret_cast<DRAWITEMSTRUCT *>(
+                    lparam);
+                auto *child = windows::wnd_bindings.object_from_handle(
+                    drawing->hwndItem);
+                if (!child)
+                    break;
+                auto *button = dynamic_cast<native::button *>(child);
+                auto *check = dynamic_cast<native::check *>(child);
+                auto *radio = dynamic_cast<native::radio *>(child);
+                if (!button && !check && !radio)
+                    break;
+
+                native::rect bounds(
+                    static_cast<native::coord>(drawing->rcItem.left),
+                    static_cast<native::coord>(drawing->rcItem.top),
+                    static_cast<native::dim>(
+                        drawing->rcItem.right - drawing->rcItem.left),
+                    static_cast<native::dim>(
+                        drawing->rcItem.bottom - drawing->rcItem.top));
+                native::gpx &graphics =
+                    child->get_gpx().set_clip(bounds);
+                windows::scoped_gpx_dc custom_draw_context(
+                    graphics, drawing->hDC);
+                auto appearance = native::theme::create(graphics);
+                native::theme::state state;
+                state.disabled =
+                    (drawing->itemState & ODS_DISABLED) != 0;
+                state.hot = (drawing->itemState & ODS_HOTLIGHT) != 0;
+                state.pressed =
+                    (drawing->itemState & ODS_SELECTED) != 0;
+                state.focused =
+                    (drawing->itemState & ODS_FOCUS) != 0;
+                if (button) {
+                    native::detail::control_render_access::draw(
+                        *button,
+                        graphics,
+                        *appearance,
+                        bounds,
+                        state);
+                } else if (check) {
+                    native::detail::control_render_access::draw(
+                        *check,
+                        graphics,
+                        *appearance,
+                        bounds,
+                        state);
+                } else {
+                    native::detail::control_render_access::draw(
+                        *radio,
+                        graphics,
+                        *appearance,
+                        bounds,
+                        state);
+                }
+                return TRUE;
+            }
+            break;
 
         case WM_COMMAND:
             if (lparam != 0) {
@@ -377,16 +447,20 @@ namespace windows
                             control)) {
                     if (auto *btn =
                             dynamic_cast<native::button *>(child)) {
-                        btn->on_click.emit();
+                        btn->on_native_click();
                         return 0;
                     }
                     if (auto *check =
                             dynamic_cast<native::check *>(child)) {
                         if (HIWORD(wparam) == BN_CLICKED) {
                             check->on_native_checked(
-                                SendMessageW(
-                                    control, BM_GETCHECK, 0, 0) ==
-                                BST_CHECKED);
+                                !check->get_checked());
+                            SendMessageW(
+                                control,
+                                BM_SETCHECK,
+                                check->get_checked() ? BST_CHECKED
+                                                     : BST_UNCHECKED,
+                                0);
                         }
                         return 0;
                     }
@@ -405,6 +479,29 @@ namespace windows
                         }
                         return 0;
                     }
+                    if (auto *combo =
+                            dynamic_cast<native::combo_box *>(child)) {
+                        const int notification = HIWORD(wparam);
+                        if (notification == CBN_SELCHANGE) {
+                            combo->on_native_selection(
+                                static_cast<int>(SendMessageW(
+                                    control, CB_GETCURSEL, 0, 0)));
+                        } else if (notification == CBN_EDITCHANGE) {
+                            const int length = GetWindowTextLengthW(control);
+                            std::wstring text(static_cast<std::size_t>(length+1),
+                                              L'\0');
+                            if (length > 0)
+                                GetWindowTextW(control, text.data(), length+1);
+                            text.resize(static_cast<std::size_t>(length));
+                            combo->on_native_text(
+                                windows::wide_to_utf8(text));
+                        } else if (notification == CBN_DROPDOWN) {
+                            combo->on_native_drop_down(true);
+                        } else if (notification == CBN_CLOSEUP) {
+                            combo->on_native_drop_down(false);
+                        }
+                        return 0;
+                    }
                     if (auto *editor =
                             dynamic_cast<native::text_edit *>(child)) {
                         if (HIWORD(wparam) == EN_CHANGE)
@@ -415,7 +512,8 @@ namespace windows
             } else if (HIWORD(wparam) == 0) {
                 // Menu item click (lparam == 0).
                 if (auto *aw = dynamic_cast<native::app_wnd *>(wnd)) {
-                    aw->on_menu.emit(static_cast<int>(LOWORD(wparam)));
+                    aw->on_native_menu(
+                        static_cast<int>(LOWORD(wparam)));
                     return 0;
                 }
             }
@@ -445,7 +543,85 @@ namespace windows
                         dynamic_cast<native::icon_view *>(child)) {
                     auto *binding = windows::icon_view_bindings
                                         .object_from_handle(icons);
-                    if (!binding || binding->suppress)
+                    if (!binding)
+                        return 0;
+                    if (notification->code == NM_CUSTOMDRAW) {
+                        auto *drawing =
+                            reinterpret_cast<NMLVCUSTOMDRAW *>(
+                                notification);
+                        native::gpx &graphics =
+                            icons->get_gpx();
+                        windows::scoped_gpx_dc custom_draw_context(
+                            graphics, drawing->nmcd.hdc);
+                        auto appearance = native::theme::create(graphics);
+                        if (drawing->nmcd.dwDrawStage == CDDS_PREPAINT) {
+                            RECT client{};
+                            GetClientRect(binding->hwnd, &client);
+                            const native::rect bounds(
+                                0,
+                                0,
+                                static_cast<native::dim>(client.right),
+                                static_cast<native::dim>(client.bottom));
+                            graphics.set_clip(bounds);
+                            native::theme::state state;
+                            state.focused = GetFocus() == binding->hwnd;
+                            native::detail::control_render_access::
+                                draw_icon_background(
+                                    *icons,
+                                    graphics,
+                                    *appearance,
+                                    bounds,
+                                    state);
+                            return CDRF_NOTIFYITEMDRAW;
+                        }
+                        if (drawing->nmcd.dwDrawStage ==
+                            CDDS_ITEMPREPAINT) {
+                            const std::size_t index =
+                                static_cast<std::size_t>(
+                                    drawing->nmcd.dwItemSpec);
+                            if (index >= icons->get_items().size())
+                                return CDRF_DODEFAULT;
+                            RECT item{};
+                            if (!ListView_GetItemRect(
+                                    binding->hwnd,
+                                    static_cast<int>(index),
+                                    &item,
+                                    LVIR_BOUNDS)) {
+                                return CDRF_DODEFAULT;
+                            }
+                            const native::rect bounds(
+                                static_cast<native::coord>(item.left),
+                                static_cast<native::coord>(item.top),
+                                static_cast<native::dim>(
+                                    item.right - item.left),
+                                static_cast<native::dim>(
+                                    item.bottom - item.top));
+                            graphics.set_clip(bounds);
+                            native::theme::state state;
+                            state.selected =
+                                (drawing->nmcd.uItemState &
+                                 CDIS_SELECTED) != 0;
+                            state.hot =
+                                (drawing->nmcd.uItemState & CDIS_HOT) !=
+                                0;
+                            state.focused = state.selected &&
+                                GetFocus() == binding->hwnd;
+                            state.disabled =
+                                !icons->get_items()[index].enabled;
+                            native::detail::control_render_access::
+                                draw_icon_item(
+                                    *icons,
+                                    graphics,
+                                    *appearance,
+                                    index,
+                                    icons->get_items()[index],
+                                    bounds,
+                                    state);
+                            return CDRF_SKIPDEFAULT;
+                        }
+                        return CDRF_DODEFAULT;
+                    }
+                    if (binding->suppress)
                         return 0;
                     if (notification->code == LVN_ITEMCHANGED) {
                         const int selected = ListView_GetNextItem(

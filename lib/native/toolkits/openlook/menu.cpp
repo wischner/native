@@ -32,7 +32,7 @@ namespace
                 xv_get(item, MENU_CLIENT_DATA));
         if (callback &&
             linux::openlook::permit_input(callback->owner)) {
-            callback->owner->on_menu.emit(callback->item_id);
+            callback->owner->on_native_menu(callback->item_id);
         }
         return item;
     }
@@ -104,7 +104,14 @@ namespace native
             Menu menu = static_cast<Menu>(xv_create(
                 XV_NULL, MENU_COMMAND_MENU, nullptr));
             state->menus.push_back(menu);
+            Menu_item previous = static_cast<Menu_item>(XV_NULL);
             for (const auto &entry : top.items) {
+                if (entry.separator) {
+                    if (previous)
+                        xv_set(previous, MENU_LINE_AFTER_ITEM,
+                               MENU_HORIZONTAL_LINE, nullptr);
+                    continue;
+                }
                 auto *callback =
                     new linux::openlook::openlook_menu_callback{
                         &owner, entry.id};
@@ -120,6 +127,7 @@ namespace native
                     callback,
                     nullptr));
                 xv_set(menu, MENU_APPEND_ITEM, item, nullptr);
+                previous = item;
             }
             xv_create(bar,
                       PANEL_BUTTON,

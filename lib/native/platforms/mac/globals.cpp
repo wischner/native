@@ -24,6 +24,8 @@ namespace mac
     native::bindings<native::check *, mac_check *> check_bindings;
     native::bindings<native::radio *, mac_radio *> radio_bindings;
     native::bindings<native::list *, mac_list *> list_bindings;
+    native::bindings<native::combo_box *, mac_combo_box *>
+        combo_box_bindings;
     native::bindings<native::accordion *, mac_accordion *>
         accordion_bindings;
     native::bindings<native::icon_view *, mac_icon_view *>

@@ -12,6 +12,7 @@
 #include <Xm/RowColumn.h>
 #include <Xm/CascadeB.h>
 #include <Xm/PushB.h>
+#include <Xm/Separator.h>
 
 #include <native.h>
 #include <native/menu.h>
@@ -31,7 +32,7 @@ namespace
         auto *d = static_cast<linux::openmotif::motif_menu_callback *>(
             client_data);
         if (d && d->owner)
-            d->owner->on_menu.emit(d->item_id);
+            d->owner->on_native_menu(d->item_id);
     }
 } // namespace
 
@@ -101,6 +102,13 @@ namespace native
             XtManageChild(cascade);
 
             for (const auto &item : top.items) {
+                if (item.separator) {
+                    Widget separator = XmCreateSeparator(
+                        pulldown, const_cast<char *>("separator"),
+                        nullptr, 0);
+                    XtManageChild(separator);
+                    continue;
+                }
                 auto *cbd = new linux::openmotif::motif_menu_callback{
                     &owner, item.id};
                 hm->callbacks.push_back(cbd);

@@ -11,6 +11,7 @@
 #include <native.h>
 #include <native/button.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -80,7 +81,7 @@ namespace linux::sdl2
                 if (was_pressed) {
                     consumed = true;
                     if (is_inside(h->bounds, x, y))
-                        btn->on_click.emit();
+                        btn->on_native_click();
                 }
             }
         }
@@ -106,7 +107,8 @@ namespace linux::sdl2
             native::theme::state st;
             st.hot = h->hover;
             st.pressed = h->pressed;
-            painter->draw_button(h->bounds, h->label, st);
+            native::detail::control_render_access::draw(
+                *btn, g, *painter, h->bounds, st);
         }
     }
 } // namespace linux::sdl2
@@ -151,7 +153,7 @@ namespace native
         linux::sdl2::buttons.push_back(self);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

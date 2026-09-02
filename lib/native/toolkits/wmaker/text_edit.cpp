@@ -238,7 +238,7 @@ namespace native
             throw;
         }
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {
@@ -253,6 +253,7 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: missing text-edit binding.");
         }
+        WMRealizeWidget(binding->widget);
         WMMapWidget(binding->widget);
     }
 

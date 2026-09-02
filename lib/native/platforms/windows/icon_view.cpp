@@ -214,7 +214,7 @@ namespace native
         rebuild(*self);
         self->apply_icon_size();
         self->apply_selected_index();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

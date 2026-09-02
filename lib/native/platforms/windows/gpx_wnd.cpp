@@ -95,8 +95,9 @@ namespace native
     }
 
     gpx &gpx_wnd::clear(rgba color) {
-        HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = windows::acquire_gpx_dc(*this);
+        if (!hdc)
+            return *this;
 
         COLORREF c = RGB(color.r, color.g, color.b);
         HBRUSH brush = CreateSolidBrush(c);
@@ -105,13 +106,14 @@ namespace native
         FillRect(hdc, &rect, brush);
 
         DeleteObject(brush);
-        ReleaseDC(hwnd, hdc);
+        windows::release_gpx_dc(*this, hdc);
         return *this;
     }
 
     gpx &gpx_wnd::draw_line(point from, point to) {
-        HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = windows::acquire_gpx_dc(*this);
+        if (!hdc)
+            return *this;
         auto *cache =
             windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
@@ -120,13 +122,14 @@ namespace native
         MoveToEx(hdc, from.x, from.y, nullptr);
         LineTo(hdc, to.x, to.y);
 
-        ReleaseDC(hwnd, hdc);
+        windows::release_gpx_dc(*this, hdc);
         return *this;
     }
 
     gpx &gpx_wnd::draw_rect(rect r, bool filled) {
-        HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = windows::acquire_gpx_dc(*this);
+        if (!hdc)
+            return *this;
         auto *cache =
             windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
@@ -142,15 +145,16 @@ namespace native
             SelectObject(hdc, previous_brush);
         }
 
-        ReleaseDC(hwnd, hdc);
+        windows::release_gpx_dc(*this, hdc);
         return *this;
     }
 
     gpx &gpx_wnd::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
-        HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = windows::acquire_gpx_dc(*this);
+        if (!hdc)
+            return *this;
         auto *cache =
             windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
@@ -169,13 +173,14 @@ namespace native
         TextOutW(
             hdc, p.x, p.y, wide.data(), static_cast<int>(wide.size()));
 
-        ReleaseDC(hwnd, hdc);
+        windows::release_gpx_dc(*this, hdc);
         return *this;
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
-        HWND hwnd = windows::wnd_bindings.handle_from_object(_wnd);
-        HDC hdc = GetDC(hwnd);
+        HDC hdc = windows::acquire_gpx_dc(*this);
+        if (!hdc)
+            return *this;
         auto *cache =
             windows::wnd_gpx_bindings.object_from_handle(_wnd);
 
@@ -235,7 +240,7 @@ namespace native
             if (!bitmap || !dib_pixels) {
                 if (bitmap)
                     DeleteObject(bitmap);
-                ReleaseDC(hwnd, hdc);
+                windows::release_gpx_dc(*this, hdc);
                 return *this;
             }
             std::memcpy(dib_pixels, bgra.data(), bgra.size());
@@ -259,7 +264,7 @@ namespace native
             DeleteObject(bitmap);
         }
 
-        ReleaseDC(hwnd, hdc);
+        windows::release_gpx_dc(*this, hdc);
         return *this;
     }
 

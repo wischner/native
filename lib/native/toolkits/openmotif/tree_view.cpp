@@ -19,31 +19,128 @@
 #include <native.h>
 
 #include "../../platforms/linux/x_image.h"
+#include "collection_host.h"
 #include "globals.h"
 
 namespace
 {
     using collection_state = linux::openmotif::motif_collection;
+    constexpr unsigned int infolib_disclosure_side = 13;
+    constexpr short infolib_disclosure_inset = 3;
 
     collection_state &binding_for(native::tree_view &tree) {
         auto *state = linux::openmotif::tree_view_bindings
                           .object_from_handle(&tree);
-        if (!state || !state->widget || !state->content)
+        if (!state || !state->widget)
             throw std::runtime_error(
                 "Motif: missing tree_view binding.");
         return *state;
     }
 
     void clear_items(collection_state &state) {
+        // XmIconGadget keeps using its icon pixmap while destruction and
+        // relayout expose work is pending.  Detach every pixmap before the
+        // gadget is destroyed; otherwise a subsequent presentation switch
+        // can reuse the XID and Motif issues X_CopyArea against an already
+        // freed drawable.
+        for (Widget item : state.items) {
+            XtVaSetValues(item,
+                          XmNsmallIconPixmap,
+                          XmUNSPECIFIED_PIXMAP,
+                          nullptr);
+        }
+        if (!state.items.empty() && linux::openmotif::cached_display)
+            XSync(linux::openmotif::cached_display, False);
         for (Widget item : state.items)
             XtDestroyWidget(item);
         state.items.clear();
         state.tree_ids.clear();
+        if (linux::openmotif::cached_display)
+            XSync(linux::openmotif::cached_display, False);
         for (Pixmap pixmap : state.pixmaps) {
             if (pixmap != XmUNSPECIFIED_PIXMAP)
                 XFreePixmap(linux::openmotif::cached_display, pixmap);
         }
         state.pixmaps.clear();
+    }
+
+    void clear_disclosure_pixmaps(collection_state &state) {
+        // The container does not own these pixmaps.  Remove the resource
+        // references before releasing them so delayed redraws cannot copy
+        // from stale drawable IDs during a native/3-D mode transition.
+        if (state.content && state.three_dimensional_tree) {
+            XtVaSetValues(state.content,
+                          XmNcollapsedStatePixmap,
+                          XmUNSPECIFIED_PIXMAP,
+                          XmNexpandedStatePixmap,
+                          XmUNSPECIFIED_PIXMAP,
+                          nullptr);
+            if (linux::openmotif::cached_display)
+                XSync(linux::openmotif::cached_display, False);
+        }
+        const auto release = [](Pixmap &pixmap) {
+            if (pixmap != XmUNSPECIFIED_PIXMAP && pixmap != None)
+                XFreePixmap(linux::openmotif::cached_display, pixmap);
+            pixmap = XmUNSPECIFIED_PIXMAP;
+        };
+        release(state.collapsed_tree_pixmap);
+        release(state.expanded_tree_pixmap);
+    }
+
+    Pixmap create_disclosure_pixmap(Widget reference, bool expanded) {
+        Display *display = linux::openmotif::cached_display;
+        if (!display || !reference)
+            return XmUNSPECIFIED_PIXMAP;
+        Pixel background = 0;
+        Pixel foreground = 0;
+        XtVaGetValues(reference,
+                      XmNbackground,
+                      &background,
+                      XmNforeground,
+                      &foreground,
+                      nullptr);
+        Pixmap pixmap = XCreatePixmap(
+            display,
+            RootWindowOfScreen(XtScreen(reference)),
+            infolib_disclosure_side,
+            infolib_disclosure_side,
+            DefaultDepthOfScreen(XtScreen(reference)));
+        if (pixmap == None)
+            return XmUNSPECIFIED_PIXMAP;
+        GC gc = XCreateGC(display, pixmap, 0, nullptr);
+        XSetForeground(display, gc, background);
+        XFillRectangle(display,
+                       pixmap,
+                       gc,
+                       0,
+                       0,
+                       infolib_disclosure_side,
+                       infolib_disclosure_side);
+        XPoint points[3];
+        if (expanded) {
+            points[0] = {0, infolib_disclosure_inset};
+            points[1] = {
+                static_cast<short>(infolib_disclosure_side - 1),
+                infolib_disclosure_inset};
+            points[2] = {
+                static_cast<short>(infolib_disclosure_side / 2),
+                static_cast<short>(infolib_disclosure_side - 1 -
+                                   infolib_disclosure_inset)};
+        } else {
+            points[0] = {infolib_disclosure_inset, 0};
+            points[1] = {
+                static_cast<short>(infolib_disclosure_side - 1 -
+                                   infolib_disclosure_inset),
+                static_cast<short>(infolib_disclosure_side / 2)};
+            points[2] = {
+                infolib_disclosure_inset,
+                static_cast<short>(infolib_disclosure_side - 1)};
+        }
+        XSetForeground(display, gc, foreground);
+        XFillPolygon(display, pixmap, gc, points, 3, Convex,
+                     CoordModeOrigin);
+        XFreeGC(display, gc);
+        return pixmap;
     }
 
     Pixmap create_icon(collection_state &state,
@@ -203,6 +300,14 @@ namespace
                     position++,
                     XmNoutlineState,
                     item.expanded ? XmEXPANDED : XmCOLLAPSED,
+                    XmNheight,
+                    tree.get_row_bounds(0).d.h,
+                    XmNmarginHeight,
+                    0,
+                    XmNmarginWidth,
+                    2,
+                    XmNspacing,
+                    5,
                     XmNsensitive,
                     item.enabled ? True : False,
                     nullptr);
@@ -217,8 +322,9 @@ namespace
         state.suppress = false;
     }
 
-    Widget create_tree(native::tree_view &tree,
-                       collection_state &state) {
+    Widget create_three_dimensional_tree(
+        native::tree_view &tree,
+        collection_state &state) {
         native::wnd *parent = tree.get_parent();
         Widget parent_widget = parent
                                    ? linux::openmotif::wnd_bindings
@@ -252,11 +358,29 @@ namespace
             XmSMALL_ICON,
             XmNoutlineButtonPolicy,
             XmOUTLINE_BUTTON_PRESENT,
+            XmNoutlineLineStyle,
+            tree.get_lines_visible()
+                ? static_cast<unsigned char>(XmSINGLE)
+                : static_cast<unsigned char>(XmNO_LINE),
+            XmNoutlineIndentation,
+            17,
             XmNselectionPolicy,
             XmSINGLE_SELECT,
             XmNnavigationType,
             XmTAB_GROUP,
             nullptr);
+        state.collapsed_tree_pixmap = create_disclosure_pixmap(
+            state.content, false);
+        state.expanded_tree_pixmap = create_disclosure_pixmap(
+            state.content, true);
+        XtVaSetValues(
+            state.content,
+            XmNcollapsedStatePixmap,
+            state.collapsed_tree_pixmap,
+            XmNexpandedStatePixmap,
+            state.expanded_tree_pixmap,
+            nullptr);
+        state.three_dimensional_tree = true;
         XtAddCallback(state.content,
                       XmNselectionCallback,
                       selection_changed,
@@ -272,16 +396,67 @@ namespace
         linux::openmotif::wnd_bindings.register_pair(scroller, &tree);
         return scroller;
     }
+
+    Widget create_tree_widget(native::tree_view &tree,
+                              collection_state &state) {
+        if (tree.get_presentation() ==
+            native::tree_view_presentation::three_dimensional) {
+            return create_three_dimensional_tree(tree, state);
+        }
+        state.content = nullptr;
+        state.three_dimensional_tree = false;
+        return linux::openmotif::create_collection_host(tree, state);
+    }
+
+    void destroy_tree_widget(collection_state &state) {
+        clear_items(state);
+        clear_disclosure_pixmaps(state);
+        linux::openmotif::destroy_collection_scrollbars(state);
+        if (state.widget) {
+            linux::openmotif::wnd_bindings.unregister_by_handle(
+                state.widget);
+            XtDestroyWidget(state.widget);
+        }
+        state.widget = nullptr;
+        state.content = nullptr;
+    }
+
+    bool synchronize_presentation(native::tree_view &tree,
+                                  collection_state &state) {
+        const bool three_dimensional =
+            tree.get_presentation() ==
+            native::tree_view_presentation::three_dimensional;
+        if (state.three_dimensional_tree == three_dimensional)
+            return false;
+        const bool visible = state.widget && XtIsManaged(state.widget);
+        state.suppress = true;
+        destroy_tree_widget(state);
+        state.widget = create_tree_widget(tree, state);
+        state.suppress = false;
+        if (visible)
+            XtManageChild(state.widget);
+        return true;
+    }
 } // namespace
 
 namespace native
 {
     void tree_view::apply_items() {
-        rebuild(*this);
+        auto &state = binding_for(*this);
+        if (synchronize_presentation(*this, state))
+            synchronize_theme_metrics();
+        if (state.three_dimensional_tree)
+            rebuild(*this);
+        else
+            invalidate();
     }
 
     void tree_view::apply_selection() {
         auto &state = binding_for(*this);
+        if (!state.three_dimensional_tree) {
+            invalidate();
+            return;
+        }
         if (state.suppress)
             return;
         state.suppress = true;
@@ -301,6 +476,10 @@ namespace native
 
     void tree_view::apply_expansion(tree_item_id id, bool expanded) {
         auto &state = binding_for(*this);
+        if (!state.three_dimensional_tree) {
+            invalidate();
+            return;
+        }
         if (state.suppress)
             return;
         Widget item = widget_for(state, id);
@@ -316,6 +495,10 @@ namespace native
 
     void tree_view::apply_scroll_offset() {
         auto &state = binding_for(*this);
+        if (!state.three_dimensional_tree) {
+            invalidate();
+            return;
+        }
         if (get_visible_item_count() == 0)
             return;
         const int row_height = std::max<int>(
@@ -335,13 +518,16 @@ namespace native
             return;
         auto *self = const_cast<tree_view *>(this);
         auto *state = new collection_state();
-        state->widget = create_tree(*self, *state);
+        state->widget = create_tree_widget(*self, *state);
         linux::openmotif::tree_view_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
-        rebuild(*self);
+        if (state->three_dimensional_tree)
+            rebuild(*self);
+        else
+            self->invalidate();
         self->apply_selection();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void tree_view::show() const {
@@ -361,12 +547,7 @@ namespace native
                           .object_from_handle(self);
         self->on_native_destroy();
         if (state) {
-            ::clear_items(*state);
-            if (state->widget) {
-                linux::openmotif::wnd_bindings.unregister_by_handle(
-                    state->widget);
-                XtDestroyWidget(state->widget);
-            }
+            destroy_tree_widget(*state);
             linux::openmotif::tree_view_bindings
                 .unregister_by_handle(self);
             delete state;

@@ -16,6 +16,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -223,6 +224,8 @@ namespace windows
         if (notification->code == NM_CUSTOMDRAW) {
             auto *drawing = reinterpret_cast<NMTVCUSTOMDRAW *>(
                 notification);
+            windows::scoped_gpx_dc custom_draw_context(
+                tree->get_gpx(), drawing->nmcd.hdc);
             if (drawing->nmcd.dwDrawStage == CDDS_PREPAINT)
                 return CDRF_NOTIFYITEMDRAW;
             if (drawing->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
@@ -230,10 +233,55 @@ namespace windows
                     drawing->nmcd.dwItemSpec);
                 const native::tree_item_id id =
                     id_for_item(*binding, item);
-                if (id != native::invalid_tree_item_id &&
-                    !tree->get_item(id).enabled) {
-                    drawing->clrText = GetSysColor(COLOR_GRAYTEXT);
+                if (id == native::invalid_tree_item_id)
+                    return CDRF_DODEFAULT;
+                std::size_t visible_index = 0;
+                for (; visible_index < tree->get_visible_item_count();
+                     ++visible_index) {
+                    if (tree->get_visible_item(visible_index).id == id)
+                        break;
                 }
+                if (visible_index >= tree->get_visible_item_count())
+                    return CDRF_DODEFAULT;
+                RECT native_bounds{};
+                if (!TreeView_GetItemRect(binding->hwnd,
+                                          item,
+                                          &native_bounds,
+                                          FALSE)) {
+                    return CDRF_DODEFAULT;
+                }
+                RECT client{};
+                GetClientRect(binding->hwnd, &client);
+                native_bounds.left = client.left;
+                native_bounds.right = client.right;
+                native::rect bounds(
+                    native_bounds.left,
+                    native_bounds.top,
+                    native_bounds.right - native_bounds.left,
+                    native_bounds.bottom - native_bounds.top);
+                native::gpx &graphics =
+                    tree->get_gpx().set_clip(bounds);
+                auto appearance = native::theme::create(graphics);
+                native::theme::state state;
+                state.selected =
+                    (drawing->nmcd.uItemState & CDIS_SELECTED) != 0;
+                state.focused =
+                    (drawing->nmcd.uItemState & CDIS_FOCUS) != 0;
+                state.hot =
+                    (drawing->nmcd.uItemState & CDIS_HOT) != 0;
+                state.disabled = !tree->get_item(id).enabled;
+                const native::tree_view_visible_item visible =
+                    tree->get_visible_item(visible_index);
+                native::detail::control_render_access::draw_tree_row(
+                    *tree,
+                    graphics,
+                    *appearance,
+                    visible_index,
+                    tree->get_item(id),
+                    visible.depth,
+                    bounds,
+                    state);
+                return CDRF_SKIPDEFAULT;
             }
             return CDRF_DODEFAULT;
         }
@@ -414,7 +462,7 @@ namespace native
         self->synchronize_theme_metrics();
         self->apply_items();
         self->apply_selection();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void tree_view::show() const {

@@ -146,6 +146,13 @@ Native uses real controls where the platform or toolkit supplies them:
 | SDL2 | Backend-owned controls drawn with the SDL2 theme |
 | GEMix | Backend-owned controls drawn with the GEM theme |
 
+Window Maker keeps the native `WMList` widget, including its keyboard,
+pointer, and WINGs scroller behavior. Its supported user-draw hook replaces
+the stock white selected row with the same dark-gray selection and light-gray
+selected text used by collection and table controls; ordinary rows use the
+desktop panel gray. The Window Maker themed-list primitive uses those same
+roles for custom surfaces.
+
 SDL2 and GEMix own their hit testing, focus, state, and event integration;
 they are not application-side painted substitutes. Custom surfaces can draw
 the same visual parts through `native::theme`, which Chapter 10 covers.

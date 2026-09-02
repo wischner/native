@@ -24,6 +24,8 @@ class BMenuBar;
 class BCheckBox;
 class BRadioButton;
 class BListView;
+class BOptionPopUp;
+class BTextControl;
 class BOutlineListView;
 class BListItem;
 class BTextView;
@@ -106,6 +108,13 @@ namespace haiku
     {
         BListView *view = nullptr;
     };
+    struct haiku_combo_box
+    {
+        BView *view = nullptr;
+        BOptionPopUp *popup = nullptr;
+        BTextControl *text = nullptr;
+        bool suppress = false;
+    };
     struct haiku_collection
     {
         BView *view = nullptr;
@@ -135,6 +144,8 @@ namespace haiku
     extern native::bindings<native::radio *, haiku_radio *>
         radio_bindings;
     extern native::bindings<native::list *, haiku_list *> list_bindings;
+    extern native::bindings<native::combo_box *, haiku_combo_box *>
+        combo_box_bindings;
     extern native::bindings<native::accordion *, haiku_collection *>
         accordion_bindings;
     extern native::bindings<native::icon_view *, haiku_collection *>

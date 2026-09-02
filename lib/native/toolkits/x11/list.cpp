@@ -114,7 +114,7 @@ namespace native
         if (_selected_index >= 0)
             XawListHighlight(widget, _selected_index);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         auto *binding = linux::x11::list_bindings.object_from_handle(

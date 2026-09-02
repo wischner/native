@@ -34,7 +34,7 @@ namespace native
 
         _created = true;
         linux::gemix::buttons.push_back(const_cast<button *>(this));
-        const_cast<button *>(this)->on_wnd_create.emit();
+        const_cast<button *>(this)->on_native_create();
     }
 
     void button::show() const {

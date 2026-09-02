@@ -492,7 +492,7 @@ namespace native
             state->widget = create_native_table(*self, *state);
         else
             state->widget =
-                linux::openmotif::create_collection_host(*self);
+                linux::openmotif::create_collection_host(*self, *state);
         linux::openmotif::table_view_bindings.register_pair(
             self, state);
         _created = true;
@@ -502,7 +502,7 @@ namespace native
             self->apply_selection();
             self->apply_scroll();
         }
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

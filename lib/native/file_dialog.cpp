@@ -94,7 +94,7 @@ namespace native
                 "A file dialog requires a created owner.");
 
         _created = true;
-        const_cast<file_dialog *>(this)->on_wnd_create.emit();
+        const_cast<file_dialog *>(this)->on_native_create();
     }
 
     void file_dialog::destroy() const {

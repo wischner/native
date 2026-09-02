@@ -51,7 +51,8 @@ namespace native
             CreateWindowExW(0,
                             L"BUTTON",
                             text_w.c_str(),
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                            WS_CHILD | WS_VISIBLE | WS_TABSTOP |
+                                BS_OWNERDRAW,
                             _bounds.p.x,
                             _bounds.p.y,
                             _bounds.d.w,
@@ -78,7 +79,7 @@ namespace native
                      TRUE);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

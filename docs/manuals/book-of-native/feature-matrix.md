@@ -41,6 +41,8 @@ Legend:
 | Nested modal stack and `dialog_result` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Standard `open_file_dialog` | Desktop/Xaw (tested) | Desktop helper (build tested), unavailable cancel (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
 | Standard `save_file_dialog` | Desktop/Xaw (tested) | Desktop helper (build tested), unavailable cancel (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
+| Standard `directory_dialog` | Desktop/Xaw (build tested) | Desktop helper (build tested) | Motif (build tested) | XView (build tested) | WINGs (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
+| Standard one-to-three-button `message_box` | Athena (build tested) | SDL (build tested) | Motif (build tested) | XView (build tested) | WINGs (build tested) | AES (build tested) | Win32 (build tested) | BAlert (build tested) | NSAlert (untested) | WIP |
 | Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -48,11 +50,15 @@ Legend:
 | Native/emulated `check` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| `list_box` compatibility name | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Selection-only/editable `combo_box` | Athena (build tested) | Themed (build tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs composite (build tested) | Themed (build tested) | COMBOBOX (build tested) | BOptionPopUp (build tested) | NSComboBox (untested) | WIP |
+| Non-client rulers and status bars | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Motif themed grid (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
 | Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline (build tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
 | Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (build tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
 | UTF-8 source `code_edit` with gutter and overlays | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (build tested) | Custom themed HWND (tested) | Native-look BView (tested) | Native-look NSView (tested) | WIP |
+| Split/tab/floating/auto-hide `dock_host` | Portable native-control host (build tested) | Portable host and floating lifecycle (tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | Portable native-control host (build tested) | WIP |
 | Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | XView Selection (tested) | WINGs Selection (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Lossless RGBA image clipboard | PNG selection (build tested) | X11 PNG (build tested), fallback (tested) | PNG selection (build tested) | PNG selection (build tested) | PNG selection (build tested) | AES PNG plus standard IMG scrap (build tested) | PNG/DIBV5 (build tested) | PNG MIME (build tested) | PNG/TIFF (untested) | WIP |
 | Native/emulated single-line `text_edit` | Athena (build tested) | Yes (tested) | Motif (build tested) | XView Panel (tested) | WMTextField (tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
@@ -100,10 +106,13 @@ Legend:
 - Linux OPEN LOOK uses the XView notifier, Frame and Panel windows, Panel
   controls, OpenMenu menus, `File_chooser`, and Selection objects. Custom
   native-window primitives use OLGX with the active Panel resources.
-- Linux Window Maker uses the WINGs event dispatcher, windows, pull-down
-  buttons, command/switch/radio buttons, lists, text widgets, file panels, and
-  selection handlers. Custom native-window primitives use WINGs relief,
-  screen colors and fonts, and the same indicator pixmaps as native controls.
+- Linux Window Maker uses the WINGs event dispatcher, windows,
+  command/switch/radio buttons, lists, text widgets, file panels, scrollers,
+  and selection handlers. Its application menu is a click-persistent
+  Window Maker context-style popup with mnemonics and accelerators rather than
+  the press-drag WINGs selector control. Custom native-window primitives use
+  WINGs relief, screen colors and fonts, and the same indicator pixmaps as
+  native controls.
 - Modal windows use Win32 owners, Xt transient shells and exclusive grabs,
   XView subframes and busy owners, Haiku modal subsets, and AppKit sheets.
   WINGs uses transient panels plus portable owner input gating. SDL2 uses its
@@ -111,12 +120,15 @@ Legend:
   its multi-window AES event dispatcher. Modeless lifetime always follows the
   portable owner graph; backends avoid native grouping that would force
   modeless windows permanently above their owners.
-- `open_file_dialog` and `save_file_dialog` adapt every native chooser to the
+- `open_file_dialog`, `save_file_dialog`, and `directory_dialog` adapt every native chooser to the
   same `modal_wnd` session and `dialog_result` contract. Windows, AppKit,
   Haiku, Motif, XView, WINGs, and GEM use their standard panels. Athena
   prefers Zenity or KDialog and falls back to an Xaw browser. SDL2 delegates
   to the same desktop helpers and completes as cancelled when neither is
   installed.
+- `message_box` maps typed button sets and semantic icons to each backend's
+  standard alert API. Rulers and status bars are host-owned non-client strips;
+  they consume `wnd::get_client_bounds()` and paint with active theme roles.
 - The Xaw fallback, Motif, XView, WINGs, and GEM file selection are
   single-path.
   AppKit and Haiku preserve their native overwrite safeguards. These older or
@@ -142,7 +154,10 @@ Legend:
 - Accordion and custom icon-grid backends compose reusable theme surfaces,
   selection, focus, disclosure, separator, and scrollbar parts. They do not
   copy Windows or macOS styling onto another toolkit.
-- Window Maker uses WINGs `WBTToggle`/`WBTRadio` buttons and `WMList`.
+- Window Maker uses WINGs `WBTToggle`/`WBTRadio` buttons and `WMList`. The
+  list's supported user-draw hook applies the same dark selection role as
+  Window Maker collection and table controls instead of WINGs' stock white
+  selected row.
 - GEMix owns the event handling and native-look emulation for its `check`,
   `radio`, and `list` windows.
 - Text editors use Athena `AsciiText`, Motif `XmTextField`/`XmText`, Win32
@@ -165,9 +180,11 @@ Legend:
   Its theme also uses Motif `Xme` shadow primitives for native-window targets.
   If resource lookup or native drawing is unavailable, the backend supplies a
   Motif-specific emulation.
-- Window Maker uses active WINGs screen resources, including its stipple and
-  shadow colors, system and bold fonts, button relief painter, and native
-  switch/radio indicator pixmaps.
+- Window Maker uses WINGs screen resources, including stipple and shadow
+  colors, system and bold fonts, button relief, native switch/radio indicator
+  pixmaps, and actual WINGs scrollers for collection/table hosts. Its reference
+  session aligns WINGs panel gray with the desktop inactive-title gray and
+  reserves white content for text/document editing.
 - Windows themes use native GDI control primitives and system colors. Haiku
   themes use `BControlLook`, and macOS themes use AppKit cells and colors.
 - X11/Athena, SDL2, and GEMix keep their native-look emulation in their own

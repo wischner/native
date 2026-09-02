@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <native.h>
 #include <native/radio.h>
+#include "../../control_render_access.h"
 #include "globals.h"
 namespace
 {
@@ -65,8 +66,8 @@ namespace linux::sdl2
             native::theme::state s;
             s.hot = b->hover;
             s.pressed = b->pressed;
-            s.selected = c->get_selected();
-            painter->draw_radio(c->get_bounds(), c->get_text(), s);
+            native::detail::control_render_access::draw(
+                *c, g, *painter, c->get_bounds(), s);
         }
     }
 } // namespace linux::sdl2
@@ -104,7 +105,7 @@ namespace native
         linux::sdl2::radio_bindings.register_pair(self, b);
         linux::sdl2::radios.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void radio::show() const {
         auto *b = linux::sdl2::radio_bindings.object_from_handle(

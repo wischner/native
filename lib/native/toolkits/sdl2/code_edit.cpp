@@ -26,7 +26,7 @@ namespace native
         linux::sdl2::code_edits.push_back(self);
         _created = true;
         self->invalidate();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void code_edit::show() const {

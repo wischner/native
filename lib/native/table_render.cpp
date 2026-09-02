@@ -104,30 +104,12 @@ namespace native::detail
             int row = 20;
             int scrollbar = 16;
             int content_width = 0;
+            table_column_id fill_column = 0;
+            int fill_width = 0;
             bool vertical = false;
             bool horizontal = false;
             rect body;
         };
-
-        bool has_line(table_grid_lines value,
-                      table_grid_lines flag) {
-            return (static_cast<std::uint8_t>(value) &
-                    static_cast<std::uint8_t>(flag)) != 0;
-        }
-
-        rgba mixed(rgba first, rgba second, int second_weight) {
-            const auto channel = [second_weight](std::uint8_t a,
-                                                 std::uint8_t b) {
-                return static_cast<std::uint8_t>(
-                    (static_cast<int>(a) * (100 - second_weight) +
-                     static_cast<int>(b) * second_weight) /
-                    100);
-            };
-            return rgba(channel(first.r, second.r),
-                        channel(first.g, second.g),
-                        channel(first.b, second.b),
-                        first.a);
-        }
 
         geometry table_geometry(table_view &control,
                                 const theme::metrics &metrics) {
@@ -137,7 +119,7 @@ namespace native::detail
                                 : 0;
             result.row = control.get_row_height()
                              ? *control.get_row_height()
-                             : metrics.list_item_height;
+                             : metrics.table_row_height;
             result.row = std::max(1, result.row);
             result.scrollbar = std::max(1, metrics.scrollbar_extent);
             for (const auto &column : control.get_columns()) {
@@ -177,7 +159,27 @@ namespace native::detail
                 static_cast<coord>(result.header),
                 static_cast<dim>(body_width),
                 static_cast<dim>(body_height));
+            if (metrics.table_fill_last_column && !result.horizontal &&
+                result.content_width < body_width) {
+                for (auto column = control.get_columns().rbegin();
+                     column != control.get_columns().rend(); ++column) {
+                    if (!column->visible)
+                        continue;
+                    result.fill_column = column->id;
+                    result.fill_width = column->width +
+                                        body_width - result.content_width;
+                    result.content_width = body_width;
+                    break;
+                }
+            }
             return result;
+        }
+
+        int rendered_width(const geometry &layout,
+                           const table_column &column) {
+            return column.id == layout.fill_column
+                       ? layout.fill_width
+                       : column.width;
         }
 
         std::optional<table_group> group_by_id(table_model &model,
@@ -191,52 +193,21 @@ namespace native::detail
             return std::nullopt;
         }
 
-        rect fitted(const img &image, rect box) {
-            if (!box.d.w || !box.d.h)
-                return rect(box.p, size());
-            const double scale = std::min(
-                {1.0,
-                 static_cast<double>(box.d.w) / image.w(),
-                 static_cast<double>(box.d.h) / image.h()});
-            const int width = std::max(
-                1, static_cast<int>(image.w() * scale));
-            const int height = std::max(
-                1, static_cast<int>(image.h() * scale));
-            return rect(
-                static_cast<coord>(box.p.x +
-                    (static_cast<int>(box.d.w) - width) / 2),
-                static_cast<coord>(box.p.y +
-                    (static_cast<int>(box.d.h) - height) / 2),
-                static_cast<dim>(width),
-                static_cast<dim>(height));
-        }
-
-        int aligned_x(table_alignment alignment,
-                      int cell_x,
-                      int cell_width,
-                      int text_width,
-                      int padding) {
-            if (alignment == table_alignment::center)
-                return cell_x + (cell_width - text_width) / 2;
-            if (alignment == table_alignment::end)
-                return cell_x + cell_width - text_width - padding;
-            return cell_x + padding;
-        }
     } // namespace
 
     void draw_table_view(table_view &control, gpx &graphics) {
         auto saved = graphics.save_state();
         auto painter = theme::create(graphics);
         const theme::metrics metrics = painter->defaults();
-        const theme::palette colors = painter->native_palette();
         const geometry layout = table_geometry(control, metrics);
         const rect bounds(0, 0,
                           control.get_dimensions().w,
                           control.get_dimensions().h);
         graphics.set_clip(graphics.get_clip().intersect(bounds));
-        painter->draw_surface(bounds,
-                              surface_kind::inset,
-                              theme::state{});
+        theme::state control_state;
+        control_state.focused = control.get_focused();
+        control.draw_background(
+            graphics, *painter, bounds, control_state);
 
         graphics.set_font(font_t::stock(font_role::control));
         int column_x = -control.get_horizontal_scroll_offset();
@@ -244,6 +215,7 @@ namespace native::detail
             for (const auto &column : control.get_columns()) {
                 if (!column.visible)
                     continue;
+                const int width = rendered_width(layout, column);
                 const rect cell_bounds(
                     static_cast<coord>(std::clamp(
                         column_x,
@@ -252,56 +224,19 @@ namespace native::detail
                         static_cast<int>(
                             std::numeric_limits<coord>::max()))),
                     0,
-                    column.width,
+                    static_cast<dim>(width),
                     static_cast<dim>(layout.header));
-                painter->draw_surface(cell_bounds,
-                                      surface_kind::header,
-                                      theme::state{});
-                graphics.set_ink(colors.button_text).draw_text(
-                    column.title,
-                    rect(static_cast<coord>(cell_bounds.p.x +
-                                             metrics.header_padding_x),
-                         cell_bounds.p.y,
-                         static_cast<dim>(std::max(
-                             0,
-                             static_cast<int>(cell_bounds.d.w) -
-                                 metrics.header_padding_x * 2 - 10)),
-                         cell_bounds.d.h),
-                    text_layout{text_align::start,
-                                text_valign::center,
-                                text_overflow::ellipsis,
-                                true});
-                if (control.get_sort() &&
-                    control.get_sort()->column == column.id) {
-                    const int middle = layout.header / 2;
-                    const int right = cell_bounds.x2() - 6;
-                    const bool ascending =
-                        control.get_sort()->direction ==
-                        sort_direction::ascending;
-                    const std::vector<point> arrow = ascending
-                        ? std::vector<point>{
-                              point(static_cast<coord>(right - 6),
-                                    static_cast<coord>(middle + 2)),
-                              point(static_cast<coord>(right),
-                                    static_cast<coord>(middle + 2)),
-                              point(static_cast<coord>(right - 3),
-                                    static_cast<coord>(middle - 2))}
-                        : std::vector<point>{
-                              point(static_cast<coord>(right - 6),
-                                    static_cast<coord>(middle - 2)),
-                              point(static_cast<coord>(right),
-                                    static_cast<coord>(middle - 2)),
-                              point(static_cast<coord>(right - 3),
-                                    static_cast<coord>(middle + 2))};
-                    graphics.draw_polygon(arrow, true);
-                }
-                painter->draw_separator(
-                    rect(static_cast<coord>(cell_bounds.x2() - 1),
-                         0,
-                         1,
-                         cell_bounds.d.h),
-                    separator_orientation::vertical);
-                column_x += column.width;
+                theme::state header_state = control_state;
+                control.draw_header_background(
+                    graphics, *painter, column, cell_bounds,
+                    header_state);
+                control.draw_header_content(
+                    graphics, *painter, column, cell_bounds,
+                    header_state);
+                control.draw_header_border(
+                    graphics, *painter, column, cell_bounds,
+                    header_state);
+                column_x += width;
             }
             painter->draw_separator(
                 rect(0,
@@ -329,44 +264,14 @@ namespace native::detail
                                   layout.body.d.w,
                                   static_cast<dim>(layout.row));
             if (display.group) {
-                theme::state group_state;
-                painter->draw_surface(row_bounds,
-                                      surface_kind::header,
-                                      group_state);
+                theme::state group_state = control_state;
                 const auto group = model
                     ? group_by_id(*model, display.group_id)
                     : std::nullopt;
-                int text_x = metrics.header_padding_x;
-                if (group && group->collapsible) {
-                    const int side = std::min(
-                        metrics.disclosure_size,
-                        std::max(1, layout.row - 4));
-                    const rect disclosure(
-                        static_cast<coord>(metrics.header_padding_x),
-                        static_cast<coord>(y +
-                            (layout.row - side) / 2),
-                        static_cast<dim>(side),
-                        static_cast<dim>(side));
-                    painter->draw_disclosure(
-                        disclosure,
-                        control.get_group_expanded(group->id)
-                            ? disclosure_state::expanded
-                            : disclosure_state::collapsed,
+                if (group)
+                    control.draw_group(
+                        graphics, *painter, *group, row_bounds,
                         group_state);
-                    text_x = disclosure.x2() + metrics.header_gap;
-                }
-                graphics.set_ink(colors.button_text).draw_text(
-                    group ? group->title : std::string(),
-                    rect(static_cast<coord>(text_x),
-                         static_cast<coord>(y),
-                         static_cast<dim>(std::max(
-                             0,
-                             static_cast<int>(layout.body.d.w) - text_x)),
-                         static_cast<dim>(layout.row)),
-                    text_layout{text_align::start,
-                                text_valign::center,
-                                text_overflow::ellipsis,
-                                true});
                 continue;
             }
             if (!model)
@@ -376,99 +281,38 @@ namespace native::detail
             const bool is_selected =
                 std::find(selected.begin(), selected.end(), row_id) !=
                 selected.end();
-            if (control.get_alternating_rows() &&
-                (display.model_row & 1U) != 0) {
-                graphics.set_ink(mixed(colors.content_bg,
-                                       colors.separator,
-                                       8))
-                    .draw_rect(row_bounds, true);
-            } else {
-                graphics.set_ink(colors.content_bg)
-                    .draw_rect(row_bounds, true);
-            }
-            theme::state row_state;
+            theme::state row_state = control_state;
             row_state.selected = is_selected;
             row_state.focused = is_selected && control.get_focused();
-            painter->draw_selection(row_bounds,
-                                    selection_shape::row,
-                                    row_state);
+            control.draw_row_background(
+                graphics, *painter, row_id, display.model_row,
+                row_bounds, row_state);
             column_x = -control.get_horizontal_scroll_offset();
             for (const auto &column : control.get_columns()) {
                 if (!column.visible)
                     continue;
+                const int width = rendered_width(layout, column);
                 const table_cell value =
                     model->cell(display.model_row, column.id);
-                int text_x = column_x + metrics.header_padding_x;
-                int available = column.width -
-                                metrics.header_padding_x * 2;
-                if (value.image && column.allow_image) {
-                    const size requested = control.get_icon_size()
-                        .value_or(size(
-                            static_cast<dim>(std::max(
-                                1, layout.row - 6)),
-                            static_cast<dim>(std::max(
-                                1, layout.row - 6))));
-                    const int side_width = std::min<int>(
-                        requested.w, std::max(1, available));
-                    const int side_height = std::min<int>(
-                        requested.h, std::max(1, layout.row - 4));
-                    const rect image_box(
-                        static_cast<coord>(text_x),
-                        static_cast<coord>(y +
-                            (layout.row - side_height) / 2),
-                        static_cast<dim>(side_width),
-                        static_cast<dim>(side_height));
-                    graphics.draw_img(*value.image,
-                                      fitted(*value.image, image_box),
-                                      image_filter::linear);
-                    text_x = image_box.x2() + metrics.header_gap;
-                    available -= side_width + metrics.header_gap;
-                }
-                const text_metrics measured =
-                    graphics.measure_text(value.text);
-                if (!value.image ||
-                    column.alignment != table_alignment::start) {
-                    text_x = aligned_x(column.alignment,
-                                       column_x,
-                                       column.width,
-                                       measured.width,
-                                       metrics.header_padding_x);
-                }
-                graphics.set_ink(is_selected
-                                     ? colors.selection_text
-                                     : colors.content_text)
-                    .draw_text(
-                        value.text,
-                        rect(static_cast<coord>(text_x),
-                             static_cast<coord>(y),
-                             static_cast<dim>(std::max(0, available)),
-                             static_cast<dim>(layout.row)),
-                        text_layout{text_align::start,
-                                    text_valign::center,
-                                    text_overflow::ellipsis,
-                                    true});
-                if (has_line(control.get_grid_lines(),
-                             table_grid_lines::vertical)) {
-                    painter->draw_separator(
-                        rect(static_cast<coord>(
-                                 column_x + column.width - 1),
-                             static_cast<coord>(y),
-                             1,
-                             static_cast<dim>(layout.row)),
-                        separator_orientation::vertical);
-                }
-                column_x += column.width;
+                const rect cell_bounds(
+                    static_cast<coord>(column_x),
+                    static_cast<coord>(y),
+                    static_cast<dim>(width),
+                    static_cast<dim>(layout.row));
+                control.draw_cell_background(
+                    graphics, *painter, row_id, display.model_row,
+                    column, value, cell_bounds, row_state);
+                control.draw_cell_content(
+                    graphics, *painter, row_id, display.model_row,
+                    column, value, cell_bounds, row_state);
+                control.draw_cell_border(
+                    graphics, *painter, row_id, display.model_row,
+                    column, value, cell_bounds, row_state);
+                column_x += width;
             }
-            if (has_line(control.get_grid_lines(),
-                         table_grid_lines::horizontal)) {
-                painter->draw_separator(
-                    rect(0,
-                         static_cast<coord>(y + layout.row - 1),
-                         layout.body.d.w,
-                         1),
-                    separator_orientation::horizontal);
-            }
-            painter->draw_focus(row_bounds, row_state);
+            control.draw_row_focus(
+                graphics, *painter, row_id, display.model_row,
+                row_bounds, row_state);
         }
         graphics.set_clip(old_clip);
 
@@ -478,11 +322,6 @@ namespace native::detail
                 static_cast<coord>(layout.header),
                 static_cast<dim>(layout.scrollbar),
                 layout.body.d.h);
-            painter->draw_scrollbar_part(
-                track,
-                scrollbar_orientation::vertical,
-                scrollbar_part::track,
-                theme::state{});
             const std::size_t total = std::max<std::size_t>(
                 1, control.get_display_row_count());
             const std::size_t page = std::max<std::size_t>(
@@ -497,14 +336,16 @@ namespace native::detail
                 : track.p.y + static_cast<int>(
                       control.get_vertical_scroll_row() *
                       (track.d.h - thumb_height) / maximum);
-            painter->draw_scrollbar_part(
+            control.draw_scrollbar(
+                graphics,
+                *painter,
+                scrollbar_orientation::vertical,
+                track,
                 rect(track.p.x,
                      static_cast<coord>(thumb_y),
                      track.d.w,
                      static_cast<dim>(thumb_height)),
-                scrollbar_orientation::vertical,
-                scrollbar_part::thumb,
-                theme::state{});
+                control_state);
         }
         if (layout.horizontal) {
             const rect track(
@@ -512,11 +353,6 @@ namespace native::detail
                 static_cast<coord>(layout.body.y2()),
                 layout.body.d.w,
                 static_cast<dim>(layout.scrollbar));
-            painter->draw_scrollbar_part(
-                track,
-                scrollbar_orientation::horizontal,
-                scrollbar_part::track,
-                theme::state{});
             const int total = std::max(1, layout.content_width);
             const int page = std::max(1,
                                       static_cast<int>(layout.body.d.w));
@@ -529,15 +365,27 @@ namespace native::detail
                 ? 0
                 : control.get_horizontal_scroll_offset() *
                       (track.d.w - thumb_width) / maximum;
-            painter->draw_scrollbar_part(
+            control.draw_scrollbar(
+                graphics,
+                *painter,
+                scrollbar_orientation::horizontal,
+                track,
                 rect(static_cast<coord>(thumb_x),
                      track.p.y,
                      static_cast<dim>(thumb_width),
                      track.d.h),
-                scrollbar_orientation::horizontal,
-                scrollbar_part::thumb,
-                theme::state{});
+                control_state);
         }
+        // The viewport relief is intentionally last. Header cells may touch
+        // its bounds and must not erase it. Native scrollbar reservations
+        // remain outside the viewport as independently framed controls.
+        const rect viewport_bounds(
+            0,
+            0,
+            layout.body.d.w,
+            static_cast<dim>(layout.header + layout.body.d.h));
+        control.draw_border(
+            graphics, *painter, viewport_bounds, control_state);
     }
 
     void draw_table_view_at(table_view &control,
@@ -559,11 +407,12 @@ namespace native::detail
             for (const auto &column : control.get_columns()) {
                 if (!column.visible)
                     continue;
-                if (x >= 0 && x < column.width) {
+                const int width = rendered_width(layout, column);
+                if (x >= 0 && x < width) {
                     control.on_native_sort_request(column.id);
                     return true;
                 }
-                x -= column.width;
+                x -= width;
             }
             return false;
         }

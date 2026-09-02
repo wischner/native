@@ -79,6 +79,7 @@ namespace
             , _second(make_items("Second"), 0, 0, 320, 180)
             , _command("Native body", 0, 0, 320, 80)
             , _sections(16, 16, 328, 250)
+            , _list(make_list_items(), 360, 16, 176, 100)
             , _tree(make_tree_items(), 360, 16, 176, 250)
             , _table_store(make_table_rows())
             , _table(16, 280, 520, 210)
@@ -186,6 +187,7 @@ namespace
         native::icon_view _second;
         native::button _command;
         native::accordion _sections;
+        native::list _list;
         native::tree_view _tree;
         native::table_store _table_store;
         runtime_virtual_model _virtual_model;
@@ -232,6 +234,13 @@ namespace
             return rows;
         }
 
+        std::vector<std::string> make_list_items() {
+            std::vector<std::string> items;
+            for (int index = 1; index <= 30; ++index)
+                items.push_back("List item " + std::to_string(index));
+            return items;
+        }
+
         std::vector<native::tree_view_item> make_tree_items() {
             return {
                 {"Root",
@@ -251,6 +260,9 @@ namespace
             _sections.set_parent(this);
             _sections.create();
             _sections.show();
+            _list.set_parent(this);
+            _list.create();
+            _list.show();
             _tree.set_parent(this);
             _tree.create();
             _tree.show();
@@ -277,6 +289,10 @@ namespace
                            _tree_selection_events == 0 &&
                            _tree_expansion_events == 0,
                        "tree applies its hierarchy without signals");
+                expect(_list.get_created() &&
+                           _list.get_items().size() == 30,
+                       "overflowing native list creates and retains "
+                       "its items");
                 expect(_first.get_selected_index() == 1 &&
                            _selection_events == 0,
                        "pre-create icon state applies without a signal");
@@ -369,6 +385,21 @@ namespace
                            _tree_activation_events == 1,
                        "tree selection, disclosure, and activation "
                        "each emit once");
+                // Exercise repeated reconstruction: Motif may retain icon
+                // and disclosure pixmaps until its relayout work completes.
+                for (int cycle = 0; cycle < 4; ++cycle) {
+                    _tree.set_presentation(
+                        native::tree_view_presentation::three_dimensional);
+                    _tree.set_presentation(
+                        native::tree_view_presentation::native);
+                }
+                expect(_tree.get_created() &&
+                           _tree.get_selected_item() == 102 &&
+                           _tree.get_expanded(102) &&
+                           _tree_selection_events == 1 &&
+                           _tree_expansion_events == 1,
+                       "live tree presentation switching preserves "
+                       "state without action signals");
 
                 _sections.on_native_toggle(2);
                 expect(!_second.get_created() &&

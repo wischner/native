@@ -322,6 +322,43 @@ namespace windows
         response.accepted = !response.paths.empty();
         return response;
     }
+
+    file_dialog_response show_directory_dialog(
+        const native::file_dialog &dialog, bool allow_multiple) {
+        com_apartment apartment;
+        com_ptr<IFileOpenDialog> panel;
+        require_success(
+            CoCreateInstance(CLSID_FileOpenDialog,
+                             nullptr,
+                             CLSCTX_INPROC_SERVER,
+                             IID_PPV_ARGS(panel.put())),
+            "Windows: Failed to create the directory dialog.");
+
+        FILEOPENDIALOGOPTIONS options = FOS_PICKFOLDERS;
+        if (allow_multiple)
+            options |= FOS_ALLOWMULTISELECT;
+        configure_dialog(panel.get(), dialog, options);
+
+        file_dialog_response response;
+        if (!show_dialog(panel.get(), dialog))
+            return response;
+        com_ptr<IShellItemArray> items;
+        require_success(panel.get()->GetResults(items.put()),
+                        "Windows: Failed to read selected folders.");
+        DWORD count = 0;
+        require_success(items.get()->GetCount(&count),
+                        "Windows: Failed to count selected folders.");
+        for (DWORD index = 0; index < count; ++index) {
+            com_ptr<IShellItem> item;
+            require_success(items.get()->GetItemAt(index, item.put()),
+                            "Windows: Failed to read a selected folder.");
+            const std::string path = path_from_item(item.get());
+            if (!path.empty())
+                response.paths.push_back(path);
+        }
+        response.accepted = !response.paths.empty();
+        return response;
+    }
 } // namespace windows
 
 namespace native

@@ -269,7 +269,7 @@ namespace native
                           key_pressed,
                           self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {

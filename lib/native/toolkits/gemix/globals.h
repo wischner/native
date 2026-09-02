@@ -50,6 +50,7 @@ namespace linux::gemix
     extern std::vector<native::check *> checks;
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
+    extern std::vector<native::combo_box *> combo_boxes;
     extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::accordion *> accordions;
     extern std::vector<native::icon_view *> icon_views;
@@ -68,6 +69,18 @@ namespace linux::gemix
         bool visible = false;
         bool focused = false;
     };
+    struct gem_combo_box
+    {
+        bool open = false;
+        bool focused = false;
+    };
+
+    extern native::bindings<native::combo_box *, gem_combo_box *>
+        combo_box_bindings;
+
+    bool handle_combo_key(native::app_wnd *parent,
+                          WORD modifiers,
+                          WORD key);
 
     extern native::bindings<native::text_edit *, gem_text_edit *>
         text_edit_bindings;

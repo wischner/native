@@ -183,7 +183,8 @@ namespace
         bool save,
         bool allow_multiple,
         const std::string &suggested_name,
-        bool confirm_overwrite) {
+        bool confirm_overwrite,
+        bool directory = false) {
         std::vector<std::string> arguments{
             "zenity", "--file-selection", "--title=" +
                 dialog.get_title()};
@@ -193,6 +194,8 @@ namespace
             arguments.push_back("--filename=" + initial);
         if (save)
             arguments.push_back("--save");
+        if (directory)
+            arguments.push_back("--directory");
         if (save && confirm_overwrite)
             arguments.push_back("--confirm-overwrite");
         if (allow_multiple) {
@@ -212,15 +215,17 @@ namespace
         const native::file_dialog &dialog,
         bool save,
         bool allow_multiple,
-        const std::string &suggested_name) {
+        const std::string &suggested_name,
+        bool directory = false) {
         std::vector<std::string> arguments{
             "kdialog", "--title", dialog.get_title()};
         if (allow_multiple) {
             arguments.emplace_back("--multiple");
             arguments.emplace_back("--separate-output");
         }
-        arguments.emplace_back(save ? "--getsavefilename"
-                                    : "--getopenfilename");
+        arguments.emplace_back(directory ? "--getexistingdirectory"
+                            : save ? "--getsavefilename"
+                                   : "--getopenfilename");
         arguments.push_back(
             initial_filename(dialog, suggested_name));
         const std::string filters =
@@ -236,11 +241,21 @@ namespace linux
     file_dialog_response show_open_file_dialog(
         const native::file_dialog &dialog, bool allow_multiple) {
         file_dialog_response response = run_zenity(
-            dialog, false, allow_multiple, std::string(), false);
+            dialog, false, allow_multiple, std::string(), false, false);
         if (response.outcome != file_dialog_outcome::unavailable)
             return response;
         return run_kdialog(
-            dialog, false, allow_multiple, std::string());
+            dialog, false, allow_multiple, std::string(), false);
+    }
+
+    file_dialog_response show_directory_dialog(
+        const native::file_dialog &dialog, bool allow_multiple) {
+        file_dialog_response response = run_zenity(
+            dialog, false, allow_multiple, std::string(), false, true);
+        if (response.outcome != file_dialog_outcome::unavailable)
+            return response;
+        return run_kdialog(
+            dialog, false, allow_multiple, std::string(), true);
     }
 
     file_dialog_response show_save_file_dialog(
@@ -252,10 +267,11 @@ namespace linux
             true,
             false,
             suggested_name,
-            confirm_overwrite);
+            confirm_overwrite,
+            false);
         if (response.outcome != file_dialog_outcome::unavailable)
             return response;
-        return run_kdialog(dialog, true, false, suggested_name);
+        return run_kdialog(dialog, true, false, suggested_name, false);
     }
 
     std::string add_default_extension(

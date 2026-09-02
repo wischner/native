@@ -19,6 +19,7 @@
 
 #include "../../text_util.h"
 #include "globals.h"
+#include "../../control_render_access.h"
 
 namespace
 {
@@ -156,7 +157,8 @@ namespace
         native::theme::state frame_state;
         frame_state.selected = binding->focused;
         frame_state.disabled = owner->get_read_only();
-        painter->draw_text_edit_frame(bounds, frame_state);
+        native::detail::control_render_access::draw(
+            *owner, g, *painter, bounds, frame_state);
         if (bounds.d.w <= 6 || bounds.d.h <= 6)
             return;
         const native::rect content(bounds.p.x + 3,
@@ -446,7 +448,7 @@ namespace native
         linux::gemix::text_edit_bindings.register_pair(self, binding);
         linux::gemix::text_edits.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {

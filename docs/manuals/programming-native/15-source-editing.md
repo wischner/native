@@ -82,6 +82,12 @@ Edits remap these overlays. A debugger can independently maintain a
 
 ## Syntax styles
 
+When `code_theme::current_line` is unset, the active line uses the backend's
+normal selected-row background and selected-text color. This keeps every
+syntax fragment readable and visually consistent with native tables. Setting
+`current_line` explicitly replaces only that background and retains the
+configured syntax colors.
+
 Implement `code_lexer` in application code and return sorted,
 non-overlapping style runs:
 

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 #include <native.h>
 #include <native/theme.h>
@@ -16,6 +17,7 @@
 #include <xview/cms.h>
 #include <xview/font.h>
 #include <xview/panel.h>
+#include <xview/scrollbar.h>
 #include <xview/window.h>
 #include <xview/xview.h>
 
@@ -51,6 +53,17 @@ extern "C"
                              int x,
                              int y,
                              int state);
+    void olgx_draw_menu_mark(graphics_info *information,
+                             Window drawable,
+                             int x,
+                             int y,
+                             int state,
+                             int fill);
+    void olgx_draw_pushpin(graphics_info *information,
+                           Window drawable,
+                           int x,
+                           int y,
+                           int state);
 }
 
 namespace
@@ -61,7 +74,11 @@ namespace
     constexpr int olgx_erase = 0x0004;
     constexpr int olgx_inactive = 0x0020;
     constexpr int olgx_vertical_menu_mark = 0x0040;
+    constexpr int olgx_horizontal_menu_mark = 0x0080;
+    constexpr int olgx_vertical_back_menu_mark = 0x2000;
     constexpr int olgx_checked = 0x0002;
+    constexpr int olgx_pushpin_out = 0x2000;
+    constexpr int olgx_pushpin_in = 0x4000;
 
     struct openlook_target
     {
@@ -163,6 +180,7 @@ namespace
         result.menu_popup_bg = result.button_bg;
         result.menu_popup_border = result.button_border;
         result.content_bg = native::rgba(255, 255, 255, 255);
+        result.content_alt_bg = result.button_bg;
         result.content_text = result.button_text;
         result.selection_bg = result.button_text;
         result.selection_text = result.button_bg;
@@ -197,7 +215,11 @@ namespace
             result.check_height = 24;
             result.radio_height = 24;
             result.list_item_height = text_height() + 5;
-            result.header_height = text_height() + 10;
+            result.table_row_height = result.list_item_height;
+            result.header_height = text_height() + 6;
+            result.scrollbar_extent = std::max(
+                1, scrollbar_width_for_scale(WIN_SCALE_MEDIUM));
+            result.scrollbar_min_thumb = result.scrollbar_extent;
             return result;
         }
 
@@ -253,6 +275,7 @@ namespace
             result.menu_popup_bg = result.button_bg;
             result.menu_popup_border = result.button_border;
             result.content_bg = result.button_bg;
+            result.content_alt_bg = result.button_highlight;
             result.content_text = result.button_text;
             result.selection_bg = result.button_text;
             result.selection_text = result.button_bg;
@@ -261,6 +284,103 @@ namespace
             result.separator = result.button_shadow;
             result.focus = result.button_text;
             return result;
+        }
+
+        theme &draw_surface(
+            const native::rect &bounds,
+            native::surface_kind kind,
+            const state &element_state) override {
+            if (kind != native::surface_kind::header &&
+                kind != native::surface_kind::table_header) {
+                return emulated_theme::draw_surface(
+                    bounds, kind, element_state);
+            }
+            saved_state saved(_g);
+            openlook_target target = native_target(bounds);
+            if (!target.information) {
+                return emulated_theme::draw_surface(
+                    bounds, kind, element_state);
+            }
+            const palette colors = native_palette();
+            const native::rgba fill =
+                element_state.pressed || element_state.selected
+                    ? colors.button_pressed_bg
+                    : element_state.hot
+                          ? colors.button_hot_bg
+                          : colors.button_bg;
+            const int left = bounds.p.x;
+            const int top = bounds.p.y;
+            const int width = bounds.d.w;
+            const int height = bounds.d.h;
+            if (width < 6 || height < 6) {
+                _g.set_pen(1)
+                    .set_ink(fill)
+                    .draw_rect(bounds, true)
+                    .set_ink(colors.button_border)
+                    .draw_rect(bounds, false);
+                return *this;
+            }
+
+            const int right = left + width - 1;
+            const int bottom = top + height - 1;
+            _g.set_pen(1)
+                .set_ink(colors.button_bg)
+                .draw_rect(bounds, true)
+                .set_ink(fill)
+                .draw_rect(native::rect(
+                               static_cast<native::coord>(left + 2),
+                               static_cast<native::coord>(top),
+                               static_cast<native::dim>(width - 4),
+                               static_cast<native::dim>(height)),
+                           true)
+                .draw_rect(native::rect(
+                               static_cast<native::coord>(left),
+                               static_cast<native::coord>(top + 2),
+                               static_cast<native::dim>(width),
+                               static_cast<native::dim>(height - 4)),
+                           true)
+                .set_ink(colors.button_border)
+                .draw_polyline({
+                    native::point(
+                        static_cast<native::coord>(left + 2),
+                        static_cast<native::coord>(top)),
+                    native::point(
+                        static_cast<native::coord>(right - 2),
+                        static_cast<native::coord>(top)),
+                    native::point(
+                        static_cast<native::coord>(right - 1),
+                        static_cast<native::coord>(top + 1)),
+                    native::point(
+                        static_cast<native::coord>(right),
+                        static_cast<native::coord>(top + 2)),
+                    native::point(
+                        static_cast<native::coord>(right),
+                        static_cast<native::coord>(bottom - 2)),
+                    native::point(
+                        static_cast<native::coord>(right - 1),
+                        static_cast<native::coord>(bottom - 1)),
+                    native::point(
+                        static_cast<native::coord>(right - 2),
+                        static_cast<native::coord>(bottom)),
+                    native::point(
+                        static_cast<native::coord>(left + 2),
+                        static_cast<native::coord>(bottom)),
+                    native::point(
+                        static_cast<native::coord>(left + 1),
+                        static_cast<native::coord>(bottom - 1)),
+                    native::point(
+                        static_cast<native::coord>(left),
+                        static_cast<native::coord>(bottom - 2)),
+                    native::point(
+                        static_cast<native::coord>(left),
+                        static_cast<native::coord>(top + 2)),
+                    native::point(
+                        static_cast<native::coord>(left + 1),
+                        static_cast<native::coord>(top + 1)),
+                    native::point(
+                        static_cast<native::coord>(left + 2),
+                        static_cast<native::coord>(top))});
+            return *this;
         }
 
         theme &draw_button(const native::rect &bounds,
@@ -431,6 +551,122 @@ namespace
             return draw_native_frame(bounds, true);
         }
 
+        theme &draw_disclosure(
+            const native::rect &bounds,
+            native::disclosure_state disclosure,
+            const state &element_state) override {
+            return draw_native_mark(
+                bounds,
+                disclosure == native::disclosure_state::expanded
+                    ? olgx_vertical_menu_mark
+                    : olgx_horizontal_menu_mark,
+                element_state,
+                disclosure,
+                std::nullopt);
+        }
+
+        theme &draw_sort_indicator(
+            const native::rect &bounds,
+            native::sort_indicator_state direction,
+            const state &element_state) override {
+            return draw_native_mark(
+                bounds,
+                direction == native::sort_indicator_state::ascending
+                    ? olgx_vertical_back_menu_mark
+                    : olgx_vertical_menu_mark,
+                element_state,
+                std::nullopt,
+                direction);
+        }
+
+        theme &draw_caption_button(
+            const native::rect &bounds,
+            native::caption_button_kind kind,
+            const state &element_state) override {
+            if (kind == native::caption_button_kind::close) {
+                saved_state saved(_g);
+                const palette colors = native_palette();
+                const int inset = std::max(
+                    2, std::min<int>(bounds.d.w, bounds.d.h) / 4);
+                _g.set_pen(element_state.pressed ? 2 : 1)
+                    .set_ink(element_state.disabled
+                                 ? colors.button_disabled_text
+                                 : colors.button_text)
+                    .draw_line(
+                        native::point(bounds.p.x + inset,
+                                      bounds.p.y + inset),
+                        native::point(bounds.x2() - inset - 1,
+                                      bounds.y2() - inset - 1))
+                    .draw_line(
+                        native::point(bounds.x2() - inset - 1,
+                                      bounds.p.y + inset),
+                        native::point(bounds.p.x + inset,
+                                      bounds.y2() - inset - 1));
+                return *this;
+            }
+
+            saved_state saved(_g);
+            openlook_target target = native_target(bounds);
+            if (!target.information) {
+                return emulated_theme::draw_caption_button(
+                    bounds, kind, element_state);
+            }
+
+            // OPEN LOOK captions use the same pushpin glyph as pinned
+            // menus. A docked pane is "in"; an auto-hidden pane is
+            // "out". Show the prospective state while the pin is held.
+            bool pushed_in =
+                kind == native::caption_button_kind::pin;
+            if (element_state.pressed)
+                pushed_in = !pushed_in;
+            // The docking surface has already painted its background.
+            // Do not pass OLGX_ERASE here: that implementation uses
+            // XClearArea (Window-only), while Native themes paint into a
+            // backing Pixmap before copying to the XView window.
+            int pin_state = pushed_in ? olgx_pushpin_in
+                                      : olgx_pushpin_out;
+            if (element_state.disabled)
+                pin_state |= olgx_inactive;
+
+            // The stock control glyph is fourteen pixels high for the
+            // XView fonts used here. OLGX owns its exact glyph metrics;
+            // these offsets only center its origin in our compact slot.
+            constexpr int pin_extent = 14;
+            const int x = bounds.p.x + std::max(
+                0, (static_cast<int>(bounds.d.w) - pin_extent) / 2);
+            const int y = bounds.p.y + std::max(
+                0, (static_cast<int>(bounds.d.h) - pin_extent) / 2);
+            olgx_draw_pushpin(target.information,
+                              target.cache->backbuffer,
+                              x,
+                              y,
+                              pin_state);
+            return *this;
+        }
+
+        theme &draw_scrollbar_part(
+            const native::rect &bounds,
+            native::scrollbar_orientation orientation,
+            native::scrollbar_part part,
+            const state &element_state) override {
+            auto *window_graphics =
+                dynamic_cast<native::gpx_wnd *>(&_g);
+            native::wnd *window = window_graphics
+                                      ? window_graphics->window()
+                                      : nullptr;
+            if (dynamic_cast<native::icon_view *>(window) ||
+                dynamic_cast<native::tree_view *>(window) ||
+                dynamic_cast<native::table_view *>(window)) {
+                // These Canvas-backed controls attach real XView
+                // Scrollbar objects. Their portable geometry still
+                // reserves the native extent, but the duplicate
+                // backbuffer track must remain unpainted.
+                return *this;
+            }
+            return emulated_theme::draw_scrollbar_part(
+                bounds, orientation, part, element_state);
+        }
+
     protected:
         int text_width(const std::string &text) const override {
             return native::font_t::stock(native::font_role::control)
@@ -447,6 +683,46 @@ namespace
         }
 
     private:
+        theme &draw_native_mark(
+            const native::rect &bounds,
+            int mark,
+            const state &element_state,
+            std::optional<native::disclosure_state> disclosure,
+            std::optional<native::sort_indicator_state> sort) {
+            saved_state saved(_g);
+            openlook_target target = native_target(bounds);
+            if (!target.information) {
+                return disclosure
+                           ? draw_disclosure_fallback(
+                                 bounds, *disclosure, element_state)
+                           : draw_sort_indicator_fallback(
+                                 bounds, *sort, element_state);
+            }
+            int olgx_state = mark;
+            if (element_state.disabled)
+                olgx_state |= olgx_inactive;
+            const native::size mark_size =
+                linux::openlook::menu_mark_dimensions(
+                    target.information);
+            const int x = bounds.p.x + std::max(
+                0,
+                (static_cast<int>(bounds.d.w) -
+                 static_cast<int>(mark_size.w)) /
+                    2);
+            const int y = bounds.p.y + std::max(
+                0,
+                (static_cast<int>(bounds.d.h) -
+                 static_cast<int>(mark_size.h)) /
+                    2);
+            olgx_draw_menu_mark(target.information,
+                                target.cache->backbuffer,
+                                x,
+                                y,
+                                olgx_state,
+                                TRUE);
+            return *this;
+        }
+
         openlook_target native_target(
             const native::rect &bounds) const {
             if (!contains(_g.get_clip(), bounds))

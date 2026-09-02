@@ -337,16 +337,17 @@ namespace native
         void select_all() const override;
 
         // Apply a backend-originated editing/navigation command.
-        bool on_native_key(code_edit_key key, bool extend = false);
+        virtual bool on_native_key(code_edit_key key,
+                                   bool extend = false);
 
         // Insert backend-originated canonical UTF-8 input.
-        bool on_native_text_input(const std::string &utf8);
+        virtual bool on_native_text_input(const std::string &utf8);
 
         // Accept or reject a complete backend-originated source value.
         bool on_native_text(const std::string &text) override;
 
         // Cache backend focus entry or departure.
-        void on_native_focus(bool focused);
+        virtual void on_native_focus(bool focused);
 
         // Return whether the editor host has keyboard focus.
         bool get_focused() const;
@@ -391,7 +392,140 @@ namespace native
         // Keep the caret visible after a bounds change.
         void on_bounds_changed() override;
 
+        // Apply an accepted source edit and notify interested code.
+        virtual void edited(std::size_t caret);
+
+        // Re-run the borrowed lexer for a dirty byte range.
+        virtual void restyle(std::size_t start, std::size_t end);
+
+        // Adjust cached scrolling to keep the caret visible.
+        virtual void reveal_caret();
+
+        // Handle one client-relative pointer selection action.
+        virtual void handle_click(point position);
+
+        // Handle one portable pointer-wheel action.
+        virtual void handle_wheel(mouse_wheel_event event);
+
+        // Handle one portable pointer hover action.
+        virtual void handle_hover(point position);
+
+        // Notify acceptance of one completion item.
+        virtual void on_native_complete(const completion_item &item);
+
+        // Notify one marker-column click.
+        virtual void on_native_gutter_click(int line);
+
+        // Notify one source span under the pointer.
+        virtual void on_native_hover(text_span span);
+
+        // Draw the editor's native outer surface.
+        virtual void draw_editor_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the marker and line-number gutter.
+        virtual void draw_gutter(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one source line's active-line background.
+        virtual void draw_line_background(
+            gpx &graphics,
+            theme &appearance,
+            int line,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one source line number.
+        virtual void draw_line_number(
+            gpx &graphics,
+            theme &appearance,
+            int line,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one semantic gutter marker.
+        virtual void draw_marker(
+            gpx &graphics,
+            theme &appearance,
+            const line_marker &marker,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one syntax style's optional background.
+        virtual void draw_style_background(
+            gpx &graphics,
+            theme &appearance,
+            const style_run &run,
+            const code_style &style,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one selected source span background.
+        virtual void draw_selection(
+            gpx &graphics,
+            theme &appearance,
+            const text_span &span,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one already expanded source-text fragment.
+        virtual void draw_text_content(
+            gpx &graphics,
+            theme &appearance,
+            const text_span &span,
+            const std::string &display,
+            point position,
+            rgba foreground,
+            bool bold,
+            const theme::state &state);
+
+        // Draw one diagnostic annotation.
+        virtual void draw_diagnostic(
+            gpx &graphics,
+            theme &appearance,
+            const diagnostic &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the insertion caret.
+        virtual void draw_caret(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw focus around the completed source editor.
+        virtual void draw_editor_focus(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the completion popup's outer surface.
+        virtual void draw_completion_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one completion popup item.
+        virtual void draw_completion_item(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const completion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
     private:
+        friend class detail::control_render_access;
+
         std::unique_ptr<detail::code_document> _document;
         std::string _path;
         std::string _language;
@@ -408,14 +542,8 @@ namespace native
         bool _focused = false;
         int _tab_width = 4;
 
-        void edited(std::size_t caret);
-        void restyle(std::size_t start, std::size_t end);
-        void reveal_caret();
         std::size_t ordered_selection_start() const;
         std::size_t ordered_selection_end() const;
-        void handle_click(point position);
-        void handle_wheel(mouse_wheel_event event);
-        void handle_hover(point position);
         friend void draw_code_edit(code_edit &, gpx &, point);
     };
 } // namespace native

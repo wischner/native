@@ -24,7 +24,7 @@ namespace
     void button_activate(Widget, XtPointer client_data, XtPointer) {
         auto *owner = static_cast<native::button *>(client_data);
         if (owner)
-            owner->on_click.emit();
+            owner->on_native_click();
     }
 } // namespace
 
@@ -98,7 +98,7 @@ namespace native
         linux::x11::button_bindings.register_pair(self, binding);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

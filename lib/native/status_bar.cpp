@@ -1,0 +1,105 @@
+//
+// Implements a themed bottom-edge status bar.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#include <algorithm>
+#include <utility>
+
+#include <native/graphics.h>
+#include <native/status_bar.h>
+
+namespace native
+{
+    status_bar::status_bar(wnd &owner, int height)
+        : non_client(owner, window_edge::bottom, height) {}
+
+    const std::string &status_bar::get_text() const { return _text; }
+
+    status_bar &status_bar::set_text(const std::string &text) {
+        _text = text;
+        _parts.clear();
+        invalidate();
+        return *this;
+    }
+
+    const std::vector<status_bar_part> &status_bar::get_parts() const {
+        return _parts;
+    }
+
+    status_bar &status_bar::set_parts(std::vector<status_bar_part> parts) {
+        for (status_bar_part &part : parts)
+            part.width = std::max(0, part.width);
+        _parts = std::move(parts);
+        _text.clear();
+        invalidate();
+        return *this;
+    }
+
+    void status_bar::draw(gpx &graphics, const rect &bounds) {
+        if (!bounds.w() || !bounds.h())
+            return;
+        auto appearance = theme::create(graphics);
+        const theme::state state{};
+        draw_background(graphics, *appearance, bounds, state);
+
+        std::vector<status_bar_part> parts = _parts;
+        if (parts.empty())
+            parts.push_back({_text, 0});
+
+        int fixed = 0;
+        int flexible = 0;
+        for (const status_bar_part &part : parts) {
+            if (part.width > 0)
+                fixed += part.width;
+            else
+                ++flexible;
+        }
+        int remaining = std::max(0, static_cast<int>(bounds.w())-fixed);
+        int x = bounds.x1();
+        int flexible_left = flexible;
+        for (const status_bar_part &part : parts) {
+            int width = part.width;
+            if (!width && flexible_left > 0) {
+                width = remaining / flexible_left;
+                remaining -= width;
+                --flexible_left;
+            }
+            width = std::max(0, std::min(width,
+                static_cast<int>(bounds.x2())-x));
+            draw_part(graphics, *appearance,
+                      rect(static_cast<coord>(x), bounds.y1(),
+                           static_cast<dim>(width), bounds.h()),
+                      part, state);
+            x += width;
+        }
+    }
+
+    void status_bar::draw_background(gpx &,
+                                     theme &appearance,
+                                     const rect &bounds,
+                                     const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::panel, state);
+    }
+
+    void status_bar::draw_part(gpx &graphics,
+                               theme &appearance,
+                               const rect &bounds,
+                               const status_bar_part &part,
+                               const theme::state &state) {
+        if (!bounds.w() || !bounds.h())
+            return;
+        appearance.draw_surface(bounds, surface_kind::inset, state);
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_ink(colors.button_text);
+        const rect text_bounds(
+            static_cast<coord>(bounds.x1()+4), bounds.y1(),
+            static_cast<dim>(std::max(0, static_cast<int>(bounds.w())-8)),
+            bounds.h());
+        graphics.draw_text(part.text, text_bounds,
+                           {text_align::start, text_valign::center,
+                            text_overflow::ellipsis, true});
+    }
+} // namespace native

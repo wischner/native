@@ -21,6 +21,31 @@
 
 namespace native
 {
+    namespace
+    {
+        rect fit_table_image(const img &image, rect box) {
+            if (!box.d.w || !box.d.h)
+                return rect(box.p, size());
+            const double scale = std::min(
+                {1.0,
+                 static_cast<double>(box.d.w) / image.w(),
+                 static_cast<double>(box.d.h) / image.h()});
+            const int width = std::max(
+                1, static_cast<int>(image.w() * scale));
+            const int height = std::max(
+                1, static_cast<int>(image.h() * scale));
+            return rect(
+                static_cast<coord>(
+                    box.p.x +
+                    (static_cast<int>(box.d.w) - width) / 2),
+                static_cast<coord>(
+                    box.p.y +
+                    (static_cast<int>(box.d.h) - height) / 2),
+                static_cast<dim>(width),
+                static_cast<dim>(height));
+        }
+    } // namespace
+
     table_view::table_view(coord x,
                            coord y,
                            dim width,
@@ -494,11 +519,353 @@ namespace native
         try {
             auto painter = theme::create(get_gpx());
             const theme::metrics values = painter->defaults();
-            _native_row_height = std::max(1, values.list_item_height);
+            _native_row_height = std::max(1, values.table_row_height);
             _native_header_height = std::max(1, values.header_height);
         } catch (const std::runtime_error &) {
             // Some Xt and WINGs parents finish realization after child
             // construction; their stock defaults remain usable here.
         }
+    }
+
+    void table_view::draw_background(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        if (appearance.defaults().table_outer_border_extent > 0) {
+            graphics.set_ink(appearance.native_palette().content_bg)
+                .draw_rect(bounds, true);
+            return;
+        }
+        appearance.draw_surface(bounds, surface_kind::inset, state);
+    }
+
+    void table_view::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        const int extent = std::max(
+            0, appearance.defaults().table_outer_border_extent);
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_pen(1);
+        for (int inset = 0; inset < extent; ++inset) {
+            const int width = static_cast<int>(bounds.d.w) - inset * 2;
+            const int height = static_cast<int>(bounds.d.h) - inset * 2;
+            if (width <= 0 || height <= 0)
+                break;
+            const coord left = static_cast<coord>(bounds.p.x + inset);
+            const coord top = static_cast<coord>(bounds.p.y + inset);
+            const coord right = static_cast<coord>(left + width - 1);
+            const coord bottom = static_cast<coord>(top + height - 1);
+            graphics.set_ink(colors.button_border)
+                .draw_line(point(left, top), point(right, top))
+                .draw_line(point(left, top), point(left, bottom));
+            graphics.set_ink(colors.button_highlight)
+                .draw_line(point(left, bottom), point(right, bottom))
+                .draw_line(point(right, top), point(right, bottom));
+        }
+    }
+
+    void table_view::draw_header_background(
+        gpx &,
+        theme &appearance,
+        const table_column &,
+        const rect &bounds,
+        const theme::state &state) {
+        const int frame = std::max(
+            0, appearance.defaults().table_outer_border_extent);
+        const int left = std::max<int>(bounds.p.x, frame);
+        const int top = std::max<int>(bounds.p.y, frame);
+        const int right = bounds.x2();
+        const int bottom = bounds.y2();
+        if (right <= left || bottom <= top)
+            return;
+        // Keep the header surface inside the table's inset viewport edge.
+        // The distinct semantic kind lets a backend match native column
+        // headers without changing accordion, collection, or docking
+        // headers which use the ordinary header role.
+        appearance.draw_surface(
+            rect(static_cast<coord>(left),
+                 static_cast<coord>(top),
+                 static_cast<dim>(right - left),
+                 static_cast<dim>(bottom - top)),
+            surface_kind::table_header,
+            state);
+    }
+
+    void table_view::draw_header_content(
+        gpx &graphics,
+        theme &appearance,
+        const table_column &column,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::metrics metrics = appearance.defaults();
+        const theme::palette colors = appearance.native_palette();
+        const bool sorted = _sort && _sort->column == column.id;
+        const int indicator_width = sorted
+                                        ? std::min<int>(
+                                              12, bounds.d.w)
+                                        : 0;
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(state.disabled ? colors.button_disabled_text
+                                    : colors.button_text)
+            .draw_text(
+                column.title,
+                rect(static_cast<coord>(
+                         bounds.p.x + metrics.header_padding_x),
+                     bounds.p.y,
+                     static_cast<dim>(std::max(
+                         0,
+                         static_cast<int>(bounds.d.w) -
+                             metrics.header_padding_x * 2 -
+                             indicator_width)),
+                     bounds.d.h),
+                text_layout{text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            true});
+        if (sorted) {
+            const int side = std::max(
+                3, std::min(8, static_cast<int>(bounds.d.h) - 6));
+            appearance.draw_sort_indicator(
+                rect(static_cast<coord>(bounds.x2() - side - 4),
+                     static_cast<coord>(
+                         bounds.p.y +
+                         (static_cast<int>(bounds.d.h) - side) / 2),
+                     static_cast<dim>(side),
+                     static_cast<dim>(side)),
+                _sort->direction == sort_direction::ascending
+                    ? sort_indicator_state::ascending
+                    : sort_indicator_state::descending,
+                state);
+        }
+    }
+
+    void table_view::draw_header_border(
+        gpx &,
+        theme &appearance,
+        const table_column &,
+        const rect &bounds,
+        const theme::state &) {
+        appearance.draw_separator(
+            rect(static_cast<coord>(bounds.x2() - 1),
+                 bounds.p.y,
+                 1,
+                 bounds.d.h),
+            separator_orientation::vertical);
+    }
+
+    void table_view::draw_group(
+        gpx &graphics,
+        theme &appearance,
+        const table_group &group,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::metrics metrics = appearance.defaults();
+        const theme::palette colors = appearance.native_palette();
+        appearance.draw_surface(bounds, surface_kind::header, state);
+        int text_x = bounds.p.x + metrics.header_padding_x;
+        if (group.collapsible) {
+            const int side = std::min(
+                metrics.disclosure_size,
+                std::max(1, static_cast<int>(bounds.d.h) - 4));
+            const rect disclosure(
+                static_cast<coord>(text_x),
+                static_cast<coord>(
+                    bounds.p.y +
+                    (static_cast<int>(bounds.d.h) - side) / 2),
+                static_cast<dim>(side),
+                static_cast<dim>(side));
+            appearance.draw_disclosure(
+                disclosure,
+                get_group_expanded(group.id)
+                    ? disclosure_state::expanded
+                    : disclosure_state::collapsed,
+                state);
+            text_x = disclosure.x2() + metrics.header_gap;
+        }
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(state.disabled ? colors.button_disabled_text
+                                    : colors.button_text)
+            .draw_text(
+                group.title,
+                rect(static_cast<coord>(text_x),
+                     bounds.p.y,
+                     static_cast<dim>(std::max(
+                         0, bounds.x2() - text_x -
+                                metrics.header_padding_x)),
+                     bounds.d.h),
+                text_layout{text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            true});
+    }
+
+    void table_view::draw_row_background(
+        gpx &graphics,
+        theme &appearance,
+        table_row_id,
+        std::size_t model_row,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::palette colors = appearance.native_palette();
+        rgba background = colors.content_bg;
+        if (_alternating_rows && (model_row & 1U) != 0) {
+            if (colors.content_alt_bg.a != 0) {
+                background = colors.content_alt_bg;
+            } else {
+                background = rgba(
+                    static_cast<std::uint8_t>(
+                        (static_cast<unsigned int>(colors.content_bg.r) *
+                             247 +
+                         static_cast<unsigned int>(colors.separator.r) *
+                             8) /
+                        255),
+                    static_cast<std::uint8_t>(
+                        (static_cast<unsigned int>(colors.content_bg.g) *
+                             247 +
+                         static_cast<unsigned int>(colors.separator.g) *
+                             8) /
+                        255),
+                    static_cast<std::uint8_t>(
+                        (static_cast<unsigned int>(colors.content_bg.b) *
+                             247 +
+                         static_cast<unsigned int>(colors.separator.b) *
+                             8) /
+                        255),
+                    255);
+            }
+        }
+        graphics.set_ink(background).draw_rect(bounds, true);
+        appearance.draw_selection(bounds, selection_shape::row, state);
+    }
+
+    void table_view::draw_cell_background(
+        gpx &,
+        theme &,
+        table_row_id,
+        std::size_t,
+        const table_column &,
+        const table_cell &,
+        const rect &,
+        const theme::state &) {}
+
+    void table_view::draw_cell_content(
+        gpx &graphics,
+        theme &appearance,
+        table_row_id,
+        std::size_t,
+        const table_column &column,
+        const table_cell &cell,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::metrics metrics = appearance.defaults();
+        const theme::palette colors = appearance.native_palette();
+        int text_x = bounds.p.x + metrics.header_padding_x;
+        int available = static_cast<int>(bounds.d.w) -
+                        metrics.header_padding_x * 2;
+        if (cell.image && column.allow_image) {
+            const size requested = _icon_size.value_or(size(
+                static_cast<dim>(std::max(
+                    1, static_cast<int>(bounds.d.h) - 6)),
+                static_cast<dim>(std::max(
+                    1, static_cast<int>(bounds.d.h) - 6))));
+            const int image_width = std::min<int>(
+                requested.w, std::max(1, available));
+            const int image_height = std::min<int>(
+                requested.h,
+                std::max(1, static_cast<int>(bounds.d.h) - 4));
+            const rect image_box(
+                static_cast<coord>(text_x),
+                static_cast<coord>(
+                    bounds.p.y +
+                    (static_cast<int>(bounds.d.h) - image_height) / 2),
+                static_cast<dim>(image_width),
+                static_cast<dim>(image_height));
+            graphics.draw_img(*cell.image,
+                              fit_table_image(*cell.image, image_box),
+                              image_filter::linear);
+            text_x = image_box.x2() + metrics.header_gap;
+            available -= image_width + metrics.header_gap;
+        }
+        graphics.set_font(font_t::stock(font_role::control));
+        const text_metrics measured = graphics.measure_text(cell.text);
+        if (!cell.image || column.alignment != table_alignment::start) {
+            if (column.alignment == table_alignment::center) {
+                text_x = bounds.p.x +
+                         (static_cast<int>(bounds.d.w) -
+                          measured.width) /
+                             2;
+            } else if (column.alignment == table_alignment::end) {
+                text_x = bounds.x2() - measured.width -
+                         metrics.header_padding_x;
+            }
+        }
+        graphics.set_ink(state.selected ? colors.selection_text
+                                        : colors.content_text)
+            .draw_text(
+                cell.text,
+                rect(static_cast<coord>(text_x),
+                     bounds.p.y,
+                     static_cast<dim>(std::max(0, available)),
+                     bounds.d.h),
+                text_layout{text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            true});
+    }
+
+    void table_view::draw_cell_border(
+        gpx &,
+        theme &appearance,
+        table_row_id,
+        std::size_t,
+        const table_column &,
+        const table_cell &,
+        const rect &bounds,
+        const theme::state &) {
+        const auto lines = static_cast<std::uint8_t>(_grid_lines);
+        if ((lines & static_cast<std::uint8_t>(
+                         table_grid_lines::vertical)) != 0) {
+            appearance.draw_separator(
+                rect(static_cast<coord>(bounds.x2() - 1),
+                     bounds.p.y,
+                     1,
+                     bounds.d.h),
+                separator_orientation::vertical);
+        }
+        if ((lines & static_cast<std::uint8_t>(
+                         table_grid_lines::horizontal)) != 0) {
+            appearance.draw_separator(
+                rect(bounds.p.x,
+                     static_cast<coord>(bounds.y2() - 1),
+                     bounds.d.w,
+                     1),
+                separator_orientation::horizontal);
+        }
+    }
+
+    void table_view::draw_row_focus(
+        gpx &,
+        theme &appearance,
+        table_row_id,
+        std::size_t,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+    }
+
+    void table_view::draw_scrollbar(
+        gpx &,
+        theme &appearance,
+        scrollbar_orientation orientation,
+        const rect &track,
+        const rect &thumb,
+        const theme::state &state) {
+        appearance.draw_scrollbar_part(
+            track, orientation, scrollbar_part::track, state);
+        appearance.draw_scrollbar_part(
+            thumb, orientation, scrollbar_part::thumb, state);
     }
 } // namespace native

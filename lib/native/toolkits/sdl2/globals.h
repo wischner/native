@@ -59,7 +59,7 @@ namespace linux::sdl2
         struct top_entry
         {
             std::string title;
-            std::vector<std::pair<int, std::string>> items;
+            std::vector<native::main_menu::menu_entry> items;
             int x0 = 0, x1 = 0;
         };
         std::vector<top_entry> tops;
@@ -110,6 +110,13 @@ namespace linux::sdl2
         std::vector<std::string> items;
         int selected_index = -1;
         bool visible = false;
+    };
+    struct sdl2_combo_box
+    {
+        native::wnd *parent = nullptr;
+        bool visible = false;
+        bool open = false;
+        bool focused = false;
     };
 
     struct sdl2_text_edit
@@ -176,6 +183,11 @@ namespace linux::sdl2
     // Render every visible emulated list owned by a window.
     void render_lists(native::wnd *, native::gpx &);
 
+    bool handle_combo_mouse(native::wnd *, int, int, bool);
+    bool handle_combo_key(native::wnd *, const SDL_KeyboardEvent &);
+    bool handle_combo_text(native::wnd *, const char *);
+    void render_combo_boxes(native::wnd *, native::gpx &);
+
     // Focus or position an emulated editor from a mouse press.
     bool handle_text_edit_mouse(native::wnd *, int, int, bool);
 
@@ -238,6 +250,8 @@ namespace linux::sdl2
     extern native::bindings<native::radio *, sdl2_radio *>
         radio_bindings;
     extern native::bindings<native::list *, sdl2_list *> list_bindings;
+    extern native::bindings<native::combo_box *, sdl2_combo_box *>
+        combo_box_bindings;
     extern native::bindings<native::text_edit *, sdl2_text_edit *>
         text_edit_bindings;
     extern native::bindings<native::accordion *, sdl2_collection *>
@@ -253,6 +267,7 @@ namespace linux::sdl2
     extern std::vector<native::check *> checks;
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
+    extern std::vector<native::combo_box *> combo_boxes;
     extern std::vector<native::button *> buttons;
     extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::accordion *> accordions;

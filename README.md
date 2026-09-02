@@ -31,6 +31,11 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Classic trees**: Stable-ID hierarchical `tree_view` with native
   disclosure, selection, images, navigation, and scrolling on every backend
+- **Docking workspaces**: Stable-ID split and tab layouts, draggable panes,
+  modeless floating windows, pinning and edge auto-hide, compact captions,
+  native-themed compass drop targets, and versioned persistence
+- **Extensible controls**: Virtual behavior hooks and protected owner-draw
+  stages whose base implementations retain standard native behavior
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, path, and filter model
 - **Clipboard and text editing**: Typed UTF-8/image clipboard transactions,

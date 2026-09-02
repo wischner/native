@@ -10,6 +10,7 @@
 
 #include <native.h>
 #include <native/list.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -114,5 +115,14 @@ namespace native
             return;
         _selected_index = index;
         on_selection_change.emit(_selected_index);
+    }
+
+    void list::draw_control(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_list(
+            bounds, _items, _selected_index, state);
     }
 } // namespace native

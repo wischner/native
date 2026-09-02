@@ -16,10 +16,19 @@
 #include <vector>
 
 #include "graphics.h"
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    class tree_view;
+
+    namespace detail
+    {
+        class control_render_access;
+        void draw_tree_view(tree_view &control, gpx &graphics);
+    }
+
     // Identifies one tree item independently of its display position.
     using tree_item_id = std::uint64_t;
 
@@ -62,6 +71,14 @@ namespace native
         page_down,
         toggle,
         activate
+    };
+
+    // Selects the native tree's visual presentation. Backends without a
+    // distinct three-dimensional outline retain their normal presentation.
+    enum class tree_view_presentation
+    {
+        native,
+        three_dimensional
     };
 
     // Identifies the semantic part under a tree pointer position.
@@ -159,6 +176,12 @@ namespace native
         // Return whether classic hierarchy connector lines are visible.
         bool get_lines_visible() const;
 
+        // Select the platform-native or optional three-dimensional outline.
+        tree_view &set_presentation(tree_view_presentation presentation);
+
+        // Return the requested tree presentation.
+        tree_view_presentation get_presentation() const;
+
         // Return the current number of flattened visible items.
         std::size_t get_visible_item_count() const;
 
@@ -185,28 +208,30 @@ namespace native
         tree_view &set_scroll_offset(int offset);
 
         // Cache a backend user selection and emit once when it changes.
-        void on_native_selection(tree_item_id id);
+        virtual void on_native_selection(tree_item_id id);
 
         // Cache a backend disclosure action and emit once when changed.
-        void on_native_expansion(tree_item_id id, bool expanded);
+        virtual void on_native_expansion(tree_item_id id,
+                                         bool expanded);
 
         // Apply selection, expansion, activation, or navigation input.
-        void on_native_navigation(tree_view_navigation navigation);
+        virtual void on_native_navigation(
+            tree_view_navigation navigation);
 
         // Apply classic double-click expansion and item activation.
-        void on_native_double_click(tree_item_id id);
+        virtual void on_native_double_click(tree_item_id id);
 
         // Emit activation for one valid enabled item.
-        void on_native_activate(tree_item_id id);
+        virtual void on_native_activate(tree_item_id id);
 
         // Scroll vertically by a signed pixel delta.
-        void on_native_scroll(int delta);
+        virtual void on_native_scroll(int delta);
 
         // Return whether the tree currently has keyboard focus.
         bool get_focused() const;
 
         // Cache backend focus entry or departure without a signal.
-        void on_native_focus(bool focused);
+        virtual void on_native_focus(bool focused);
 
         // Create the backend tree resource.
         void create() const override;
@@ -230,7 +255,98 @@ namespace native
         // Clamp scrolling and refresh native geometry after a resize.
         void on_bounds_changed() override;
 
+        // Apply cached hierarchy to the created native control.
+        virtual void apply_items();
+
+        // Apply cached selection to the created native control.
+        virtual void apply_selection();
+
+        // Apply one cached branch expansion to the native control.
+        virtual void apply_expansion(tree_item_id id, bool expanded);
+
+        // Apply cached scrolling to the native control.
+        virtual void apply_scroll_offset();
+
+        // Refresh dimensions from the current native theme.
+        virtual void synchronize_theme_metrics();
+
+        // Draw the complete tree background and frame.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one visible row's background and selection.
+        virtual void draw_row_background(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one row's hierarchy connector lines.
+        virtual void draw_connectors(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &row_bounds,
+            const rect &disclosure_bounds,
+            const theme::state &state);
+
+        // Draw one row's native disclosure indicator.
+        virtual void draw_disclosure(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one row's optional image.
+        virtual void draw_item_image(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one row's text content.
+        virtual void draw_item_text(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw focus around one completed row.
+        virtual void draw_row_focus(
+            gpx &graphics,
+            theme &appearance,
+            const tree_view_visible_item &visible,
+            const tree_view_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one complete tree scrollbar.
+        virtual void draw_scrollbar(
+            gpx &graphics,
+            theme &appearance,
+            scrollbar_orientation orientation,
+            const rect &track,
+            const rect &thumb,
+            const theme::state &state);
+
     private:
+        friend class detail::control_render_access;
+
+        friend void detail::draw_tree_view(
+            tree_view &control, gpx &graphics);
+
         std::vector<tree_view_item> _items;
         tree_item_id _selected_item = invalid_tree_item_id;
         size _icon_size = {16, 16};
@@ -241,12 +357,11 @@ namespace native
         int _horizontal_padding = 4;
         int _item_gap = 4;
         bool _lines_visible = true;
+        bool _lines_visible_explicit = false;
+        tree_view_presentation _presentation =
+            tree_view_presentation::native;
         bool _focused = false;
 
-        void apply_items();
-        void apply_selection();
-        void apply_expansion(tree_item_id id, bool expanded);
-        void apply_scroll_offset();
         tree_view_item *find_item(tree_item_id id);
         const tree_view_item *find_item(tree_item_id id) const;
         tree_view_item *find_parent(tree_item_id id);
@@ -255,8 +370,8 @@ namespace native
         void validate_items(
             const std::vector<tree_view_item> &items) const;
         void validate_id(tree_item_id id, bool allow_none) const;
+        void apply_theme_metrics(const theme::metrics &values);
         int maximum_scroll_offset() const;
         void ensure_item_visible(tree_item_id id);
-        void synchronize_theme_metrics();
     };
 } // namespace native

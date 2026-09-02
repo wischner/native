@@ -46,7 +46,7 @@ namespace native
                 "Windows: failed to create code_edit host.");
         _created = true;
         self->invalidate();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void code_edit::show() const {

@@ -58,11 +58,11 @@ namespace native
         const std::vector<std::string> &get_paths() const;
 
         // Accept paths reported by a native panel callback.
-        void on_native_accept(
+        virtual void on_native_accept(
             const std::vector<std::string> &paths);
 
         // Cancel the active dialog from a native panel callback.
-        void on_native_cancel();
+        virtual void on_native_cancel();
 
         // Prepare this logical panel after its owner has been created.
         void create() const override;

@@ -14,12 +14,18 @@
 #include <string>
 #include <vector>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
     class accordion;
     class img;
+
+    namespace detail
+    {
+        void draw_accordion(accordion &control, gpx &graphics);
+    }
 
     // Selects whether one or several accordion sections may be open.
     enum class accordion_mode
@@ -143,16 +149,17 @@ namespace native
         rect get_content_bounds(std::size_t index) const;
 
         // Toggle a header after a backend-originated user action.
-        void on_native_toggle(std::size_t index);
+        virtual void on_native_toggle(std::size_t index);
 
         // Return the header currently carrying keyboard focus.
         int get_focused_index() const;
 
         // Cache backend focus entry or departure without a signal.
-        void on_native_focus(bool focused);
+        virtual void on_native_focus(bool focused);
 
         // Apply one backend-originated header navigation command.
-        void on_native_navigation(accordion_navigation navigation);
+        virtual void on_native_navigation(
+            accordion_navigation navigation);
 
         // Create the backend accordion resource.
         void create() const override;
@@ -170,19 +177,79 @@ namespace native
         // Recalculate body geometry after this control is resized.
         void on_bounds_changed() override;
 
+        // Apply all item state to the created backend resource.
+        virtual void apply_items();
+
+        // Recalculate child placement and repaint the control.
+        virtual void refresh();
+
+        // Refresh dimensions from the current native theme.
+        virtual void synchronize_theme_metrics();
+
+        // Draw the complete accordion background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one section header's native surface.
+        virtual void draw_header_background(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const accordion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one section header's native disclosure indicator.
+        virtual void draw_header_disclosure(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const accordion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one section header's optional image.
+        virtual void draw_header_image(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const accordion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one section header's text.
+        virtual void draw_header_text(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const accordion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one completed section header's focus and border.
+        virtual void draw_header_border(
+            gpx &graphics,
+            theme &appearance,
+            std::size_t index,
+            const accordion_item &item,
+            const rect &bounds,
+            const theme::state &state);
+
     private:
         friend class accordion_item;
+        friend void detail::draw_accordion(
+            accordion &control, gpx &graphics);
 
         accordion_mode _mode = accordion_mode::single;
         std::vector<std::unique_ptr<accordion_item>> _items;
         int _header_height = 24;
         int _focused_index = -1;
 
-        void apply_items();
-        void refresh();
         void validate_index(int index, bool allow_none) const;
         void set_item_expanded(std::size_t index, bool expanded);
         void detach_item(accordion_item &item);
-        void synchronize_theme_metrics();
     };
 } // namespace native

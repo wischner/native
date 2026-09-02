@@ -470,4 +470,85 @@ namespace native
                                   maximum_scroll_offset());
         ensure_selection_visible();
     }
+
+    void icon_view::draw_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::content, state);
+    }
+
+    void icon_view::draw_item_background(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const icon_view_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_selection(bounds, selection_shape::tile, state);
+    }
+
+    void icon_view::draw_item_image(
+        gpx &graphics,
+        theme &,
+        std::size_t,
+        const icon_view_item &item,
+        const rect &bounds,
+        const theme::state &) {
+        if (item.image)
+            graphics.draw_img(
+                *item.image, bounds, image_filter::linear);
+    }
+
+    void icon_view::draw_item_label(
+        gpx &graphics,
+        theme &appearance,
+        std::size_t,
+        const icon_view_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        if (_label_mode == icon_view_label_mode::hidden)
+            return;
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_font(font_t::stock(font_role::icon_label))
+            .set_ink(
+                state.disabled
+                    ? colors.selection_inactive_text
+                    : (state.selected ? colors.selection_text
+                                      : colors.content_text))
+            .draw_text(
+                item.text,
+                bounds,
+                text_layout{
+                    _label_mode == icon_view_label_mode::below
+                        ? text_align::center
+                        : text_align::start,
+                    text_valign::top,
+                    text_overflow::ellipsis,
+                    true});
+    }
+
+    void icon_view::draw_item_focus(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const icon_view_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+    }
+
+    void icon_view::draw_scrollbar(
+        gpx &,
+        theme &appearance,
+        scrollbar_orientation orientation,
+        const rect &track,
+        const rect &thumb,
+        const theme::state &state) {
+        appearance.draw_scrollbar_part(
+            track, orientation, scrollbar_part::track, state);
+        appearance.draw_scrollbar_part(
+            thumb, orientation, scrollbar_part::thumb, state);
+    }
 } // namespace native

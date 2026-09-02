@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <native.h>
@@ -16,6 +17,7 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "collection_host.h"
 #include "window_position.h"
 
 namespace
@@ -37,7 +39,49 @@ namespace
             return linux::openlook::icon_view_bindings
                 .object_from_handle(icons);
         }
+        if (auto *tree = dynamic_cast<native::tree_view *>(window)) {
+            return linux::openlook::tree_view_bindings
+                .object_from_handle(tree);
+        }
+        if (auto *table = dynamic_cast<native::table_view *>(window)) {
+            return linux::openlook::table_view_bindings
+                .object_from_handle(table);
+        }
+        if (auto *editor = dynamic_cast<native::code_edit *>(window)) {
+            return linux::openlook::code_edit_bindings
+                .object_from_handle(editor);
+        }
         return nullptr;
+    }
+
+    linux::openlook::openlook_combo_box *combo_state(
+        native::wnd *window) {
+        auto *combo = dynamic_cast<native::combo_box *>(window);
+        return combo ? linux::openlook::combo_box_bindings
+                           .object_from_handle(combo) : nullptr;
+    }
+
+    void position_combo(native::wnd *window,
+                        linux::openlook::openlook_combo_box *state) {
+        const native::rect bounds = window->get_bounds();
+        const bool editable = state->text != XV_NULL;
+        const int choice_width = editable
+            ? std::min<int>(bounds.d.w, bounds.d.h+6) : bounds.d.w;
+        if (state->text)
+            xv_set(state->text,
+                   XV_X, bounds.p.x,
+                   XV_Y, bounds.p.y,
+                   XV_WIDTH, std::max(1,
+                       static_cast<int>(bounds.d.w)-choice_width),
+                   XV_HEIGHT, bounds.d.h,
+                   nullptr);
+        if (state->choice)
+            xv_set(state->choice,
+                   XV_X, editable ? bounds.x2()-choice_width : bounds.p.x,
+                   XV_Y, bounds.p.y,
+                   XV_WIDTH, choice_width,
+                   XV_HEIGHT, bounds.d.h,
+                   nullptr);
     }
 
     native::point frame_position(native::wnd *window,
@@ -89,6 +133,10 @@ namespace native
                    nullptr);
             return;
         }
+        if (auto *state = combo_state(this)) {
+            position_combo(this, state);
+            return;
+        }
 
         Panel_item item = control_item(this);
         if (item) {
@@ -122,6 +170,16 @@ namespace native
             return;
         }
 
+        if (auto *state = collection_state(this)) {
+            linux::openlook::resize_collection_panel(
+                *this, *state, _bounds.d);
+            return;
+        }
+        if (auto *state = combo_state(this)) {
+            position_combo(this, state);
+            return;
+        }
+
         Panel_item item = control_item(this);
         if (item) {
             xv_set(item,
@@ -130,10 +188,12 @@ namespace native
                    XV_HEIGHT,
                    _bounds.d.h,
                    nullptr);
-            if (!dynamic_cast<accordion *>(this) &&
-                !dynamic_cast<icon_view *>(this)) {
+            // PANEL_LABEL_WIDTH is a button attribute in the XView
+            // implementations we support.  Applying it to check, radio,
+            // list, or text items emits a bad-attribute warning and can
+            // disturb their native geometry.
+            if (dynamic_cast<button *>(this))
                 linux::openlook::fit_item_width(item, _bounds.d.w);
-            }
         }
     }
 
@@ -166,11 +226,10 @@ namespace native
             linux::openlook::repaint_window(
                 window,
                 rect(point(0, 0), window->get_dimensions()));
-        } else if (auto *state = collection_state(self)) {
-            XClearArea(linux::openlook::cached_display,
-                       static_cast<Window>(xv_get(
-                           state->paint_window, XV_XID)),
-                       0, 0, 0, 0, True);
+        } else if (collection_state(self)) {
+            linux::openlook::repaint_collection(
+                *self,
+                rect(point(0, 0), self->get_dimensions()));
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
         }
@@ -184,15 +243,8 @@ namespace native
         auto *self = const_cast<wnd *>(this);
         if (auto *window = dynamic_cast<app_wnd *>(self)) {
             linux::openlook::repaint_window(window, area);
-        } else if (auto *state = collection_state(self)) {
-            XClearArea(linux::openlook::cached_display,
-                       static_cast<Window>(xv_get(
-                           state->paint_window, XV_XID)),
-                       area.p.x,
-                       area.p.y,
-                       area.d.w,
-                       area.d.h,
-                       True);
+        } else if (collection_state(self)) {
+            linux::openlook::repaint_collection(*self, area);
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
         }

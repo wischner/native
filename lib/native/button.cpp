@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <native/button.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -42,5 +43,17 @@ namespace native
         if (_created)
             apply_text();
         return *this;
+    }
+
+    void button::on_native_click() {
+        on_click.emit();
+    }
+
+    void button::draw_control(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_button(bounds, _text, state);
     }
 } // namespace native

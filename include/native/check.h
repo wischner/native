@@ -9,10 +9,16 @@
 
 #include <string>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     class check : public wnd
     {
     public:
@@ -47,7 +53,7 @@ namespace native
         check &set_checked(bool checked);
 
         // Cache a native-originated state change and emit on_change.
-        void on_native_checked(bool checked);
+        virtual void on_native_checked(bool checked);
 
         // Create the backend check resource.
         void create() const override;
@@ -61,11 +67,24 @@ namespace native
         // Emits the checked state after a user-originated change.
         signal<bool> on_change;
 
+    protected:
+        // Draw the complete check using the active native theme.
+        virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Apply the cached label to a created native control.
+        virtual void apply_text();
+
+        // Apply the cached checked state to a native control.
+        virtual void apply_checked();
+
     private:
+        friend class detail::control_render_access;
+
         std::string _text;
         bool _checked = false;
-
-        void apply_text();
-        void apply_checked();
     };
 } // namespace native

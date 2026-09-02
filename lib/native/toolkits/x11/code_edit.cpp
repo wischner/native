@@ -26,7 +26,7 @@ namespace native
         linux::x11::code_edit_bindings.register_pair(self, binding);
         _created = true;
         self->invalidate();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void code_edit::show() const {

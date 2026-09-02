@@ -24,101 +24,115 @@
 #include <native.h>
 
 #include "collection_view.h"
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
 {
     constexpr uint32 group_change_message = 0x6e746772;
 
+    std::optional<native::table_group> group_for_row(
+        native::table_model &model,
+        std::size_t row,
+        std::size_t *group_index = nullptr);
+
     class native_table_field final : public BField
     {
     public:
         native_table_field(std::string text,
-                           const native::img *image)
-            : _text(std::move(text))
-            , _image(make_bitmap(image)) {}
+                           const native::img *image,
+            native::table_row_id row,
+            std::size_t model_row,
+            native::table_group_id group = 0)
+            : row(row)
+            , model_row(model_row)
+            , group(group)
+            , _text(std::move(text))
+            , _image(image) {}
 
         const std::string &text() const {
             return _text;
         }
 
-        const BBitmap *image() const {
-            return _image.get();
+        const native::img *image() const {
+            return _image;
         }
+
+        native::table_row_id row;
+        std::size_t model_row;
+        native::table_group_id group;
 
     private:
         std::string _text;
-        std::unique_ptr<BBitmap> _image;
-
-        static std::unique_ptr<BBitmap> make_bitmap(
-            const native::img *image) {
-            if (!image || image->w() <= 0 || image->h() <= 0)
-                return nullptr;
-            auto bitmap = std::make_unique<BBitmap>(
-                BRect(0, 0, image->w() - 1, image->h() - 1),
-                B_RGBA32);
-            if (bitmap->InitCheck() != B_OK)
-                return nullptr;
-            auto *target = static_cast<std::uint8_t *>(
-                bitmap->Bits());
-            for (int y = 0; y < image->h(); ++y) {
-                auto *line = target + y * bitmap->BytesPerRow();
-                for (int x = 0; x < image->w(); ++x) {
-                    const native::rgba color =
-                        image->pixels()[y * image->w() + x];
-                    line[x * 4 + 0] = color.b;
-                    line[x * 4 + 1] = color.g;
-                    line[x * 4 + 2] = color.r;
-                    line[x * 4 + 3] = color.a;
-                }
-            }
-            return bitmap;
-        }
+        const native::img *_image;
     };
 
     class native_table_column final : public BTitledColumn
     {
     public:
-        native_table_column(const native::table_column &column)
+        native_table_column(native::table_view &owner,
+                            const native::table_column &column)
             : BTitledColumn(column.title.c_str(),
                             column.width,
                             column.min_width,
                             column.max_width,
-                            alignment_for(column.alignment)) {}
+                            alignment_for(column.alignment))
+            , _owner(owner)
+            , _column(column) {}
 
         void DrawField(BField *field,
                        BRect bounds,
                        BView *target) override {
             auto *value = dynamic_cast<native_table_field *>(field);
-            if (!value || !target)
+            if (!value || !target || !_owner.get_created())
                 return;
-            target->PushState();
-            float left = bounds.left + 4.0f;
-            if (const BBitmap *bitmap = value->image()) {
-                const BRect image_bounds = bitmap->Bounds();
-                const float top = bounds.top +
-                    (bounds.Height() - image_bounds.Height()) / 2.0f;
-                target->SetDrawingMode(B_OP_ALPHA);
-                target->SetBlendingMode(B_PIXEL_ALPHA,
-                                        B_ALPHA_OVERLAY);
-                target->DrawBitmap(bitmap, BPoint(left, top));
-                left += image_bounds.Width() + 6.0f;
+            native::rect cell_bounds(
+                static_cast<native::coord>(bounds.left),
+                static_cast<native::coord>(bounds.top),
+                static_cast<native::dim>(
+                    std::max<float>(0, bounds.Width() + 1)),
+                static_cast<native::dim>(
+                    std::max<float>(0, bounds.Height() + 1)));
+            native::gpx &graphics = _owner.get_gpx();
+            graphics.set_clip(cell_bounds);
+            auto appearance = native::theme::create(graphics);
+            native::theme::state state;
+            const auto &selection = _owner.get_selected_rows();
+            state.selected = std::find(selection.begin(),
+                                       selection.end(),
+                                       value->row) != selection.end();
+            state.focused = target->IsFocus();
+            if (value->group != 0) {
+                native::table_model *model = _owner.get_model();
+                if (model) {
+                    const auto group = group_for_row(
+                        *model, value->model_row);
+                    if (group) {
+                        native::detail::control_render_access::
+                            draw_table_group(
+                                _owner,
+                                graphics,
+                                *appearance,
+                                *group,
+                                cell_bounds,
+                                state);
+                    }
+                }
+                return;
             }
-            BString text(value->text().c_str());
-            const float available = std::max(
-                0.0f, bounds.right - left - 4.0f);
-            target->TruncateString(&text,
-                                   B_TRUNCATE_END,
-                                   available);
-            font_height height{};
-            target->GetFontHeight(&height);
-            const float baseline = bounds.top +
-                (bounds.Height() - height.ascent - height.descent) /
-                    2.0f +
-                height.ascent;
-            target->SetDrawingMode(B_OP_OVER);
-            target->DrawString(text.String(), BPoint(left, baseline));
-            target->PopState();
+            native::table_cell cell;
+            cell.text = value->text();
+            cell.image = value->image();
+            native::detail::control_render_access::draw_table_cell(
+                _owner,
+                graphics,
+                *appearance,
+                value->row,
+                value->model_row,
+                _column,
+                cell,
+                cell_bounds,
+                state);
         }
 
         int CompareFields(BField *left, BField *right) override {
@@ -136,6 +150,9 @@ namespace
         }
 
     private:
+        native::table_view &_owner;
+        native::table_column _column;
+
         static alignment alignment_for(
             native::table_alignment value) {
             if (value == native::table_alignment::center)
@@ -285,7 +302,7 @@ namespace
     std::optional<native::table_group> group_for_row(
         native::table_model &model,
         std::size_t row,
-        std::size_t *group_index = nullptr) {
+        std::size_t *group_index) {
         for (std::size_t index = 0;
              index < model.group_count(); ++index) {
             const native::table_group group = model.group(index);
@@ -347,7 +364,8 @@ namespace
             const auto &columns = table.get_columns();
             for (std::size_t index = 0;
                  index < columns.size(); ++index) {
-                auto *column = new native_table_column(columns[index]);
+                auto *column = new native_table_column(
+                    table, columns[index]);
                 column->SetShowHeading(table.get_header_visible());
                 view.AddColumn(column, static_cast<int32>(index));
                 view.SetColumnVisible(column, columns[index].visible);
@@ -367,7 +385,11 @@ namespace
                     group.id, group.collapsible, row_height);
                 if (!columns.empty()) {
                     row->SetField(new native_table_field(
-                                      group.title, nullptr),
+                                      group.title,
+                                      nullptr,
+                                      native::invalid_table_row_id,
+                                      group.first_row,
+                                      group.id),
                                   0);
                 }
                 view.AddRow(row);
@@ -383,7 +405,10 @@ namespace
                     const native::table_cell cell = model->cell(
                         row_index, columns[column].id);
                     row->SetField(new native_table_field(
-                                      cell.text, cell.image),
+                                      cell.text,
+                                      cell.image,
+                                      row->id,
+                                      row_index),
                                   static_cast<int32>(column));
                 }
                 std::size_t group_index = 0;
@@ -527,7 +552,7 @@ namespace native
             self->apply_selection();
             self->apply_scroll();
         }
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

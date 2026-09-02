@@ -17,6 +17,10 @@ namespace native
 {
     class app_wnd;
 
+    // Inserts a non-command dividing line in a menu item group.
+    struct menu_separator_t {};
+    inline constexpr menu_separator_t menu_separator{};
+
     // Collects menu items for one top-level menu in the builder API.
     class menu_items_proxy
     {
@@ -26,6 +30,9 @@ namespace native
         {
             int id = 0;
             std::string label;
+            std::size_t mnemonic_index = std::string::npos;
+            std::string shortcut;
+            bool separator = false;
         };
 
         // Items accumulated by the stream-style builder.
@@ -36,6 +43,9 @@ namespace native
 
         // Append a caller-supplied command ID and label.
         menu_items_proxy &operator<<(std::pair<int, std::string> item);
+
+        // Append a native menu separator.
+        menu_items_proxy &operator<<(menu_separator_t);
     };
 
     //
@@ -93,12 +103,16 @@ namespace native
         {
             int id = 0;
             std::string label;
+            std::size_t mnemonic_index = std::string::npos;
+            std::string shortcut;
+            bool separator = false;
         };
 
         // Stores one top-level title and its commands.
         struct top_entry
         {
             std::string title;
+            std::size_t mnemonic_index = std::string::npos;
             std::vector<menu_entry> items;
         };
 
@@ -116,7 +130,13 @@ namespace native
         int next_auto_item_id() const;
 
         // Add a command to the most recent top-level menu.
-        void add_item(int id, const std::string &label);
+        void add_item(int id,
+                      const std::string &label,
+                      std::size_t mnemonic_index,
+                      const std::string &shortcut);
+
+        // Add a non-command separator to the most recent top-level menu.
+        void add_separator();
 
         std::vector<top_entry> _tops;
         app_wnd *_owner = nullptr;

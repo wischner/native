@@ -134,7 +134,7 @@ namespace native
         b->adapter = a;
         mac::list_bindings.register_pair(self, b);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         auto *b = mac::list_bindings.object_from_handle(

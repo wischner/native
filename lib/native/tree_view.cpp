@@ -402,6 +402,7 @@ namespace native
     }
 
     tree_view &tree_view::set_lines_visible(bool visible) {
+        _lines_visible_explicit = true;
         if (_lines_visible == visible)
             return *this;
         _lines_visible = visible;
@@ -413,6 +414,24 @@ namespace native
 
     bool tree_view::get_lines_visible() const {
         return _lines_visible;
+    }
+
+    tree_view &tree_view::set_presentation(
+        tree_view_presentation presentation) {
+        if (_presentation == presentation)
+            return *this;
+        _presentation = presentation;
+        if (_created) {
+            apply_items();
+            apply_selection();
+            apply_scroll_offset();
+        }
+        invalidate();
+        return *this;
+    }
+
+    tree_view_presentation tree_view::get_presentation() const {
+        return _presentation;
     }
 
     std::vector<tree_view_visible_item>
@@ -761,21 +780,170 @@ namespace native
             gpx &graphics = root->get_gpx();
             auto painter = theme::create(graphics);
             const theme::metrics values = painter->defaults();
-            _row_height = std::max(
-                {1,
-                 values.list_item_height,
-                 static_cast<int>(_icon_size.h) + 4});
-            _disclosure_size = std::max(1, values.disclosure_size);
-            _horizontal_padding = std::max(0, values.header_padding_x);
-            _item_gap = std::max(0, values.header_gap);
-            _indent_width = std::max(
-                _disclosure_size + _item_gap,
-                values.header_padding_x * 2 + _disclosure_size);
+            apply_theme_metrics(values);
         } catch (const std::runtime_error &) {
             // Early native creation may not yet expose a drawable.
         }
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
         ensure_item_visible(_selected_item);
+    }
+
+    void tree_view::apply_theme_metrics(
+        const theme::metrics &values) {
+        _row_height = std::max(
+            {1,
+             values.tree_row_height > 0
+                 ? values.tree_row_height
+                 : values.list_item_height,
+             static_cast<int>(_icon_size.h) +
+                 std::max(0, values.tree_icon_vertical_padding)});
+        _disclosure_size = std::max(1, values.disclosure_size);
+        if (!_lines_visible_explicit)
+            _lines_visible = values.tree_lines_visible;
+        _horizontal_padding = std::max(
+            0,
+            values.tree_horizontal_padding >= 0
+                ? values.tree_horizontal_padding
+                : values.header_padding_x);
+        _item_gap = std::max(
+            0,
+            values.tree_item_gap >= 0
+                ? values.tree_item_gap
+                : values.header_gap);
+        _indent_width = values.tree_indent_width > 0
+                            ? values.tree_indent_width
+                            : std::max(
+                                  _disclosure_size + _item_gap,
+                                  values.header_padding_x * 2 +
+                                      _disclosure_size);
+        _scroll_offset = std::min(_scroll_offset,
+                                  maximum_scroll_offset());
+        ensure_item_visible(_selected_item);
+    }
+
+    void tree_view::draw_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::content, state);
+    }
+
+    void tree_view::draw_row_background(
+        gpx &,
+        theme &appearance,
+        const tree_view_visible_item &,
+        const tree_view_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_selection(bounds, selection_shape::row, state);
+    }
+
+    void tree_view::draw_connectors(
+        gpx &graphics,
+        theme &appearance,
+        const tree_view_visible_item &visible,
+        const tree_view_item &item,
+        const rect &row_bounds,
+        const rect &disclosure_bounds,
+        const theme::state &) {
+        if (!_lines_visible)
+            return;
+        const theme::palette colors = appearance.native_palette();
+        const int center_x = disclosure_bounds.p.x +
+                             disclosure_bounds.d.w / 2;
+        const int center_y = row_bounds.p.y + row_bounds.d.h / 2;
+        graphics.set_ink(colors.separator).set_pen(1);
+        if (visible.depth > 0) {
+            graphics.draw_line(
+                point(static_cast<coord>(
+                          center_x - disclosure_bounds.d.w),
+                      static_cast<coord>(center_y)),
+                point(static_cast<coord>(
+                          disclosure_bounds.p.x - 1),
+                      static_cast<coord>(center_y)));
+        }
+        if (item.expanded && !item.children.empty()) {
+            graphics.draw_line(
+                point(static_cast<coord>(center_x),
+                      static_cast<coord>(disclosure_bounds.y2())),
+                point(static_cast<coord>(center_x),
+                      static_cast<coord>(row_bounds.y2())));
+        }
+    }
+
+    void tree_view::draw_disclosure(
+        gpx &,
+        theme &appearance,
+        const tree_view_visible_item &,
+        const tree_view_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        if (!item.children.empty()) {
+            appearance.draw_disclosure(
+                bounds,
+                item.expanded ? disclosure_state::expanded
+                              : disclosure_state::collapsed,
+                state);
+        }
+    }
+
+    void tree_view::draw_item_image(
+        gpx &graphics,
+        theme &,
+        const tree_view_visible_item &,
+        const tree_view_item &item,
+        const rect &bounds,
+        const theme::state &) {
+        if (item.image)
+            graphics.draw_img(
+                *item.image, bounds, image_filter::linear);
+    }
+
+    void tree_view::draw_item_text(
+        gpx &graphics,
+        theme &appearance,
+        const tree_view_visible_item &,
+        const tree_view_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(
+                state.disabled
+                    ? colors.selection_inactive_text
+                    : (state.selected ? colors.selection_text
+                                      : colors.content_text))
+            .draw_text(
+                item.text,
+                bounds,
+                text_layout{text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            false});
+    }
+
+    void tree_view::draw_row_focus(
+        gpx &,
+        theme &appearance,
+        const tree_view_visible_item &,
+        const tree_view_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+    }
+
+    void tree_view::draw_scrollbar(
+        gpx &,
+        theme &appearance,
+        scrollbar_orientation orientation,
+        const rect &track,
+        const rect &thumb,
+        const theme::state &state) {
+        appearance.draw_scrollbar_part(
+            track, orientation, scrollbar_part::track, state);
+        appearance.draw_scrollbar_part(
+            thumb, orientation, scrollbar_part::thumb, state);
     }
 } // namespace native

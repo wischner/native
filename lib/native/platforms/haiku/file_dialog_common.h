@@ -19,5 +19,6 @@ namespace haiku
                           bool save,
                           bool allow_multiple,
                           const std::string &suggested_name,
-                          const std::string &default_extension);
+                          const std::string &default_extension,
+                          bool directory = false);
 } // namespace haiku

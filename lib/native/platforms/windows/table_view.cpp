@@ -18,6 +18,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "../../table_visible_rows.h"
 #include "globals.h"
 
@@ -152,6 +153,46 @@ namespace
                    ? binding.native_columns[
                          static_cast<std::size_t>(index)]
                    : 0;
+    }
+
+    const native::table_column *table_column_for_native(
+        native::table_view &table,
+        const windows::win_table_view &binding,
+        int index) {
+        const native::table_column_id id =
+            column_for_native(binding, index);
+        const auto found = std::find_if(
+            table.get_columns().begin(),
+            table.get_columns().end(),
+            [id](const native::table_column &column) {
+                return column.id == id;
+            });
+        return found == table.get_columns().end() ? nullptr : &*found;
+    }
+
+    bool model_row_for_native_item(
+        native::table_view &table,
+        const windows::win_table_view &binding,
+        int item,
+        std::size_t &model_row,
+        native::table_row_id &row_id) {
+        native::table_model *model = table.get_model();
+        if (!model || item < 0)
+            return false;
+        model_row = static_cast<std::size_t>(item);
+        if (binding.owner_data) {
+            if (model_row >= table.get_display_row_count())
+                return false;
+            const native::table_display_row display =
+                table.get_display_row(model_row);
+            if (display.group)
+                return false;
+            model_row = display.model_row;
+        }
+        if (model_row >= model->row_count())
+            return false;
+        row_id = model->row_id(model_row);
+        return true;
     }
 
     void reset_images(native::table_view &table) {
@@ -451,6 +492,54 @@ namespace windows
                 binding.hwnd, -1, LVNI_SELECTED);
         }
         if (notification->code == NM_CUSTOMDRAW) {
+            auto *native_draw = reinterpret_cast<NMCUSTOMDRAW *>(
+                notification);
+            windows::scoped_gpx_dc custom_draw_context(
+                table->get_gpx(), native_draw->hdc);
+            HWND header = ListView_GetHeader(binding.hwnd);
+            if (notification->hwndFrom == header) {
+                auto *draw = reinterpret_cast<NMCUSTOMDRAW *>(
+                    notification);
+                if (draw->dwDrawStage == CDDS_PREPAINT)
+                    return CDRF_NOTIFYITEMDRAW;
+                if (draw->dwDrawStage == CDDS_ITEMPREPAINT) {
+                    const int native_column =
+                        static_cast<int>(draw->dwItemSpec);
+                    const native::table_column *column =
+                        table_column_for_native(
+                            *table, binding, native_column);
+                    RECT item_bounds{};
+                    if (!column ||
+                        !Header_GetItemRect(
+                            header, native_column, &item_bounds)) {
+                        return CDRF_DODEFAULT;
+                    }
+                    native::rect bounds(
+                        static_cast<native::coord>(item_bounds.left),
+                        static_cast<native::coord>(item_bounds.top),
+                        static_cast<native::dim>(
+                            item_bounds.right - item_bounds.left),
+                        static_cast<native::dim>(
+                            item_bounds.bottom - item_bounds.top));
+                    native::gpx &graphics =
+                        table->get_gpx().set_clip(bounds);
+                    auto appearance = native::theme::create(graphics);
+                    native::theme::state state;
+                    state.hot = (draw->uItemState & CDIS_HOT) != 0;
+                    state.pressed =
+                        (draw->uItemState & CDIS_SELECTED) != 0;
+                    native::detail::control_render_access::
+                        draw_table_header(
+                            *table,
+                            graphics,
+                            *appearance,
+                            *column,
+                            bounds,
+                            state);
+                    return CDRF_SKIPDEFAULT;
+                }
+                return CDRF_DODEFAULT;
+            }
             auto *draw = reinterpret_cast<NMLVCUSTOMDRAW *>(notification);
             if (draw->nmcd.dwDrawStage == CDDS_PREPAINT)
                 return CDRF_NOTIFYITEMDRAW;
@@ -466,60 +555,156 @@ namespace windows
                                              item,
                                              &bounds,
                                              LVIR_BOUNDS);
-                        FillRect(draw->nmcd.hdc,
-                                 &bounds,
-                                 GetSysColorBrush(COLOR_BTNFACE));
                         native::table_model *model = table->get_model();
                         const auto group = model
                             ? group_by_id(*model, display.group_id)
                             : std::nullopt;
-                        std::wstring title = group
-                            ? utf8_to_wide(group->title)
-                            : std::wstring();
-                        if (group && group->collapsible) {
-                            const LONG top = bounds.top +
-                                std::max<LONG>(
-                                    0,
-                                    (bounds.bottom - bounds.top - 13) /
-                                        2);
-                            RECT disclosure{bounds.left + 4,
-                                            top,
-                                            bounds.left + 17,
-                                            top + 13};
-                            DrawFrameControl(
-                                draw->nmcd.hdc,
-                                &disclosure,
-                                DFC_SCROLL,
-                                table->get_group_expanded(
-                                    display.group_id)
-                                    ? DFCS_SCROLLDOWN
-                                    : DFCS_SCROLLRIGHT);
+                        if (group) {
+                            native::rect native_bounds(
+                                bounds.left,
+                                bounds.top,
+                                bounds.right - bounds.left,
+                                bounds.bottom - bounds.top);
+                            native::gpx &graphics =
+                                table->get_gpx().set_clip(native_bounds);
+                            auto appearance =
+                                native::theme::create(graphics);
+                            native::theme::state state;
+                            native::detail::control_render_access::
+                                draw_table_group(
+                                    *table,
+                                    graphics,
+                                    *appearance,
+                                    *group,
+                                    native_bounds,
+                                    state);
                         }
-                        bounds.left += group && group->collapsible
-                                           ? 22
-                                           : 8;
-                        SetBkMode(draw->nmcd.hdc, TRANSPARENT);
-                        SetTextColor(draw->nmcd.hdc,
-                                     GetSysColor(COLOR_BTNTEXT));
-                        DrawTextW(draw->nmcd.hdc,
-                                  title.c_str(),
-                                  -1,
-                                  &bounds,
-                                  DT_LEFT | DT_VCENTER |
-                                      DT_SINGLELINE | DT_END_ELLIPSIS);
                         return CDRF_SKIPDEFAULT;
                     }
                 }
-                if (table->get_alternating_rows() &&
-                    (static_cast<std::size_t>(item) & 1U) != 0) {
-                    const COLORREF base = GetSysColor(COLOR_WINDOW);
-                    const COLORREF edge = GetSysColor(COLOR_3DFACE);
-                    draw->clrTextBk = RGB(
-                        (GetRValue(base) * 7 + GetRValue(edge)) / 8,
-                        (GetGValue(base) * 7 + GetGValue(edge)) / 8,
-                        (GetBValue(base) * 7 + GetBValue(edge)) / 8);
+                return CDRF_NOTIFYSUBITEMDRAW |
+                       CDRF_NOTIFYPOSTPAINT;
+            }
+            if (draw->nmcd.dwDrawStage ==
+                (CDDS_ITEMPREPAINT | CDDS_SUBITEM)) {
+                const int item =
+                    static_cast<int>(draw->nmcd.dwItemSpec);
+                const int subitem = draw->iSubItem;
+                std::size_t model_row = 0;
+                native::table_row_id row_id =
+                    native::invalid_table_row_id;
+                const native::table_column *column =
+                    table_column_for_native(*table, binding, subitem);
+                native::table_model *model = table->get_model();
+                if (!column || !model ||
+                    !model_row_for_native_item(
+                        *table,
+                        binding,
+                        item,
+                        model_row,
+                        row_id)) {
+                    return CDRF_DODEFAULT;
                 }
-                return CDRF_NEWFONT;
+                RECT cell{};
+                if (!ListView_GetSubItemRect(
+                        binding.hwnd,
+                        item,
+                        subitem,
+                        LVIR_BOUNDS,
+                        &cell)) {
+                    return CDRF_DODEFAULT;
+                }
+                native::rect bounds(
+                    cell.left,
+                    cell.top,
+                    cell.right - cell.left,
+                    cell.bottom - cell.top);
+                native::gpx &graphics =
+                    table->get_gpx().set_clip(bounds);
+                auto appearance = native::theme::create(graphics);
+                native::theme::state state;
+                state.selected =
+                    (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+                state.focused =
+                    (draw->nmcd.uItemState & CDIS_FOCUS) != 0;
+                state.hot =
+                    (draw->nmcd.uItemState & CDIS_HOT) != 0;
+                state.disabled =
+                    (draw->nmcd.uItemState & CDIS_DISABLED) != 0;
+                if (subitem == 0) {
+                    RECT row{};
+                    if (ListView_GetItemRect(
+                            binding.hwnd, item, &row, LVIR_BOUNDS)) {
+                        native::detail::control_render_access::
+                            draw_table_row_background(
+                                *table,
+                                graphics,
+                                *appearance,
+                                row_id,
+                                model_row,
+                                native::rect(
+                                    row.left,
+                                    row.top,
+                                    row.right - row.left,
+                                    row.bottom - row.top),
+                                state);
+                    }
+                }
+                const native::table_cell value =
+                    model->cell(model_row, column->id);
+                native::detail::control_render_access::draw_table_cell(
+                    *table,
+                    graphics,
+                    *appearance,
+                    row_id,
+                    model_row,
+                    *column,
+                    value,
+                    bounds,
+                    state);
+                return CDRF_SKIPDEFAULT;
+            }
+            if (draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT) {
+                const int item =
+                    static_cast<int>(draw->nmcd.dwItemSpec);
+                std::size_t model_row = 0;
+                native::table_row_id row_id =
+                    native::invalid_table_row_id;
+                if (!model_row_for_native_item(
+                        *table,
+                        binding,
+                        item,
+                        model_row,
+                        row_id)) {
+                    return CDRF_DODEFAULT;
+                }
+                RECT row{};
+                if (ListView_GetItemRect(
+                        binding.hwnd, item, &row, LVIR_BOUNDS)) {
+                    native::rect bounds(
+                        row.left,
+                        row.top,
+                        row.right - row.left,
+                        row.bottom - row.top);
+                    native::gpx &graphics =
+                        table->get_gpx().set_clip(bounds);
+                    auto appearance = native::theme::create(graphics);
+                    native::theme::state state;
+                    state.selected =
+                        (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+                    state.focused =
+                        (draw->nmcd.uItemState & CDIS_FOCUS) != 0;
+                    native::detail::control_render_access::
+                        draw_table_row_focus(
+                            *table,
+                            graphics,
+                            *appearance,
+                            row_id,
+                            model_row,
+                            bounds,
+                            state);
+                }
+                return CDRF_DODEFAULT;
             }
         }
         if (notification->code == HDN_ENDTRACKW ||
@@ -650,7 +835,7 @@ namespace native
         rebuild(*self);
         self->apply_selection();
         self->apply_scroll();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

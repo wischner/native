@@ -27,7 +27,7 @@ namespace native
         auto *self = const_cast<radio *>(this);
         linux::gemix::radios.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void radio::show() const {
         if (!_created)

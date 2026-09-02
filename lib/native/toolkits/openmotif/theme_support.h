@@ -19,6 +19,7 @@ namespace linux::openmotif
     // Identifies a drawable Motif window graphics target.
     struct theme_target
     {
+        native::wnd *owner = nullptr;
         Widget widget = nullptr;
         motif_gpx *cache = nullptr;
     };

@@ -101,6 +101,56 @@ namespace windows
         return wnd_bindings.handle_from_object(gw->window());
     }
 
+    namespace
+    {
+        win_gpx *state_from_gpx(native::gpx &graphics) {
+            auto *window_graphics =
+                dynamic_cast<native::gpx_wnd *>(&graphics);
+            return window_graphics
+                       ? wnd_gpx_bindings.object_from_handle(
+                             window_graphics->window())
+                       : nullptr;
+        }
+    } // namespace
+
+    scoped_gpx_dc::scoped_gpx_dc(native::gpx &graphics, HDC hdc)
+        : _graphics(graphics)
+        , _previous(nullptr)
+        , _borrowed(hdc)
+        , _saved_state(hdc ? SaveDC(hdc) : 0) {
+        if (win_gpx *state = state_from_gpx(_graphics)) {
+            _previous = state->hdc;
+            state->hdc = hdc;
+        }
+    }
+
+    scoped_gpx_dc::~scoped_gpx_dc() {
+        if (win_gpx *state = state_from_gpx(_graphics))
+            state->hdc = _previous;
+        if (_borrowed && _saved_state)
+            RestoreDC(_borrowed, _saved_state);
+    }
+
+    HDC acquire_gpx_dc(native::gpx &graphics) {
+        if (win_gpx *state = state_from_gpx(graphics)) {
+            if (state->hdc)
+                return state->hdc;
+        }
+        const HWND hwnd = hwnd_from_gpx(graphics);
+        return hwnd ? GetDC(hwnd) : nullptr;
+    }
+
+    void release_gpx_dc(native::gpx &graphics, HDC hdc) {
+        if (!hdc)
+            return;
+        if (win_gpx *state = state_from_gpx(graphics)) {
+            if (state->hdc == hdc)
+                return;
+        }
+        if (const HWND hwnd = hwnd_from_gpx(graphics))
+            ReleaseDC(hwnd, hdc);
+    }
+
     HFONT control_font() {
         const native::font_t &font = native::font_t::stock(
             native::font_role::control);

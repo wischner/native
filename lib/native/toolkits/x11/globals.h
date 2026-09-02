@@ -87,8 +87,24 @@ namespace linux::x11
         std::vector<std::string> labels;
         std::vector<char *> pointers;
     };
+    struct xaw_combo_callback
+    {
+        native::combo_box *owner = nullptr;
+        int index = -1;
+    };
+    struct xaw_combo_box
+    {
+        Widget root = nullptr;
+        Widget text = nullptr;
+        Widget button = nullptr;
+        Widget menu = nullptr;
+        std::vector<xaw_combo_callback *> callbacks;
+        bool suppress = false;
+    };
 
     extern native::bindings<native::list *, xaw_list *> list_bindings;
+    extern native::bindings<native::combo_box *, xaw_combo_box *>
+        combo_box_bindings;
 
     struct xaw_collection
     {

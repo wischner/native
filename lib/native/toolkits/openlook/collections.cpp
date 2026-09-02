@@ -7,6 +7,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <limits>
 
 #include <native.h>
 
@@ -14,6 +15,7 @@
 #include <X11/Xutil.h>
 #include <xview/canvas.h>
 #include <xview/panel.h>
+#include <xview/scrollbar.h>
 #include <xview/win_input.h>
 #include <xview/xview.h>
 
@@ -22,6 +24,12 @@
 
 namespace
 {
+    Notify_value handle_scrollbar_event(
+        Notify_client client,
+        Event *event,
+        Scrollbar scrollbar,
+        Notify_event_type type);
+
     linux::openlook::openlook_collection *state_for(
         native::wnd &owner) {
         if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
@@ -67,6 +75,288 @@ namespace
         cache->buffer_height = height;
     }
 
+    int saturated_int(std::size_t value) {
+        return value > static_cast<std::size_t>(
+                           std::numeric_limits<int>::max())
+                   ? std::numeric_limits<int>::max()
+                   : static_cast<int>(value);
+    }
+
+    void configure_scrollbar(Scrollbar scrollbar,
+                             bool visible,
+                             int object_length,
+                             int page_length,
+                             int view_start) {
+        if (!scrollbar)
+            return;
+        const int object = std::max(1, object_length);
+        const int page = std::clamp(page_length, 1, object);
+        const int start = std::clamp(
+            view_start, 0, std::max(0, object - page));
+        xv_set(scrollbar,
+               SCROLLBAR_OBJECT_LENGTH,
+               object,
+               SCROLLBAR_PAGE_LENGTH,
+               page,
+               SCROLLBAR_VIEW_LENGTH,
+               page,
+               SCROLLBAR_VIEW_START,
+               start,
+               SCROLLBAR_INACTIVE,
+               visible ? FALSE : TRUE,
+               XV_SHOW,
+               visible ? TRUE : FALSE,
+               nullptr);
+    }
+
+    void place_scrollbar(Scrollbar scrollbar,
+                         int x,
+                         int y,
+                         int width,
+                         int height) {
+        if (!scrollbar)
+            return;
+        xv_set(scrollbar,
+               XV_X,
+               std::max(0, x),
+               XV_Y,
+               std::max(0, y),
+               XV_WIDTH,
+               std::max(1, width),
+               XV_HEIGHT,
+               std::max(1, height),
+               nullptr);
+    }
+
+    void synchronize_scrollbars(
+        native::wnd &owner,
+        linux::openlook::openlook_collection &state) {
+        if (state.synchronizing_scrollbars)
+            return;
+        state.synchronizing_scrollbars = true;
+
+        const native::size dimensions = owner.get_dimensions();
+        const int width = std::max(1, static_cast<int>(dimensions.w));
+        const int height = std::max(1, static_cast<int>(dimensions.h));
+        const int scrollbar_extent = std::max(
+            1, scrollbar_width_for_scale(WIN_SCALE_MEDIUM));
+
+        if (auto *icons = dynamic_cast<native::icon_view *>(&owner)) {
+            const int object = std::max(
+                1, static_cast<int>(icons->get_content_dimensions().h));
+            configure_scrollbar(state.vertical_scrollbar,
+                                object > height,
+                                object,
+                                height,
+                                icons->get_scroll_offset());
+            place_scrollbar(state.vertical_scrollbar,
+                            width - scrollbar_extent,
+                            0,
+                            scrollbar_extent,
+                            height);
+        } else if (auto *tree =
+                       dynamic_cast<native::tree_view *>(&owner)) {
+            const std::size_t count = tree->get_visible_item_count();
+            const int row_height = count > 0
+                                       ? std::max<int>(
+                                             1,
+                                             tree->get_row_bounds(0).d.h)
+                                       : 1;
+            const std::size_t maximum =
+                static_cast<std::size_t>(
+                    std::numeric_limits<int>::max()) /
+                static_cast<std::size_t>(row_height);
+            const int object = count > maximum
+                                   ? std::numeric_limits<int>::max()
+                                   : std::max(
+                                         1,
+                                         static_cast<int>(count) *
+                                             row_height);
+            configure_scrollbar(state.vertical_scrollbar,
+                                object > height,
+                                object,
+                                height,
+                                tree->get_scroll_offset());
+            place_scrollbar(state.vertical_scrollbar,
+                            width - scrollbar_extent,
+                            0,
+                            scrollbar_extent,
+                            height);
+        } else if (auto *table =
+                       dynamic_cast<native::table_view *>(&owner)) {
+            auto appearance = native::theme::create(owner.get_gpx());
+            const native::theme::metrics metrics =
+                appearance->defaults();
+            const int header = table->get_header_visible()
+                                   ? std::max(0, metrics.header_height)
+                                   : 0;
+            const int row = std::max(
+                1,
+                table->get_row_height()
+                    ? static_cast<int>(*table->get_row_height())
+                    : metrics.table_row_height);
+            const int total_rows = std::max(
+                1, saturated_int(table->get_display_row_count()));
+            int content_width = 0;
+            for (const native::table_column &column :
+                table->get_columns()) {
+                if (column.visible) {
+                    const int column_width =
+                        static_cast<int>(column.width);
+                    content_width =
+                        content_width >
+                                std::numeric_limits<int>::max() -
+                                    column_width
+                            ? std::numeric_limits<int>::max()
+                            : content_width + column_width;
+                }
+            }
+            content_width = std::max(1, content_width);
+            int body_width = width;
+            int body_height = std::max(0, height - header);
+            const bool needs_vertical =
+                static_cast<std::uint64_t>(
+                    table->get_display_row_count()) *
+                    static_cast<std::uint64_t>(row) >
+                static_cast<std::uint64_t>(body_height);
+            const bool vertical =
+                table->get_vertical_scrollbar_policy() ==
+                    native::scrollbar_policy::always ||
+                (table->get_vertical_scrollbar_policy() ==
+                     native::scrollbar_policy::automatic &&
+                 needs_vertical);
+            if (vertical) {
+                body_width = std::max(
+                    0, body_width - scrollbar_extent);
+            }
+            const bool horizontal =
+                table->get_horizontal_scrollbar_policy() ==
+                    native::scrollbar_policy::always ||
+                (table->get_horizontal_scrollbar_policy() ==
+                     native::scrollbar_policy::automatic &&
+                 content_width > body_width);
+            if (horizontal) {
+                body_height = std::max(
+                    0, body_height - scrollbar_extent);
+            }
+            const int page_rows = std::max(1, body_height / row);
+            configure_scrollbar(
+                state.vertical_scrollbar,
+                vertical,
+                total_rows,
+                page_rows,
+                saturated_int(table->get_vertical_scroll_row()));
+            configure_scrollbar(
+                state.horizontal_scrollbar,
+                horizontal,
+                content_width,
+                std::max(1, body_width),
+                table->get_horizontal_scroll_offset());
+            place_scrollbar(state.vertical_scrollbar,
+                            body_width,
+                            header,
+                            scrollbar_extent,
+                            body_height);
+            place_scrollbar(state.horizontal_scrollbar,
+                            0,
+                            header + body_height,
+                            body_width,
+                            scrollbar_extent);
+        }
+
+        state.synchronizing_scrollbars = false;
+    }
+
+    void paint_and_copy(native::wnd &owner,
+                        linux::openlook::openlook_collection &state,
+                        const native::rect &requested) {
+        if (!owner.get_created() || !state.panel ||
+            !state.paint_window) {
+            return;
+        }
+        synchronize_scrollbars(owner, state);
+        const int width = static_cast<int>(xv_get(
+            state.panel, XV_WIDTH));
+        const int height = static_cast<int>(xv_get(
+            state.panel, XV_HEIGHT));
+        const native::rect invalid = requested.intersect(
+            native::rect(0, 0, width, height));
+        if (invalid.d.w <= 0 || invalid.d.h <= 0)
+            return;
+
+        auto &graphics = owner.get_gpx();
+        ensure_backbuffer(owner, width, height);
+        graphics.set_clip(invalid);
+        owner.on_native_paint(native::wnd_paint_event(
+            invalid, graphics));
+
+        auto *cache = linux::openlook::wnd_gpx_bindings
+                          .object_from_handle(&owner);
+        const Window window = static_cast<Window>(xv_get(
+            state.paint_window, XV_XID));
+        if (!cache || !cache->gc || !cache->backbuffer ||
+            window == None) {
+            return;
+        }
+        XSetClipMask(linux::openlook::cached_display,
+                     cache->gc,
+                     None);
+        XCopyArea(linux::openlook::cached_display,
+                  cache->backbuffer,
+                  window,
+                  cache->gc,
+                  invalid.p.x,
+                  invalid.p.y,
+                  invalid.d.w,
+                  invalid.d.h,
+                  invalid.p.x,
+                  invalid.p.y);
+        XFlush(linux::openlook::cached_display);
+    }
+
+    Notify_value handle_scrollbar_event(
+        Notify_client client,
+        Event *event,
+        Scrollbar scrollbar,
+        Notify_event_type type) {
+        auto *owner = reinterpret_cast<native::wnd *>(
+            linux::openlook::collection_paint_bindings
+                .object_from_handle(client));
+        auto *state = owner ? state_for(*owner) : nullptr;
+        if (owner && state && event &&
+            !state->synchronizing_scrollbars &&
+            event_id(event) == SCROLLBAR_REQUEST) {
+            const int start = static_cast<int>(xv_get(
+                scrollbar, SCROLLBAR_VIEW_START));
+            if (scrollbar == state->vertical_scrollbar) {
+                if (auto *icons =
+                        dynamic_cast<native::icon_view *>(owner)) {
+                    icons->set_scroll_offset(start);
+                } else if (auto *tree =
+                               dynamic_cast<native::tree_view *>(owner)) {
+                    tree->set_scroll_offset(start);
+                } else if (auto *table =
+                               dynamic_cast<native::table_view *>(owner)) {
+                    table->on_native_scroll(
+                        static_cast<std::size_t>(std::max(0, start)),
+                        table->get_horizontal_scroll_offset());
+                }
+            } else if (scrollbar == state->horizontal_scrollbar) {
+                if (auto *table =
+                        dynamic_cast<native::table_view *>(owner)) {
+                    table->on_native_scroll(
+                        table->get_vertical_scroll_row(),
+                        std::max(0, start));
+                }
+            }
+        }
+        return notify_next_event_func(
+            client,
+            reinterpret_cast<Notify_event>(event),
+            scrollbar,
+            type);
+    }
+
     void repaint(Panel panel,
                  Xv_Window paint_window,
                  Rectlist *areas) {
@@ -83,31 +373,13 @@ namespace
                                    areas->rl_bound.r_width,
                                    areas->rl_bound.r_height);
         }
-        auto &graphics = owner->get_gpx();
-        ensure_backbuffer(*owner, width, height);
-        graphics.set_clip(invalid);
-        native::wnd_paint_event event(invalid, graphics);
-        owner->on_wnd_paint.emit(event);
-        auto *cache = linux::openlook::wnd_gpx_bindings
-                          .object_from_handle(owner);
-        const Window window = paint_window
-                                  ? static_cast<Window>(xv_get(
-                                        paint_window, XV_XID))
-                                  : None;
-        if (!cache || !cache->gc || !cache->backbuffer ||
-            window == None)
+        auto *state = state_for(*owner);
+        if (!state)
             return;
-        XSetClipMask(linux::openlook::cached_display, cache->gc, None);
-        XCopyArea(linux::openlook::cached_display,
-                  cache->backbuffer,
-                  window,
-                  cache->gc,
-                  invalid.p.x,
-                  invalid.p.y,
-                  invalid.d.w,
-                  invalid.d.h,
-                  invalid.p.x,
-                  invalid.p.y);
+        // XView supplies the same paint window held by the collection
+        // state. Keep it synchronized in case a Canvas recreates it.
+        state->paint_window = paint_window;
+        paint_and_copy(*owner, *state, invalid);
     }
 
     void navigate(native::wnd &owner, KeySym symbol) {
@@ -299,14 +571,14 @@ namespace
                 editor->on_native_focus(false);
         } else if (action == ACTION_SCROLL_UP ||
                    action == ACTION_SCROLL_DOWN) {
-            owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+            owner->on_native_mouse_wheel(native::mouse_wheel_event(
                 native::point(event_x(event), event_y(event)),
                 action == ACTION_SCROLL_UP ? 24 : -24,
                 native::wheel_direction::vertical));
         } else if (action == ACTION_SELECT) {
             if (event_is_down(event))
                 xv_set(window, WIN_SET_FOCUS, nullptr);
-            owner->on_mouse_click.emit(native::mouse_event(
+            owner->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 event_is_down(event) ? native::mouse_action::press
                                      : native::mouse_action::release,
@@ -387,7 +659,7 @@ namespace
         }
         XEvent *native_event = event_xevent(event);
         if (native_event && native_event->type == MotionNotify) {
-            owner->on_mouse_move.emit(native::point(
+            owner->on_native_mouse_move(native::point(
                 native_event->xmotion.x, native_event->xmotion.y));
         }
         if (native_event && native_event->type == KeyPress) {
@@ -470,6 +742,39 @@ namespace
             type);
     }
 
+    void configure_paint_window(
+        native::wnd &owner,
+        linux::openlook::openlook_collection &state,
+        Xv_Window paint_window) {
+        if (!paint_window)
+            throw std::runtime_error(
+                "OpenLook/XView: collection has no paint window.");
+        if (state.paint_window && state.paint_window != paint_window) {
+            linux::openlook::collection_paint_bindings
+                .unregister_by_handle(state.paint_window);
+        }
+        state.paint_window = paint_window;
+        linux::openlook::collection_paint_bindings.register_pair(
+            paint_window, &owner);
+        xv_set(paint_window,
+               WIN_NOTIFY_SAFE_EVENT_PROC,
+               handle_event,
+               WIN_CONSUME_EVENTS,
+               KBD_USE,
+               KBD_DONE,
+               WIN_ASCII_EVENTS,
+               WIN_LEFT_KEYS,
+               WIN_RIGHT_KEYS,
+               LOC_MOVE,
+               LOC_DRAG,
+               WIN_MOUSE_BUTTONS,
+               ACTION_SELECT,
+               ACTION_SCROLL_UP,
+               ACTION_SCROLL_DOWN,
+               nullptr,
+               nullptr);
+    }
+
     linux::openlook::openlook_collection *create_panel(
         native::wnd &owner) {
         native::point position = owner.get_position();
@@ -520,27 +825,85 @@ namespace
             throw std::runtime_error(
                 "OpenLook/XView: collection has no paint window.");
         }
-        linux::openlook::wnd_bindings.register_pair(panel, &owner);
-        linux::openlook::collection_paint_bindings.register_pair(
-            paint_window, &owner);
-        xv_set(paint_window,
-               WIN_NOTIFY_SAFE_EVENT_PROC,
-               handle_event,
-               WIN_CONSUME_EVENTS,
-               KBD_USE,
-               KBD_DONE,
-               WIN_ASCII_EVENTS,
-               WIN_LEFT_KEYS,
-               WIN_RIGHT_KEYS,
-               LOC_MOVE,
-               ACTION_SELECT,
-               ACTION_SCROLL_UP,
-               ACTION_SCROLL_DOWN,
-               nullptr,
-               nullptr);
         auto *state = new linux::openlook::openlook_collection();
         state->panel = panel;
-        state->paint_window = paint_window;
+        try {
+            linux::openlook::wnd_bindings.register_pair(panel, &owner);
+            configure_paint_window(owner, *state, paint_window);
+            const bool vertical =
+                dynamic_cast<native::icon_view *>(&owner) ||
+                dynamic_cast<native::tree_view *>(&owner) ||
+                dynamic_cast<native::table_view *>(&owner);
+            if (vertical) {
+                state->vertical_scrollbar =
+                    static_cast<Scrollbar>(xv_create(
+                        panel,
+                        SCROLLBAR,
+                        SCROLLBAR_DIRECTION,
+                        SCROLLBAR_VERTICAL,
+                        SCROLLBAR_PIXELS_PER_UNIT,
+                        1,
+                        SCROLLBAR_SPLITTABLE,
+                        FALSE,
+                        XV_SHOW,
+                        FALSE,
+                        nullptr));
+                if (!state->vertical_scrollbar) {
+                    throw std::runtime_error(
+                        "OpenLook/XView: failed to create native "
+                        "vertical scrollbar.");
+                }
+            }
+            if (dynamic_cast<native::table_view *>(&owner)) {
+                state->horizontal_scrollbar =
+                    static_cast<Scrollbar>(xv_create(
+                        panel,
+                        SCROLLBAR,
+                        SCROLLBAR_DIRECTION,
+                        SCROLLBAR_HORIZONTAL,
+                        SCROLLBAR_PIXELS_PER_UNIT,
+                        1,
+                        SCROLLBAR_SPLITTABLE,
+                        FALSE,
+                        XV_SHOW,
+                        FALSE,
+                        nullptr));
+                if (!state->horizontal_scrollbar) {
+                    throw std::runtime_error(
+                        "OpenLook/XView: failed to create native "
+                        "horizontal scrollbar.");
+                }
+            }
+
+            Notify_client installed_client = XV_NULL;
+            for (Scrollbar scrollbar : {
+                     state->vertical_scrollbar,
+                     state->horizontal_scrollbar}) {
+                if (!scrollbar)
+                    continue;
+                Notify_client client = static_cast<Notify_client>(
+                    xv_get(scrollbar, SCROLLBAR_NOTIFY_CLIENT));
+                if (!client || client == installed_client)
+                    continue;
+                if (notify_interpose_event_func(
+                        client,
+                        reinterpret_cast<Notify_func>(
+                            handle_scrollbar_event),
+                        NOTIFY_SAFE) != NOTIFY_OK) {
+                    throw std::runtime_error(
+                        "OpenLook/XView: failed to monitor native "
+                        "scrollbar.");
+                }
+                installed_client = client;
+            }
+        } catch (...) {
+            delete state;
+            linux::openlook::collection_paint_bindings
+                .unregister_by_handle(paint_window);
+            linux::openlook::wnd_bindings.unregister_by_handle(panel);
+            xv_destroy_safe(panel);
+            throw;
+        }
         return state;
     }
 
@@ -570,6 +933,32 @@ namespace linux::openlook
                                   openlook_collection *state) {
         destroy_panel(owner, state);
     }
+
+    void repaint_collection(native::wnd &owner,
+                            const native::rect &area) {
+        openlook_collection *state = state_for(owner);
+        if (state)
+            paint_and_copy(owner, *state, area);
+    }
+
+    void resize_collection_panel(native::wnd &owner,
+                                 openlook_collection &state,
+                                 const native::size &dimensions) {
+        if (!state.panel)
+            return;
+        xv_set(state.panel,
+               XV_WIDTH,
+               dimensions.w,
+               XV_HEIGHT,
+               dimensions.h,
+               nullptr);
+        configure_paint_window(
+            owner,
+            state,
+            static_cast<Xv_Window>(xv_get(
+                state.panel, CANVAS_NTH_PAINT_WINDOW, 0)));
+        synchronize_scrollbars(owner, state);
+    }
 } // namespace linux::openlook
 
 namespace native
@@ -584,7 +973,7 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void accordion::show() const {
         auto *state = linux::openlook::accordion_bindings
@@ -594,6 +983,17 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: accordion is not created.");
         xv_set(state->panel, XV_SHOW, TRUE, nullptr);
+        const Window window = static_cast<Window>(
+            xv_get(state->panel, XV_XID));
+        if (window != None && linux::openlook::cached_display) {
+            XRaiseWindow(linux::openlook::cached_display, window);
+            XFlush(linux::openlook::cached_display);
+        }
+        for (std::size_t index = 0; index < get_item_count(); ++index) {
+            accordion_item &item = get_item(index);
+            if (item.get_expanded() && item.get_content().get_created())
+                item.get_content().show();
+        }
     }
     void accordion::destroy() const {
         if (!_created)
@@ -618,7 +1018,7 @@ namespace native
         linux::openlook::icon_view_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void icon_view::show() const {
         auto *state = linux::openlook::icon_view_bindings
@@ -628,6 +1028,12 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: icon_view is not created.");
         xv_set(state->panel, XV_SHOW, TRUE, nullptr);
+        const Window window = static_cast<Window>(
+            xv_get(state->panel, XV_XID));
+        if (window != None && linux::openlook::cached_display) {
+            XRaiseWindow(linux::openlook::cached_display, window);
+            XFlush(linux::openlook::cached_display);
+        }
     }
     void icon_view::destroy() const {
         if (!_created)

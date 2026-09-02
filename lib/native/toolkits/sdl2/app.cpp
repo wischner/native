@@ -114,12 +114,13 @@ namespace native
         g.set_clip(content_bounds);
         g.clear(rgba(255, 255, 255, 255));
         wnd_paint_event pe{content_bounds, g};
-        wnd->on_wnd_paint.emit(pe);
+        wnd->on_native_paint(pe);
 
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
         linux::sdl2::render_radios(wnd, g);
         linux::sdl2::render_lists(wnd, g);
+        linux::sdl2::render_combo_boxes(wnd, g);
         linux::sdl2::render_text_edits(wnd, g);
         linux::sdl2::render_collections(wnd, g);
 
@@ -193,14 +194,17 @@ namespace native
 
                 switch (event.type) {
                 case SDL_KEYDOWN:
-                    if (!linux::sdl2::handle_text_edit_key(
+                    if (!linux::sdl2::handle_combo_key(wnd, event.key) &&
+                        !linux::sdl2::handle_text_edit_key(
                             wnd, event.key))
                         linux::sdl2::handle_collection_key(
                             wnd, event.key);
                     break;
 
                 case SDL_TEXTINPUT:
-                    if (!linux::sdl2::handle_text_edit_input(
+                    if (!linux::sdl2::handle_combo_text(
+                            wnd, event.text.text) &&
+                        !linux::sdl2::handle_text_edit_input(
                             wnd, event.text.text)) {
                         linux::sdl2::handle_collection_text(
                             wnd, event.text.text);
@@ -249,13 +253,21 @@ namespace native
                         wnd, event.motion.x, logical_y);
                     linux::sdl2::handle_collection_motion(
                         wnd, event.motion.x, logical_y);
-                    wnd->on_mouse_move.emit(
-                        point(event.motion.x, logical_y));
+                    int screen_x = 0;
+                    int screen_y = 0;
+                    SDL_GetGlobalMouseState(&screen_x, &screen_y);
+                    wnd->on_native_mouse_move(
+                        point(event.motion.x, logical_y),
+                        point(screen_x, screen_y));
                     break;
                 }
 
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP: {
+                    SDL_CaptureMouse(
+                        event.type == SDL_MOUSEBUTTONDOWN
+                            ? SDL_TRUE
+                            : SDL_FALSE);
                     const int logical_y =
                         event.button.y - content_origin_y(wnd);
 
@@ -313,6 +325,13 @@ namespace native
                             event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP,
                             event.button.clicks)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
+                    if (linux::sdl2::handle_combo_mouse(
+                            wnd, event.button.x, logical_y,
+                            event.type == SDL_MOUSEBUTTONUP)) {
                         invalidate_live_window();
                         break;
                     }
@@ -379,7 +398,7 @@ namespace native
                             btn,
                             act,
                             point(event.button.x, logical_y));
-                        wnd->on_mouse_click.emit(me);
+                        wnd->on_native_mouse_click(me);
                     }
                     break;
                 }
@@ -408,7 +427,7 @@ namespace native
                     mouse_wheel_event whe(point(pointer_x, pointer_y),
                                           delta,
                                           dir);
-                    wnd->on_mouse_wheel.emit(whe);
+                    wnd->on_native_mouse_wheel(whe);
                     break;
                 }
 
@@ -442,7 +461,6 @@ namespace native
                                        event.window.data2 -
                                            content_origin_y(wnd)));
                             wnd->on_native_resize(s);
-                            wnd->on_wnd_resize.emit(s);
                         }
                         break;
 
@@ -450,7 +468,6 @@ namespace native
                         point position(event.window.data1,
                                        event.window.data2);
                         wnd->on_native_move(position);
-                        wnd->on_wnd_move.emit(position);
                         break;
                     }
                     }

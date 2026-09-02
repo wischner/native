@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <native.h>
 #include <native/list.h>
+#include "../../control_render_access.h"
 #include "globals.h"
 namespace linux::sdl2
 {
@@ -35,9 +36,12 @@ namespace linux::sdl2
         for (auto *c : lists) {
             auto *b = list_bindings.object_from_handle(c);
             if (b && b->parent == owner && b->visible)
-                painter->draw_list(c->get_bounds(),
-                                   c->get_items(),
-                                   c->get_selected_index());
+                native::detail::control_render_access::draw(
+                    *c,
+                    g,
+                    *painter,
+                    c->get_bounds(),
+                    native::theme::state{});
         }
     }
 } // namespace linux::sdl2
@@ -75,7 +79,7 @@ namespace native
         linux::sdl2::list_bindings.register_pair(self, b);
         linux::sdl2::lists.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         auto *b = linux::sdl2::list_bindings.object_from_handle(

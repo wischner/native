@@ -22,7 +22,9 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/image_codec.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/message_box.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/button.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/check.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/list.mm
@@ -34,6 +36,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/directory_dialog.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.mm
 )

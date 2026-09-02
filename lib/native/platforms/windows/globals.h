@@ -148,6 +148,29 @@ namespace windows
     // Resolve the native window handle behind a graphics context.
     HWND hwnd_from_gpx(native::gpx &g);
 
+    // Borrow the device context supplied by a native custom-draw
+    // notification while portable painting hooks are running.
+    class scoped_gpx_dc
+    {
+    public:
+        scoped_gpx_dc(native::gpx &graphics, HDC hdc);
+        ~scoped_gpx_dc();
+
+        scoped_gpx_dc(const scoped_gpx_dc &) = delete;
+        scoped_gpx_dc &operator=(const scoped_gpx_dc &) = delete;
+
+    private:
+        native::gpx &_graphics;
+        HDC _previous;
+        HDC _borrowed;
+        int _saved_state;
+    };
+
+    // Acquire and release the effective device context for a portable
+    // window graphics object. A scoped custom-draw DC takes precedence.
+    HDC acquire_gpx_dc(native::gpx &graphics);
+    void release_gpx_dc(native::gpx &graphics, HDC hdc);
+
     // Return the same system-selected font used by native controls and
     // theme painters.
     HFONT control_font();

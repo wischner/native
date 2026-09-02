@@ -13,5 +13,7 @@
 namespace linux::openmotif
 {
     // Create and manage one Motif file-selection dialog.
-    void show_file_dialog(native::file_dialog &dialog, bool save);
+    void show_file_dialog(native::file_dialog &dialog,
+                          bool save,
+                          bool directory = false);
 } // namespace linux::openmotif

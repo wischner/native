@@ -27,7 +27,7 @@ namespace native
         auto *self = const_cast<check *>(this);
         linux::gemix::checks.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void check::show() const {
         if (!_created)

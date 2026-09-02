@@ -207,7 +207,7 @@ namespace native
 
         mac::text_edit_bindings.register_pair(self, binding);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {

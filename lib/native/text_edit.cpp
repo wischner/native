@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <native/clipboard.h>
+#include <native/theme.h>
 
 #include "text_util.h"
 
@@ -153,5 +154,13 @@ namespace native
 
     void text_edit::select_all() const {
         select_all_native();
+    }
+
+    void text_edit::draw_control(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_text_edit_frame(bounds, state);
     }
 } // namespace native

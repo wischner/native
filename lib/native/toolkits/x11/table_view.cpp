@@ -31,7 +31,7 @@ namespace native
         linux::x11::table_view_bindings.register_pair(self, binding);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

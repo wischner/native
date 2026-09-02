@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 #include <Xm/DrawP.h>
 #include <Xm/List.h>
@@ -25,6 +26,31 @@
 
 namespace
 {
+    constexpr int infolib_disclosure_side = 13;
+    constexpr int infolib_disclosure_inset = 3;
+
+    native::rgba x_resource_color(const char *application,
+                                  const char *resource,
+                                  native::rgba fallback) {
+        Display *display = linux::openmotif::cached_display;
+        if (!display)
+            return fallback;
+        const char *value = XGetDefault(display, application, resource);
+        XColor color{};
+        if (!value || !XParseColor(
+                          display,
+                          DefaultColormap(display, DefaultScreen(display)),
+                          value,
+                          &color)) {
+            return fallback;
+        }
+        return native::rgba(
+            static_cast<std::uint8_t>(color.red >> 8),
+            static_cast<std::uint8_t>(color.green >> 8),
+            static_cast<std::uint8_t>(color.blue >> 8),
+            255);
+    }
+
     struct motif_indicator_target
     {
         linux::openmotif::theme_target drawing;
@@ -66,7 +92,18 @@ namespace
             m.popup_width = 180;
             m.text_padding_x = 3;
             m.list_item_height = text_height() + 2;
+            m.table_row_height = m.list_item_height;
             m.header_height = text_height() + 8;
+            if (native_infolib_tree()) {
+                // Dtinfo's OutlineList is a compact, indentation-only tree.
+                m.disclosure_size = infolib_disclosure_side;
+                m.tree_lines_visible = false;
+                m.tree_row_height = text_height() + 4;
+                m.tree_horizontal_padding = 16;
+                m.tree_indent_width = 17;
+                m.tree_item_gap = 3;
+                m.tree_icon_vertical_padding = 2;
+            }
             return m;
         }
 
@@ -75,8 +112,23 @@ namespace
                 linux::openmotif::theme_reference_widget(_g);
             Widget button = button_probe(reference);
             Widget list = list_probe(reference);
-            return linux::openmotif::theme_palette(
+            palette result = linux::openmotif::theme_palette(
                 reference, button, list);
+            if (native_infolib_tree()) {
+                result.content_bg = x_resource_color(
+                    "OpenWindows",
+                    "DataBackground",
+                    native::rgba(104, 111, 130, 255));
+                result.content_text = x_resource_color(
+                    "OpenWindows",
+                    "DataForeground",
+                    native::rgba(255, 255, 255, 255));
+                result.selection_bg = result.content_text;
+                result.selection_text = result.content_bg;
+                result.selection_inactive_bg = result.selection_bg;
+                result.selection_inactive_text = result.selection_text;
+            }
+            return result;
         }
 
         theme &draw_button(const native::rect &r,
@@ -257,6 +309,82 @@ namespace
             return *this;
         }
 
+        theme &draw_disclosure(
+            const native::rect &r,
+            native::disclosure_state disclosure,
+            const state &s) override {
+            if (native_infolib_tree()) {
+                saved_state saved(_g);
+                const palette colors = native_palette();
+                const int left = r.p.x;
+                const int top = r.p.y;
+                const int right = r.x2() - 1;
+                const int bottom = r.y2() - 1;
+                const int horizontal_middle = (left + right) / 2;
+                const int vertical_middle = (top + bottom) / 2;
+                std::vector<native::point> triangle;
+                if (disclosure == native::disclosure_state::expanded) {
+                    triangle = {
+                        {static_cast<native::coord>(left),
+                         static_cast<native::coord>(
+                             top + infolib_disclosure_inset)},
+                        {static_cast<native::coord>(right),
+                         static_cast<native::coord>(
+                             top + infolib_disclosure_inset)},
+                        {static_cast<native::coord>(horizontal_middle),
+                         static_cast<native::coord>(
+                             bottom - infolib_disclosure_inset)}};
+                } else {
+                    triangle = {
+                        {static_cast<native::coord>(
+                             left + infolib_disclosure_inset),
+                         static_cast<native::coord>(top)},
+                        {static_cast<native::coord>(
+                             right - infolib_disclosure_inset),
+                         static_cast<native::coord>(vertical_middle)},
+                        {static_cast<native::coord>(
+                             left + infolib_disclosure_inset),
+                         static_cast<native::coord>(bottom)}};
+                }
+                _g.set_pen(1)
+                    .set_ink(s.disabled
+                                 ? colors.selection_inactive_text
+                                 : (s.selected ? colors.selection_text
+                                               : colors.content_text))
+                    .draw_polygon(triangle, true);
+                return *this;
+            }
+            return draw_native_arrow(
+                r,
+                disclosure == native::disclosure_state::expanded
+                    ? XmARROW_DOWN
+                    : XmARROW_RIGHT,
+                s,
+                disclosure,
+                std::nullopt);
+        }
+
+        theme &draw_focus(const native::rect &r,
+                          const state &s) override {
+            if (native_infolib_tree())
+                return *this;
+            return emulated_theme::draw_focus(r, s);
+        }
+
+        theme &draw_sort_indicator(
+            const native::rect &r,
+            native::sort_indicator_state direction,
+            const state &s) override {
+            return draw_native_arrow(
+                r,
+                direction == native::sort_indicator_state::ascending
+                    ? XmARROW_UP
+                    : XmARROW_DOWN,
+                s,
+                std::nullopt,
+                direction);
+        }
+
     protected:
         int text_width(const std::string &text) const override {
             XFontStruct *font =
@@ -281,6 +409,68 @@ namespace
         }
 
     private:
+        bool native_infolib_tree() const {
+            const linux::openmotif::theme_target target =
+                linux::openmotif::theme_target_from(
+                    const_cast<native::gpx &>(_g));
+            const auto *tree =
+                dynamic_cast<const native::tree_view *>(target.owner);
+            return tree &&
+                   tree->get_presentation() ==
+                       native::tree_view_presentation::native;
+        }
+
+        theme &draw_native_arrow(
+            const native::rect &r,
+            unsigned char direction,
+            const state &s,
+            std::optional<native::disclosure_state> disclosure,
+            std::optional<native::sort_indicator_state> sort) {
+            linux::openmotif::theme_target target =
+                linux::openmotif::theme_target_from(_g);
+            if (!target.widget || !target.cache ||
+                !target.cache->backbuffer ||
+                !linux::openmotif::cached_display) {
+                return disclosure
+                           ? draw_disclosure_fallback(r, *disclosure, s)
+                           : draw_sort_indicator_fallback(r, *sort, s);
+            }
+            Pixel top = 0;
+            Pixel bottom = 0;
+            Pixel center = 0;
+            XtVaGetValues(target.widget,
+                          XmNtopShadowColor,
+                          &top,
+                          XmNbottomShadowColor,
+                          &bottom,
+                          XmNforeground,
+                          &center,
+                          nullptr);
+            if (s.disabled)
+                center = bottom;
+            GC top_gc = linux::openmotif::theme_gc(
+                target, top, _g.get_clip());
+            GC bottom_gc = linux::openmotif::theme_gc(
+                target, bottom, _g.get_clip());
+            GC center_gc = linux::openmotif::theme_gc(
+                target, center, _g.get_clip());
+            XmeDrawArrow(linux::openmotif::cached_display,
+                         target.cache->backbuffer,
+                         top_gc,
+                         bottom_gc,
+                         center_gc,
+                         r.p.x,
+                         r.p.y,
+                         r.d.w,
+                         r.d.h,
+                         1,
+                         direction);
+            XFreeGC(linux::openmotif::cached_display, center_gc);
+            XFreeGC(linux::openmotif::cached_display, bottom_gc);
+            XFreeGC(linux::openmotif::cached_display, top_gc);
+            return *this;
+        }
+
         unsigned int shadow_thickness(
             Widget widget, unsigned int fallback) const {
             if (!widget)

@@ -85,10 +85,9 @@ namespace native
         const bool notify = end_modal_session();
         app_wnd::destroy();
 
-        if (notify) {
-            const_cast<modal_wnd *>(this)->on_modal_close.emit(
+        if (notify)
+            const_cast<modal_wnd *>(this)->on_native_modal_close(
                 _result);
-        }
     }
 
     void modal_wnd::on_native_destroy() {
@@ -99,7 +98,7 @@ namespace native
         app_wnd::on_native_destroy();
 
         if (notify)
-            on_modal_close.emit(_result);
+            on_native_modal_close(_result);
     }
 
     void modal_wnd::close(dialog_result result) const {
@@ -109,6 +108,10 @@ namespace native
 
         _result = result;
         destroy();
+    }
+
+    void modal_wnd::on_native_modal_close(dialog_result result) {
+        on_modal_close.emit(result);
     }
 
     void modal_wnd::begin_modal_session() const {

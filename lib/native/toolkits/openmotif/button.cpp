@@ -22,7 +22,7 @@ namespace
     void button_activate(Widget, XtPointer client_data, XtPointer) {
         auto *owner = static_cast<native::button *>(client_data);
         if (owner)
-            owner->on_click.emit();
+            owner->on_native_click();
     }
 } // namespace
 
@@ -94,7 +94,7 @@ namespace native
         linux::openmotif::button_bindings.register_pair(self, h);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

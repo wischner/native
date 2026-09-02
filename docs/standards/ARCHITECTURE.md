@@ -92,9 +92,15 @@ Member connections do not own their receiver, which must outlive the
 connection. Do not modify a signal's connections during its emission. Use UI
 signals on the UI thread unless access is externally synchronized.
 
-Backends translate native event data to public Native types before calling
-`emit()`. An optional signal initializer may defer event-source setup; it runs
-once before the first `connect()` or `emit()`.
+Backends translate native event data to public Native types and call the
+control's corresponding virtual `on_native_*` entry point. They must not emit
+a control signal directly. The base virtual method validates and updates the
+portable cache before emitting the public signal. A derived control may
+override the entry point to add behavior and call the base implementation to
+retain the normal state transition and notification. Internal semantic events
+that are not direct toolkit callbacks follow the same template-method pattern
+through a protected virtual hook. An optional signal initializer may defer
+event-source setup; it runs once before the first `connect()` or `emit()`.
 
 ## 4. Setters and Getters
 
@@ -130,6 +136,9 @@ Window lifecycle must follow these rules:
 - A child requires an assigned, created parent before it can be created.
 - `show()` requires a created resource.
 - `destroy()` is idempotent and releases native resources and bindings.
+- A window-manager close request must converge on `destroy()`, not merely hide
+  or dismiss the native resource. A later `create()`/`show()` therefore starts
+  a complete new native lifecycle on every backend.
 
 Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
@@ -237,13 +246,80 @@ The OPEN LOOK backend uses XView Panel items and OpenMenu objects for its
 interactive controls and menus. It must not replace an available XView widget
 with a custom-painted substitute. Custom OPEN LOOK visuals use OLGX and the
 active Panel color map so their font, geometry, colors, and state match those
-native items.
+native items. Canvas-backed collection panels are frame siblings rather than
+children of the portable docking surface; their frame position must therefore
+include the complete portable ancestor offset and the top-level menu height.
+They must never cover a host-owned tab strip or splitter. Invalidating a
+custom collection paints into its backing Pixmap and copies the requested
+region directly; it must not clear the live Panel before requesting Expose.
+`icon_view`, `tree_view`, and `table_view` attach real XView `Scrollbar`
+objects to that Panel (vertical where applicable and horizontal for tables).
+The backend synchronizes their object, page, and view positions in both
+directions and suppresses only the duplicate portable scrollbar paint; it
+must not substitute an emulated track when XView supplies the native control.
+Vertical XView scrollbars occupy the east-side extent reserved by the shared
+renderer; a table scrollbar begins below its header, and a horizontal bar
+occupies the reserved bottom extent without overlapping the corner. OPEN LOOK
+alternating table rows use the active control CMS background and highlight
+colors rather than hard-coded RGB values.
+OPEN LOOK docking captions use compact, rounded button geometry and the Panel
+control colors, never inverse selection colors or the white 3-D OLGX edge.
+The close mark is drawn directly on that caption fill and must not invoke the
+ordinary button-background painter. Pin states use the OLGX menu pushpin
+glyph. Disclosure and sort marks use OLGX's reported menu-mark dimensions to
+center the glyph inside their semantic slot. Tree connector strokes stop
+before that slot, and a collapsed branch has no downward child stem.
 
-The Window Maker backend uses WINGs windows, pull-down buttons, command,
-switch, and radio buttons, lists, text fields, text views, and file panels.
-It must not replace an available WINGs widget with a custom-painted
-substitute. Custom Window Maker visuals use WINGs relief drawing, screen
-colors, fonts, and indicator pixmaps so they track the active WINGs resources.
+An OPEN LOOK owned window is an actual XView subframe of its portable owner,
+not a second root frame. A window-manager dismiss destroys only that subframe
+and clears its portable created state; reopening creates a fresh subframe.
+Only the main application window is created as an XView root frame.
+
+The Window Maker backend uses WINGs windows, command, switch, and radio
+buttons, lists, text fields, text views, file panels, and scrollers. It must
+not replace an available WINGs widget with a custom-painted substitute.
+Custom Window Maker visuals use WINGs relief drawing, screen colors, fonts,
+and indicator pixmaps. The reference session normalizes the WINGs panel gray
+to the desktop's `#AAAAAA` inactive-title color; only editable text/document
+surfaces are white. Tables use the session's `#D7D7D7` body, `#C8C8C8`
+alternate row, `#555555` selection, and `#808080` header roles. Table,
+accordion/collection, and docking headers share the same compact edge recipe:
+white on the left only, black on top, and dark on the right and bottom.
+
+Window Maker application menus are click-persistent context-style popups, not
+press-drag WINGs selector buttons. Portable menu text supplies a mnemonic with
+`&`, a literal ampersand with `&&`, and an accelerator label after a tab. The
+backend must size the popup to both columns and support mouse dismissal,
+mnemonics, arrow navigation, and accelerators. `menu_separator` is a
+non-command structural entry: every backend maps it to its native separator
+or native-themed separator row, excludes it from command dispatch, and skips
+it during keyboard navigation. A popup uses a black outer box
+plus a raised inner relief with white top/left and dark bottom/right edges;
+menu-item painting and hit testing stay inside both frame layers. The flat
+application menu strip ends with the native one-pixel dark separator before
+client content; title
+repaints and window resizing must preserve that rule. `icon_view`, `tree_view`,
+and `table_view` attach actual WINGs scrollers and suppress only the duplicate
+portable scrollbar painting. Their native child extents occupy the reserved
+strips without covering table header cells or content; a table's vertical
+scroller spans the complete right strip beside both header and body, while a
+horizontal scroller ends before it. A Window Maker table stretches its last
+visible column across otherwise-unused viewport width without changing the
+column's semantic width or creating horizontal overflow.
+The basic text-only `list` remains a genuine `WMList`, including its WINGs
+input and scroller. Because the stock painter uses white for selection, the
+backend must use `WMSetListUserDrawProc` to apply the same dark-gray selection
+and light-gray selected text roles as Window Maker collections and tables;
+unselected rows retain the panel gray. The Window Maker implementation of
+`theme::draw_list_item` uses those identical roles so native and themed list
+presentation cannot disagree.
+WINGs sort-arrow pixmaps contain a resource-paper color even when their
+supplied mask covers it. The backend color-keys that paper and composites only
+native glyph pixels onto the semantic header surface. One-color disclosure
+pixmaps cannot be safely separated from that paper on common WINGs builds, so
+the backend paints the native compact filled right/down triangle directly
+through `theme::draw_disclosure`; an arrow must never introduce an opaque
+square background or disappear with its mask.
 
 ## 6. Painting in Windows
 
@@ -322,6 +398,26 @@ backend. A backend may report that native drawing is unavailable, but it must
 provide a usable portable fallback with the same states and public behavior.
 Adding a new public `wnd` subclass still requires lifecycle, event, and drawing
 support in every backend as described in Section 5.
+
+Public controls must remain inheritable. Their semantic painting is divided
+into protected virtual template-method stages: a simple control may expose one
+complete `draw_control()` stage, while a collection exposes useful parts such
+as background, row/cell background, image, text/content, border, focus,
+disclosure, and scrollbar. The base implementation performs the actual default
+drawing inside each virtual method. A renderer calls the virtual stage in
+place; it must never paint a default part first and invoke an owner callback
+afterward. This lets an override replace a part completely or call the base
+implementation and add decoration without double painting.
+
+Native-widget backends retain the toolkit's interaction, accessibility, and
+metrics and use its supported owner-draw, custom-draw, cell/view, expose, or
+repaint mechanism to enter the same virtual stages. The stage's base
+implementation uses that backend's semantic `theme` primitives. Shared
+renderers and backend adapters use an internal friend dispatcher when they
+need access to protected stages; public headers never expose native handles.
+Every new control event and every new painted part requires corresponding
+virtual behavior and painting coverage in all backends plus a derived-control
+test that overrides and calls base.
 
 ## 8. Application
 
@@ -663,6 +759,25 @@ the portable cache first and emit exactly one corresponding signal. Model
 notifications preserve selection and scroll anchors by stable ID when those
 rows still exist.
 
+Row height is a complete row/selection height, not merely text padding.
+`set_row_height()` installs an explicit portable height and `std::nullopt`
+restores the backend's `theme::metrics::table_row_height`. Backends choose a
+native default independently from compact list-item height. The Window Maker
+default includes the vertical spacing used by the reference Task Manager, so
+its selection fill occupies the same taller row rather than hugging the text.
+Table painting has a separate protected `draw_border()` stage invoked after
+headers and rows. Its base implementation draws the backend-requested inset
+`table_outer_border_extent`; it must not be folded into the initial background
+stage because edge-aligned headers can overpaint it. The stage receives only
+the data viewport, excluding native scrollbar reservations. Window Maker uses
+a one-pixel black top/left and white bottom/right relief around that viewport;
+the adjacent WINGs scrollers remain separately framed native controls, matching
+the Task Manager table construction. Column-header cells begin inside that
+viewport relief and use their distinct table-header surface role. Window Maker
+table, collection, and docking headers have a white left edge only; their top
+edge remains black, matching the reference Task Manager rather than an
+ordinary raised-button relief.
+
 Windows uses report-mode `WC_LISTVIEW`, `LVS_OWNERDATA` for virtual data, and
 native ListView groups for explicitly materialized data. macOS uses
 `NSTableView`. OpenMotif uses `XmContainer` detail view for explicitly
@@ -712,6 +827,11 @@ loop. The shared painted path renders visible source rows, current-line and
 selection surfaces, style runs, diagnostic marks, caret, and a themed
 completion list. Platform input translation must preserve scalar boundaries
 and route standard clipboard and undo keys through the public commands.
+An unset `code_theme::current_line` is a native selected-row surface, and all
+text fragments on that row use the corresponding selected-text role. A
+backend must not place normal syntax ink on a selection color with inadequate
+contrast. An explicit current-line color remains an application override and
+retains syntax-specific foregrounds.
 
 Lexing and language intelligence are application services. `code_lexer`
 returns validated `style_run` overlays for a dirty byte range; an exception
@@ -742,11 +862,12 @@ selection to that branch, so keyboard focus never remains on a hidden row.
 Replacing items preserves selection by stable ID when that item still exists;
 removing a branch removes all descendants and clears descendant selection.
 
-Programmatic item, selection, expansion, image-size, line-visibility, and
-scroll changes update a created native control without emitting action
-signals. Backend selection, disclosure, and activation update the portable
-cache first and emit exactly one `on_selection_change`, `on_expanded_change`,
-or `on_item_activate` signal. Disabled items remain visible but cannot be
+Programmatic item, selection, expansion, image-size, line-visibility,
+presentation, and scroll changes update a created native control without
+emitting action signals. Backend selection, disclosure, and activation update
+the portable cache first and emit exactly one `on_selection_change`,
+`on_expanded_change`, or `on_item_activate` signal. Disabled items remain
+visible but cannot be
 selected, expanded by user input, or activated.
 
 Up and Down move over visible enabled rows; Home and End choose enabled
@@ -756,14 +877,198 @@ first enabled child. Space toggles a branch and Enter activates it. A classic
 row double click performs the platform's branch action and emits activation.
 Pointer disclosure hit testing is distinct from row selection.
 
-Windows uses `WC_TREEVIEW`, macOS uses `NSOutlineView`, OpenMotif uses
-`XmContainer` outline layout, and Haiku uses `BOutlineListView`. Athena,
-XView, WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with
-the shared semantic selection, disclosure, focus, connector, image, and
-scrollbar painter because they have no adequate interactive outline widget.
+Windows uses `WC_TREEVIEW`, macOS uses `NSOutlineView`, and Haiku uses
+`BOutlineListView`. OpenMotif's default CDE presentation reproduces dtinfo's
+InfoLib `OutlineList` through the focusable semantic host: it resolves
+`OpenWindows.DataBackground` and `DataForeground` from the live X resource
+database, inverts those roles for a full-width selected row, uses compact flat
+triangles without connectors, gives every row one icon-independent height,
+and vertically centers both icon and text. The optional
+`three_dimensional` presentation retains `XmContainer` outline layout with
+uniform item height and the same compact triangle silhouette. Athena, XView,
+WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with the
+shared semantic selection, disclosure, focus, connector, image, and scrollbar
+painter because they have no adequate interactive outline widget.
+OpenMotif semantic collection hosts use real `XmScrollBar` peers for overflow;
+the portable painter remains responsible for rows and items but must never be
+the visible or interactive scrollbar on CDE. The flat `list` is hosted by an
+`XmScrolledWindow`, while `XmContainer` table and three-dimensional tree paths
+retain their toolkit-owned automatic scrollbars. Scrollbar value callbacks
+update the portable scroll cache without synthesizing selection or activation.
+Connector visibility has a backend theme default while remaining an explicit
+portable tree property. Window Maker defaults it off, matching its native
+indentation-only outlines. Its disclosure indicator paints only a compact
+right/down triangle; selected rows use the selection-text color and never
+carry an opaque resource-paper rectangle.
 Every path uses its backend theme metrics and native drawing resources.
 
 Tests must cover unique IDs, recursive ownership, visible flattening,
 selection preservation and removal, disclosure hit testing, disabled rows,
 classic keyboard navigation, scrolling, programmatic silence, exact
 user-action signal counts, and live create/show/destroy on every backend.
+
+## 16. Docking workspaces
+
+Docking is a portable window-management subsystem, not a new layout policy
+for every window and not a replacement for top-level ownership. A
+`dock_host` coordinates one borrowed `wnd` surface and installs one owned
+`dock_layout_manager` on that surface. The layout manager owns the portable
+split-and-tab tree and performs geometry only. The host owns interaction,
+painting, content reparenting, floating-shell lifecycle, and persistence
+coordination.
+
+Each `dock_pane` has a unique non-zero stable ID, UTF-8 title, borrowed child
+`wnd`, minimum content size, and close/float/pin capabilities. The application
+must keep the pane content and docking surface alive longer than the host.
+The host never owns pane content. A pane is in exactly one of four states:
+docked, floating, auto-hidden, or hidden. An auto-hidden pane retains its edge
+and appears as a collapsed edge tab; revealing it creates a temporary overlay
+with a compact caption, pin/unpin button, and optional close button. A tab node
+contains one or more pane IDs and one active pane; a split node contains
+exactly two child nodes, an orientation, and a clamped proportional ratio.
+Empty nodes are pruned and one-child splits collapse immediately.
+
+Vertical auto-hide tabs paint the complete pane title rotated 90 degrees,
+clockwise on the left and counter-clockwise on the right so glyph tops face
+the dock content. Top and bottom edge titles remain horizontal. All four
+directions use native control fonts and ellipsize within the tab extent.
+Backends that expose pane content as native child windows must realize a
+revealed pane inside a raised child overlay; host-surface pixels are not an
+overlay because sibling native controls stack above them. Collapsing or
+pinning reparents the borrowed content through the normal lifecycle and
+restores the unchanged dock tree, bounds, selection, and control model.
+Pointer motion and clicks arriving through sibling pane controls participate
+in auto-hide dismissal so crossing directly into a native table, tree, or
+editor cannot leave the overlay stuck open.
+
+Only the active content window of each docked tab group has a created native
+resource. Switching tabs destroys the previous resource and creates the new
+one without changing either pane's portable model. Floating destroys and
+reparents the content into a `modeless_wnd`; docking performs the reverse
+transition. A floating shell is independently positioned in screen
+coordinates, remains owned by the host's `app_wnd`, and keeps the application
+event loop and owner interactive. Closing a closable native floating shell
+hides its pane. A non-closable floating pane returns to the dock if its native
+shell is closed. A floating tool pane has one client drag caption rather than
+duplicating that caption in the native frame; OPEN LOOK suppresses the outer
+frame label and renders the client caption with its compact rounded OPEN LOOK
+button style.
+
+Pointer interaction begins only on host-owned tab strips, close marks, and
+splitters, so native pane controls retain their own event handling. Splitters
+have an independent native-theme extent rather than borrowing the decorative
+separator width. Hover and press expose their resize affordance; dragging
+updates the split continuously with recursive minimum-size clamping and emits
+one `split_resized` event on release. Backends must retain pointer delivery
+from press through release even after the boundary moves. A titled tab strip
+remains exposed even when its node contains a single pane, giving
+every docked pane a stable drag handle. Dragging a docked tab outside the host
+floats it. Dragging a floating client tab over the host docks it. Once dragging
+begins, one five-part docking compass appears at
+the host client center. Its directional targets create left, right, top, or
+bottom splits, while its center target creates or reorders tabs. Each target
+uses a raised native child surface that persists for the drag and the active
+backend's semantic native button and palette drawing rather than application-
+owned artwork. A compact raised destination label states both the selected
+operation and the target pane. Pointer movement must not repaint the native pane controls
+beneath those surfaces; peerless/custom surfaces may retain a host-painted
+preview fallback.
+Backends that expose root or screen pointer coordinates must retain them with
+the portable motion notification. A moving floating shell uses those absolute
+coordinates for shell placement and host hit testing; repeatedly adding local
+coordinates to a shell whose Configure events lag behind motion is forbidden
+because it makes undocked panes drift and prevents redocking.
+The pin button collapses a docked pane to its nearest edge; an unpin button
+restores the revealed pane to the tree. Leaving a revealed overlay collapses
+it without hiding or unregistering its pane. Tabs, compact captions,
+separators, close/pin marks, and drop previews use the active backend's
+semantic theme surfaces, selections, focus, palette, fonts, and metrics. The
+host exposes protected virtual stages for those parts, including the
+destination label and each docking guide target. No shared painter may
+hard-code the appearance of another platform.
+
+Programmatic dock, float, auto-hide, pin, reveal, collapse, close, show,
+activate, reorder, ratio, and restore operations update portable and native
+state without emitting `on_change`.
+Each accepted pointer or native-shell action updates the cache first and
+calls the virtual `on_native_change()` hook exactly once; its base
+implementation emits one `dock_event`. The event uses stable pane/node IDs and
+never contains a native handle.
+
+`dock_layout_state` is the complete typed persistence value. Native Dock v2
+serialization stores the split tree, ratios, tab order and active tab,
+floating screen bounds, hidden IDs, and auto-hidden pane/edge pairs, but not
+pane titles or content. The parser also accepts Native Dock v1 values and
+treats them as having no auto-hidden panes. A
+restore validates structure, unique IDs, finite ratios, and non-empty floating
+bounds before changing live state. Persisted IDs not registered by the
+application are ignored; registered IDs absent from an older snapshot are
+docked by default. Malformed input throws without exposing a partially parsed
+layout.
+
+The host deliberately reuses existing child-control, top-level
+`modeless_wnd`, paint, theme, and mouse paths. It therefore requires no
+backend-specific substitute widget: all backends must support docking through
+those already-required contracts. Tests must cover tree normalization,
+minimum-size geometry, typed and encoded persistence, malformed state,
+programmatic silence, pointer signal counts, native content recreation,
+floating reparenting, and complete create/show/destroy transitions.
+
+## 17. Input controls, standard dialogs, and non-client chrome
+
+The public input and chrome API consists of `combo_box`, the `list_box` alias,
+`directory_dialog`, `message_box`, `non_client`, `ruler`, and `status_bar`.
+Headers remain pure C++ and are exported through `include/native.h`. Portable
+state and fallback behavior live in `lib/native/`; native widget creation,
+dialog presentation, and event routing remain in the matching platform or
+toolkit directory.
+
+`combo_box` caches its UTF-8 item model, selected index, complete displayed
+text, and editable/selection-only style. Programmatic changes do not emit
+user-action signals. Backends must update the cache before invoking the
+virtual native event hook. The base hooks emit the public signals. A backend
+with a native combo widget must use it; a toolkit without one composes its
+standard text, menu, or choice widgets. Backend-owned emulation must reuse the
+backend theme and input dispatcher.
+
+`list_box` is an alias of `list`, not a second list implementation. This keeps
+selection semantics, native widgets, drawing extension points, and event
+hooks identical.
+
+`directory_dialog` shares `file_dialog`'s logical modal lifecycle and accepted
+path storage. It must invoke the platform's standard folder chooser or folder
+mode. `open_file_dialog` and `save_file_dialog` remain the standard file APIs.
+Unsupported optional multiple selection may reduce to one accepted path, but
+the backend must not substitute an application-painted chooser when its
+platform supplies a standard one.
+
+`message_box::show()` is synchronous and owner-modal. It maps the requested
+one-, two-, or three-button set and semantic icon to the platform alert and
+returns a typed `message_box_result`. Closing the native alert maps to
+`cancel` when the button set includes Cancel and otherwise to `none`.
+
+A `non_client` object is application-owned and attaches non-owningly to one
+`wnd`. Every visible strip reserves a non-negative extent at one window edge.
+`wnd::get_client_bounds()` returns the remaining host-relative rectangle, and
+layout managers must receive that rectangle. Visibility, extent, attachment,
+detachment, and window resize must trigger layout and paint updates without
+moving the top-level native frame.
+
+Rulers may occupy all four edges. Orientation follows the edge. Origins,
+units-per-pixel, and positive minor/major intervals are finite doubles.
+Optional pointer tracking uses host-relative motion, updates the cached value,
+and emits once per changed ruler pixel. Status bars occupy the bottom edge and
+divide their width into fixed parts and equal shares of remaining flexible
+parts.
+
+The complete default rendering must occur inside each protected virtual draw
+stage. Derived classes may replace a stage or call its base implementation and
+augment it; no owner-draw pass may repaint the default afterward. Rulers expose
+background, tick, label, and tracker stages. Status bars expose background and
+part stages. The painting uses the graphics context of the active paint event
+and the current backend theme.
+
+Vision exposes the combined demonstration through **Window -> Input and
+window chrome**. Portable tests cover pre-create state, silent programmatic
+updates, native event ordering, edge reservation, relayout, and ruler
+tracking; Docker builds compile every backend implementation.

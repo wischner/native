@@ -27,7 +27,7 @@ namespace native
         auto *self = const_cast<list *>(this);
         linux::gemix::lists.push_back(self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void list::show() const {
         if (!_created)

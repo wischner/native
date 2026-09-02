@@ -112,7 +112,7 @@ namespace
         graphics.set_clip(invalid);
         graphics.clear(graphics.get_paper());
         native::wnd_paint_event event(invalid, graphics);
-        owner->on_wnd_paint.emit(event);
+        owner->on_native_paint(event);
 
         auto *cache = linux::openlook::wnd_gpx_bindings
                           .object_from_handle(owner);
@@ -159,7 +159,6 @@ namespace
             static_cast<native::dim>(width),
             static_cast<native::dim>(height));
         owner->on_native_resize(dimensions);
-        owner->on_wnd_resize.emit(dimensions);
     }
 
     // Bring the portable size and the content panel back in line
@@ -208,7 +207,6 @@ namespace
 
         ensure_backbuffer(owner, width, height);
         owner->on_native_resize(dimensions);
-        owner->on_wnd_resize.emit(dimensions);
 
         // The server clears the window when it changes size and the
         // panel does not redraw its items by itself, so without this
@@ -236,7 +234,6 @@ namespace
         linux::openlook::permit_input(owner);
 
         const int action = event_action(event);
-
         // The window manager's Quit sends WM_DELETE_WINDOW, which
         // XView turns into ACTION_DISMISS for an owned frame (a
         // root-owned one it destroys itself). ACTION_DISMISS is what
@@ -247,7 +244,7 @@ namespace
         // every later show() re-shows a frame that is gone. Close it
         // here instead. destroy() is idempotent, so a backend path
         // that does reach frame_done() still costs nothing.
-        if (action == ACTION_DISMISS) {
+        if (action == ACTION_DISMISS || action == ACTION_CLOSE) {
             if (!linux::openlook::permit_input(owner))
                 return NOTIFY_DONE;
 
@@ -261,11 +258,20 @@ namespace
         }
         if (owner->get_input_enabled()) {
             if (action == LOC_MOVE || action == LOC_DRAG) {
-                owner->on_mouse_move.emit(native::point(
-                    event_x(event), event_y(event)));
+                const native::point local(
+                    event_x(event), event_y(event));
+                XEvent *motion = event_xevent(event);
+                if (motion && motion->type == MotionNotify) {
+                    owner->on_native_mouse_move(
+                        local,
+                        native::point(motion->xmotion.x_root,
+                                      motion->xmotion.y_root));
+                } else {
+                    owner->on_native_mouse_move(local);
+                }
             } else if (action == ACTION_SCROLL_UP ||
                        action == ACTION_SCROLL_DOWN) {
-                owner->on_mouse_wheel.emit(
+                owner->on_native_mouse_wheel(
                     native::mouse_wheel_event(
                         native::point(
                             event_x(event), event_y(event)),
@@ -275,7 +281,7 @@ namespace
                 const native::mouse_button button =
                     decode_button(action);
                 if (button != native::mouse_button::none) {
-                    owner->on_mouse_click.emit(native::mouse_event(
+                    owner->on_native_mouse_click(native::mouse_event(
                         button,
                         event_is_down(event)
                             ? native::mouse_action::press
@@ -293,7 +299,6 @@ namespace
                 linux::openlook::frame_position(
                     state ? state->frame : XV_NULL);
             owner->on_native_move(position);
-            owner->on_wnd_move.emit(position);
             sync_frame_size(owner);
         }
         return notify_next_event_func(
@@ -362,12 +367,12 @@ namespace native
             native_owner = owner_state ? owner_state->frame : XV_NULL;
         }
         Frame frame = static_cast<Frame>(xv_create(
-            XV_NULL,
+            native_owner ? native_owner : XV_NULL,
             FRAME,
             FRAME_LABEL,
             _title.c_str(),
             FRAME_SHOW_LABEL,
-            TRUE,
+            get_native_title_visible() ? TRUE : FALSE,
             XV_X,
             _bounds.p.x,
             XV_Y,
@@ -383,7 +388,7 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: failed to create a frame.");
         }
-        if (get_modal() && native_owner) {
+        if (native_owner) {
             const Window dialog = static_cast<Window>(xv_get(
                 frame, XV_XID));
             const Window parent = static_cast<Window>(xv_get(
@@ -452,6 +457,7 @@ namespace native
                    WIN_CONSUME_EVENTS,
                    LOC_MOVE,
                    LOC_DRAG,
+                   WIN_MOUSE_BUTTONS,
                    ACTION_SELECT,
                    ACTION_ADJUST,
                    ACTION_MENU,
@@ -469,6 +475,8 @@ namespace native
                    ACTION_SELECT,
                    ACTION_ADJUST,
                    ACTION_MENU,
+                   ACTION_CLOSE,
+                   ACTION_DISMISS,
                    nullptr,
                    XV_HEIGHT,
                    frame_height(this, state),
@@ -487,7 +495,7 @@ namespace native
         _created = true;
         if (self == app::main_wnd())
             linux::openlook::main_frame = frame;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void app_wnd::show() const {

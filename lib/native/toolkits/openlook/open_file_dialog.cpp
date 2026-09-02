@@ -9,7 +9,9 @@
 
 namespace linux::openlook
 {
-    void show_file_dialog(native::file_dialog &dialog, bool save);
+    void show_file_dialog(native::file_dialog &dialog,
+                          bool save,
+                          bool directory = false);
 }
 
 namespace native

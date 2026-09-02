@@ -84,7 +84,7 @@ namespace
         graphics.set_clip(invalid);
         graphics.clear(graphics.get_paper());
         native::wnd_paint_event event(invalid, graphics);
-        owner->on_wnd_paint.emit(event);
+        owner->on_native_paint(event);
 
         XSetClipMask(linux::wmaker::display, cache->gc, None);
         XCopyArea(linux::wmaker::display,
@@ -143,7 +143,6 @@ namespace
                 linux::wmaker::resize_menu_bar(
                     owner, event->xconfigure.width);
                 owner->on_native_resize(dimensions);
-                owner->on_wnd_resize.emit(dimensions);
                 linux::wmaker::schedule_repaint(
                     owner,
                     native::rect({0, 0}, dimensions));
@@ -156,11 +155,11 @@ namespace
             if (native_position.x != owner->get_position().x ||
                 native_position.y != owner->get_position().y) {
                 owner->on_native_move(native_position);
-                owner->on_wnd_move.emit(native_position);
             }
             break;
         }
         case FocusIn:
+            linux::wmaker::activate_menu_owner(owner);
             linux::wmaker::permit_input(owner);
             break;
         case ButtonPress:
@@ -172,7 +171,7 @@ namespace
                 return;
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
-                owner->on_mouse_wheel.emit(
+                owner->on_native_mouse_wheel(
                     native::mouse_wheel_event(
                         native::point(
                             event->xbutton.x,
@@ -184,7 +183,7 @@ namespace
             const native::mouse_button button =
                 decode_button(event->xbutton.button);
             if (button != native::mouse_button::none) {
-                owner->on_mouse_click.emit(native::mouse_event(
+                owner->on_native_mouse_click(native::mouse_event(
                     button,
                     event->type == ButtonPress
                         ? native::mouse_action::press
@@ -198,9 +197,11 @@ namespace
         case MotionNotify:
             if (linux::wmaker::permit_input(owner) &&
                 event->xmotion.y >= menu_height) {
-                owner->on_mouse_move.emit(native::point(
-                    event->xmotion.x,
-                    event->xmotion.y - menu_height));
+                owner->on_native_mouse_move(
+                    native::point(event->xmotion.x,
+                                  event->xmotion.y - menu_height),
+                    native::point(event->xmotion.x_root,
+                                  event->xmotion.y_root));
             }
             break;
         default:
@@ -298,7 +299,7 @@ namespace native
 
         _created = true;
         self->on_native_move(position);
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void app_wnd::show() const {

@@ -35,6 +35,10 @@ namespace linux
     file_dialog_response show_open_file_dialog(
         const native::file_dialog &dialog, bool allow_multiple);
 
+    // Show a desktop directory chooser through Zenity or KDialog.
+    file_dialog_response show_directory_dialog(
+        const native::file_dialog &dialog, bool allow_multiple);
+
     // Show a desktop save chooser through Zenity or KDialog.
     file_dialog_response show_save_file_dialog(
         const native::file_dialog &dialog,

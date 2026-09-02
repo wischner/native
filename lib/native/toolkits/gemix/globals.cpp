@@ -17,6 +17,7 @@ namespace linux::gemix
     std::vector<native::check *> checks;
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
+    std::vector<native::combo_box *> combo_boxes;
     std::vector<native::text_edit *> text_edits;
     std::vector<native::accordion *> accordions;
     std::vector<native::icon_view *> icon_views;
@@ -25,6 +26,8 @@ namespace linux::gemix
     std::vector<native::code_edit *> code_edits;
     native::bindings<native::text_edit *, gem_text_edit *>
         text_edit_bindings;
+    native::bindings<native::combo_box *, gem_combo_box *>
+        combo_box_bindings;
     std::vector<native::app_wnd *> windows;
     native::app_wnd *active_window = nullptr;
     std::unordered_map<native::app_wnd *, menu_state> menu_states;
@@ -86,6 +89,7 @@ namespace linux::gemix
         checks.clear();
         radios.clear();
         lists.clear();
+        combo_boxes.clear();
         text_edits.clear();
         accordions.clear();
         icon_views.clear();
@@ -93,6 +97,7 @@ namespace linux::gemix
         table_views.clear();
         code_edits.clear();
         text_edit_bindings.clear();
+        combo_box_bindings.clear();
         windows.clear();
         active_window = nullptr;
         menu_states.clear();

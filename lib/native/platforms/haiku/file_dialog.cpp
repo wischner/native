@@ -243,12 +243,13 @@ namespace haiku
                           bool save,
                           bool allow_multiple,
                           const std::string &suggested_name,
-                          const std::string &default_extension) {
+                          const std::string &default_extension,
+                          bool directory) {
         ensure_handler();
 
         owned_file_dialog_state state(new haiku_file_dialog);
         state->default_extension = default_extension;
-        if (!dialog.get_filters().empty())
+        if (!directory && !dialog.get_filters().empty())
             state->filter = new pattern_filter(dialog.get_filters());
 
         const uint32 message_code = save
@@ -264,7 +265,9 @@ namespace haiku
             save ? B_SAVE_PANEL : B_OPEN_PANEL,
             &target,
             nullptr,
-            B_FILE_NODE | B_SYMLINK_NODE,
+            directory
+                ? static_cast<uint32>(B_DIRECTORY_NODE | B_SYMLINK_NODE)
+                : static_cast<uint32>(B_FILE_NODE | B_SYMLINK_NODE),
             allow_multiple,
             &message,
             state->filter,

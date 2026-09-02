@@ -17,13 +17,18 @@
 #include <vector>
 
 #include "table_model.h"
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    class table_view;
+
     namespace detail
     {
+        class control_render_access;
         class table_visible_rows;
+        void draw_table_view(table_view &control, gpx &graphics);
     }
 
     // Selects automatic, materialized, or virtual native adaptation.
@@ -282,40 +287,43 @@ namespace native
         std::size_t get_vertical_scroll_row() const;
 
         // Accept a native user-originated row selection.
-        void on_native_selection(
+        virtual void on_native_selection(
             const std::vector<table_row_id> &rows);
 
         // Accept a native user-originated row activation.
-        void on_native_activate(table_row_id id);
+        virtual void on_native_activate(table_row_id id);
 
         // Accept a native sortable-column heading action.
-        void on_native_sort_request(table_column_id column);
+        virtual void on_native_sort_request(table_column_id column);
 
         // Accept a native user-originated column resize.
-        void on_native_column_resize(table_column_id column,
-                                     dim width);
+        virtual void on_native_column_resize(table_column_id column,
+                                             dim width);
 
         // Accept a native user-originated column move.
-        void on_native_column_move(table_column_id column,
-                                   std::size_t display_index);
+        virtual void on_native_column_move(
+            table_column_id column,
+            std::size_t display_index);
 
         // Accept a native user-originated group expansion change.
-        void on_native_group_expand(table_group_id group,
-                                    bool expanded);
+        virtual void on_native_group_expand(table_group_id group,
+                                            bool expanded);
 
         // Accept a native vertical and horizontal scroll position.
-        void on_native_scroll(std::size_t first_display_row,
-                              int horizontal_offset);
+        virtual void on_native_scroll(
+            std::size_t first_display_row,
+            int horizontal_offset);
 
         // Apply one backend-originated keyboard navigation action.
-        void on_native_navigation(table_navigation navigation,
-                                  bool extend = false);
+        virtual void on_native_navigation(
+            table_navigation navigation,
+            bool extend = false);
 
         // Apply one native UTF-8 incremental type-search fragment.
-        void on_native_type_text(const std::string &text);
+        virtual void on_native_type_text(const std::string &text);
 
         // Cache backend focus entry or departure.
-        void on_native_focus(bool focused);
+        virtual void on_native_focus(bool focused);
 
         // Return whether the table currently has keyboard focus.
         bool get_focused() const;
@@ -352,7 +360,130 @@ namespace native
         // Clamp scroll positions after a bounds change.
         void on_bounds_changed() override;
 
+        // Draw the complete table background before its child parts.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the final content-viewport relief after every table part.
+        // Native scrollbar reservations are outside these bounds.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one column-heading background.
+        virtual void draw_header_background(
+            gpx &graphics,
+            theme &appearance,
+            const table_column &column,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one column heading's title and sort indicator.
+        virtual void draw_header_content(
+            gpx &graphics,
+            theme &appearance,
+            const table_column &column,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one column heading's separators or border.
+        virtual void draw_header_border(
+            gpx &graphics,
+            theme &appearance,
+            const table_column &column,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one group heading, including its disclosure control.
+        virtual void draw_group(
+            gpx &graphics,
+            theme &appearance,
+            const table_group &group,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw a data row's background and selection.
+        virtual void draw_row_background(
+            gpx &graphics,
+            theme &appearance,
+            table_row_id row,
+            std::size_t model_row,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one data cell's background before its content.
+        virtual void draw_cell_background(
+            gpx &graphics,
+            theme &appearance,
+            table_row_id row,
+            std::size_t model_row,
+            const table_column &column,
+            const table_cell &cell,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one data cell's image and text content.
+        virtual void draw_cell_content(
+            gpx &graphics,
+            theme &appearance,
+            table_row_id row,
+            std::size_t model_row,
+            const table_column &column,
+            const table_cell &cell,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one data cell's configured border or separator.
+        virtual void draw_cell_border(
+            gpx &graphics,
+            theme &appearance,
+            table_row_id row,
+            std::size_t model_row,
+            const table_column &column,
+            const table_cell &cell,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard focus around a completed data row.
+        virtual void draw_row_focus(
+            gpx &graphics,
+            theme &appearance,
+            table_row_id row,
+            std::size_t model_row,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw one complete scrollbar track and thumb.
+        virtual void draw_scrollbar(
+            gpx &graphics,
+            theme &appearance,
+            scrollbar_orientation orientation,
+            const rect &track,
+            const rect &thumb,
+            const theme::state &state);
+
+        // Apply all cached model and appearance state natively.
+        virtual void apply_table();
+
+        // Apply cached logical selection natively.
+        virtual void apply_selection();
+
+        // Apply cached scroll positions natively.
+        virtual void apply_scroll();
+
+        // Refresh metrics obtained from the active native theme.
+        virtual void synchronize_theme_metrics();
+
     private:
+        friend class detail::control_render_access;
+        friend void detail::draw_table_view(
+            table_view &control, gpx &graphics);
+
         table_model *_model = nullptr;
         int _model_connection = 0;
         std::vector<table_column> _columns;
@@ -385,11 +516,7 @@ namespace native
         std::string _type_search_buffer;
         std::uint64_t _type_search_deadline = 0;
 
-        void apply_table();
-        void apply_selection();
-        void apply_scroll();
         void rebuild_visible_rows();
-        void synchronize_theme_metrics();
         bool handle_model_change(const table_model_change &change);
         std::optional<std::size_t> model_row_for_id(
             table_row_id id) const;

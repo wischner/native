@@ -88,6 +88,12 @@ namespace mac
         NSTableView *table = nil;
         id adapter = nil;
     };
+    struct mac_combo_box
+    {
+        NSComboBox *combo = nil;
+        id delegate = nil;
+        bool suppress = false;
+    };
     struct mac_accordion
     {
         NSStackView *stack = nil;
@@ -131,6 +137,8 @@ namespace mac
     extern native::bindings<native::radio *, mac_radio *>
         radio_bindings;
     extern native::bindings<native::list *, mac_list *> list_bindings;
+    extern native::bindings<native::combo_box *, mac_combo_box *>
+        combo_box_bindings;
     extern native::bindings<native::accordion *, mac_accordion *>
         accordion_bindings;
     extern native::bindings<native::icon_view *, mac_icon_view *>

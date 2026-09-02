@@ -106,6 +106,7 @@ namespace
                 [[NSTableView alloc] initWithFrame:NSZeroRect];
             m.list_item_height = std::max(
                 1, static_cast<int>(std::ceil([table rowHeight])));
+            m.table_row_height = m.list_item_height;
             [table release];
             return m;
         }

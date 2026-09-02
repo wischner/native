@@ -68,6 +68,8 @@ The top-level CMake project provides:
 - `docker-gemix`
 - `docker-sdl2`
 - `docker-openmotif`
+- `docker-openlook`
+- `docker-wmaker`
 - `docker-win`
 - `docker-haiku`
 
@@ -77,6 +79,8 @@ These targets use the following Docker images:
 - GEMix: `wischner/gcc-x86_64-gemix`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
+- OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
+- Window Maker: `wischner/gcc-x86_64-linux-window-maker`
 - Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
@@ -88,6 +92,8 @@ cmake --build build/cmake --target docker-gemix
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
+cmake --build build/cmake --target docker-openlook
+cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
@@ -99,6 +105,8 @@ cmake --build build/cmake --target docker-haiku
 - `build/linux-gemix/` is the Docker-produced GEMix build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
 - `build/linux-openmotif/` is the Docker-produced OpenMotif build tree.
+- `build/linux-openlook/` is the Docker-produced OPEN LOOK build tree.
+- `build/linux-wmaker/` is the Docker-produced Window Maker build tree.
 - `build/windows-mingw-w64/` is the Docker-produced Windows MinGW-w64 build tree.
 - `build/haiku/` is the Docker-produced Haiku build tree.
 

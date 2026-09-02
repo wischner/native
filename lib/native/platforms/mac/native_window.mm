@@ -37,7 +37,6 @@
     native::point position(static_cast<native::coord>(frame.origin.x),
                            static_cast<native::coord>(frame.origin.y));
     _owner->on_native_move(position);
-    _owner->on_wnd_move.emit(position);
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
@@ -49,7 +48,6 @@
         static_cast<native::dim>(bounds.size.width),
         static_cast<native::dim>(bounds.size.height));
     _owner->on_native_resize(dimensions);
-    _owner->on_wnd_resize.emit(dimensions);
 }
 
 - (BOOL)windowShouldClose:(id)sender {
@@ -127,7 +125,7 @@
     native::gpx &graphics = _owner->get_gpx();
     graphics.set_clip(invalid);
     native::wnd_paint_event event(invalid, graphics);
-    _owner->on_wnd_paint.emit(event);
+    _owner->on_native_paint(event);
 }
 
 @end

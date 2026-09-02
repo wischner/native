@@ -11,10 +11,16 @@
 #include <string>
 #include <vector>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     class list : public wnd
     {
     public:
@@ -58,7 +64,7 @@ namespace native
         list &set_selected_index(int index);
 
         // Cache a native user selection and emit on_selection_change.
-        void on_native_selection(int index);
+        virtual void on_native_selection(int index);
 
         // Create the backend list resource.
         void create() const override;
@@ -72,12 +78,25 @@ namespace native
         // Emits the selected index after a user-originated change.
         signal<int> on_selection_change;
 
+    protected:
+        // Draw the complete list using the active native theme.
+        virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Apply all cached items to the created native control.
+        virtual void apply_items();
+
+        // Apply the cached selection to the created native control.
+        virtual void apply_selected_index();
+
     private:
+        friend class detail::control_render_access;
+
         std::vector<std::string> _items;
         int _selected_index = -1;
-
-        void apply_items();
-        void apply_selected_index();
         void validate_index(int index) const;
     };
 } // namespace native

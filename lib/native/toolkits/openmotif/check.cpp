@@ -80,7 +80,7 @@ namespace native
         XtAddCallback(w, XmNvalueChangedCallback, changed, self);
         linux::openmotif::wnd_bindings.register_pair(w, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void check::show() const {
         Widget w = linux::openmotif::wnd_bindings.handle_from_object(

@@ -40,7 +40,7 @@ namespace native
                                  L"BUTTON",
                                  s.c_str(),
                                  WS_CHILD | WS_VISIBLE | WS_TABSTOP |
-                                     BS_AUTORADIOBUTTON,
+                                     BS_OWNERDRAW,
                                  _bounds.p.x,
                                  _bounds.p.y,
                                  _bounds.d.w,
@@ -60,7 +60,7 @@ namespace native
         SendMessageW(
             h, BM_SETCHECK, _selected ? BST_CHECKED : BST_UNCHECKED, 0);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
     void radio::show() const {
         HWND h = windows::wnd_bindings.handle_from_object(

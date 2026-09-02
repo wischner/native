@@ -8,13 +8,50 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
 #include <native.h>
 #include <native/button.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
+
+@interface native_button_view : NSButton {
+@public
+    void *_nativeOwner;
+}
+@end
+
+@implementation native_button_view
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::button *>(_nativeOwner);
+    if (!owner || !owner->get_created()) {
+        [super drawRect:dirty];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const NSRect frame = [self bounds];
+    const native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(native::rect(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(std::max<CGFloat>(0, dirty.size.height))));
+    native::theme::state state;
+    state.disabled = ![self isEnabled];
+    state.focused = [[self window] firstResponder] == self;
+    state.pressed = [self isHighlighted];
+    native::detail::control_render_access::draw(
+        *owner, graphics, *appearance, bounds, state);
+}
+@end
 
 @interface mac_button_target : NSObject {
 @public
@@ -29,7 +66,7 @@
     (void)sender;
     auto *owner = static_cast<native::button *>(_owner);
     if (owner)
-        owner->on_click.emit();
+        owner->on_native_click();
 }
 @end
 
@@ -72,11 +109,12 @@ namespace native
             throw std::runtime_error(
                 "macOS: button parent has no content view.");
 
-        NSButton *btn =
-            [[NSButton alloc] initWithFrame:NSMakeRect(_bounds.p.x,
-                                                       _bounds.p.y,
-                                                       _bounds.d.w,
-                                                       _bounds.d.h)];
+        native_button_view *btn = [[native_button_view alloc]
+            initWithFrame:NSMakeRect(_bounds.p.x,
+                                     _bounds.p.y,
+                                     _bounds.d.w,
+                                     _bounds.d.h)];
+        btn->_nativeOwner = const_cast<button *>(this);
         [btn setTitle:to_nsstring(_text)];
         [btn setButtonType:NSButtonTypeMomentaryPushIn];
         [btn setBezelStyle:NSBezelStyleRounded];
@@ -100,7 +138,7 @@ namespace native
         mac::button_bindings.register_pair(self, h);
 
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

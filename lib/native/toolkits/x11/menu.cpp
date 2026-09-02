@@ -14,6 +14,7 @@
 #include <X11/Xaw/MenuButton.h>
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeBSB.h>
+#include <X11/Xaw/SmeLine.h>
 
 #include <native.h>
 #include <native/menu.h>
@@ -31,7 +32,7 @@ namespace
         auto *callback =
             static_cast<linux::x11::xaw_menu_callback *>(client_data);
         if (callback && callback->owner)
-            callback->owner->on_menu.emit(callback->item_id);
+            callback->owner->on_native_menu(callback->item_id);
     }
 } // namespace
 
@@ -131,6 +132,13 @@ namespace native
                 "menu", simpleMenuWidgetClass, menu_button, nullptr);
 
             for (const auto &item : top.items) {
+                if (item.separator) {
+                    XtVaCreateManagedWidget("menu_separator",
+                                            smeLineObjectClass,
+                                            popup,
+                                            nullptr);
+                    continue;
+                }
                 auto *callback =
                     new linux::x11::xaw_menu_callback{&owner, item.id};
                 native_menu->callbacks.push_back(callback);

@@ -419,10 +419,13 @@ font and image-loader dependencies are required as well.
 The Window Maker executable itself is not needed merely to load WINGs, and an
 ICCCM window manager can host the application. Install Window Maker when the
 intended desktop behavior and decoration are part of the product. The backend
-uses native WINGs windows, pull-down menus, command/switch/radio buttons,
-lists, text widgets, standard open/save panels, and selection handlers. Its
-custom theme primitives read the same active WINGs colors, fonts, relief
-painter, and indicator pixmaps. Zenity and KDialog are not required.
+uses native WINGs windows, command/switch/radio buttons, lists, text widgets,
+scrollers, standard open/save panels, and selection handlers. Application
+menus use a persistent context-style popup because the WINGs popup button is a
+press-drag selector rather than a normal desktop menu. Custom theme primitives
+use WINGs colors, fonts, relief, and indicator pixmaps; the reference Window
+Maker session also aligns the base panel gray to its inactive-title gray.
+Zenity and KDialog are not required.
 
 ## Linux GEMix
 

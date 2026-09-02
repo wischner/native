@@ -79,6 +79,7 @@ namespace vision
         native::icon_view _backgrounds;
         native::accordion _libraries;
         native::tree_view _tree;
+        native::check _three_dimensional;
         std::string _status;
 
         // Create the accordion; it creates only the expanded content.
@@ -104,6 +105,9 @@ namespace vision
 
         // Report a user-originated tree activation.
         bool on_tree_activated(native::tree_item_id id);
+
+        // Switch between the InfoLib-compatible and XmContainer outlines.
+        bool on_tree_presentation(bool three_dimensional);
     };
 
     // Demonstrates materialized and million-row virtual tables.
@@ -132,6 +136,14 @@ namespace vision
 
         // Paint guidance and the most recent table action.
         bool on_paint(native::wnd_paint_event event);
+
+        // Resize the complete demonstration instead of retaining its
+        // construction-time table viewports.
+        bool on_resize(native::size dimensions);
+
+        // Arrange both tables and their adjacent controls in the current
+        // client area while preserving the materialized/virtual 2:1 split.
+        void layout_controls(native::size dimensions);
 
         // Apply the alternating-row preference to both tables.
         bool on_alternating(bool enabled);
@@ -191,6 +203,37 @@ namespace vision
         bool on_completion(native::completion_item item);
     };
 
+    // Demonstrates split, tabbed, floating, and persistent dock panes.
+    class feature_docking final : public native::modeless_wnd
+    {
+    public:
+        // Construct the portable docking-workspace demonstration.
+        explicit feature_docking(native::app_wnd &owner);
+
+    private:
+        // Pane contents precede the borrowing host so it detaches first.
+        native::table_store _property_store;
+        native::tree_view _project;
+        native::code_edit _editor;
+        native::table_view _properties;
+        native::text_edit _output;
+        native::dock_host _dock;
+        std::string _saved_layout;
+        int _float_project_command = 0;
+
+        // Register pane contents after the modeless surface is created.
+        bool on_create();
+
+        // Apply one programmatic pane or persistence command.
+        bool on_menu_command(int command);
+
+        // Report an accepted pointer-originated docking action.
+        bool on_dock_change(native::dock_event event);
+
+        // Install the default four-pane workspace.
+        void install_default_layout();
+    };
+
     // Demonstrates owner modality and explicit dialog results.
     class feature_dialog final : public native::modal_wnd
     {
@@ -215,12 +258,41 @@ namespace vision
         bool on_cancel();
     };
 
+    // Demonstrates choice/input controls and non-client window chrome.
+    class feature_input_chrome final : public native::modeless_wnd
+    {
+    public:
+        explicit feature_input_chrome(native::app_wnd &owner);
+
+    private:
+        native::combo_box _selection_combo;
+        native::combo_box _editable_combo;
+        native::list_box _list_box;
+        native::button _choose_folder;
+        native::button _show_message;
+        native::directory_dialog _directory;
+        native::ruler _horizontal_ruler;
+        native::ruler _vertical_ruler;
+        native::status_bar _status_bar;
+
+        bool on_create();
+        bool on_paint(native::wnd_paint_event event);
+        bool on_combo_selection(int index);
+        bool on_combo_text(std::string text);
+        bool on_list_selection(int index);
+        bool on_choose_folder();
+        bool on_folder_selected(native::dialog_result result);
+        bool on_show_message();
+        bool on_ruler_tracking(double value);
+    };
+
     // Presents every portable control, service, and drawing surface.
     class vision_window final : public native::app_wnd
     {
     public:
         // Construct the main demonstration and connect all events.
-        vision_window();
+        explicit vision_window(bool open_docking_on_start = false,
+                               bool open_input_chrome_on_start = false);
 
     private:
         native::button _action;
@@ -240,6 +312,8 @@ namespace vision
         native::button _show_collections;
         native::button _show_tables;
         native::button _show_code_editor;
+        native::button _show_docking;
+        native::button _show_input_chrome;
 
         std::unique_ptr<native::img> _image;
         native::font_t _file_font;
@@ -250,6 +324,8 @@ namespace vision
         std::size_t _png_size = 0;
         std::size_t _jpeg_size = 0;
         int _activation_count = 0;
+        bool _open_docking_on_start = false;
+        bool _open_input_chrome_on_start = false;
 
         int _open_image_command = 0;
         int _copy_text_command = 0;
@@ -263,6 +339,8 @@ namespace vision
         feature_collections _collections;
         feature_tables _tables;
         feature_code_editor _code_editor;
+        feature_docking _docking;
+        feature_input_chrome _input_chrome;
         feature_dialog _dialog;
         native::open_file_dialog _open_image;
         native::save_file_dialog _save_image;
@@ -331,6 +409,12 @@ namespace vision
         // Present the portable source-editor demonstration.
         bool on_show_code_editor();
 
+        // Present the portable docking-workspace demonstration.
+        bool on_show_docking();
+
+        // Present combo boxes, list box, rulers, and status/dialog APIs.
+        bool on_show_input_chrome();
+
         // Process completion of the modal demonstration dialog.
         bool on_dialog_closed(native::dialog_result result);
 
@@ -376,6 +460,12 @@ namespace vision
 
         // Open and show the source-editor demonstration.
         void show_code_editor();
+
+        // Open and show the docking-workspace demonstration.
+        void show_docking();
+
+        // Open and show the input/window-chrome demonstration.
+        void show_input_chrome();
 
         // Replace the visible status message and request repainting.
         void set_status(const std::string &status);

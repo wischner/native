@@ -148,7 +148,9 @@ namespace
 
 namespace linux::openlook
 {
-    void show_file_dialog(native::file_dialog &dialog, bool save) {
+    void show_file_dialog(native::file_dialog &dialog,
+                          bool save,
+                          bool directory) {
         native::app_wnd *owner = dialog.get_owner();
         auto *owner_state = owner ? window_state(owner) : nullptr;
         if (!owner_state || !owner_state->frame) {
@@ -156,7 +158,7 @@ namespace linux::openlook
                 "OpenLook/XView: file dialog has no owner frame.");
         }
 
-        const std::string directory =
+        const std::string initial_directory =
             dialog.get_initial_path().empty()
                 ? "."
                 : dialog.get_initial_path();
@@ -181,7 +183,9 @@ namespace linux::openlook
             owner_state->frame,
             FILE_CHOOSER,
             FILE_CHOOSER_TYPE,
-            save ? FILE_CHOOSER_SAVEAS : FILE_CHOOSER_OPEN,
+            save ? FILE_CHOOSER_SAVEAS
+                 : directory ? FILE_CHOOSER_SAVE
+                             : FILE_CHOOSER_OPEN,
             FRAME_LABEL,
             dialog.get_title().c_str(),
             FRAME_DONE_PROC,
@@ -189,7 +193,7 @@ namespace linux::openlook
             WIN_CLIENT_DATA,
             &dialog,
             FILE_CHOOSER_DIRECTORY,
-            directory.c_str(),
+            initial_directory.c_str(),
             FILE_CHOOSER_FILTER_STRING,
             filter.c_str(),
             FILE_CHOOSER_FILTER_MASK,
@@ -198,6 +202,8 @@ namespace linux::openlook
             document,
             FILE_CHOOSER_NO_CONFIRM,
             save && !confirm_overwrite,
+            FILE_CHOOSER_SAVE_TO_DIR,
+            directory,
             nullptr));
         if (!chooser) {
             throw std::runtime_error(
@@ -207,8 +213,8 @@ namespace linux::openlook
         auto *state = new openlook_file_dialog;
         state->chooser = chooser;
         state->dialog = &dialog;
-        state->save = save;
-        if (save) {
+        state->save = save || directory;
+        if (save || directory) {
             xv_set(chooser,
                    FILE_CHOOSER_NOTIFY_FUNC,
                    save_accepted,

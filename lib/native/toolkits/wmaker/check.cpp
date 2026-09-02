@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 
 #include <native/check.h>
 
@@ -69,13 +70,14 @@ namespace native
         WMMoveWidget(widget, position.x, position.y);
         WMResizeWidget(widget, _bounds.d.w, _bounds.d.h);
         WMSetWidgetBackgroundColor(
-            widget, WMWhiteColor(WMWidgetScreen(widget)));
+            widget, reinterpret_cast<W_Screen *>(
+                        linux::wmaker::screen)->gray);
         WMSetButtonText(widget, _text.c_str());
         WMSetButtonSelected(widget, _checked);
         WMSetButtonAction(widget, changed, self);
         linux::wmaker::wnd_bindings.register_pair(widget, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void check::show() const {
@@ -83,7 +85,9 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated check.");
         }
-        WMMapWidget(widget_for(const_cast<check *>(this)));
+        WMButton *widget = widget_for(const_cast<check *>(this));
+        WMRealizeWidget(widget);
+        WMMapWidget(widget);
     }
 
     void check::destroy() const {

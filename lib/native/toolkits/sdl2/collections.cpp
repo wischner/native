@@ -107,11 +107,6 @@ namespace
 namespace linux::sdl2
 {
     void render_collections(native::wnd *owner, native::gpx &graphics) {
-        for (auto *control : accordions) {
-            if (control && visible(*control) && root_of(control) == owner)
-                native::detail::draw_accordion_at(
-                    *control, graphics, origin_in_root(*control));
-        }
         for (auto *control : icon_views) {
             if (control && visible(*control) && root_of(control) == owner)
                 native::detail::draw_icon_view_at(
@@ -130,6 +125,15 @@ namespace linux::sdl2
         for (auto *control : code_edits) {
             if (control && visible(*control) && root_of(control) == owner)
                 native::draw_code_edit(
+                    *control, graphics, origin_in_root(*control));
+        }
+        // Accordion hosts are real child surfaces on native toolkits and
+        // therefore occupy the front collection layer. Keep the emulated
+        // renderer consistent; docking uses a transient empty accordion
+        // as its raised guide surface.
+        for (auto *control : accordions) {
+            if (control && visible(*control) && root_of(control) == owner)
+                native::detail::draw_accordion_at(
                     *control, graphics, origin_in_root(*control));
         }
     }
@@ -152,7 +156,7 @@ namespace linux::sdl2
                 control->on_native_focus(true);
                 SDL_StartTextInput();
             }
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
                         : native::mouse_action::release,
@@ -172,7 +176,7 @@ namespace linux::sdl2
                 SDL_StartTextInput();
             }
             const native::point local = local_point(*control, x, y);
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
                         : native::mouse_action::release,
@@ -196,7 +200,7 @@ namespace linux::sdl2
                 control->on_native_focus(true);
             }
             const native::point local = local_point(*control, x, y);
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
                         : native::mouse_action::release,
@@ -217,7 +221,7 @@ namespace linux::sdl2
                 control->on_native_focus(true);
             }
             const native::point local = local_point(*control, x, y);
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
                         : native::mouse_action::release,
@@ -241,7 +245,7 @@ namespace linux::sdl2
                 clear_focus(owner);
                 control->on_native_focus(true);
             }
-            control->on_mouse_click.emit(native::mouse_event(
+            control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
                         : native::mouse_action::release,
@@ -260,7 +264,7 @@ namespace linux::sdl2
             native::code_edit *control = *iterator;
             if (control && visible(*control) &&
                 root_of(control) == owner && hit(*control, x, y)) {
-                control->on_mouse_wheel.emit(
+                control->on_native_mouse_wheel(
                     native::mouse_wheel_event(
                         local_point(*control, x, y),
                         static_cast<native::coord>(delta),
@@ -313,7 +317,7 @@ namespace linux::sdl2
             native::code_edit *control = *iterator;
             if (control && visible(*control) &&
                 root_of(control) == owner && hit(*control, x, y)) {
-                control->on_mouse_move.emit(
+                control->on_native_mouse_move(
                     local_point(*control, x, y));
                 return true;
             }
@@ -629,7 +633,7 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void accordion::show() const {
@@ -676,7 +680,7 @@ namespace native
         linux::sdl2::icon_views.push_back(self);
         _created = true;
         self->synchronize_theme_metrics();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void icon_view::show() const {

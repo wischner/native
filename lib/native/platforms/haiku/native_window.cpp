@@ -60,7 +60,7 @@ namespace
                                  background.alpha));
 
             native::wnd_paint_event e{r, g};
-            _owner->on_wnd_paint.emit(e);
+            _owner->on_native_paint(e);
         }
 
         void
@@ -68,9 +68,13 @@ namespace
             if (!_owner || !_owner->get_input_enabled())
                 return;
 
-            _owner->on_mouse_move.emit(
+            BPoint screen = where;
+            ConvertToScreen(&screen);
+            _owner->on_native_mouse_move(
                 native::point(static_cast<native::coord>(where.x),
-                              static_cast<native::coord>(where.y)));
+                              static_cast<native::coord>(where.y)),
+                native::point(static_cast<native::coord>(screen.x),
+                              static_cast<native::coord>(screen.y)));
         }
 
         void MouseDown(BPoint where) override {
@@ -94,7 +98,7 @@ namespace
             if (_pressed_button == native::mouse_button::none)
                 return;
 
-            _owner->on_mouse_click.emit(native::mouse_event(
+            _owner->on_native_mouse_click(native::mouse_event(
                 _pressed_button,
                 native::mouse_action::press,
                 native::point(static_cast<native::coord>(where.x),
@@ -106,7 +110,7 @@ namespace
                 _pressed_button == native::mouse_button::none)
                 return;
 
-            _owner->on_mouse_click.emit(native::mouse_event(
+            _owner->on_native_mouse_click(native::mouse_event(
                 _pressed_button,
                 native::mouse_action::release,
                 native::point(static_cast<native::coord>(where.x),
@@ -163,7 +167,7 @@ namespace haiku
                 if (binding && binding->button &&
                     binding->button->Window() == this &&
                     owner->get_input_enabled()) {
-                    owner->on_click.emit();
+                    owner->on_native_click();
                 }
             }
             return;
@@ -175,7 +179,8 @@ namespace haiku
                 haiku::owner_menu_bindings.object_from_handle(_owner);
             if (hm &&
                 hm->item_ids.count(static_cast<int>(message->what))) {
-                _owner->on_menu.emit(static_cast<int>(message->what));
+                _owner->on_native_menu(
+                    static_cast<int>(message->what));
                 return;
             }
         }
@@ -193,7 +198,8 @@ namespace haiku
                 ChildAt(0)->GetMouse(&where, &buttons, false);
 
             if (dx != 0.0f) {
-                _owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                _owner->on_native_mouse_wheel(
+                    native::mouse_wheel_event(
                     native::point(static_cast<native::coord>(where.x),
                                   static_cast<native::coord>(where.y)),
                     static_cast<native::coord>(dx * 120.0f),
@@ -201,7 +207,8 @@ namespace haiku
             }
 
             if (dy != 0.0f) {
-                _owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                _owner->on_native_mouse_wheel(
+                    native::mouse_wheel_event(
                     native::point(static_cast<native::coord>(where.x),
                                   static_cast<native::coord>(where.y)),
                     static_cast<native::coord>(dy * 120.0f),
@@ -219,7 +226,6 @@ namespace haiku
                 static_cast<native::coord>(new_position.x),
                 static_cast<native::coord>(new_position.y));
             _owner->on_native_move(position);
-            _owner->on_wnd_move.emit(position);
         }
 
         BWindow::FrameMoved(new_position);
@@ -231,7 +237,6 @@ namespace haiku
             native::size s(static_cast<native::dim>(new_width + 1.0f),
                            static_cast<native::dim>(new_height + 1.0f));
             _owner->on_native_resize(s);
-            _owner->on_wnd_resize.emit(s);
         }
 
         BWindow::FrameResized(new_width, new_height);

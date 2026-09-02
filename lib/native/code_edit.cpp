@@ -23,6 +23,31 @@ namespace
 {
     constexpr int marker_width = 18;
 
+    native::rgba selected_color(native::rgba preferred,
+                                native::rgba fallback) {
+        return preferred.a == 0 ? fallback : preferred;
+    }
+
+    native::rgba diagnostic_color(
+        const native::code_theme &value,
+        native::diagnostic_severity severity) {
+        if (severity == native::diagnostic_severity::hint)
+            return selected_color(
+                value.diagnostic_hint,
+                native::rgba(95, 125, 135, 255));
+        if (severity == native::diagnostic_severity::info)
+            return selected_color(
+                value.diagnostic_info,
+                native::rgba(35, 105, 180, 255));
+        if (severity == native::diagnostic_severity::warning)
+            return selected_color(
+                value.diagnostic_warning,
+                native::rgba(205, 125, 0, 255));
+        return selected_color(
+            value.diagnostic_error,
+            native::rgba(190, 35, 35, 255));
+    }
+
     int digit_count(int value) {
         int result = 1;
         while (value >= 10) {
@@ -450,7 +475,7 @@ namespace native
                     _completion[static_cast<std::size_t>(
                         _completion_index)];
                 hide_completion();
-                on_complete.emit(item);
+                on_native_complete(item);
                 return true;
             }
             if (key == code_edit_key::escape) {
@@ -714,7 +739,7 @@ namespace native
             0,
             line_count() - 1);
         if (position.x < marker_width) {
-            on_gutter_click.emit(line);
+            on_native_gutter_click(line);
             return;
         }
         const std::string text = _document->line_text(line);
@@ -773,6 +798,206 @@ namespace native
             return;
         const std::size_t start = _document->line_start(line);
         const std::size_t end = _document->line_end(line);
-        on_hover.emit(text_span{start, end});
+        on_native_hover(text_span{start, end});
+    }
+
+    void code_edit::on_native_complete(
+        const completion_item &item) {
+        on_complete.emit(item);
+    }
+
+    void code_edit::on_native_gutter_click(int line) {
+        on_gutter_click.emit(line);
+    }
+
+    void code_edit::on_native_hover(text_span span) {
+        on_hover.emit(span);
+    }
+
+    void code_edit::draw_editor_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::inset, state);
+    }
+
+    void code_edit::draw_gutter(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        const theme::palette palette = appearance.native_palette();
+        graphics.set_ink(selected_color(
+            _code_theme.gutter_background, palette.button_bg))
+            .draw_rect(bounds, true);
+        appearance.draw_separator(
+            rect(static_cast<coord>(bounds.x2() - 1),
+                 bounds.p.y,
+                 1,
+                 bounds.d.h),
+            separator_orientation::vertical);
+    }
+
+    void code_edit::draw_line_background(
+        gpx &graphics,
+        theme &appearance,
+        int,
+        const rect &bounds,
+        const theme::state &state) {
+        if (_code_theme.current_line.a != 0) {
+            graphics.set_ink(_code_theme.current_line)
+                .draw_rect(bounds, true);
+            return;
+        }
+        appearance.draw_selection(
+            bounds, selection_shape::row, state);
+    }
+
+    void code_edit::draw_line_number(
+        gpx &graphics,
+        theme &appearance,
+        int line,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_font(font_t::stock(font_role::fixed))
+            .set_ink(selected_color(
+                _code_theme.gutter_text,
+                appearance.native_palette().button_disabled_text))
+            .draw_text(
+                std::to_string(line + 1),
+                bounds,
+                text_layout{text_align::end,
+                            text_valign::center,
+                            text_overflow::clip,
+                            true});
+    }
+
+    void code_edit::draw_marker(
+        gpx &graphics,
+        theme &appearance,
+        const line_marker &marker,
+        const rect &bounds,
+        const theme::state &state) {
+        const rgba color = selected_color(
+            _code_theme.marker, rgba(190, 35, 35, 255));
+        graphics.set_ink(color).set_pen(1);
+        if (marker.kind == marker_kind::breakpoint) {
+            graphics.draw_ellipse(bounds, true);
+        } else if (marker.kind == marker_kind::breakpoint_disabled) {
+            graphics.draw_ellipse(bounds, false);
+        } else if (marker.kind == marker_kind::current_line) {
+            graphics.draw_polygon(
+                {point(bounds.p.x, bounds.p.y),
+                 point(bounds.x2(),
+                       static_cast<coord>(
+                           bounds.p.y + bounds.d.h / 2)),
+                 point(bounds.p.x, bounds.y2())},
+                true);
+        } else if (marker.kind == marker_kind::bookmark) {
+            graphics.draw_rect(bounds, true);
+        } else {
+            appearance.draw_disclosure(
+                bounds,
+                marker.kind == marker_kind::fold_closed
+                    ? disclosure_state::collapsed
+                    : disclosure_state::expanded,
+                state);
+        }
+    }
+
+    void code_edit::draw_style_background(
+        gpx &graphics,
+        theme &,
+        const style_run &,
+        const code_style &style,
+        const rect &bounds,
+        const theme::state &) {
+        if (style.background.a != 0)
+            graphics.set_ink(style.background).draw_rect(bounds, true);
+    }
+
+    void code_edit::draw_selection(
+        gpx &,
+        theme &appearance,
+        const text_span &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_selection(
+            bounds, selection_shape::row, state);
+    }
+
+    void code_edit::draw_text_content(
+        gpx &graphics,
+        theme &,
+        const text_span &,
+        const std::string &display,
+        point position,
+        rgba foreground,
+        bool bold,
+        const theme::state &) {
+        graphics.set_font(font_t::stock(font_role::fixed))
+            .set_ink(foreground)
+            .draw_text(display, position);
+        if (bold) {
+            graphics.draw_text(
+                display,
+                point(static_cast<coord>(position.x + 1),
+                      position.y));
+        }
+    }
+
+    void code_edit::draw_diagnostic(
+        gpx &graphics,
+        theme &,
+        const diagnostic &item,
+        const rect &bounds,
+        const theme::state &) {
+        const coord y = static_cast<coord>(bounds.y2() - 1);
+        graphics.set_ink(diagnostic_color(
+            _code_theme, item.severity)).draw_line(
+                point(bounds.p.x, y), point(bounds.x2(), y));
+    }
+
+    void code_edit::draw_caret(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_ink(state.selected ? colors.selection_text
+                                        : colors.content_text)
+            .draw_line(bounds.p,
+                       point(bounds.p.x,
+                             static_cast<coord>(bounds.y2() - 1)));
+    }
+
+    void code_edit::draw_editor_focus(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+    }
+
+    void code_edit::draw_completion_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::popup, state);
+    }
+
+    void code_edit::draw_completion_item(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const completion_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        std::string label = item.label;
+        if (!item.detail.empty())
+            label += "  " + item.detail;
+        appearance.draw_list_item(bounds, label, state);
     }
 } // namespace native

@@ -63,7 +63,7 @@ namespace
         native::rect invalid(0, 0, width, height);
         graphics.set_clip(invalid);
         native::wnd_paint_event event(invalid, graphics);
-        owner.on_wnd_paint.emit(event);
+        owner.on_native_paint(event);
 
         auto *cache = linux::x11::wnd_gpx_bindings.object_from_handle(
             &owner);
@@ -399,14 +399,14 @@ namespace
             key(*owner, event->xkey);
             break;
         case MotionNotify:
-            owner->on_mouse_move.emit(native::point(
+            owner->on_native_mouse_move(native::point(
                 event->xmotion.x, event->xmotion.y));
             break;
         case ButtonPress:
         case ButtonRelease: {
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
-                owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                owner->on_native_mouse_wheel(native::mouse_wheel_event(
                     native::point(event->xbutton.x, event->xbutton.y),
                     static_cast<native::coord>(
                         event->xbutton.button == Button4 ? 24 : -24),
@@ -421,7 +421,7 @@ namespace
                                RevertToParent,
                                event->xbutton.time);
             }
-            owner->on_mouse_click.emit(native::mouse_event(
+            owner->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 event->type == ButtonPress
                     ? native::mouse_action::press

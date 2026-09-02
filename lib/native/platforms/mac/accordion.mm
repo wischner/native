@@ -7,11 +7,37 @@
 
 #import <AppKit/AppKit.h>
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <native.h>
 
 #include "globals.h"
+
+@interface native_accordion_stack : NSStackView {
+@public
+    void *_owner;
+}
+@end
+
+@implementation native_accordion_stack
+- (void)drawRect:(NSRect)dirty {
+    [super drawRect:dirty];
+    auto *owner = static_cast<native::accordion *>(_owner);
+    if (!owner || !owner->get_created())
+        return;
+    native::gpx &graphics = owner->get_gpx();
+    native::rect invalid(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, dirty.size.height)));
+    graphics.set_clip(invalid);
+    owner->on_native_paint(native::wnd_paint_event(invalid, graphics));
+}
+@end
 
 @interface native_accordion_target : NSObject {
 @public
@@ -152,11 +178,12 @@ namespace native
             throw std::runtime_error(
                 "macOS: accordion requires a created parent.");
         auto *self = const_cast<accordion *>(this);
-        NSStackView *stack = [[NSStackView alloc]
+        native_accordion_stack *stack = [[native_accordion_stack alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,
                                      _bounds.d.w,
                                      _bounds.d.h)];
+        stack->_owner = self;
         [stack setOrientation:NSUserInterfaceLayoutOrientationVertical];
         [stack setAlignment:NSLayoutAttributeLeading];
         [stack setDistribution:NSStackViewDistributionFill];
@@ -172,7 +199,7 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void accordion::show() const {
@@ -181,6 +208,12 @@ namespace native
         if (!_created || !binding || !binding->stack)
             throw std::runtime_error(
                 "macOS: accordion is not created.");
+        NSView *parent = [binding->stack superview];
+        if (parent) {
+            [parent addSubview:binding->stack
+                    positioned:NSWindowAbove
+                    relativeTo:nil];
+        }
         [binding->stack setHidden:NO];
     }
 

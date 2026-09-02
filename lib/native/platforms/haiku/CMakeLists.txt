@@ -14,7 +14,9 @@ set(SRC_FILES
     img.cpp
     image_codec.cpp
     menu.cpp
+    message_box.cpp
     button.cpp
+    combo_box.cpp
     check.cpp
     radio.cpp
     list.cpp
@@ -27,6 +29,7 @@ set(SRC_FILES
     text_edit.cpp
     code_edit.cpp
     file_dialog.cpp
+    directory_dialog.cpp
     open_file_dialog.cpp
     save_file_dialog.cpp
 )

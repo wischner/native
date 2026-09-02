@@ -5,9 +5,11 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <cstring>
 #include <stdexcept>
 
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 
 #include <native/list.h>
 
@@ -30,6 +32,62 @@ namespace
                     owner->on_native_selection(selection);
             });
         }
+    }
+
+    // Preserve the real WMList control while replacing its historical white
+    // selection fill with the same semantic selection used by Window Maker
+    // collection and table controls.
+    void draw_item(WMList *widget,
+                   int,
+                   Drawable target,
+                   char *text,
+                   int state,
+                   WMRect *bounds) {
+        if (!widget || !bounds)
+            return;
+
+        auto *screen = reinterpret_cast<W_Screen *>(
+            WMWidgetScreen(widget));
+        if (!screen)
+            return;
+
+        const bool selected = (state & WLDSSelected) != 0;
+        const bool disabled = (state & WLDSDisabled) != 0;
+        WMColor *background = selected
+                                  ? linux::wmaker::
+                                        list_selection_background
+                                  : screen->gray;
+        WMColor *foreground = selected
+                                  ? linux::wmaker::list_selection_text
+                                  : (disabled
+                                         ? screen->darkGray
+                                         : screen->black);
+        if (!background)
+            background = selected ? screen->darkGray : screen->gray;
+        if (!foreground)
+            foreground = selected ? screen->white : screen->black;
+
+        XFillRectangle(screen->display,
+                       target,
+                       WMColorGC(background),
+                       bounds->pos.x,
+                       bounds->pos.y,
+                       bounds->size.width,
+                       bounds->size.height);
+        const char *label = text ? text : "";
+        W_PaintText(WMWidgetView(widget),
+                    target,
+                    screen->normalFont,
+                    bounds->pos.x + 4,
+                    bounds->pos.y,
+                    bounds->size.width > 8
+                        ? bounds->size.width - 8
+                        : 0,
+                    WALeft,
+                    foreground,
+                    False,
+                    label,
+                    static_cast<int>(std::strlen(label)));
     }
 } // namespace
 
@@ -71,6 +129,11 @@ namespace native
             linux::wmaker::control_position(self);
         WMMoveWidget(widget, position.x, position.y);
         WMResizeWidget(widget, _bounds.d.w, _bounds.d.h);
+        WMSetWidgetBackgroundColor(
+            widget,
+            reinterpret_cast<W_Screen *>(
+                linux::wmaker::screen)->gray);
+        WMSetListUserDrawProc(widget, draw_item);
         WMSetListAllowMultipleSelection(widget, False);
         WMSetListAllowEmptySelection(widget, True);
         for (const std::string &item : _items)
@@ -80,7 +143,7 @@ namespace native
         WMSetListAction(widget, changed, self);
         linux::wmaker::wnd_bindings.register_pair(widget, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void list::show() const {
@@ -88,7 +151,9 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated list.");
         }
-        WMMapWidget(widget_for(const_cast<list *>(this)));
+        WMList *widget = widget_for(const_cast<list *>(this));
+        WMRealizeWidget(widget);
+        WMMapWidget(widget);
     }
 
     void list::destroy() const {

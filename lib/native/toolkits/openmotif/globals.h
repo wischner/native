@@ -71,13 +71,19 @@ namespace linux::openmotif
     {
         Widget widget = nullptr;
         Widget content = nullptr;
+        Widget vertical_scrollbar = nullptr;
+        Widget horizontal_scrollbar = nullptr;
         std::vector<Widget> items;
         std::vector<native::table_row_id> row_ids;
         std::vector<native::tree_item_id> tree_ids;
         std::vector<Widget> group_items;
         std::vector<native::table_group_id> group_ids;
         std::vector<Pixmap> pixmaps;
+        Pixmap collapsed_tree_pixmap = XmUNSPECIFIED_PIXMAP;
+        Pixmap expanded_tree_pixmap = XmUNSPECIFIED_PIXMAP;
         bool native_table = false;
+        bool three_dimensional_tree = false;
+        bool synchronizing_scrollbars = false;
         bool suppress = false;
         Time last_click = 0;
         int last_item = -1;
@@ -109,6 +115,10 @@ namespace linux::openmotif
         button_bindings;
     extern native::bindings<native::text_edit *, motif_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::list *, Widget>
+        list_content_bindings;
+    extern native::bindings<native::combo_box *, Widget>
+        combo_box_bindings;
     extern native::bindings<native::accordion *, motif_collection *>
         accordion_bindings;
     extern native::bindings<native::icon_view *, motif_collection *>

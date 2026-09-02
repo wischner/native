@@ -455,4 +455,85 @@ namespace native
             // available during the parent's create callback.
         }
     }
+
+    void accordion::draw_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::panel, state);
+    }
+
+    void accordion::draw_header_background(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const accordion_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::header, state);
+    }
+
+    void accordion::draw_header_disclosure(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const accordion_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_disclosure(
+            bounds,
+            item.get_expanded() ? disclosure_state::expanded
+                                : disclosure_state::collapsed,
+            state);
+    }
+
+    void accordion::draw_header_image(
+        gpx &graphics,
+        theme &,
+        std::size_t,
+        const accordion_item &item,
+        const rect &bounds,
+        const theme::state &) {
+        if (const img *image = item.get_icon())
+            graphics.draw_img(*image, bounds, image_filter::linear);
+    }
+
+    void accordion::draw_header_text(
+        gpx &graphics,
+        theme &appearance,
+        std::size_t,
+        const accordion_item &item,
+        const rect &bounds,
+        const theme::state &state) {
+        const theme::palette colors = appearance.native_palette();
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(state.disabled ? colors.button_disabled_text
+                                    : colors.button_text)
+            .draw_text(
+                item.get_title(),
+                bounds,
+                text_layout{text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            true});
+    }
+
+    void accordion::draw_header_border(
+        gpx &,
+        theme &appearance,
+        std::size_t,
+        const accordion_item &,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+        const int extent = std::max(
+            1, appearance.defaults().separator_extent);
+        appearance.draw_separator(
+            rect(bounds.p.x,
+                 static_cast<coord>(bounds.y2() - extent),
+                 bounds.d.w,
+                 static_cast<dim>(extent)),
+            separator_orientation::horizontal);
+    }
 } // namespace native

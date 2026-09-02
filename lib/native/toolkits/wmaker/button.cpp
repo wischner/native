@@ -20,7 +20,7 @@ namespace
         if (owner && linux::wmaker::permit_input(owner)) {
             linux::wmaker::defer([owner]() {
                 if (owner->get_created())
-                    owner->on_click.emit();
+                    owner->on_native_click();
             });
         }
     }
@@ -56,7 +56,7 @@ namespace native
         WMSetButtonAction(widget, activate, self);
         linux::wmaker::wnd_bindings.register_pair(widget, self);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {
@@ -64,9 +64,11 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated button.");
         }
-        WMMapWidget(
+        WMWidget *widget =
             linux::wmaker::wnd_bindings.handle_from_object(
-                const_cast<button *>(this)));
+                const_cast<button *>(this));
+        WMRealizeWidget(widget);
+        WMMapWidget(widget);
     }
 
     void button::destroy() const {

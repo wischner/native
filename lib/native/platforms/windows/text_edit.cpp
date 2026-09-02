@@ -191,7 +191,7 @@ namespace native
                      TRUE);
         SendMessageW(window, EM_SETREADONLY, _read_only, 0);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void text_edit::show() const {

@@ -32,7 +32,7 @@ namespace
     (void)sender;
     auto *owner = static_cast<native::app_wnd *>(_owner);
     if (owner && owner->get_input_enabled())
-        owner->on_menu.emit(_item_id);
+        owner->on_native_menu(_item_id);
 }
 @end
 
@@ -79,6 +79,10 @@ namespace native
                                   stringWithUTF8String:top.title
                                                            .c_str()]];
             for (const auto &item : top.items) {
+                if (item.separator) {
+                    [sub addItem:[NSMenuItem separatorItem]];
+                    continue;
+                }
                 native_menu_target *target =
                     [[native_menu_target alloc] init];
                 target->_owner = &owner;

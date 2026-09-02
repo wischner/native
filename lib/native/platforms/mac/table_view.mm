@@ -14,6 +14,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "../../table_visible_rows.h"
 #include "globals.h"
 
@@ -22,42 +23,6 @@ namespace
     NSString *native_string(const std::string &value) {
         NSString *result = [NSString stringWithUTF8String:value.c_str()];
         return result ? result : @"";
-    }
-
-    NSImage *native_image(const native::img &source) {
-        NSBitmapImageRep *representation =
-            [[NSBitmapImageRep alloc]
-                initWithBitmapDataPlanes:nullptr
-                              pixelsWide:source.w()
-                              pixelsHigh:source.h()
-                           bitsPerSample:8
-                         samplesPerPixel:4
-                                hasAlpha:YES
-                                isPlanar:NO
-                          colorSpaceName:NSCalibratedRGBColorSpace
-                             bitmapFormat:0
-                              bytesPerRow:source.w() * 4
-                             bitsPerPixel:32];
-        if (!representation)
-            return nil;
-        std::uint8_t *target = [representation bitmapData];
-        for (int y = 0; y < source.h(); ++y) {
-            for (int x = 0; x < source.w(); ++x) {
-                const native::rgba color =
-                    source.pixels()[y * source.w() + x];
-                const std::size_t offset =
-                    (static_cast<std::size_t>(y) * source.w() + x) * 4;
-                target[offset] = color.r;
-                target[offset + 1] = color.g;
-                target[offset + 2] = color.b;
-                target[offset + 3] = color.a;
-            }
-        }
-        NSImage *image = [[NSImage alloc]
-            initWithSize:NSMakeSize(source.w(), source.h())];
-        [image addRepresentation:representation];
-        [representation release];
-        return image;
     }
 
     mac::mac_table_view &binding_for(native::table_view &table) {
@@ -79,20 +44,6 @@ namespace
                 return group;
         }
         return std::nullopt;
-    }
-
-    NSImage *cached_image(native::table_view &table,
-                          const native::img *image) {
-        if (!image)
-            return nil;
-        auto &binding = binding_for(table);
-        const auto found = binding.images.find(image);
-        if (found != binding.images.end())
-            return found->second;
-        NSImage *converted = native_image(*image);
-        if (converted)
-            binding.images[image] = converted;
-        return converted;
     }
 
     native::table_column_id column_id(NSTableColumn *column) {
@@ -117,6 +68,152 @@ namespace
         return;
     }
     [super keyDown:event];
+}
+@end
+
+@interface native_table_cell_view : NSView {
+@public
+    void *_owner;
+    NSInteger _row;
+    native::table_column_id _column;
+}
+@end
+
+@implementation native_table_cell_view
+- (BOOL)isFlipped { return YES; }
+
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::table_view *>(_owner);
+    if (!owner || !owner->get_created() || !owner->get_model() ||
+        _row < 0 || static_cast<std::size_t>(_row) >=
+                        owner->get_display_row_count()) {
+        [super drawRect:dirty];
+        return;
+    }
+    const native::table_display_row display = owner->get_display_row(
+        static_cast<std::size_t>(_row));
+    if (display.group)
+        return;
+    const native::table_column_id target_column = _column;
+    const auto found = std::find_if(
+        owner->get_columns().begin(),
+        owner->get_columns().end(),
+        [target_column](const native::table_column &column) {
+            return column.id == target_column;
+        });
+    if (found == owner->get_columns().end())
+        return;
+    native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, [self bounds].size.width)),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, [self bounds].size.height)));
+    native::gpx &graphics = owner->get_gpx();
+    graphics.set_clip(bounds);
+    auto appearance = native::theme::create(graphics);
+    native::theme::state state;
+    native::table_model *model = owner->get_model();
+    const native::table_row_id row = model->row_id(display.model_row);
+    const auto &selection = owner->get_selected_rows();
+    state.selected = std::find(selection.begin(), selection.end(), row) !=
+                     selection.end();
+    state.focused = [[self window] firstResponder] == [self superview];
+    native::detail::control_render_access::draw_table_cell(
+        *owner,
+        graphics,
+        *appearance,
+        row,
+        display.model_row,
+        *found,
+        model->cell(display.model_row, _column),
+        bounds,
+        state);
+}
+@end
+
+@interface native_table_group_button : NSButton {
+@public
+    void *_owner;
+    native::table_group_id _group;
+}
+@end
+
+@implementation native_table_group_button
+- (void)drawRect:(NSRect)dirty {
+    auto *owner = static_cast<native::table_view *>(_owner);
+    native::table_model *model = owner ? owner->get_model() : nullptr;
+    const auto group = model ? group_by_id(*model, _group)
+                             : std::nullopt;
+    if (!owner || !owner->get_created() || !group) {
+        [super drawRect:dirty];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    auto appearance = native::theme::create(graphics);
+    const NSRect frame = [self bounds];
+    const native::rect bounds(
+        0,
+        0,
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(native::rect(
+        static_cast<native::coord>(dirty.origin.x),
+        static_cast<native::coord>(dirty.origin.y),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, dirty.size.width)),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, dirty.size.height))));
+    native::theme::state state;
+    state.disabled = !group->collapsible;
+    state.pressed = [self isHighlighted];
+    native::detail::control_render_access::draw_table_group(
+        *owner, graphics, *appearance, *group, bounds, state);
+}
+@end
+
+@interface native_table_header_cell : NSTableHeaderCell {
+@public
+    void *_owner;
+    native::table_column_id _column;
+}
+@end
+
+@implementation native_table_header_cell
+- (void)drawWithFrame:(NSRect)frame inView:(NSView *)view {
+    auto *owner = static_cast<native::table_view *>(_owner);
+    if (!owner || !owner->get_created()) {
+        [super drawWithFrame:frame inView:view];
+        return;
+    }
+    const native::table_column_id target = _column;
+    const auto column = std::find_if(
+        owner->get_columns().begin(),
+        owner->get_columns().end(),
+        [target](const native::table_column &candidate) {
+            return candidate.id == target;
+        });
+    if (column == owner->get_columns().end()) {
+        [super drawWithFrame:frame inView:view];
+        return;
+    }
+    native::gpx &graphics = owner->get_gpx();
+    const native::rect bounds(
+        static_cast<native::coord>(frame.origin.x),
+        static_cast<native::coord>(frame.origin.y),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, frame.size.width)),
+        static_cast<native::dim>(
+            std::max<CGFloat>(0, frame.size.height)));
+    graphics.set_clip(bounds);
+    auto appearance = native::theme::create(graphics);
+    native::theme::state state;
+    state.pressed = [self isHighlighted];
+    native::detail::control_render_access::draw_table_header(
+        *owner, graphics, *appearance, *column, bounds, state);
 }
 @end
 
@@ -173,7 +270,8 @@ namespace
             cell = [[[NSTableCellView alloc]
                 initWithFrame:NSMakeRect(0, 0, 200, 22)] autorelease];
             [cell setIdentifier:identifier];
-            NSButton *button = [[NSButton alloc]
+            native_table_group_button *button =
+                [[native_table_group_button alloc]
                 initWithFrame:NSMakeRect(2, 1, 190, 20)];
             [button setButtonType:NSButtonTypeOnOff];
             [button setBezelStyle:NSBezelStyleDisclosure];
@@ -186,7 +284,11 @@ namespace
         }
         native::table_model *model = owner->get_model();
         const auto group = group_by_id(*model, display.group_id);
-        NSButton *button = (NSButton *)[[cell subviews] firstObject];
+        native_table_group_button *button =
+            static_cast<native_table_group_button *>(
+                [[cell subviews] firstObject]);
+        button->_owner = owner;
+        button->_group = display.group_id;
         [button setTitle:group ? native_string(group->title) : @""];
         [button setTag:static_cast<NSInteger>(display.group_id)];
         [button setEnabled:group && group->collapsible];
@@ -198,49 +300,18 @@ namespace
 
     NSString *identifier = [NSString stringWithFormat:
         @"native_table_%u", column_id(column)];
-    NSTableCellView *cell = [table
+    native_table_cell_view *cell = [table
         makeViewWithIdentifier:identifier owner:self];
     if (!cell) {
-        cell = [[[NSTableCellView alloc]
+        cell = [[[native_table_cell_view alloc]
             initWithFrame:NSMakeRect(0, 0, [column width], 22)]
                 autorelease];
         [cell setIdentifier:identifier];
-        NSImageView *image = [[NSImageView alloc]
-            initWithFrame:NSMakeRect(2, 3, 16, 16)];
-        [image setImageScaling:NSImageScaleProportionallyDown];
-        NSTextField *text = [[NSTextField alloc]
-            initWithFrame:NSMakeRect(22, 1,
-                                     std::max<CGFloat>(1,
-                                         [column width] - 24),
-                                     20)];
-        [text setBezeled:NO];
-        [text setEditable:NO];
-        [text setSelectable:NO];
-        [text setDrawsBackground:NO];
-        [text setLineBreakMode:NSLineBreakByTruncatingTail];
-        [cell addSubview:image];
-        [cell addSubview:text];
-        [cell setImageView:image];
-        [cell setTextField:text];
-        [image release];
-        [text release];
     }
-    const native::table_cell value = owner->get_model()->cell(
-        display.model_row, column_id(column));
-    [cell.textField setStringValue:native_string(value.text)];
-    [cell.imageView setImage:cached_image(*owner, value.image)];
-    const bool has_image = value.image != nullptr;
-    const native::size icon = owner->get_icon_size()
-        .value_or(native::size(16, 16));
-    [cell.imageView setHidden:!has_image];
-    [cell.imageView setFrame:NSMakeRect(
-        2, std::max<CGFloat>(1, ([table rowHeight] - icon.h) / 2),
-        icon.w, icon.h)];
-    const CGFloat text_x = has_image ? icon.w + 8 : 2;
-    [cell.textField setFrame:NSMakeRect(
-        text_x, 1,
-        std::max<CGFloat>(1, [column width] - text_x - 2),
-        std::max<CGFloat>(1, [table rowHeight] - 2))];
+    cell->_owner = owner;
+    cell->_row = row;
+    cell->_column = column_id(column);
+    [cell setNeedsDisplay:YES];
     return cell;
 }
 
@@ -352,8 +423,13 @@ namespace
                 @"%u", column.id];
             NSTableColumn *native_column = [[NSTableColumn alloc]
                 initWithIdentifier:identifier];
-            [[native_column headerCell]
-                setStringValue:native_string(column.title)];
+            native_table_header_cell *header =
+                [[native_table_header_cell alloc]
+                    initTextCell:native_string(column.title)];
+            header->_owner = &owner;
+            header->_column = column.id;
+            [native_column setHeaderCell:header];
+            [header release];
             [native_column setWidth:column.width];
             [native_column setMinWidth:column.min_width];
             [native_column setMaxWidth:column.max_width];
@@ -499,7 +575,7 @@ namespace native
         rebuild(*self);
         self->apply_selection();
         self->apply_scroll();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void table_view::show() const {

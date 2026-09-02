@@ -124,6 +124,7 @@ namespace
                     16;
                 m.text_padding_x = 8;
                 m.list_item_height = height + 2;
+                m.table_row_height = m.list_item_height;
                 return m;
             }
             font_height height{};
@@ -140,6 +141,7 @@ namespace
                             16;
             m.text_padding_x = 8;
             m.list_item_height = text_height + 2;
+            m.table_row_height = m.list_item_height;
             return m;
         }
 
@@ -379,6 +381,65 @@ namespace
                 .set_ink(p.button_border)
                 .draw_rect(r, false);
             return *this;
+        }
+
+        theme &draw_disclosure(
+            const native::rect &r,
+            native::disclosure_state disclosure,
+            const state &s) override {
+            const bool painted = with_view(_g, [&](BView *view) {
+                BRect bounds(r.p.x,
+                             r.p.y,
+                             r.x2() - 1,
+                             r.y2() - 1);
+                const BRect update(bounds);
+                const rgb_color base =
+                    ui_color(B_PANEL_BACKGROUND_COLOR);
+                const float tint = base.red + base.green + base.blue <=
+                                           128 * 3
+                                       ? B_LIGHTEN_2_TINT
+                                       : B_DARKEN_4_TINT;
+                be_control_look->DrawArrowShape(
+                    view,
+                    bounds,
+                    update,
+                    base,
+                    disclosure == native::disclosure_state::expanded
+                        ? BPrivate::BControlLook::B_DOWN_ARROW
+                        : BPrivate::BControlLook::B_RIGHT_ARROW,
+                    flags_from(s),
+                    tint);
+            });
+            return painted
+                       ? *this
+                       : draw_disclosure_fallback(r, disclosure, s);
+        }
+
+        theme &draw_sort_indicator(
+            const native::rect &r,
+            native::sort_indicator_state direction,
+            const state &s) override {
+            const bool painted = with_view(_g, [&](BView *view) {
+                BRect bounds(r.p.x,
+                             r.p.y,
+                             r.x2() - 1,
+                             r.y2() - 1);
+                const BRect update(bounds);
+                const rgb_color base =
+                    ui_color(B_CONTROL_BACKGROUND_COLOR);
+                be_control_look->DrawArrowShape(
+                    view,
+                    bounds,
+                    update,
+                    base,
+                    direction == native::sort_indicator_state::ascending
+                        ? BPrivate::BControlLook::B_UP_ARROW
+                        : BPrivate::BControlLook::B_DOWN_ARROW,
+                    flags_from(s));
+            });
+            return painted
+                       ? *this
+                       : draw_sort_indicator_fallback(r, direction, s);
         }
 
     private:

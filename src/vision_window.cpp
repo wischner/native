@@ -27,6 +27,8 @@ namespace
     constexpr int command_collections = 303;
     constexpr int command_tables = 304;
     constexpr int command_code_editor = 305;
+    constexpr int command_docking = 306;
+    constexpr int command_input_chrome = 307;
     constexpr int command_installed_font = 401;
 
     // Create and show a native child after its parent exists.
@@ -48,7 +50,8 @@ namespace
 
 namespace vision
 {
-    vision_window::vision_window()
+    vision_window::vision_window(bool open_docking_on_start,
+                                 bool open_input_chrome_on_start)
         : native::app_wnd("Vision Native Feature Gallery",
                           36, 36, 820, 660)
         , _action("Activate", 20, 20, 120, 32)
@@ -73,12 +76,19 @@ namespace vision
         , _show_collections("Collections...", 204, 566, 130, 30)
         , _show_tables("Tables...", 348, 566, 110, 30)
         , _show_code_editor("Code editor...", 472, 566, 130, 30)
+        , _show_docking("Docking...", 616, 566, 150, 30)
+        , _show_input_chrome("Input and window chrome...",
+                             20, 606, 210, 30)
         , _status("Starting portable feature gallery...")
+        , _open_docking_on_start(open_docking_on_start)
+        , _open_input_chrome_on_start(open_input_chrome_on_start)
         , _inspector(*this)
         , _layout(*this)
         , _collections(*this)
         , _tables(*this)
         , _code_editor(*this)
+        , _docking(*this)
+        , _input_chrome(*this)
         , _dialog(*this)
         , _open_image(*this, "Open PNG or JPEG")
         , _save_image(*this, "Save PNG or JPEG")
@@ -97,40 +107,50 @@ namespace vision
     }
 
     void vision_window::configure_menu() {
-        menu << "File"
-             << (native::menu_items("Open image...")
+        menu << "&File"
+             << (native::menu_items("&Open image...\tCtrl+O")
                  << std::pair<int, std::string>(
-                        command_save_image, "Save image...")
+                        command_save_image, "&Save image...\tCtrl+S")
                  << std::pair<int, std::string>(
-                        command_open_font, "Load TTF/OTF...")
-                 << std::pair<int, std::string>(command_exit, "Exit"))
-             << "Edit"
-             << (native::menu_items("Copy text")
+                        command_open_font, "Load &TTF/OTF...")
+                 << native::menu_separator
                  << std::pair<int, std::string>(
-                        command_paste_text, "Paste text")
+                        command_exit, "E&xit\tAlt+F4"))
+             << "&Edit"
+             << (native::menu_items("&Copy text\tCtrl+C")
                  << std::pair<int, std::string>(
-                        command_select_all, "Select all")
+                        command_paste_text, "&Paste text\tCtrl+V")
                  << std::pair<int, std::string>(
-                        command_copy_image, "Copy image")
+                        command_select_all, "Select &all\tCtrl+A")
+                 << native::menu_separator
                  << std::pair<int, std::string>(
-                        command_paste_image, "Paste image"))
-             << "Window"
-             << (native::menu_items("Modeless inspector")
+                        command_copy_image, "Copy &image")
                  << std::pair<int, std::string>(
-                        command_modal, "Modal dialog")
+                        command_paste_image, "Paste i&mage"))
+             << "&Window"
+             << (native::menu_items("&Modeless inspector")
                  << std::pair<int, std::string>(
-                        command_layout, "Layout managers")
+                        command_modal, "Modal &dialog")
+                 << native::menu_separator
                  << std::pair<int, std::string>(
-                        command_collections, "Collection controls")
+                        command_layout, "&Layout managers")
                  << std::pair<int, std::string>(
-                        command_tables, "Advanced tables")
+                        command_collections, "&Collection controls")
                  << std::pair<int, std::string>(
-                        command_code_editor, "Code editor"))
-             << "Demo"
-             << (native::menu_items("Reset image")
+                        command_tables, "&Advanced tables")
+                 << std::pair<int, std::string>(
+                        command_code_editor, "Code &editor")
+                 << std::pair<int, std::string>(
+                        command_docking, "Docking &workspace")
+                 << std::pair<int, std::string>(
+                        command_input_chrome,
+                        "&Input and window chrome"))
+             << "&Demo"
+             << (native::menu_items("&Reset image")
+                 << native::menu_separator
                  << std::pair<int, std::string>(
                         command_installed_font,
-                        "Load first installed font"));
+                        "Load first installed &font"));
 
         const auto &tops = menu.tops();
         _open_image_command = tops[0].items[0].id;
@@ -193,6 +213,10 @@ namespace vision
             this, &vision_window::on_show_tables);
         _show_code_editor.on_click.connect(
             this, &vision_window::on_show_code_editor);
+        _show_docking.on_click.connect(
+            this, &vision_window::on_show_docking);
+        _show_input_chrome.on_click.connect(
+            this, &vision_window::on_show_input_chrome);
         _dialog.on_modal_close.connect(
             this, &vision_window::on_dialog_closed);
         _open_image.on_modal_close.connect(
@@ -221,6 +245,8 @@ namespace vision
         create_child(_show_collections, *this);
         create_child(_show_tables, *this);
         create_child(_show_code_editor, *this);
+        create_child(_show_docking, *this);
+        create_child(_show_input_chrome, *this);
 
         try {
             reset_image();
@@ -229,6 +255,10 @@ namespace vision
             set_status(std::string("Startup feature error: ") +
                        error.what());
         }
+        if (_open_docking_on_start)
+            native::app::post([this] { show_docking(); });
+        if (_open_input_chrome_on_start)
+            native::app::post([this] { show_input_chrome(); });
         return true;
     }
 
@@ -360,6 +390,10 @@ namespace vision
             on_show_tables();
         } else if (command == command_code_editor) {
             on_show_code_editor();
+        } else if (command == command_docking) {
+            on_show_docking();
+        } else if (command == command_input_chrome) {
+            on_show_input_chrome();
         } else if (command == _reset_image_command) {
             reset_image();
         } else if (command == command_installed_font) {
@@ -466,6 +500,16 @@ namespace vision
 
     bool vision_window::on_show_code_editor() {
         show_code_editor();
+        return true;
+    }
+
+    bool vision_window::on_show_docking() {
+        show_docking();
+        return true;
+    }
+
+    bool vision_window::on_show_input_chrome() {
+        show_input_chrome();
         return true;
     }
 

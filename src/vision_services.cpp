@@ -110,7 +110,9 @@ namespace vision
         try {
             native::img source(180, 120);
             native::gpx &g = source.get_gpx();
-            g.clear(native::rgba(244, 246, 250, 255));
+            std::unique_ptr<native::theme> appearance =
+                native::theme::create(g);
+            g.clear(appearance->native_palette().button_bg);
             g.set_ink(native::rgba(42, 94, 170, 255));
             g.draw_rect(native::rect(0, 0, 180, 32), true);
             g.set_ink(native::rgba(237, 135, 46, 255));
@@ -124,8 +126,6 @@ namespace vision
             g.set_ink(native::rgba(255, 255, 255, 255));
             g.draw_text("gpx_img", native::point(58, 8));
 
-            std::unique_ptr<native::theme> appearance =
-                native::theme::create(g);
             appearance->draw_button(native::rect(12, 86, 156, 26),
                                     "Image painter");
 
@@ -303,6 +303,22 @@ namespace vision
         _code_editor.show();
         set_status("Opened the UTF-8 code editor with portable "
                    "gutter and overlays.");
+    }
+
+    void vision_window::show_docking() {
+        if (!_docking.get_created())
+            _docking.create();
+        _docking.show();
+        set_status("Opened the split, tabbed, floating, and persistent "
+                   "docking workspace.");
+    }
+
+    void vision_window::show_input_chrome() {
+        if (!_input_chrome.get_created())
+            _input_chrome.create();
+        _input_chrome.show();
+        set_status("Opened combo, list-box, ruler, status-bar, and "
+                   "standard-dialog examples.");
     }
 
     void vision_window::set_status(const std::string &status) {

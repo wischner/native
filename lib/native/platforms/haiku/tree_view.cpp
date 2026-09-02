@@ -22,6 +22,7 @@
 
 #include <native.h>
 
+#include "../../control_render_access.h"
 #include "globals.h"
 
 namespace
@@ -42,82 +43,14 @@ namespace
     {
     public:
         tree_string_item(const native::tree_view_item &item,
-                         uint32 depth,
-                         native::size icon_size)
-            : BStringItem(
-                  (item.image ? std::string("    ") + item.text
-                              : item.text)
-                      .c_str(),
-                  depth,
-                  item.expanded)
+                         uint32 depth)
+            : BStringItem(item.text.c_str(), depth, item.expanded)
             , id(item.id) {
             SetEnabled(item.enabled);
-            if (!item.image)
-                return;
-            _bitmap = new BBitmap(
-                BRect(0,
-                      0,
-                      icon_size.w - 1,
-                      icon_size.h - 1),
-                B_RGBA32);
-            if (!_bitmap || _bitmap->InitCheck() != B_OK ||
-                !_bitmap->Bits()) {
-                delete _bitmap;
-                _bitmap = nullptr;
-                return;
-            }
-            auto *target = static_cast<std::uint8_t *>(
-                _bitmap->Bits());
-            const int stride = _bitmap->BytesPerRow();
-            for (int y = 0; y < icon_size.h; ++y) {
-                const int source_y = std::min(
-                    item.image->h() - 1,
-                    y * item.image->h() /
-                        static_cast<int>(icon_size.h));
-                for (int x = 0; x < icon_size.w; ++x) {
-                    const int source_x = std::min(
-                        item.image->w() - 1,
-                        x * item.image->w() /
-                            static_cast<int>(icon_size.w));
-                    const native::rgba color = item.image->pixels()[
-                        source_y * item.image->w() + source_x];
-                    std::uint8_t *pixel = target + y * stride + x * 4;
-                    pixel[0] = color.b;
-                    pixel[1] = color.g;
-                    pixel[2] = color.r;
-                    pixel[3] = color.a;
-                }
-            }
-        }
-
-        ~tree_string_item() override {
-            delete _bitmap;
-        }
-
-        void DrawItem(BView *owner,
-                      BRect frame,
-                      bool complete = false) override {
-            BStringItem::DrawItem(owner, frame, complete);
-            if (!_bitmap || !owner)
-                return;
-            const drawing_mode old_mode = owner->DrawingMode();
-            owner->SetDrawingMode(B_OP_ALPHA);
-            owner->DrawBitmap(
-                _bitmap,
-                BPoint(frame.left + 2,
-                       frame.top +
-                           std::max<float>(
-                               0,
-                               (frame.Height() -
-                                _bitmap->Bounds().Height()) /
-                                   2)));
-            owner->SetDrawingMode(old_mode);
         }
 
         native::tree_item_id id;
 
-    private:
-        BBitmap *_bitmap = nullptr;
     };
 
     class native_tree_view final : public BOutlineListView
@@ -193,6 +126,47 @@ namespace
             BOutlineListView::KeyDown(bytes, count);
         }
 
+    protected:
+        void DrawItem(BListItem *raw,
+                      BRect frame,
+                      bool complete = false) override {
+            auto *item = dynamic_cast<tree_string_item *>(raw);
+            if (!item || !_owner.get_created()) {
+                BOutlineListView::DrawItem(raw, frame, complete);
+                return;
+            }
+            const int32 native_index = IndexOf(raw);
+            if (native_index < 0)
+                return;
+            native::rect bounds(
+                static_cast<native::coord>(frame.left),
+                static_cast<native::coord>(frame.top),
+                static_cast<native::dim>(
+                    std::max<float>(0, frame.Width() + 1)),
+                static_cast<native::dim>(
+                    std::max<float>(0, frame.Height() + 1)));
+            native::gpx &graphics = _owner.get_gpx();
+            graphics.set_clip(bounds);
+            auto appearance = native::theme::create(graphics);
+            native::theme::state state;
+            state.selected = item->IsSelected();
+            state.disabled = !item->IsEnabled();
+            state.focused = IsFocus();
+            const native::tree_view_item &portable_item =
+                _owner.get_item(item->id);
+            native::detail::control_render_access::draw_tree_row(
+                _owner,
+                graphics,
+                *appearance,
+                static_cast<std::size_t>(native_index),
+                portable_item,
+                item->OutlineLevel(),
+                bounds,
+                state);
+            (void)complete;
+        }
+
+    public:
         void ExpandOrCollapse(BListItem *item,
                               bool expand) override {
             const bool changed = item &&
@@ -251,7 +225,7 @@ namespace
                      uint32 depth) {
             for (const native::tree_view_item &item : items) {
                 auto *native_item = new tree_string_item(
-                    item, depth, tree.get_icon_size());
+                    item, depth);
                 const bool added = parent
                                        ? view.AddUnder(native_item,
                                                        parent)
@@ -367,7 +341,7 @@ namespace native
         self->synchronize_theme_metrics();
         self->apply_items();
         self->apply_selection();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void tree_view::show() const {

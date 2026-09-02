@@ -61,11 +61,15 @@ namespace native
         HMENU hmenu = CreateMenu();
         for (const auto &top : _tops) {
             HMENU sub = CreatePopupMenu();
-            for (const auto &item : top.items)
-                AppendMenuA(sub,
-                            MF_STRING,
-                            (UINT_PTR)item.id,
-                            item.label.c_str());
+            for (const auto &item : top.items) {
+                if (item.separator)
+                    AppendMenuA(sub, MF_SEPARATOR, 0, nullptr);
+                else
+                    AppendMenuA(sub,
+                                MF_STRING,
+                                (UINT_PTR)item.id,
+                                item.label.c_str());
+            }
             AppendMenuA(
                 hmenu, MF_POPUP, (UINT_PTR)sub, top.title.c_str());
         }

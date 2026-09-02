@@ -104,11 +104,27 @@ A backend handles an event in four stages:
 2. Use a private binding to find the corresponding Native object.
 3. Convert coordinates, buttons, wheel axes, and other values to public Native
    types.
-4. Call the public signal's `emit()` synchronously.
+4. Call the control's virtual `on_native_*` entry point synchronously.
 
 For example, an X11 motion event, an SDL mouse event, and a Windows mouse
-message all become the same `signal<point>` notification. Application handlers
-never need to know which native event produced it.
+message all enter `wnd::on_native_mouse_move()`. Its base implementation emits
+the same `signal<point>` notification. Application handlers never need to know
+which native event produced it.
+
+Derived controls can extend behavior before or after the standard transition:
+
+```cpp
+void filtered_table::on_native_activate(native::table_row_id row) {
+    remember_recent_row(row);
+    native::table_view::on_native_activate(row);
+}
+```
+
+Calling base retains cache updates and the existing public signal. Omitting it
+intentionally replaces the normal behavior. Backends never bypass the virtual
+entry point by emitting a control signal themselves. Protected semantic hooks
+serve the same purpose for events produced inside a control, such as a radio
+being deselected by its sibling or a code-editor completion being accepted.
 
 Some toolkit dispatchers still borrow the emitting widget after their action
 callback returns. The Window Maker backend therefore queues portable signals

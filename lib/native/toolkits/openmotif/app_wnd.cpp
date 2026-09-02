@@ -108,7 +108,7 @@ namespace
             g.clear(g.get_paper());
 
             native::wnd_paint_event paint_event(r, g);
-            owner->on_wnd_paint.emit(paint_event);
+            owner->on_native_paint(paint_event);
 
             cache =
                 linux::openmotif::wnd_gpx_bindings.object_from_handle(
@@ -145,15 +145,16 @@ namespace
             native::size s(static_cast<native::dim>(width),
                            static_cast<native::dim>(height));
             owner->on_native_resize(s);
-            owner->on_wnd_resize.emit(s);
             break;
         }
 
         case MotionNotify:
             if (!owner->get_input_enabled())
                 return;
-            owner->on_mouse_move.emit(
-                native::point(event->xmotion.x, event->xmotion.y));
+            owner->on_native_mouse_move(
+                native::point(event->xmotion.x, event->xmotion.y),
+                native::point(event->xmotion.x_root,
+                              event->xmotion.y_root));
             break;
 
         case ButtonPress:
@@ -162,7 +163,7 @@ namespace
                 return;
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
-                owner->on_mouse_wheel.emit(native::mouse_wheel_event(
+                owner->on_native_mouse_wheel(native::mouse_wheel_event(
                     native::point(event->xbutton.x, event->xbutton.y),
                     static_cast<native::coord>(
                         event->xbutton.button == Button4 ? 1 : -1),
@@ -175,7 +176,7 @@ namespace
             if (button == native::mouse_button::none)
                 return;
 
-            owner->on_mouse_click.emit(native::mouse_event(
+            owner->on_native_mouse_click(native::mouse_event(
                 button,
                 event->type == ButtonPress
                     ? native::mouse_action::press
@@ -201,7 +202,6 @@ namespace
             native::point position(event->xconfigure.x,
                                    event->xconfigure.y);
             owner->on_native_move(position);
-            owner->on_wnd_move.emit(position);
         }
     }
 
@@ -349,7 +349,7 @@ namespace native
         _created = true;
         const_cast<app_wnd *>(this)->menu.attach(
             *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_wnd_create.emit();
+        const_cast<app_wnd *>(this)->on_native_create();
     }
 
     void app_wnd::show() const {

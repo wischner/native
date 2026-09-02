@@ -19,6 +19,7 @@ namespace native
 {
     class gpx;
     class layout_manager;
+    class non_client;
     class radio;
 
     // Represents a cross-platform native window or child control.
@@ -55,6 +56,10 @@ namespace native
         // Return the cached position and dimensions.
         rect get_bounds() const;
 
+        // Return the host-relative area available to laid-out children.
+        // Visible non-client elements reserve space along its edges.
+        rect get_client_bounds() const;
+
         // Move and resize the window in one operation.
         wnd &set_bounds(const rect &bounds);
 
@@ -83,8 +88,11 @@ namespace native
         // Mark a client-area rectangle for repainting.
         virtual wnd &invalidate(const rect &invalid) const;
 
+        // Accept creation completed by the native toolkit.
+        virtual void on_native_create();
+
         // Accept a move notification from the native toolkit.
-        void on_native_move(const point &position);
+        virtual void on_native_move(const point &position);
 
         // Accept destruction initiated by the native toolkit.
         virtual void on_native_destroy();
@@ -101,7 +109,28 @@ namespace native
         //      that also covers moves, so without this a window would
         //      relayout its children every time it was dragged.
         //
-        void on_native_resize(const size &dimensions);
+        virtual void on_native_resize(const size &dimensions);
+
+        // Dispatch a backend paint notification to portable handlers.
+        virtual void on_native_paint(wnd_paint_event event);
+
+        // Dispatch a backend pointer-motion notification.
+        virtual void on_native_mouse_move(const point &position);
+
+        // Dispatch pointer motion with the matching screen position.
+        // Backends should use this overload when the native event exposes
+        // root/screen coordinates; the one-argument hook is still invoked.
+        void on_native_mouse_move(const point &position,
+                                  const point &screen_position);
+
+        // Return the screen position from the latest pointer notification.
+        point get_mouse_screen_position() const;
+
+        // Dispatch a backend pointer-button notification.
+        virtual void on_native_mouse_click(mouse_event event);
+
+        // Dispatch a backend pointer-wheel notification.
+        virtual void on_native_mouse_wheel(mouse_wheel_event event);
 
         // Make an already-created native resource visible.
         virtual void show() const = 0;
@@ -142,6 +171,8 @@ namespace native
         bool _layout_suspended = false;
         mutable gpx *_gpx = nullptr;
         wnd *_parent;
+        point _mouse_screen_position;
+        bool _mouse_screen_position_exact = false;
 
         // Non-owning children; callers retain child object ownership.
         std::vector<wnd *> _children;
@@ -175,9 +206,18 @@ namespace native
         virtual void apply_parent();
 
     private:
+        friend class non_client;
+
         // Radio controls inspect siblings to enforce exclusive
         // selection.
         friend class radio;
+
+        // Non-owning edge elements; callers retain object ownership.
+        std::vector<non_client *> _non_client;
+
+        void attach_non_client(non_client *element);
+        void detach_non_client(non_client *element);
+        rect non_client_bounds(const non_client *element) const;
 
     };
 

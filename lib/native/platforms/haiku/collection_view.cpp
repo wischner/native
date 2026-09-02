@@ -38,8 +38,13 @@ namespace
             // create path has registered its backend binding. The next
             // invalidation after creation paints through the complete
             // lifecycle state.
-            if (!_owner.get_created())
+            if (!_owner.get_created()) {
+                PushState();
+                SetHighColor(ViewColor());
+                FillRect(update);
+                PopState();
                 return;
+            }
             native::rect invalid(
                 static_cast<native::coord>(update.left),
                 static_cast<native::coord>(update.top),
@@ -47,12 +52,12 @@ namespace
                 static_cast<native::dim>(update.Height() + 1));
             auto &graphics = _owner.get_gpx().set_clip(invalid);
             native::wnd_paint_event event(invalid, graphics);
-            _owner.on_wnd_paint.emit(event);
+            _owner.on_native_paint(event);
         }
 
         void MouseDown(BPoint where) override {
             MakeFocus(true);
-            _owner.on_mouse_click.emit(native::mouse_event(
+            _owner.on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 native::mouse_action::press,
                 native::point(static_cast<native::coord>(where.x),
@@ -78,7 +83,7 @@ namespace
         }
 
         void MouseUp(BPoint where) override {
-            _owner.on_mouse_click.emit(native::mouse_event(
+            _owner.on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 native::mouse_action::release,
                 native::point(static_cast<native::coord>(where.x),
@@ -90,7 +95,7 @@ namespace
                         const BMessage *message) override {
             (void)transit;
             (void)message;
-            _owner.on_mouse_move.emit(native::point(
+            _owner.on_native_mouse_move(native::point(
                 static_cast<native::coord>(where.x),
                 static_cast<native::coord>(where.y)));
         }
@@ -99,7 +104,8 @@ namespace
             if (message && message->what == B_MOUSE_WHEEL_CHANGED) {
                 float delta = 0.0f;
                 message->FindFloat("be:wheel_delta_y", &delta);
-                _owner.on_mouse_wheel.emit(native::mouse_wheel_event(
+                _owner.on_native_mouse_wheel(
+                    native::mouse_wheel_event(
                     native::point(),
                     static_cast<native::coord>(delta * 24.0f),
                     native::wheel_direction::vertical));

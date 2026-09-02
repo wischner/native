@@ -8,8 +8,10 @@
 
 #include "globals.h"
 
+#include <algorithm>
 #include <stdexcept>
 
+#include <olgx/olgx.h>
 #include <xview/panel.h>
 #include <xview/window.h>
 #include <xview/xview.h>
@@ -31,6 +33,8 @@ namespace linux::openlook
     native::bindings<std::uint32_t, openlook_menu *> menu_bindings;
     native::bindings<native::text_edit *, openlook_text_edit *>
         text_edit_bindings;
+    native::bindings<native::combo_box *, openlook_combo_box *>
+        combo_box_bindings;
     native::bindings<native::accordion *, openlook_collection *>
         accordion_bindings;
     native::bindings<native::icon_view *, openlook_collection *>
@@ -46,6 +50,18 @@ namespace linux::openlook
     native::bindings<
         const native::file_dialog *, openlook_file_dialog *>
         file_dialog_bindings;
+
+    native::size menu_mark_dimensions(const void *information) {
+        const auto *metrics = static_cast<const Graphics_info *>(
+            information);
+        if (!metrics)
+            return native::size();
+        return native::size(
+            static_cast<native::dim>(
+                std::max(0, static_cast<int>(MenuMark_Width(metrics)))),
+            static_cast<native::dim>(
+                std::max(0, static_cast<int>(MenuMark_Height(metrics)))));
+    }
 
     Panel parent_panel(native::wnd *control) {
         native::wnd *parent = control ? control->get_parent() : nullptr;

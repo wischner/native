@@ -25,7 +25,7 @@ namespace native
         linux::wmaker::code_edit_bindings.register_pair(self, state);
         _created = true;
         self->invalidate();
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void code_edit::show() const {
@@ -35,6 +35,7 @@ namespace native
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: code_edit is not created.");
+        WMRealizeWidget(state->frame);
         WMMapWidget(state->frame);
     }
 

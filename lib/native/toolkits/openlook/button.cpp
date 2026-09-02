@@ -21,7 +21,7 @@ namespace
         auto *owner = reinterpret_cast<native::button *>(
             xv_get(item, PANEL_CLIENT_DATA));
         if (linux::openlook::permit_input(owner))
-            owner->on_click.emit();
+            owner->on_native_click();
     }
 } // namespace
 
@@ -69,7 +69,7 @@ namespace native
         linux::openlook::wnd_bindings.register_pair(item, self);
         linux::openlook::fit_item_width(item, _bounds.d.w);
         _created = true;
-        self->on_wnd_create.emit();
+        self->on_native_create();
     }
 
     void button::show() const {

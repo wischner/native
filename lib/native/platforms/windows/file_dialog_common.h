@@ -26,6 +26,10 @@ namespace windows
     file_dialog_response show_open_file_dialog(
         const native::file_dialog &dialog, bool allow_multiple);
 
+    // Show the Windows standard directory-selection dialog.
+    file_dialog_response show_directory_dialog(
+        const native::file_dialog &dialog, bool allow_multiple);
+
     // Show the Windows standard save-file dialog.
     file_dialog_response show_save_file_dialog(
         const native::file_dialog &dialog,

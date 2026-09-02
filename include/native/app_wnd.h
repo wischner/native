@@ -53,6 +53,10 @@ namespace native
         // Return whether this top-level window has modal semantics.
         virtual bool get_modal() const;
 
+        // Return whether the native frame should provide its own title bar.
+        // Compact tool windows can return false and paint one client caption.
+        virtual bool get_native_title_visible() const;
+
         // Return whether ownership and modality permit user input.
         bool get_input_enabled() const override;
 
@@ -61,6 +65,9 @@ namespace native
 
         // Reconcile destruction initiated by the native toolkit.
         void on_native_destroy() override;
+
+        // Dispatch a command selected from the native menu.
+        virtual void on_native_menu(int command);
 
         // Create the backend application window.
         void create() const override;

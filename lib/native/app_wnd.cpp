@@ -60,6 +60,10 @@ namespace native
         return false;
     }
 
+    bool app_wnd::get_native_title_visible() const {
+        return true;
+    }
+
     bool app_wnd::get_input_enabled() const {
         if (get_active_modal())
             return false;
@@ -84,6 +88,10 @@ namespace native
         destroy_owned_windows();
         menu.detach();
         wnd::on_native_destroy();
+    }
+
+    void app_wnd::on_native_menu(int command) {
+        on_menu.emit(command);
     }
 
     void app_wnd::attach_owned_window(owned_wnd *window) {

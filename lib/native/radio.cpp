@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <native/radio.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -71,7 +72,7 @@ namespace native
             if (_created)
                 apply_selected();
             if (notify && changed)
-                on_change.emit(true);
+                selection_changed(true);
             return;
         }
 
@@ -84,13 +85,27 @@ namespace native
             if (other->_created)
                 other->apply_selected();
             if (notify)
-                other->on_change.emit(false);
+                other->selection_changed(false);
         }
         const bool changed = !_selected;
         _selected = true;
         if (_created)
             apply_selected();
         if (notify && changed)
-            on_change.emit(true);
+            selection_changed(true);
+    }
+
+    void radio::selection_changed(bool selected) {
+        on_change.emit(selected);
+    }
+
+    void radio::draw_control(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        theme::state effective = state;
+        effective.selected = _selected;
+        appearance.draw_radio(bounds, _text, effective);
     }
 } // namespace native

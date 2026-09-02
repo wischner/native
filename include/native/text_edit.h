@@ -12,10 +12,16 @@
 #include <functional>
 #include <string>
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
 {
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     // Selects the immutable editing behavior of a text_edit control.
     enum class text_edit_mode
     {
@@ -113,6 +119,13 @@ namespace native
         bool _read_only = false;
         text_validator _validator;
 
+        // Draw the complete editor frame using the native theme.
+        virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
         // Apply cached text to a created backend control.
         virtual void apply_text();
 
@@ -127,5 +140,8 @@ namespace native
 
         // Select the complete native control value.
         virtual void select_all_native() const;
+
+    private:
+        friend class detail::control_render_access;
     };
 } // namespace native
