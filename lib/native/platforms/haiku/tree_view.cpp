@@ -63,7 +63,10 @@ namespace
                                B_FOLLOW_ALL,
                                B_WILL_DRAW | B_NAVIGABLE |
                                    B_FRAME_EVENTS)
-            , _owner(owner) {}
+            , _owner(owner) {
+            SetViewUIColor(B_LIST_BACKGROUND_COLOR);
+            SetLowUIColor(B_LIST_BACKGROUND_COLOR);
+        }
 
         void SelectionChanged() override {
             BOutlineListView::SelectionChanged();
@@ -146,12 +149,13 @@ namespace
                 static_cast<native::dim>(
                     std::max<float>(0, frame.Height() + 1)));
             native::gpx &graphics = _owner.get_gpx();
+            haiku::scoped_gpx_target drawing_target(_owner, this);
             graphics.set_clip(bounds);
             auto appearance = native::theme::create(graphics);
             native::theme::state state;
             state.selected = item->IsSelected();
             state.disabled = !item->IsEnabled();
-            state.focused = IsFocus();
+            state.focused = state.selected && IsFocus();
             const native::tree_view_item &portable_item =
                 _owner.get_item(item->id);
             native::detail::control_render_access::draw_tree_row(
@@ -162,8 +166,38 @@ namespace
                 portable_item,
                 item->OutlineLevel(),
                 bounds,
-                state);
-            (void)complete;
+                state,
+                false);
+            if (!portable_item.children.empty()) {
+                DrawLatch(frame,
+                          item->OutlineLevel(),
+                          !item->IsExpanded(),
+                          item->IsSelected() || complete,
+                          false);
+            }
+        }
+
+        BRect LatchRect(BRect item_rect, int32 level) const override {
+            const int32 index = IndexOf(BPoint(
+                item_rect.left,
+                item_rect.top + item_rect.Height() / 2.0f));
+            if (index < 0)
+                return BOutlineListView::LatchRect(
+                    item_rect, level);
+            const native::rect portable_row =
+                _owner.get_row_bounds(static_cast<std::size_t>(index));
+            const native::rect portable_latch =
+                _owner.get_disclosure_bounds(
+                    static_cast<std::size_t>(index));
+            const float left = item_rect.left +
+                portable_latch.p.x - portable_row.p.x;
+            const float top = item_rect.top +
+                portable_latch.p.y - portable_row.p.y;
+            return BRect(
+                left,
+                top,
+                left + portable_latch.d.w - 1,
+                top + portable_latch.d.h - 1);
         }
 
     public:
@@ -223,7 +257,7 @@ namespace
                      const std::vector<native::tree_view_item> &items,
                      tree_string_item *parent,
                      uint32 depth) {
-            for (const native::tree_view_item &item : items) {
+            auto add_item = [&](const native::tree_view_item &item) {
                 auto *native_item = new tree_string_item(
                     item, depth);
                 const bool added = parent
@@ -232,7 +266,7 @@ namespace
                                        : view.AddItem(native_item);
                 if (!added) {
                     delete native_item;
-                    continue;
+                    return;
                 }
                 binding.items[item.id] = native_item;
                 append(item.children, native_item, depth + 1);
@@ -240,6 +274,16 @@ namespace
                     view.Expand(native_item);
                 else
                     view.Collapse(native_item);
+            };
+            if (parent) {
+                // AddUnder inserts immediately after its parent. Add sibling
+                // branches in reverse so their visible order remains the
+                // order supplied by the portable model.
+                for (auto item = items.rbegin(); item != items.rend(); ++item)
+                    add_item(*item);
+            } else {
+                for (const native::tree_view_item &item : items)
+                    add_item(item);
             }
         };
         append(tree.get_items(), nullptr, 0);

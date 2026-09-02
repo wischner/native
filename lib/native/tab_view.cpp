@@ -179,6 +179,18 @@ namespace native
         return *this;
     }
 
+    tab_placement tab_view::get_tab_placement() const {
+        return _tab_placement;
+    }
+
+    tab_view &tab_view::set_tab_placement(tab_placement placement) {
+        if (_tab_placement == placement)
+            return *this;
+        _tab_placement = placement;
+        refresh();
+        return *this;
+    }
+
     rect tab_view::get_tab_bounds(std::size_t index) const {
         const tab_item &item = get_item(index);
         const font_t &font = font_t::stock(font_role::control);
@@ -192,12 +204,17 @@ namespace native
             36, font.measure_text(item._title).width + 20);
         const int available = std::max(
             0, static_cast<int>(_bounds.d.w) - x);
+        const int tab_y = _tab_placement == tab_placement::top
+                              ? 0
+                              : std::max(0,
+                                  static_cast<int>(_bounds.d.h) -
+                                      _tab_height);
         return rect(
             static_cast<coord>(std::min(
                 x,
                 static_cast<int>(
                     std::numeric_limits<coord>::max()))),
-            0,
+            static_cast<coord>(tab_y),
             non_negative_dimension(std::min(natural_width, available)),
             non_negative_dimension(_tab_height));
     }
@@ -209,7 +226,10 @@ namespace native
             static_cast<int>(_bounds.d.h) - _tab_height - border);
         return rect(
             static_cast<coord>(border),
-            static_cast<coord>(_tab_height),
+            static_cast<coord>(
+                _tab_placement == tab_placement::top
+                    ? _tab_height
+                    : border),
             non_negative_dimension(
                 std::max(0, static_cast<int>(_bounds.d.w)-border*2)),
             non_negative_dimension(height));
@@ -347,13 +367,42 @@ namespace native
     }
 
     void tab_view::draw_tab_background(
-        gpx &,
+        gpx &graphics,
         theme &appearance,
         std::size_t,
         const tab_item &,
         const rect &bounds,
         const theme::state &state) {
-        appearance.draw_surface(bounds, surface_kind::header, state);
+        const theme::palette colors = appearance.native_palette();
+        const int left = bounds.x1();
+        const int right = bounds.x2() - 1;
+        const int top = bounds.y1();
+        const int bottom = bounds.y2() - 1;
+        if (right < left || bottom < top)
+            return;
+        const auto p = [](int x, int y) {
+            return point(static_cast<coord>(x),
+                         static_cast<coord>(y));
+        };
+        const std::vector<point> outline =
+            _tab_placement == tab_placement::top
+                ? std::vector<point>{p(left, top + 2),
+                                     p(left + 2, top),
+                                     p(right - 2, top),
+                                     p(right, top + 2),
+                                     p(right, bottom),
+                                     p(left, bottom)}
+                : std::vector<point>{p(left, top),
+                                     p(right, top),
+                                     p(right, bottom - 2),
+                                     p(right - 2, bottom),
+                                     p(left + 2, bottom),
+                                     p(left, bottom - 2)};
+        const rgba fill = state.pressed
+                              ? colors.button_pressed_bg
+                              : (state.hot ? colors.button_hot_bg
+                                           : colors.button_bg);
+        graphics.set_pen(1).set_ink(fill).draw_polygon(outline, true);
     }
 
     void tab_view::draw_tab_text(
@@ -376,12 +425,52 @@ namespace native
     }
 
     void tab_view::draw_tab_border(
-        gpx &,
+        gpx &graphics,
         theme &appearance,
         std::size_t,
         const tab_item &,
         const rect &bounds,
         const theme::state &state) {
-        appearance.draw_focus(bounds, state);
+        const theme::palette colors = appearance.native_palette();
+        const int left = bounds.x1();
+        const int right = bounds.x2() - 1;
+        const int top = bounds.y1();
+        const int bottom = bounds.y2() - 1;
+        if (right < left || bottom < top)
+            return;
+        const auto p = [](int x, int y) {
+            return point(static_cast<coord>(x),
+                         static_cast<coord>(y));
+        };
+        graphics.set_pen(1).set_ink(colors.button_border);
+        if (_tab_placement == tab_placement::top) {
+            graphics.draw_polyline({p(left, bottom),
+                                    p(left, top + 2),
+                                    p(left + 2, top),
+                                    p(right - 2, top),
+                                    p(right, top + 2),
+                                    p(right, bottom)});
+            if (!state.selected)
+                graphics.draw_line(p(left, bottom), p(right, bottom));
+        } else {
+            graphics.draw_polyline({p(left, top),
+                                    p(left, bottom - 2),
+                                    p(left + 2, bottom),
+                                    p(right - 2, bottom),
+                                    p(right, bottom - 2),
+                                    p(right, top)});
+            if (!state.selected)
+                graphics.draw_line(p(left, top), p(right, top));
+        }
+        if (state.focused) {
+            rect focus = bounds;
+            focus.p.x += 3;
+            focus.p.y += 3;
+            focus.d.w = non_negative_dimension(
+                static_cast<int>(focus.d.w) - 6);
+            focus.d.h = non_negative_dimension(
+                static_cast<int>(focus.d.h) - 6);
+            appearance.draw_focus(focus, state);
+        }
     }
 } // namespace native

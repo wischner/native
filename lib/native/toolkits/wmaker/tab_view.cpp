@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <WINGs/WINGs.h>
 #include <native.h>
+#include "collection_host.h"
 #include "globals.h"
 
 namespace
@@ -34,18 +35,55 @@ namespace
                owner->get_item(static_cast<std::size_t>(index)).get_enabled();
     }
 
-    void clear_native_items(native::tab_view &owner,
-                            linux::wmaker::native_tab_view &state) {
+    void destroy_borrowed_contents(native::tab_view &owner) {
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
             native::wnd &content = owner.get_item(index).get_content();
             if (content.get_created()) content.destroy();
         }
-        for (WMTabViewItem *item : state.items) {
-            WMRemoveTabViewItem(state.tabs, item);
-            WMDestroyTabViewItem(item);
+    }
+
+    void destroy_host(native::tab_view &owner,
+                      linux::wmaker::native_tab_view &state) {
+        destroy_borrowed_contents(owner);
+        linux::wmaker::wnd_bindings.unregister_by_object(&owner);
+        if (state.tabs) {
+            WMDestroyWidget(state.tabs);
+            state.tabs = nullptr;
+        }
+        if (state.portable) {
+            if (state.portable->frame)
+                WMDestroyWidget(state.portable->frame);
+            delete state.portable;
+            state.portable = nullptr;
         }
         state.items.clear();
         state.pages.clear();
+    }
+
+    void create_host(native::tab_view &owner,
+                     linux::wmaker::native_tab_view &state) {
+        if (owner.get_tab_placement() ==
+            native::tab_placement::bottom) {
+            state.portable =
+                linux::wmaker::create_collection_frame(owner);
+            return;
+        }
+
+        state.tabs = WMCreateTabView(
+            linux::wmaker::parent_widget(&owner));
+        if (!state.tabs)
+            throw std::runtime_error(
+                "Window Maker/WINGs: failed to create WMTabView.");
+        const native::point position =
+            linux::wmaker::control_position(&owner);
+        const native::size dimensions = owner.get_dimensions();
+        WMMoveWidget(state.tabs, position.x, position.y);
+        WMResizeWidget(state.tabs, dimensions.w, dimensions.h);
+        state.delegate.data = &owner;
+        state.delegate.didSelectItem = selected;
+        state.delegate.shouldSelectItem = may_select;
+        WMSetTabViewDelegate(state.tabs, &state.delegate);
+        linux::wmaker::wnd_bindings.register_pair(state.tabs, &owner);
     }
 }
 
@@ -53,32 +91,59 @@ namespace native
 {
     void tab_view::apply_items() {
         auto *state = binding(*this);
-        if (!state || !state->tabs)
+        if (!state)
             throw std::runtime_error("Window Maker/WINGs: missing tab view.");
+        delete _gpx;
+        _gpx = nullptr;
+        destroy_host(*this, *state);
+        create_host(*this, *state);
         state->suppress = true;
-        clear_native_items(*this, *state);
         for (std::size_t index = 0; index < get_item_count(); ++index) {
-            WMFrame *page = WMCreateFrame(state->tabs);
+            WMFrame *page = WMCreateFrame(
+                state->tabs
+                    ? reinterpret_cast<WMWidget *>(state->tabs)
+                    : reinterpret_cast<WMWidget *>(state->portable->frame));
             WMSetFrameRelief(page, WRFlat);
-            WMTabViewItem *item = WMCreateTabViewItemWithIdentifier(
-                static_cast<int>(index));
-            WMSetTabViewItemView(item, WMWidgetView(page));
-            WMSetTabViewItemLabel(item, get_item(index).get_title().c_str());
-            WMSetTabViewItemEnabled(item, get_item(index).get_enabled());
-            WMAddItemInTabView(state->tabs, item);
+            if (state->tabs) {
+                WMTabViewItem *item = WMCreateTabViewItemWithIdentifier(
+                    static_cast<int>(index));
+                WMSetTabViewItemView(item, WMWidgetView(page));
+                WMSetTabViewItemLabel(
+                    item, get_item(index).get_title().c_str());
+                WMSetTabViewItemEnabled(
+                    item, get_item(index).get_enabled());
+                WMAddItemInTabView(state->tabs, item);
+                state->items.push_back(item);
+            } else {
+                const rect content = get_content_bounds();
+                WMMoveWidget(page, content.p.x, content.p.y);
+                WMResizeWidget(page, content.d.w, content.d.h);
+            }
             state->pages.push_back(page);
-            state->items.push_back(item);
         }
         state->suppress = false;
     }
 
     void tab_view::apply_selected_index() {
         auto *state = binding(*this);
-        if (!state || !state->tabs)
+        if (!state)
             throw std::runtime_error("Window Maker/WINGs: missing tab view.");
         if (get_selected_index() < 0) return;
         state->suppress = true;
-        WMSelectTabViewItemAtIndex(state->tabs, get_selected_index());
+        if (state->tabs) {
+            WMSelectTabViewItemAtIndex(
+                state->tabs, get_selected_index());
+        } else {
+            for (std::size_t index = 0;
+                 index < state->pages.size(); ++index) {
+                if (static_cast<int>(index) == get_selected_index()) {
+                    WMMapWidget(state->pages[index]);
+                    WMRaiseWidget(state->pages[index]);
+                } else {
+                    WMUnmapWidget(state->pages[index]);
+                }
+            }
+        }
         state->suppress = false;
     }
 
@@ -86,21 +151,7 @@ namespace native
         if (_created) return;
         auto *self = const_cast<tab_view *>(this);
         auto *state = new linux::wmaker::native_tab_view();
-        state->tabs = WMCreateTabView(linux::wmaker::parent_widget(self));
-        if (!state->tabs) {
-            delete state;
-            throw std::runtime_error("Window Maker/WINGs: failed to create WMTabView.");
-        }
-        const point position = linux::wmaker::control_position(self);
-        WMMoveWidget(state->tabs, position.x, position.y);
-        WMResizeWidget(state->tabs, _bounds.d.w, _bounds.d.h);
-        state->delegate.data = self;
-        state->delegate.didSelectItem = selected;
-        state->delegate.shouldSelectItem = may_select;
-        WMSetTabViewDelegate(state->tabs, &state->delegate);
-        linux::wmaker::wnd_bindings.register_pair(state->tabs, self);
         linux::wmaker::tab_view_bindings.register_pair(self, state);
-        WMRealizeWidget(state->tabs);
         _created = true;
         self->_content_host_is_page = true;
         self->synchronize_theme_metrics();
@@ -110,10 +161,13 @@ namespace native
 
     void tab_view::show() const {
         auto *state = binding(*const_cast<tab_view *>(this));
-        if (!_created || !state || !state->tabs)
+        if (!_created || !state || (!state->tabs && !state->portable))
             throw std::runtime_error("Window Maker/WINGs: tab_view is not created.");
-        WMRealizeWidget(state->tabs);
-        WMMapWidget(state->tabs);
+        WMWidget *host = state->tabs
+            ? reinterpret_cast<WMWidget *>(state->tabs)
+            : reinterpret_cast<WMWidget *>(state->portable->frame);
+        WMRealizeWidget(host);
+        WMMapWidget(host);
         const int selected_index = get_selected_index();
         if (selected_index >= 0) {
             wnd &content = get_item(static_cast<std::size_t>(selected_index)).get_content();
@@ -127,9 +181,7 @@ namespace native
         auto *state = binding(*self);
         self->on_native_destroy();
         if (state) {
-            clear_native_items(*self, *state);
-            linux::wmaker::wnd_bindings.unregister_by_object(self);
-            if (state->tabs) WMDestroyWidget(state->tabs);
+            destroy_host(*self, *state);
             linux::wmaker::tab_view_bindings.unregister_by_handle(self);
             delete state;
         }

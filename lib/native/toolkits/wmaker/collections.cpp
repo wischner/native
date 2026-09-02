@@ -37,6 +37,11 @@ namespace
         if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
             return linux::wmaker::accordion_bindings.object_from_handle(
                 accordion);
+        if (auto *tabs = dynamic_cast<native::tab_view *>(&owner)) {
+            auto *binding = linux::wmaker::tab_view_bindings
+                .object_from_handle(tabs);
+            return binding ? binding->portable : nullptr;
+        }
         if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
             return linux::wmaker::icon_view_bindings.object_from_handle(
                 icons);
@@ -764,7 +769,9 @@ namespace
         // parent would incorrectly combine those independent controls.
         WMSetFrameRelief(
             frame,
-            dynamic_cast<native::table_view *>(&owner)
+            (dynamic_cast<native::table_view *>(&owner) ||
+             dynamic_cast<native::tab_view *>(&owner) ||
+             dynamic_cast<native::accordion *>(&owner))
                 ? WRFlat
                 : WRSunken);
         linux::wmaker::wnd_bindings.register_pair(frame, &owner);

@@ -15,6 +15,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/globals.cpp
     ${CMAKE_CURRENT_LIST_DIR}/menu.cpp
     ${CMAKE_CURRENT_LIST_DIR}/message_box.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/status_bar.cpp
     ${CMAKE_CURRENT_LIST_DIR}/button.cpp
     ${CMAKE_CURRENT_LIST_DIR}/combo_box.cpp
     ${CMAKE_CURRENT_LIST_DIR}/check.cpp

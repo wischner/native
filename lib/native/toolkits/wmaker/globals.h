@@ -128,6 +128,7 @@ namespace linux::wmaker
     struct native_tab_view
     {
         WMTabView *tabs = nullptr;
+        native_collection *portable = nullptr;
         std::vector<WMFrame *> pages;
         std::vector<WMTabViewItem *> items;
         WMTabViewDelegate delegate = {};
@@ -139,6 +140,7 @@ namespace linux::wmaker
         WMSplitView *split = nullptr;
         WMFrame *first = nullptr;
         WMFrame *second = nullptr;
+        bool applying_ratio = false;
     };
 
     extern bool initialized;

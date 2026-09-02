@@ -1,6 +1,7 @@
 // Implements split_view with Window Maker's native WINGs WMSplitView.
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include <WINGs/WINGs.h>
@@ -33,6 +34,45 @@ namespace
                                : first.height;
         owner->on_native_ratio(static_cast<float>(extent) / available);
     }
+
+    void constrain(WMSplitView *split,
+                   int index,
+                   int *minimum,
+                   int *maximum) {
+        auto *owner = dynamic_cast<native::split_view *>(
+            linux::wmaker::wnd_bindings.object_from_handle(
+                reinterpret_cast<WMWidget *>(split)));
+        auto *state = owner ? binding(*owner) : nullptr;
+        if (!owner || !state || !minimum || !maximum)
+            return;
+        const WMSize dimensions = WMGetViewSize(WMWidgetView(split));
+        const int total = WMGetSplitViewVertical(split)
+                              ? dimensions.width
+                              : dimensions.height;
+        const int available = std::max(
+            0, total - WMGetSplitViewDividerThickness(split));
+        const int first_minimum = std::min<int>(
+            available, owner->get_first_minimum());
+        const int second_minimum = std::min<int>(
+            available - first_minimum,
+            owner->get_second_minimum());
+        int first = static_cast<int>(std::lround(
+            static_cast<double>(available) * owner->get_ratio()));
+        first = std::clamp(first,
+                           first_minimum,
+                           available - second_minimum);
+        const int desired = index == 0 ? first : available - first;
+        if (state->applying_ratio) {
+            *minimum = desired;
+            *maximum = desired;
+        } else if (index == 0) {
+            *minimum = first_minimum;
+            *maximum = available - second_minimum;
+        } else {
+            *minimum = second_minimum;
+            *maximum = available - first_minimum;
+        }
+    }
 }
 
 namespace native
@@ -50,11 +90,17 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->split || !state->first || !state->second)
             return;
-        const rect first = get_first_bounds();
-        const rect second = get_second_bounds();
-        WMResizeWidget(state->first, first.d.w, first.d.h);
-        WMResizeWidget(state->second, second.d.w, second.d.h);
+        const Bool vertical =
+            get_orientation() == split_orientation::horizontal;
+        state->applying_ratio = true;
+        // WINGs refreshes its cached native constraints when orientation
+        // changes. Cycling the native orientation applies the requested
+        // ratio through its supported constrain callback, leaving divider
+        // painting, hit testing, and subsequent dragging entirely native.
+        WMSetSplitViewVertical(state->split, !vertical);
+        WMSetSplitViewVertical(state->split, vertical);
         WMAdjustSplitViewSubviews(state->split);
+        state->applying_ratio = false;
     }
 
     void split_view::apply_minimums() { apply_ratio(); }
@@ -85,14 +131,15 @@ namespace native
         state->second = WMCreateFrame(state->split);
         WMSetFrameRelief(state->first, WRFlat);
         WMSetFrameRelief(state->second, WRFlat);
+        linux::wmaker::wnd_bindings.register_pair(state->split, self);
+        linux::wmaker::split_view_bindings.register_pair(self, state);
+        WMSetSplitViewConstrainProc(state->split, constrain);
         WMAddSplitViewSubview(state->split, WMWidgetView(state->first));
         WMAddSplitViewSubview(state->split, WMWidgetView(state->second));
         WMCreateEventHandler(WMWidgetView(state->split),
                              ButtonReleaseMask,
                              released,
                              self);
-        linux::wmaker::wnd_bindings.register_pair(state->split, self);
-        linux::wmaker::split_view_bindings.register_pair(self, state);
         WMRealizeWidget(state->split);
         _created = true;
         self->_content_hosts_are_panes = true;
@@ -108,6 +155,10 @@ namespace native
                 "Window Maker/WINGs: split_view is not created.");
         WMRealizeWidget(state->split);
         WMMapWidget(state->split);
+        WMMapWidget(state->first);
+        WMMapWidget(state->second);
+        WMRaiseWidget(state->first);
+        WMRaiseWidget(state->second);
         get_first().show();
         get_second().show();
     }

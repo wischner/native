@@ -26,11 +26,13 @@ static void apply_bview_state(BView *view,
         return;
 
     // Set high color (foreground) if changed
-    if (cache->current_fg != self->get_ink()) {
+    if (!cache->current_fg_valid ||
+        cache->current_fg != self->get_ink()) {
         native::rgba c = self->get_ink();
         rgb_color color = {c.r, c.g, c.b, c.a};
         view->SetHighColor(color);
         cache->current_fg = self->get_ink();
+        cache->current_fg_valid = true;
     }
 
     // Set pen size if changed
@@ -143,6 +145,7 @@ namespace native
         });
 
         cache->current_fg = color;
+        cache->current_fg_valid = true;
 
         return *this;
     }

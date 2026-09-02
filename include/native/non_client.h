@@ -58,6 +58,9 @@ namespace native
         // Observe host-relative pointer motion for optional tracking.
         virtual void track_pointer(const point &position);
 
+        // Observe visibility or edge-geometry changes in native peers.
+        virtual void on_configuration_changed();
+
         // Repaint this strip without changing its geometry.
         void invalidate() const;
 

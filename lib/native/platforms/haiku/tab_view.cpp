@@ -61,6 +61,10 @@ namespace
 
     void rebuild(native::tab_view &control,
                  native_tab_view &view) {
+        view.SetTabSide(
+            control.get_tab_placement() == native::tab_placement::bottom
+                ? BTabView::kBottomSide
+                : BTabView::kTopSide);
         for (std::size_t index = 0;
              index < control.get_item_count(); ++index) {
             native::wnd &content = control.get_item(index).get_content();
@@ -135,6 +139,10 @@ namespace native
         native_tab_view *view = nullptr;
         locked(parent->Window(), [&] {
             view = new native_tab_view(self);
+            view->SetTabSide(
+                get_tab_placement() == tab_placement::bottom
+                    ? BTabView::kBottomSide
+                    : BTabView::kTopSide);
             view->MoveTo(_bounds.p.x, _bounds.p.y);
             view->ResizeTo(
                 std::max(0, static_cast<int>(_bounds.d.w) - 1),

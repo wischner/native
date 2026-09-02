@@ -171,7 +171,8 @@ namespace native
                 const tree_view_item &item,
                 std::size_t depth,
                 const rect &bounds,
-                const theme::state &state);
+                const theme::state &state,
+                bool draw_hierarchy = true);
         };
     } // namespace detail
 } // namespace native

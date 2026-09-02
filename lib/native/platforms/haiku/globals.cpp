@@ -61,6 +61,29 @@ namespace haiku
     native::bindings<native::file_dialog *, haiku_file_dialog *>
         file_dialog_bindings;
 
+    scoped_gpx_target::scoped_gpx_target(native::wnd &owner,
+                                         BView *target) {
+        // Construct the owner's cache before replacing its normal host.
+        owner.get_gpx();
+        _cache = wnd_gpx_bindings.object_from_handle(&owner);
+        if (!_cache || !target) {
+            _cache = nullptr;
+            return;
+        }
+        _previous = _cache->view;
+        _cache->view = target;
+        _cache->current_fg_valid = false;
+        _cache->current_thickness = -1;
+    }
+
+    scoped_gpx_target::~scoped_gpx_target() {
+        if (!_cache)
+            return;
+        _cache->view = _previous;
+        _cache->current_fg_valid = false;
+        _cache->current_thickness = -1;
+    }
+
     BView *content_view(BWindow *window) {
         return window ? window->ChildAt(0) : nullptr;
     }

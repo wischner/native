@@ -883,23 +883,19 @@ row double click performs the platform's branch action and emits activation.
 Pointer disclosure hit testing is distinct from row selection.
 
 Windows uses `WC_TREEVIEW`, macOS uses `NSOutlineView`, and Haiku uses
-`BOutlineListView`. OpenMotif's default CDE presentation reproduces dtinfo's
-InfoLib `OutlineList` through the focusable semantic host: it resolves
-`OpenWindows.DataBackground` and `DataForeground` from the live X resource
-database, inverts those roles for a full-width selected row, uses compact flat
-triangles without connectors, gives every row one icon-independent height,
-and vertically centers both icon and text. The optional
-`three_dimensional` presentation retains `XmContainer` outline layout with
-uniform item height and the same compact triangle silhouette. Athena, XView,
-WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with the
-shared semantic selection, disclosure, focus, connector, image, and scrollbar
-painter because they have no adequate interactive outline widget.
-OpenMotif semantic collection hosts use real `XmScrollBar` peers for overflow;
-the portable painter remains responsible for rows and items but must never be
-the visible or interactive scrollbar on CDE. The flat `list` is hosted by an
-`XmScrolledWindow`, while `XmContainer` table and three-dimensional tree paths
-retain their toolkit-owned automatic scrollbars. Scrollbar value callbacks
-update the portable scroll cache without synthesizing selection or activation.
+`BOutlineListView`. OpenMotif uses one `XmContainer` outline implementation
+for both presentations. The default CDE presentation uses flat
+`XmIconGadget` entries; `three_dimensional` changes native gadget relief
+without switching to a second painted control. Stable IDs, portable images,
+and expansion state are adapted to native gadgets, while `XmContainer` owns
+selection, disclosure, keyboard interaction, layout, and scrolling. Athena,
+XView, WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with
+the shared semantic selection, disclosure, focus, connector, image, and
+scrollbar painter because they have no adequate interactive outline widget.
+The flat Motif `list` is hosted by an `XmScrolledWindow`; Motif icon views,
+materialized tables, and both tree presentations use `XmContainer` with its
+toolkit-owned automatic scrollbars. Scrollbar value callbacks update portable
+scroll state without synthesizing selection or activation.
 Connector visibility has a backend theme default while remaining an explicit
 portable tree property. Window Maker defaults it off, matching its native
 indentation-only outlines. Its disclosure indicator paints only a compact
@@ -920,11 +916,12 @@ ratio, pane minimums, and separator extent are backend-neutral cached state.
 Programmatic changes are signal-silent; a native or pointer drag updates the
 ratio first and then emits one `on_ratio_change` notification.
 
-Backends use their actual container widget where one exists: Haiku
-`BSplitView`, Motif `XmPanedWindow`, AppKit `NSSplitView`, and Window Maker
-`WMSplitView`. The Motif adapter keeps both pane children adjustable and uses
-the native sash. Backends without a general-purpose stock splitter use a
-native child host and the shared separator interaction without introducing
+Backends use their actual container widget where one exists: Athena Xaw
+`Paned`, Haiku `BSplitView`, Motif `XmPanedWindow`, AppKit `NSSplitView`, and
+Window Maker `WMSplitView`. The Xaw and Motif adapters map portable minimums
+and ratios to native pane constraints and keep both panes adjustable through
+native grips or sashes. Backends without a general-purpose stock splitter use
+a native child host and the shared separator interaction without introducing
 top-level window management.
 
 `tab_view` independently borrows any number of page windows and creates only
@@ -964,6 +961,14 @@ convention and uses `BControlLook` for its background. Do not substitute
 `BStatusBar`: that class represents progress state and has different layout
 and painting semantics. The root Haiku canvas owns background clearing and
 must request a complete update when a resize moves non-client strips.
+
+Native non-client peers must preserve the same in-host edge reservation; they
+must not ask a top-level layout manager to reserve a second strip. Windows
+maps `status_bar` parts to the common-controls `STATUSCLASSNAME` child with
+`SB_SETPARTS` and `SB_SETTEXT`, while portable code retains part text, order,
+widths, visibility, and reserved geometry. XView frame footers and Motif's
+`XmNmessageWindow` remain unsuitable for this contract because both alter the
+outer content geometry. A backend with no exact peer keeps the themed painter.
 
 `directory_dialog` shares `file_dialog`'s logical modal lifecycle and accepted
 path storage. It must invoke the platform's standard folder chooser or folder

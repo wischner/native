@@ -1,0 +1,160 @@
+//
+// Implements status_bar with the Win32 common-controls status bar.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <windows.h>
+#include <commctrl.h>
+
+#include <native.h>
+
+#include "../../status_bar_peer.h"
+#include "globals.h"
+
+namespace
+{
+    class windows_status_bar_peer final
+        : public native::detail::status_bar_peer
+    {
+    public:
+        ~windows_status_bar_peer() override {
+            destroy();
+        }
+
+        bool update(native::status_bar &bar,
+                    const native::rect &bounds) override {
+            native::wnd *owner = bar.get_owner();
+            HWND parent = owner
+                              ? windows::wnd_bindings
+                                    .handle_from_object(owner)
+                              : nullptr;
+            if (!parent || !IsWindow(parent)) {
+                destroy();
+                return false;
+            }
+
+            std::vector<native::status_bar_part> parts = bar.get_parts();
+            if (parts.empty())
+                parts.push_back({bar.get_text(), 0});
+            if (parts.size() > 256) {
+                destroy();
+                return false;
+            }
+
+            if (_window &&
+                (!IsWindow(_window) || GetParent(_window) != parent)) {
+                destroy();
+            }
+            if (!_window) {
+                INITCOMMONCONTROLSEX controls{
+                    sizeof(controls), ICC_BAR_CLASSES};
+                InitCommonControlsEx(&controls);
+                DWORD style = WS_CHILD | CCS_NOPARENTALIGN |
+                    CCS_NORESIZE;
+                if (dynamic_cast<native::app_wnd *>(owner) &&
+                    bounds.x2() == owner->get_dimensions().w) {
+                    style |= SBARS_SIZEGRIP;
+                }
+                _window = CreateWindowExW(
+                    0,
+                    STATUSCLASSNAMEW,
+                    L"",
+                    style,
+                    bounds.x1(),
+                    bounds.y1(),
+                    bounds.w(),
+                    bounds.h(),
+                    parent,
+                    nullptr,
+                    GetModuleHandleW(nullptr),
+                    nullptr);
+                if (!_window)
+                    return false;
+                SendMessageW(_window,
+                             WM_SETFONT,
+                             reinterpret_cast<WPARAM>(
+                                 windows::control_font()),
+                             TRUE);
+            }
+
+            MoveWindow(_window,
+                       bounds.x1(),
+                       bounds.y1(),
+                       bounds.w(),
+                       bounds.h(),
+                       TRUE);
+            synchronize_parts(parts, bounds.w());
+            ShowWindow(_window,
+                       bar.get_visible() ? SW_SHOWNA : SW_HIDE);
+            return true;
+        }
+
+    private:
+        HWND _window = nullptr;
+
+        void destroy() {
+            if (_window && IsWindow(_window))
+                DestroyWindow(_window);
+            _window = nullptr;
+        }
+
+        void synchronize_parts(
+            const std::vector<native::status_bar_part> &parts,
+            int total_width) {
+            int fixed = 0;
+            int flexible = 0;
+            for (const auto &part : parts) {
+                if (part.width > 0)
+                    fixed += part.width;
+                else
+                    ++flexible;
+            }
+            int remaining = std::max(0, total_width-fixed);
+            int flexible_left = flexible;
+            int edge = 0;
+            std::vector<int> edges;
+            edges.reserve(parts.size());
+            for (std::size_t index = 0;
+                 index < parts.size();
+                 ++index) {
+                int width = parts[index].width;
+                if (!width && flexible_left > 0) {
+                    width = remaining/flexible_left;
+                    remaining -= width;
+                    --flexible_left;
+                }
+                edge = std::min(total_width, edge+std::max(0, width));
+                edges.push_back(index+1 == parts.size() ? -1 : edge);
+            }
+            SendMessageW(_window,
+                         SB_SETPARTS,
+                         static_cast<WPARAM>(edges.size()),
+                         reinterpret_cast<LPARAM>(edges.data()));
+            for (std::size_t index = 0;
+                 index < parts.size();
+                 ++index) {
+                const std::wstring text =
+                    windows::utf8_to_wide(parts[index].text);
+                SendMessageW(
+                    _window,
+                    SB_SETTEXTW,
+                    static_cast<WPARAM>(index),
+                    reinterpret_cast<LPARAM>(text.c_str()));
+            }
+        }
+    };
+} // namespace
+
+namespace native::detail
+{
+    std::unique_ptr<status_bar_peer> create_status_bar_peer() {
+        return std::make_unique<windows_status_bar_peer>();
+    }
+} // namespace native::detail

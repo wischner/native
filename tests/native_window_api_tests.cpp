@@ -51,6 +51,10 @@ namespace
     static_assert(std::is_base_of_v<native::wnd, native::combo_box>);
     static_assert(std::is_base_of_v<native::wnd, native::tab_view>);
     static_assert(!std::is_copy_constructible_v<native::tab_view>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::tab_view &>()
+                               .get_tab_placement()),
+                  native::tab_placement>);
     static_assert(std::is_base_of_v<native::wnd, native::split_view>);
     static_assert(!std::is_copy_constructible_v<native::split_view>);
     static_assert(std::is_constructible_v<
@@ -66,6 +70,67 @@ namespace
     static_assert(std::is_move_constructible_v<native::clipboard>);
 
     int failure_count = 0;
+
+    bool same_rect(const native::rect &left,
+                   const native::rect &right) {
+        return left.p.x == right.p.x && left.p.y == right.p.y &&
+               left.d.w == right.d.w && left.d.h == right.d.h;
+    }
+
+    class simulated_page final : public native::wnd
+    {
+    public:
+        using native::wnd::wnd;
+
+        void create() const override {
+            _created = true;
+        }
+
+        void destroy() const override {
+            _created = false;
+        }
+
+        void show() const override {}
+    };
+
+    class simulated_tab_view final : public native::tab_view
+    {
+    public:
+        using native::tab_view::tab_view;
+
+        ~simulated_tab_view() override {
+            destroy();
+        }
+
+        void create() const override {
+            if (_created)
+                return;
+            auto *self = const_cast<simulated_tab_view *>(this);
+            _created = true;
+            self->refresh();
+        }
+
+        void destroy() const override {
+            if (!_created)
+                return;
+            destroy_children();
+            _created = false;
+        }
+
+        void show() const override {}
+
+        int item_applications = 0;
+        int selection_applications = 0;
+
+    protected:
+        void apply_items() override {
+            ++item_applications;
+        }
+
+        void apply_selected_index() override {
+            ++selection_applications;
+        }
+    };
 
     class recording_gpx final : public native::gpx
     {
@@ -359,12 +424,28 @@ namespace
 
         expect(tabs.get_item_count() == 2 &&
                    tabs.get_selected_index() == 0 &&
+                   tabs.get_tab_placement() ==
+                       native::tab_placement::top &&
                    first.get_parent() == &tabs &&
                    second.get_parent() == &tabs,
                "tab_view borrows ordered page windows and selects the first");
         expect(tabs.get_content_bounds().p.y > 0 &&
                    tabs.get_content_bounds().d.h < tabs.get_dimensions().h,
                "tab_view reserves a tab strip above its page bounds");
+
+        const native::rect top_tabs = tabs.get_tab_bounds(0);
+        const native::rect top_content = tabs.get_content_bounds();
+        tabs.set_tab_placement(native::tab_placement::bottom);
+        const native::rect bottom_tabs = tabs.get_tab_bounds(0);
+        const native::rect bottom_content = tabs.get_content_bounds();
+        expect(bottom_tabs.p.y > top_tabs.p.y &&
+                   bottom_content.p.y < top_content.p.y &&
+                   bottom_content.y2() <= bottom_tabs.p.y,
+               "bottom tab labels occupy the edge below their content");
+        expect(tabs.get_item_count() == 2 &&
+                   tabs.get_selected_index() == 0 &&
+                   first.get_parent() == &tabs,
+               "placement set before creation preserves tabs and selection");
 
         int changes = 0;
         tabs.on_selection_change.connect([&](int) {
@@ -392,6 +473,44 @@ namespace
         expect(tabs.get_selected_index() == -1 &&
                    first.get_parent() == nullptr,
                "clearing tabs detaches all pages and clears selection");
+
+        simulated_page live_first(0, 0, 10, 10);
+        simulated_page live_second(0, 0, 10, 10);
+        simulated_tab_view live_tabs(0, 0, 320, 200);
+        live_tabs.add_item("Top", live_first);
+        live_tabs.add_item("Other", live_second);
+        live_tabs.set_selected_index(1);
+        int placement_events = 0;
+        live_tabs.on_selection_change.connect([&](int) {
+            ++placement_events;
+            return false;
+        });
+        live_tabs.create();
+        expect(live_tabs.get_created() && live_second.get_created() &&
+                   !live_first.get_created(),
+               "created tabs materialize only their selected borrowed page");
+        const int selected_before = live_tabs.get_selected_index();
+        live_tabs.set_tab_placement(native::tab_placement::bottom);
+        expect(live_tabs.get_selected_index() == selected_before &&
+                   live_tabs.get_item_count() == 2 &&
+                   live_second.get_created() && placement_events == 0,
+               "placement set after creation preserves pages and is silent");
+        const native::rect live_content =
+            live_tabs.get_content_bounds();
+        expect(same_rect(live_second.get_bounds(), live_content),
+               "selected borrowed content receives bottom content bounds");
+        live_tabs.set_dimensions({420, 260});
+        expect(same_rect(live_second.get_bounds(),
+                         live_tabs.get_content_bounds()) &&
+                   live_tabs.get_tab_bounds(0).p.y >=
+                       live_tabs.get_content_bounds().y2(),
+               "resizing preserves bottom placement and selected page layout");
+        live_tabs.set_tab_placement(native::tab_placement::top);
+        expect(live_tabs.get_selected_index() == selected_before &&
+                   placement_events == 0 &&
+                   same_rect(live_second.get_bounds(),
+                             live_tabs.get_content_bounds()),
+               "returning to top placement remains silent and preserves selection");
     }
 
     // Verify native callbacks and paint stages dispatch virtually once,

@@ -58,12 +58,29 @@ namespace haiku
         BView *view = nullptr; // Cached BView for drawing
 
         // Cached draw parameters
-        native::rgba current_fg = 0xFFFFFFFF;
+        native::rgba current_fg = {};
+        bool current_fg_valid = false;
         int current_thickness = -1;
 
         // Clip region
         native::rect clip = {};
         bool dirty_clip = true;
+    };
+
+    // Temporarily route a portable control's graphics operations into the
+    // native child view currently asking it to paint a row or cell.
+    class scoped_gpx_target
+    {
+    public:
+        scoped_gpx_target(native::wnd &owner, BView *target);
+        ~scoped_gpx_target();
+
+        scoped_gpx_target(const scoped_gpx_target &) = delete;
+        scoped_gpx_target &operator=(const scoped_gpx_target &) = delete;
+
+    private:
+        haiku_gpx *_cache = nullptr;
+        BView *_previous = nullptr;
     };
 
     struct haiku_menu

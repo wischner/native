@@ -12,6 +12,7 @@
 
 #include <native/app_wnd.h>
 #include <native/combo_box.h>
+#include <native/tab_view.h>
 #include <native/wnd.h>
 
 #include "../../gpx_wnd.h"
@@ -59,6 +60,17 @@ namespace native
         WMResizeWidget(widget,
                        static_cast<unsigned int>(_bounds.d.w),
                        static_cast<unsigned int>(height));
+        if (auto *tabs = dynamic_cast<tab_view *>(this)) {
+            auto *state = linux::wmaker::tab_view_bindings
+                .object_from_handle(tabs);
+            if (state && state->portable) {
+                const rect content = tabs->get_content_bounds();
+                for (WMFrame *page : state->pages) {
+                    WMMoveWidget(page, content.p.x, content.p.y);
+                    WMResizeWidget(page, content.d.w, content.d.h);
+                }
+            }
+        }
         if (auto *combo = dynamic_cast<combo_box *>(this)) {
             auto *state = linux::wmaker::combo_box_bindings
                               .object_from_handle(combo);

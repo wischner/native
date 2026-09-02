@@ -94,6 +94,7 @@ namespace
                 static_cast<native::dim>(
                     std::max<float>(0, bounds.Height() + 1)));
             native::gpx &graphics = _owner.get_gpx();
+            haiku::scoped_gpx_target drawing_target(_owner, target);
             graphics.set_clip(cell_bounds);
             auto appearance = native::theme::create(graphics);
             native::theme::state state;
@@ -101,7 +102,7 @@ namespace
             state.selected = std::find(selection.begin(),
                                        selection.end(),
                                        value->row) != selection.end();
-            state.focused = target->IsFocus();
+            state.focused = state.selected && target->IsFocus();
             if (value->group != 0) {
                 native::table_model *model = _owner.get_model();
                 if (model) {
@@ -452,6 +453,9 @@ namespace
                   bounds.y2() - 1),
             table.get_horizontal_scrollbar_policy() !=
                 native::scrollbar_policy::never);
+        view->SetViewUIColor(B_CONTROL_BACKGROUND_COLOR);
+        view->SetLowUIColor(B_CONTROL_BACKGROUND_COLOR);
+        view->SetBackgroundColor(ui_color(B_LIST_BACKGROUND_COLOR));
         view->Hide();
         parent->AddChild(view);
         if (!locked)

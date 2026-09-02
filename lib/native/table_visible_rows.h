@@ -37,6 +37,10 @@ namespace native::detail
         std::optional<std::size_t>
         display_index_for_model_row(std::size_t model_row) const;
 
+        // Return a display index for a group heading.
+        std::optional<std::size_t>
+        display_index_for_group(table_group_id id) const;
+
         // Return a logical model row for a non-group display row.
         std::optional<std::size_t>
         model_row_for_display_index(std::size_t display_index) const;

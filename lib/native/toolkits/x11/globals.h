@@ -122,7 +122,16 @@ namespace linux::x11
         accordion_bindings;
     extern native::bindings<native::tab_view *, xaw_collection *>
         tab_view_bindings;
-    extern native::bindings<native::split_view *, xaw_collection *>
+
+    struct xaw_split_view
+    {
+        Widget paned = nullptr;
+        Widget first = nullptr;
+        Widget second = nullptr;
+        bool suppress = false;
+    };
+
+    extern native::bindings<native::split_view *, xaw_split_view *>
         split_view_bindings;
     extern native::bindings<native::icon_view *, xaw_collection *>
         icon_view_bindings;

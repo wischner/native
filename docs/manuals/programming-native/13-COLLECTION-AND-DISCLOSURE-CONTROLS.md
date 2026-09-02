@@ -63,14 +63,15 @@ the item survives.
 
 `set_presentation()` selects the normal platform presentation or the optional
 `three_dimensional` outline. On CDE, `native` follows the InfoLib Book List:
-the live CDE data colors, flat full-width selection, compact right/down
-triangles, uniform row geometry, and vertically centered icons and text. The
-three-dimensional choice retains the Motif `XmContainer` outline for software
-that wants that later Motif style.
+an `XmContainer` outline with flat `XmIconGadget` entries, native disclosure,
+selection, keyboard handling, and scrolling. The three-dimensional choice
+uses the same container and changes native gadget relief rather than swapping
+in a separately painted tree.
 
-On CDE, overflowing lists, icon views, trees, and tables expose native Motif
-scrollbars. Their values remain synchronized with the portable scroll state,
-so wheel, keyboard, and scrollbar navigation reveal the same items.
+On CDE, icon views use spatial `XmContainer`, trees use outline
+`XmContainer`, and materialized tables use detail `XmContainer`. Their native
+scrollbars remain synchronized with portable scroll state, so wheel, keyboard,
+and scrollbar navigation reveal the same items.
 
 ## Icon items and image ownership
 

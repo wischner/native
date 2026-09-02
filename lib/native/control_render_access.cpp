@@ -312,7 +312,8 @@ namespace native::detail
         const tree_view_item &item,
         std::size_t depth,
         const rect &bounds,
-        const theme::state &state) {
+        const theme::state &state,
+        bool draw_hierarchy) {
         const tree_view_visible_item visible{item.id, depth};
         const theme::metrics metrics = appearance.defaults();
         control.draw_row_background(
@@ -334,21 +335,23 @@ namespace native::detail
                     bounds.p.y + portable_disclosure.p.y -
                     portable_row.p.y)),
             portable_disclosure.d);
-        control.draw_connectors(
-            graphics,
-            appearance,
-            visible,
-            item,
-            bounds,
-            disclosure,
-            state);
-        control.draw_disclosure(
-            graphics,
-            appearance,
-            visible,
-            item,
-            disclosure,
-            state);
+        if (draw_hierarchy) {
+            control.draw_connectors(
+                graphics,
+                appearance,
+                visible,
+                item,
+                bounds,
+                disclosure,
+                state);
+            control.draw_disclosure(
+                graphics,
+                appearance,
+                visible,
+                item,
+                disclosure,
+                state);
+        }
         int content_x = disclosure.x2() + metrics.header_gap;
         if (item.image) {
             const size requested = control.get_icon_size();

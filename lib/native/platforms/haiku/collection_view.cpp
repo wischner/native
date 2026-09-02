@@ -31,6 +31,8 @@ namespace
                     B_WILL_DRAW | B_FRAME_EVENTS | B_NAVIGABLE)
             , _owner(owner) {
             SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+            SetLowColor(ViewColor());
+            SetHighColor(ViewColor());
         }
 
         void Draw(BRect update) override {

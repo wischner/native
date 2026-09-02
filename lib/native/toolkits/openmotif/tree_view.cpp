@@ -68,7 +68,7 @@ namespace
         // The container does not own these pixmaps.  Remove the resource
         // references before releasing them so delayed redraws cannot copy
         // from stale drawable IDs during a native/3-D mode transition.
-        if (state.content && state.three_dimensional_tree) {
+        if (state.content && state.native_tree) {
             XtVaSetValues(state.content,
                           XmNcollapsedStatePixmap,
                           XmUNSPECIFIED_PIXMAP,
@@ -285,6 +285,8 @@ namespace
                     const_cast<char *>(item.text.c_str()));
                 const Pixmap icon = create_icon(
                     state, item.image.get(), tree.get_icon_size());
+                const bool raised = tree.get_presentation() ==
+                    native::tree_view_presentation::three_dimensional;
                 Widget native_item = XmVaCreateManagedIconGadget(
                     state.content,
                     const_cast<char *>("treeItem"),
@@ -308,6 +310,10 @@ namespace
                     2,
                     XmNspacing,
                     5,
+                    XmNshadowThickness,
+                    raised ? 1 : 0,
+                    XmNhighlightThickness,
+                    raised ? 1 : 0,
                     XmNsensitive,
                     item.enabled ? True : False,
                     nullptr);
@@ -322,7 +328,7 @@ namespace
         state.suppress = false;
     }
 
-    Widget create_three_dimensional_tree(
+    Widget create_native_tree(
         native::tree_view &tree,
         collection_state &state) {
         native::wnd *parent = tree.get_parent();
@@ -377,7 +383,7 @@ namespace
             XmNexpandedStatePixmap,
             state.expanded_tree_pixmap,
             nullptr);
-        state.three_dimensional_tree = true;
+        state.native_tree = true;
         XtAddCallback(state.content,
                       XmNselectionCallback,
                       selection_changed,
@@ -396,13 +402,7 @@ namespace
 
     Widget create_tree_widget(native::tree_view &tree,
                               collection_state &state) {
-        if (tree.get_presentation() ==
-            native::tree_view_presentation::three_dimensional) {
-            return create_three_dimensional_tree(tree, state);
-        }
-        state.content = nullptr;
-        state.three_dimensional_tree = false;
-        return linux::openmotif::create_collection_host(tree, state);
+        return create_native_tree(tree, state);
     }
 
     void destroy_tree_widget(collection_state &state) {
@@ -418,42 +418,25 @@ namespace
         state.content = nullptr;
     }
 
-    bool synchronize_presentation(native::tree_view &tree,
-                                  collection_state &state) {
-        const bool three_dimensional =
-            tree.get_presentation() ==
-            native::tree_view_presentation::three_dimensional;
-        if (state.three_dimensional_tree == three_dimensional)
-            return false;
-        const bool visible = state.widget && XtIsManaged(state.widget);
-        state.suppress = true;
-        destroy_tree_widget(state);
-        state.widget = create_tree_widget(tree, state);
-        state.suppress = false;
-        if (visible)
-            XtManageChild(state.widget);
-        return true;
-    }
 } // namespace
 
 namespace native
 {
     void tree_view::apply_items() {
         auto &state = binding_for(*this);
-        if (synchronize_presentation(*this, state))
-            synchronize_theme_metrics();
-        if (state.three_dimensional_tree)
-            rebuild(*this);
-        else
-            invalidate();
+        XtVaSetValues(
+            state.content,
+            XmNoutlineLineStyle,
+            get_lines_visible()
+                ? static_cast<unsigned char>(XmSINGLE)
+                : static_cast<unsigned char>(XmNO_LINE),
+            nullptr);
+        rebuild(*this);
+        apply_selection();
     }
 
     void tree_view::apply_selection() {
         auto &state = binding_for(*this);
-        if (!state.three_dimensional_tree) {
-            invalidate();
-            return;
-        }
         if (state.suppress)
             return;
         state.suppress = true;
@@ -473,10 +456,6 @@ namespace native
 
     void tree_view::apply_expansion(tree_item_id id, bool expanded) {
         auto &state = binding_for(*this);
-        if (!state.three_dimensional_tree) {
-            invalidate();
-            return;
-        }
         if (state.suppress)
             return;
         Widget item = widget_for(state, id);
@@ -492,10 +471,6 @@ namespace native
 
     void tree_view::apply_scroll_offset() {
         auto &state = binding_for(*this);
-        if (!state.three_dimensional_tree) {
-            invalidate();
-            return;
-        }
         if (get_visible_item_count() == 0)
             return;
         const int row_height = std::max<int>(
@@ -519,10 +494,7 @@ namespace native
         linux::openmotif::tree_view_bindings.register_pair(self, state);
         _created = true;
         self->synchronize_theme_metrics();
-        if (state->three_dimensional_tree)
-            rebuild(*self);
-        else
-            self->invalidate();
+        rebuild(*self);
         self->apply_selection();
         self->on_native_create();
     }

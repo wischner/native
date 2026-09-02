@@ -19,6 +19,13 @@ namespace native
 {
     class tab_view;
 
+    // Selects the edge occupied by a tab view's labels.
+    enum class tab_placement
+    {
+        top,
+        bottom
+    };
+
     // Stores one tab label and its borrowed page window.
     class tab_item final
     {
@@ -88,6 +95,12 @@ namespace native
 
         // Select a tab programmatically without emitting an event.
         tab_view &set_selected_index(int index);
+
+        // Return the edge occupied by the tab labels.
+        tab_placement get_tab_placement() const;
+
+        // Move the tab labels without changing selection or emitting an event.
+        tab_view &set_tab_placement(tab_placement placement);
 
         // Return the client-relative bounds occupied by one tab.
         rect get_tab_bounds(std::size_t index) const;
@@ -166,6 +179,7 @@ namespace native
         std::vector<std::unique_ptr<tab_item>> _items;
         int _selected_index = -1;
         int _tab_height = 24;
+        tab_placement _tab_placement = tab_placement::top;
         bool _content_host_is_page = false;
 
         void validate_index(int index) const;

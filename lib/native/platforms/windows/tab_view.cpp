@@ -28,6 +28,15 @@ namespace native
         HWND tabs = handle(this);
         if (!tabs)
             throw std::runtime_error("Windows: missing tab-view HWND.");
+        LONG_PTR style = GetWindowLongPtrW(tabs, GWL_STYLE);
+        if (get_tab_placement() == tab_placement::bottom)
+            style |= TCS_BOTTOM;
+        else
+            style &= ~static_cast<LONG_PTR>(TCS_BOTTOM);
+        SetWindowLongPtrW(tabs, GWL_STYLE, style);
+        SetWindowPos(tabs, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                         SWP_NOACTIVATE | SWP_FRAMECHANGED);
         TabCtrl_DeleteAllItems(tabs);
         for (std::size_t index = 0; index < get_item_count(); ++index) {
             const std::wstring title = windows::utf8_to_wide(
@@ -62,7 +71,10 @@ namespace native
             0,
             WC_TABCONTROLW,
             L"",
-            WS_CHILD | WS_TABSTOP | WS_CLIPCHILDREN,
+            WS_CHILD | WS_TABSTOP | WS_CLIPCHILDREN |
+                (get_tab_placement() == tab_placement::bottom
+                     ? TCS_BOTTOM
+                     : 0),
             _bounds.p.x,
             _bounds.p.y,
             _bounds.d.w,
@@ -84,8 +96,13 @@ namespace native
         RECT page{0, 0,
                   static_cast<LONG>(_bounds.d.w),
                   static_cast<LONG>(_bounds.d.h)};
-        if (TabCtrl_AdjustRect(tabs, FALSE, &page))
-            self->_tab_height = std::max(1L, page.top);
+        if (TabCtrl_AdjustRect(tabs, FALSE, &page)) {
+            self->_tab_height = static_cast<int>(std::max(
+                1L,
+                get_tab_placement() == tab_placement::top
+                    ? page.top
+                    : static_cast<LONG>(_bounds.d.h) - page.bottom));
+        }
         self->refresh_contents();
         self->apply_selected_index();
         self->on_native_create();

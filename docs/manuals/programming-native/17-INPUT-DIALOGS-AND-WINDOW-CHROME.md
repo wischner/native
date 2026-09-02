@@ -136,6 +136,11 @@ the remaining space. Both controls provide protected virtual drawing stages,
 so an application-specific derived control can call the base implementation
 and add detail without a duplicate default-paint pass.
 
+Windows uses the native common-controls status bar for the exact base
+`status_bar` type and maps these widths and strings with `SB_SETPARTS` and
+`SB_SETTEXT`. A derived status bar retains the custom drawing path so its
+protected drawing-stage overrides remain effective.
+
 On Haiku, the compact status strip follows the system `StatusView` chrome:
 the menu-bar background, a dark top rule, short cell dividers, panel text, and
 the horizontal-scrollbar height. Haiku's similarly named `BStatusBar` is a

@@ -54,12 +54,12 @@ Legend:
 | Selection-only/editable `combo_box` | Athena (build tested) | Themed (build tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs composite (build tested) | Themed (build tested) | COMBOBOX (build tested) | BOptionPopUp (build tested) | NSComboBox (untested) | WIP |
 | Non-client rulers and status bars | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
-| Borrowed-page `tab_view` | Athena themed host (build tested) | Emulated themed host (build tested) | `XmNotebook` (build tested) | XView/OLGX host (build tested) | `WMTabView` (build tested) | GEM themed host (build tested) | Win32 tab control (build tested) | `BTabView` + `BTab` (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
-| Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Motif themed grid (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
-| Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline (build tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
+| Borrowed-page top/bottom `tab_view` | Athena themed host (build tested) | Emulated themed host (build tested) | `XmNotebook` placement (build tested) | XView/OLGX host (build tested) | `WMTabView` top, Native-rendered bottom (build tested) | GEM themed host (build tested) | Win32 tab control (build tested) | `BTabView` + `BTab` with native tab side (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
+| Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
+| Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline for both presentations (tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
 | Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (build tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
 | UTF-8 source `code_edit` with gutter and overlays | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (build tested) | Custom themed HWND (tested) | Native-look BView (tested) | Native-look NSView (tested) | WIP |
-| Two-pane `split_view` | Athena host (build tested) | Emulated host (build tested) | `XmPanedWindow` (build tested) | XView pane host (build tested) | `WMSplitView` (build tested) | GEM host (build tested) | Win32 splitter host (build tested) | `BSplitView` (tested) | `NSSplitView` (build tested) | WIP |
+| Two-pane `split_view` | Xaw `Paned` (tested) | Emulated host (build tested) | `XmPanedWindow` (build tested) | XView pane host (build tested) | `WMSplitView` (build tested) | GEM host (build tested) | Win32 splitter host (build tested) | `BSplitView` (tested) | `NSSplitView` (build tested) | WIP |
 | Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | XView Selection (tested) | WINGs Selection (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Lossless RGBA image clipboard | PNG selection (build tested) | X11 PNG (build tested), fallback (tested) | PNG selection (build tested) | PNG selection (build tested) | PNG selection (build tested) | AES PNG plus standard IMG scrap (build tested) | PNG/DIBV5 (build tested) | PNG MIME (build tested) | PNG/TIFF (untested) | WIP |
 | Native/emulated single-line `text_edit` | Athena (build tested) | Yes (tested) | Motif (build tested) | XView Panel (tested) | WMTextField (tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
@@ -128,8 +128,9 @@ Legend:
   to the same desktop helpers and completes as cancelled when neither is
   installed.
 - `message_box` maps typed button sets and semantic icons to each backend's
-  standard alert API. Rulers and status bars are host-owned non-client strips;
-  they consume `wnd::get_client_bounds()` and paint with active theme roles.
+  standard alert API. Rulers and status bars are host-owned non-client strips
+  that consume `wnd::get_client_bounds()`. Windows maps status parts to
+  `STATUSCLASSNAME`; other current backends paint their active theme roles.
 - The Xaw fallback, Motif, XView, WINGs, and GEM file selection are
   single-path.
   AppKit and Haiku preserve their native overwrite safeguards. These older or

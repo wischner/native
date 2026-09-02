@@ -76,6 +76,12 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
 )
 
+if(NOT WIN32)
+    target_sources(native PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/status_bar_peer_default.cpp
+    )
+endif()
+
 # Configure Unix toolkit libraries before the shared Linux codec libraries.
 # This matches native XView client link order on Tribblix; its notifier
 # interposes select and depends on that order to reach the libc system call

@@ -68,6 +68,19 @@ namespace
     mac::mac_tab_view *binding(native::tab_view &owner) {
         return mac::tab_view_bindings.object_from_handle(&owner);
     }
+
+    void apply_placement(native::tab_view &owner,
+                         mac::mac_tab_view &state) {
+        [state.view setTabViewType:
+            owner.get_tab_placement() == native::tab_placement::bottom
+                ? NSBottomTabsBezelBorder
+                : NSTopTabsBezelBorder];
+        if (state.page_host) {
+            [state.page_host setFrame:[state.view contentRect]];
+            [state.page_host setNeedsDisplay:YES];
+        }
+        [state.view setNeedsDisplay:YES];
+    }
 }
 
 namespace native
@@ -76,6 +89,7 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->view)
             throw std::runtime_error("macOS: missing tab-view binding.");
+        apply_placement(*this, *state);
         state->suppress = true;
         while ([state->view numberOfTabViewItems] > 0)
             [state->view removeTabViewItem:
@@ -119,7 +133,10 @@ namespace native
                                      _bounds.p.y,
                                      _bounds.d.w,
                                      _bounds.d.h)];
-        [view setTabViewType:NSTopTabsBezelBorder];
+        [view setTabViewType:
+            get_tab_placement() == tab_placement::bottom
+                ? NSBottomTabsBezelBorder
+                : NSTopTabsBezelBorder];
         native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
         delegate->_owner = self;
         [view setDelegate:delegate];
@@ -136,6 +153,7 @@ namespace native
         state->page_host = page_host;
         state->delegate = delegate;
         mac::tab_view_bindings.register_pair(self, state);
+        apply_placement(*self, *state);
         _created = true;
         self->synchronize_theme_metrics();
         self->_content_host_is_page = true;

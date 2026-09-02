@@ -83,9 +83,21 @@ namespace native
                                                bool expanded) {
         if (_visible_rows->get_expanded(id) == expanded)
             return *this;
+        const std::size_t old_count = get_display_row_count();
+        const std::optional<table_display_row> top_display =
+            old_count == 0
+                ? std::nullopt
+                : std::optional<table_display_row>(get_display_row(
+                      std::min(_vertical_row, old_count - 1)));
         const auto top = get_first_visible_row();
         _visible_rows->set_expanded(id, expanded);
-        if (top) {
+        if (top_display && top_display->group) {
+            const auto display =
+                _visible_rows->display_index_for_group(
+                    top_display->group_id);
+            if (display)
+                _vertical_row = *display;
+        } else if (top) {
             const auto display = display_row_for_id(*top);
             if (display)
                 _vertical_row = *display;

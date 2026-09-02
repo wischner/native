@@ -37,7 +37,7 @@ namespace native
                           XtNy,
                           position.y,
                           nullptr);
-        } else if (widget) {
+        } else if (widget && !dynamic_cast<split_view *>(_parent)) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
                           _bounds.p.x,
@@ -69,7 +69,7 @@ namespace native
                           XtNy,
                           position.y,
                           nullptr);
-        } else if (widget) {
+        } else if (widget && !dynamic_cast<split_view *>(_parent)) {
             XtVaSetValues(widget,
                           XtNwidth,
                           _bounds.d.w,
@@ -99,7 +99,7 @@ namespace native
                           XtNheight,
                           _bounds.d.h,
                           nullptr);
-        } else if (widget) {
+        } else if (widget && !dynamic_cast<split_view *>(_parent)) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
                           _bounds.p.x,

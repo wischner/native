@@ -41,6 +41,7 @@ namespace native
         if (_edge == edge)
             return *this;
         _edge = edge;
+        on_configuration_changed();
         if (_owner) {
             _owner->relayout_children();
             _owner->invalidate();
@@ -59,6 +60,7 @@ namespace native
         if (_extent == extent)
             return *this;
         _extent = extent;
+        on_configuration_changed();
         if (_owner) {
             _owner->relayout_children();
             _owner->invalidate();
@@ -74,6 +76,7 @@ namespace native
         if (_visible == visible)
             return *this;
         _visible = visible;
+        on_configuration_changed();
         if (_owner) {
             _owner->relayout_children();
             _owner->invalidate();
@@ -86,6 +89,8 @@ namespace native
     }
 
     void non_client::track_pointer(const point &) {}
+
+    void non_client::on_configuration_changed() {}
 
     void non_client::invalidate() const {
         if (_owner && _visible)

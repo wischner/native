@@ -9,7 +9,24 @@
 
 namespace native
 {
-    void tab_view::apply_items() { invalidate(); }
+    void tab_view::apply_items() {
+        auto *state = linux::openlook::tab_view_bindings
+            .object_from_handle(this);
+        if (state && state->content_panel) {
+            const rect content = get_content_bounds();
+            const int panel_x = static_cast<int>(
+                xv_get(state->panel, XV_X));
+            const int panel_y = static_cast<int>(
+                xv_get(state->panel, XV_Y));
+            xv_set(state->content_panel,
+                   XV_X, panel_x + content.p.x,
+                   XV_Y, panel_y + content.p.y,
+                   XV_WIDTH, content.d.w,
+                   XV_HEIGHT, content.d.h,
+                   nullptr);
+        }
+        invalidate();
+    }
     void tab_view::apply_selected_index() { invalidate(); }
 
     void tab_view::create() const {

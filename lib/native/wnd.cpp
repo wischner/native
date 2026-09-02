@@ -115,6 +115,10 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
+        for (non_client *element : _non_client) {
+            if (element)
+                element->on_configuration_changed();
+        }
         return *this;
     }
 
@@ -167,6 +171,10 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
+        for (non_client *element : _non_client) {
+            if (element)
+                element->on_configuration_changed();
+        }
         return *this;
     }
 
@@ -266,6 +274,10 @@ namespace native
             _bounds.d = dimensions;
             relayout_children();
             on_bounds_changed();
+        }
+        for (non_client *element : _non_client) {
+            if (element)
+                element->on_configuration_changed();
         }
         on_wnd_resize.emit(dimensions);
     }

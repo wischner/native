@@ -35,6 +35,22 @@ namespace
             : BSplitView(direction, 0)
             , _owner(owner) {}
 
+        void AttachedToWindow() override {
+            BSplitView::AttachedToWindow();
+            // The portable window canvas is transparent. Do not adopt that
+            // as the splitter base: native BSplitView shades ViewColor().
+            SetViewUIColor(B_PANEL_BACKGROUND_COLOR);
+            SetLowUIColor(B_PANEL_BACKGROUND_COLOR);
+            Invalidate();
+        }
+
+        void MouseMoved(BPoint where,
+                        uint32 transit,
+                        const BMessage *message) override {
+            BSplitView::MouseMoved(where, transit, message);
+            refresh_portable_panes();
+        }
+
         void MouseUp(BPoint where) override {
             BSplitView::MouseUp(where);
             if (!_owner || _suppress || CountItems() < 2)
@@ -49,6 +65,31 @@ namespace
 
     private:
         native::split_view *_owner;
+
+        void refresh_portable_panes() {
+            if (!_owner)
+                return;
+            auto *state = haiku::split_view_bindings
+                              .object_from_handle(_owner);
+            if (!state || !state->first || !state->second)
+                return;
+            const BRect first = state->first->Bounds();
+            const BRect second = state->second->Bounds();
+            _owner->get_first().set_bounds(native::rect(
+                0,
+                0,
+                static_cast<native::dim>(
+                    std::max(0.0f, first.Width() + 1.0f)),
+                static_cast<native::dim>(
+                    std::max(0.0f, first.Height() + 1.0f))));
+            _owner->get_second().set_bounds(native::rect(
+                0,
+                0,
+                static_cast<native::dim>(
+                    std::max(0.0f, second.Width() + 1.0f)),
+                static_cast<native::dim>(
+                    std::max(0.0f, second.Height() + 1.0f))));
+        }
     };
 
     haiku::haiku_split_view *binding(native::split_view &owner) {

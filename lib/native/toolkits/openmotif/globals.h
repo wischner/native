@@ -82,7 +82,8 @@ namespace linux::openmotif
         Pixmap collapsed_tree_pixmap = XmUNSPECIFIED_PIXMAP;
         Pixmap expanded_tree_pixmap = XmUNSPECIFIED_PIXMAP;
         bool native_table = false;
-        bool three_dimensional_tree = false;
+        bool native_tree = false;
+        bool native_scroll_callbacks = false;
         bool synchronizing_scrollbars = false;
         bool suppress = false;
         Time last_click = 0;

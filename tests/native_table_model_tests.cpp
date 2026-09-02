@@ -196,6 +196,17 @@ namespace
         expect(view.get_selected_rows() ==
                    std::vector<native::table_row_id>{30},
                "collapsing another group preserves stable selection");
+        view.on_native_scroll(0, 0);
+        view.set_group_expanded(100, true);
+        expect(view.get_vertical_scroll_row() == 0 &&
+                   view.get_display_row(0).group &&
+                   view.get_display_row(0).group_id == 100,
+               "expanding a top group keeps its heading visible");
+        view.set_group_expanded(100, false);
+        expect(view.get_vertical_scroll_row() == 0 &&
+                   view.get_display_row(0).group &&
+                   view.get_display_row(0).group_id == 100,
+               "collapsing a top group keeps its heading visible");
     }
 
     class million_row_model final : public native::table_model

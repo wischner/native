@@ -124,6 +124,23 @@ namespace native::detail
     }
 
     std::optional<std::size_t>
+    table_visible_rows::display_index_for_group(
+        table_group_id id) const {
+        std::size_t model_cursor = 0;
+        std::size_t display_cursor = 0;
+        for (const auto &group : _groups) {
+            display_cursor += group.first_row - model_cursor;
+            if (group.id == id)
+                return display_cursor;
+            ++display_cursor;
+            if (expanded(group))
+                display_cursor += group.row_count;
+            model_cursor = group.first_row + group.row_count;
+        }
+        return std::nullopt;
+    }
+
+    std::optional<std::size_t>
     table_visible_rows::model_row_for_display_index(
         std::size_t display_index) const {
         if (display_index >= display_row_count())

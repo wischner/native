@@ -63,23 +63,19 @@ namespace linux::wmaker
         const native::size dimensions = owner.get_dimensions();
         const bool editable = owner.get_style() ==
             native::combo_box_style::editable;
-        const int popup_width = editable
-            ? std::min<int>(dimensions.w, dimensions.h + 4)
-            : dimensions.w;
+        const int arrow_width = std::min<int>(
+            dimensions.w, dimensions.h + 4);
         WMResizeWidget(
             state.field,
             std::max(1,
-                     static_cast<int>(dimensions.w)-popup_width),
+                     static_cast<int>(dimensions.w)-arrow_width),
             dimensions.h);
-        WMMoveWidget(
-            state.popup,
-            editable
-                ? static_cast<int>(dimensions.w)-popup_width
-                : 0,
-            0);
-        WMResizeWidget(state.popup, popup_width, dimensions.h);
+        WMMoveWidget(state.popup, 0, 0);
+        WMResizeWidget(state.popup, dimensions.w, dimensions.h);
         WMSetPopUpButtonPullsDown(
             state.popup, editable ? True : False);
+        if (editable && WMWidgetXID(state.field) != None)
+            WMRaiseWidget(state.field);
     }
 } // namespace linux::wmaker
 
@@ -180,6 +176,8 @@ namespace native
         WMMapSubwidgets(state->frame);
         if (get_style() != combo_box_style::editable)
             WMUnmapWidget(state->field);
+        else
+            WMRaiseWidget(state->field);
         WMMapWidget(state->frame);
     }
 

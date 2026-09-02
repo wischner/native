@@ -30,6 +30,14 @@ namespace
 
     void rebuild(native::tab_view &owner,
                  linux::openmotif::motif_tab_view &state) {
+        XtVaSetValues(
+            state.notebook,
+            XmNorientation, XmVERTICAL,
+            XmNbackPagePlacement,
+            owner.get_tab_placement() == native::tab_placement::bottom
+                ? XmBOTTOM_RIGHT
+                : XmTOP_RIGHT,
+            nullptr);
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
             native::wnd &content = owner.get_item(index).get_content();
             if (content.get_created())
@@ -108,6 +116,11 @@ namespace native
             XmNwidth, _bounds.d.w,
             XmNheight, _bounds.d.h,
             XmNbindingType, XmNONE,
+            XmNorientation, XmVERTICAL,
+            XmNbackPagePlacement,
+            get_tab_placement() == tab_placement::bottom
+                ? XmBOTTOM_RIGHT
+                : XmTOP_RIGHT,
             nullptr);
         if (!state->notebook) {
             delete state;

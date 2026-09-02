@@ -824,41 +824,4 @@ namespace native
         linux::openmotif::accordion_bindings.unregister_by_handle(self);
     }
 
-    void icon_view::apply_items() { invalidate(); }
-    void icon_view::apply_icon_size() { invalidate(); }
-    void icon_view::apply_label_mode() { invalidate(); }
-    void icon_view::apply_selected_index() { invalidate(); }
-    void icon_view::apply_scroll_offset() { invalidate(); }
-
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
-        auto *state = new linux::openmotif::motif_collection();
-        state->widget = create_host(*self, *state);
-        linux::openmotif::icon_view_bindings.register_pair(self, state);
-        _created = true;
-        self->synchronize_theme_metrics();
-        self->on_native_create();
-    }
-
-    void icon_view::show() const {
-        auto *state = linux::openmotif::icon_view_bindings
-                          .object_from_handle(
-                              const_cast<icon_view *>(this));
-        if (!_created || !state || !state->widget)
-            throw std::runtime_error("Motif: icon_view is not created.");
-        XtManageChild(state->widget);
-    }
-
-    void icon_view::destroy() const {
-        if (!_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
-        auto *state = linux::openmotif::icon_view_bindings
-                          .object_from_handle(self);
-        destroy_host(*self, state);
-        linux::openmotif::icon_view_bindings.unregister_by_handle(self);
-    }
-
 } // namespace native

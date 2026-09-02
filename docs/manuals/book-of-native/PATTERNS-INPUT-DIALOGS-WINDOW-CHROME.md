@@ -134,6 +134,11 @@ the default themed painting. Status bars and rulers use semantic theme
 surfaces and the active backend palette, rather than hard-coded visuals from
 another desktop.
 
+Windows hosts `STATUSCLASSNAME` for the exact base `status_bar`, maps portable
+parts through `SB_SETPARTS` and `SB_SETTEXT`, and lets the common control own
+the size grip and painting. Derived status bars stay on the painted path so
+their protected-stage overrides continue to work.
+
 The Haiku backend uses its native compact status-view recipe: a system
 menu-bar background, dark top rule, short dividers, panel text, and the same
 height as a horizontal scrollbar. `BStatusBar` is Haiku's progress indicator;

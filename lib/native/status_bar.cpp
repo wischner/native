@@ -6,15 +6,21 @@
 //
 
 #include <algorithm>
+#include <typeinfo>
 #include <utility>
 
 #include <native/graphics.h>
 #include <native/status_bar.h>
 
+#include "status_bar_peer.h"
+
 namespace native
 {
     status_bar::status_bar(wnd &owner, int height)
-        : non_client(owner, window_edge::bottom, height) {}
+        : non_client(owner, window_edge::bottom, height)
+        , _native_peer(detail::create_status_bar_peer()) {}
+
+    status_bar::~status_bar() = default;
 
     const std::string &status_bar::get_text() const { return _text; }
 
@@ -23,6 +29,7 @@ namespace native
             return *this;
         _text = text;
         _parts.clear();
+        synchronize_native(get_bounds());
         invalidate();
         return *this;
     }
@@ -48,12 +55,15 @@ namespace native
 
         _parts = std::move(parts);
         _text.clear();
+        synchronize_native(get_bounds());
         invalidate();
         return *this;
     }
 
     void status_bar::draw(gpx &graphics, const rect &bounds) {
         if (!bounds.w() || !bounds.h())
+            return;
+        if (synchronize_native(bounds))
             return;
         auto saved = graphics.save_state();
         auto appearance = theme::create(graphics);
@@ -90,6 +100,18 @@ namespace native
                       part, state);
             x += width;
         }
+    }
+
+    void status_bar::on_configuration_changed() {
+        synchronize_native(get_bounds());
+    }
+
+    bool status_bar::synchronize_native(const rect &bounds) {
+        // A derived status bar may override the protected drawing stages.
+        // Keep that extension contract by enabling a native peer only for
+        // the exact base control.
+        return typeid(*this) == typeid(status_bar) &&
+            _native_peer && _native_peer->update(*this, bounds);
     }
 
     void status_bar::draw_background(gpx &,

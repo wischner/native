@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,11 @@
 
 namespace native
 {
+    namespace detail
+    {
+        class status_bar_peer;
+    }
+
     struct status_bar_part
     {
         std::string text;
@@ -26,6 +32,7 @@ namespace native
     public:
         // Construct a bottom-edge status bar with a fixed height.
         explicit status_bar(wnd &owner, int height = 22);
+        ~status_bar() override;
 
         // Return the single flexible status text.
         const std::string &get_text() const;
@@ -42,6 +49,8 @@ namespace native
     protected:
         // Paint the complete bar and its resolved parts.
         void draw(gpx &graphics, const rect &bounds) override;
+
+        void on_configuration_changed() override;
 
         // Draw the native-themed bar background.
         virtual void draw_background(
@@ -60,5 +69,8 @@ namespace native
     private:
         std::string _text;
         std::vector<status_bar_part> _parts;
+        std::unique_ptr<detail::status_bar_peer> _native_peer;
+
+        bool synchronize_native(const rect &bounds);
     };
 } // namespace native

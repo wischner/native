@@ -116,6 +116,7 @@ namespace native
         auto appearance = theme::create(graphics);
         const theme::state state{};
         const theme::palette colors = appearance->native_palette();
+        graphics.set_font(font_t::stock(font_role::small));
         draw_background(graphics, *appearance, bounds, state);
 
         const ruler_orientation orientation = get_orientation();

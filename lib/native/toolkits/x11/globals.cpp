@@ -34,7 +34,7 @@ namespace linux::x11
         accordion_bindings;
     native::bindings<native::tab_view *, xaw_collection *>
         tab_view_bindings;
-    native::bindings<native::split_view *, xaw_collection *>
+    native::bindings<native::split_view *, xaw_split_view *>
         split_view_bindings;
     native::bindings<native::icon_view *, xaw_collection *>
         icon_view_bindings;

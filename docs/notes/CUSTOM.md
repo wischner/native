@@ -20,30 +20,33 @@ Audit date: 2026-09-02.
 Models, layouts, graphics, fonts, clipboard, screen discovery, and signals are
 services rather than controls and are outside this control inventory.
 
-## Native-replacement review
+## Applied native replacements
 
-These are the current custom or hybrid implementations most worth reviewing:
+| Backend and control | Result | Portable behavior retained in C++ |
+| --- | --- | --- |
+| Windows `status_bar` | **N/H**, `STATUSCLASSNAME` with `SB_SETPARTS` and `SB_SETTEXT` | Text, part ordering, fixed/flexible widths, visibility, edge reservation, and fallback for an unsupported part count. The common control owns drawing and the size grip; derived bars retain the painted path so drawing overrides still work. |
+| Athena `split_view` | **N**, Xaw `Paned` | Orientation, ratio, minimums, borrowed pane ownership, and ratio-change signal. `XawPanedSetMinMax` and pane constraints drive the native grips. |
+| Motif `tree_view` | **N/H**, `XmContainer` outline in both presentation modes | Stable IDs, hierarchy data, icon ownership, and signals. Presentation mode now changes gadget relief instead of changing to a painted `XmDrawingArea`. |
+| Motif `icon_view` | **N/H**, spatial `XmContainer` with `XmIconGadget` entries | Item model, stable selection index, images, label mode, disabled state, activation, and scroll offset. The collection is materialized, which matches `icon_view`'s owned-vector contract. |
 
-| Priority | Backend and control | Current implementation | Native facility to assess |
-| --- | --- | --- | --- |
-| High | Haiku `status_bar` | **C**, shared painted non-client strip | `BStatusBar`. The current source does not instantiate it. |
-| High | Windows `status_bar` | **C**, shared painted non-client strip | The common-controls status bar (`STATUSCLASSNAME`/`CreateStatusWindow`). |
-| High | Window Maker `ruler` | **C**, shared painted non-client strip | WINGs `WMRuler`. |
-| High | macOS `ruler` | **C**, shared painted non-client strip | AppKit `NSRulerView`. Its client-view association needs adapting to the portable non-client contract. |
-| High | Athena `split_view` | **C**, two child hosts and library splitter handling | Xaw `Paned` where its orientation and child-size rules satisfy the API. |
-| Medium | Motif `icon_view` | **C/H**, custom collection painter with native scrollbars | `XmContainer` spatial/large-icon layout, if its model and virtualization limits are acceptable. |
-| Medium | OPEN LOOK/XView `split_view` | **H**, composed XView `Panel` panes | XView `OPENWIN_SPLIT` is native for splitting one text/canvas view, but is not a general two-arbitrary-child container. OLIT `RubberTile` would apply only to a separate OLIT backend; this backend links XView, not OLIT. |
-| Medium | OPEN LOOK/XView `status_bar` | **C**, shared painted strip | XView frame left/right footers can replace simple footer cases. OLIT `FooterPanel` is unavailable in this XView build. |
-| Medium | Window Maker `main_menu` | **H**, WINGs frames plus a custom click-persistent Xlib popup | Recheck current WINGs menu-capable widgets. The present implementation deliberately avoids the press-drag selector behavior. |
-| Medium | Motif `tree_view` flat/native-look mode | **C**, `XmDrawingArea` collection host | `XmContainer` already backs the alternate 3-D outline mode and may be usable for both appearances. |
-| Low | Windows, macOS, and Haiku `button`, `check`, `radio` | **H**, native controls use owner/custom drawing | Pure native drawing is available, but would give up the library's explicit cross-theme appearance controls. |
-| Low | Motif `status_bar` | **C**, shared painted strip | An `XmLabel` in the `XmMainWindow` message-window region could cover a simple single-part status line; it does not directly match the full portable multi-part contract. |
+## Reviewed proposals deliberately retained
+
+| Backend and control | Decision |
+| --- | --- |
+| Haiku `status_bar` | Keep **C**. `BStatusBar` is a progress indicator, not a window footer. |
+| Window Maker `ruler` | Keep **C**. `WMRuler` represents `WMText` margin and tab-stop state, not a generic measuring strip. |
+| macOS `ruler` | Keep **C** for the public control. `NSRulerView` requires an `NSScrollView` client, while the portable ruler attaches to any `wnd`. A future text-editor-specific ruler can use it. |
+| OPEN LOOK/XView `split_view` | Keep **H**. `OPENWIN_SPLIT` creates another view of one `CANVAS`/`TEXTSW`; it cannot host two arbitrary borrowed controls. |
+| OPEN LOOK/XView `status_bar` | Keep **C**. Frame footers live outside and resize the content panel, while `non_client` reserves an in-host edge; combining both would reserve the strip twice. OLIT `FooterPanel` is not linked by this XView backend. |
+| Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
+| Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
+| Windows, macOS, and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
 
 There is no stock general-purpose Win32 splitter, accordion, code editor, or
-ruler equivalent to the portable contracts. Custom implementations there are
-not automatically architectural mistakes. SDL2 and GEM/AES likewise do not
-provide a complete modern widget set, so custom controls are expected in those
-backends.
+ruler equivalent to the portable contracts. SDL2 and GEM/AES likewise do not
+provide a complete reusable child-widget set, so custom controls are expected
+in those backends.
 
 ## Linux X11/Athena
 
@@ -64,7 +67,7 @@ backends.
 | `tree_view` | **C** | Library-painted hierarchy in the shared collection host. |
 | `table_view` | **C** | Model-backed library table painter in the shared collection host. |
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
-| `split_view` | **C** | Library-managed pane geometry and splitter in an Xaw `Form` host. |
+| `split_view` | **N/H** | Xaw `Paned`; portable ratio/minimum state maps to native pane constraints and `XawPanedSetMinMax`. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
@@ -101,8 +104,8 @@ backends.
 | `text_edit` | **N/H** | `XmTextField` or `XmText`; portable validation and clipboard policy wrap it. |
 | `accordion` | **C** | Library-painted collection in `XmDrawingArea`. |
 | `tab_view` | **N/H** | `XmNotebook`; portable page-host plumbing uses Motif forms/buttons. |
-| `icon_view` | **C/H** | Library-painted grid in `XmDrawingArea` with native `XmScrollBar`. |
-| `tree_view` | **N/H** | 3-D mode uses `XmContainer` outline; flat native-look mode uses the custom collection host. |
+| `icon_view` | **N/H** | Spatial `XmContainer` and `XmIconGadget` entries in `XmScrolledWindow`; portable code materializes the owned item vector and images. |
+| `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget`; the mode changes native gadget relief rather than selecting a custom painter. |
 | `table_view` | **N/H** | Materialized mode uses `XmContainer` detail view; virtual models use the library-painted collection fallback. |
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N** | `XmPanedWindow`, including native sash behavior and pane minimum resources. |
@@ -187,7 +190,8 @@ backends.
 | `table_view` | **N/H** | Report `WC_LISTVIEW`, owner-data virtualization, groups, and custom draw. |
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
-| `ruler`, `status_bar` | **C** | Shared library-painted non-client strips; the Win32 status-bar common control is not used. |
+| `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
+| `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. |
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
 | `message_box` | **N** | Win32 `MessageBoxW`. |
 
@@ -212,7 +216,7 @@ backends.
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
-| `status_bar` | **C** | Shared library-painted non-client strip; `BStatusBar` is not currently used. |
+| `status_bar` | **C** | Shared library-painted non-client strip. `BStatusBar` is intentionally not used because it is a progress indicator rather than a footer. |
 | File open/save/directory | **N** | `BFilePanel`, configured for files, save, or directories. |
 | `message_box` | **N** | `BAlert`. |
 

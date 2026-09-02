@@ -912,7 +912,7 @@ namespace vision
 
     feature_input_chrome::feature_input_chrome(native::app_wnd &owner)
         : native::modeless_wnd(owner, "Vision Input and Window Chrome",
-                               170, 150, 650, 430)
+                               170, 100, 650, 560)
         , _selection_combo({"CDE", "OpenLook", "Window Maker", "Haiku"},
                            native::combo_box_style::drop_down_list,
                            60, 74, 230, 28)
@@ -926,7 +926,14 @@ namespace vision
         , _tab_advanced({"User change signal", "Disabled tab support",
                         "Selected page lifecycle"},
                         0, 0, 220, 100)
-        , _tabs(330, 174, 250, 146)
+        , _tabs(330, 174, 250, 118)
+        , _bottom_tab_general(
+              {"Labels below content", "Straight edge joins above"},
+              0, 0, 220, 72)
+        , _bottom_tab_advanced(
+              {"Rounded edge faces down", "Selection remains portable"},
+              0, 0, 220, 72)
+        , _bottom_tabs(330, 332, 250, 118)
         , _choose_folder("Select folder...", 330, 74, 150, 30)
         , _show_message("Three-button message...", 330, 118, 190, 30)
         , _directory(*this, "Select a Workspace Folder")
@@ -938,6 +945,9 @@ namespace vision
         _list_box.set_selected_index(1);
         _tabs.add_item("General", _tab_general);
         _tabs.add_item("Advanced", _tab_advanced);
+        _bottom_tabs.set_tab_placement(native::tab_placement::bottom);
+        _bottom_tabs.add_item("Bottom", _bottom_tab_general);
+        _bottom_tabs.add_item("Details", _bottom_tab_advanced);
         _horizontal_ruler.set_minor_tick(10).set_major_tick(50)
             .set_track_mouse(true);
         _vertical_ruler.set_minor_tick(10).set_major_tick(50)
@@ -955,6 +965,8 @@ namespace vision
             this, &feature_input_chrome::on_list_selection);
         _tabs.on_selection_change.connect(
             this, &feature_input_chrome::on_tab_selection);
+        _bottom_tabs.on_selection_change.connect(
+            this, &feature_input_chrome::on_bottom_tab_selection);
         _choose_folder.on_click.connect(
             this, &feature_input_chrome::on_choose_folder);
         _show_message.on_click.connect(
@@ -973,6 +985,7 @@ namespace vision
                  static_cast<native::wnd *>(&_editable_combo),
                  static_cast<native::wnd *>(&_list_box),
                  static_cast<native::wnd *>(&_tabs),
+                 static_cast<native::wnd *>(&_bottom_tabs),
                  static_cast<native::wnd *>(&_choose_folder),
                  static_cast<native::wnd *>(&_show_message)}) {
             control->set_parent(this);
@@ -990,14 +1003,16 @@ namespace vision
                           native::point(60, 98));
         event.g.draw_text("Native list_box",
                           native::point(60, 152));
-        event.g.draw_text("Portable tab_view with borrowed pages",
+        event.g.draw_text("Top tab_view with borrowed pages",
                           native::point(330, 152));
+        event.g.draw_text("Bottom tab_view (downward-facing)",
+                          native::point(330, 310));
         event.g.draw_text(
             "The rulers and status bar occupy non-client edge strips.",
-            native::point(330, 334));
+            native::point(60, 474));
         event.g.draw_text(
             "Move the pointer over the client to update ruler tracking.",
-            native::point(330, 356));
+            native::point(60, 496));
         return true;
     }
 
@@ -1025,6 +1040,14 @@ namespace vision
     bool feature_input_chrome::on_tab_selection(int index) {
         _status_bar.set_parts({
             {"Tab: " + _tabs.get_item(
+                static_cast<std::size_t>(index)).get_title(), 0},
+            {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_bottom_tab_selection(int index) {
+        _status_bar.set_parts({
+            {"Bottom tab: " + _bottom_tabs.get_item(
                 static_cast<std::size_t>(index)).get_title(), 0},
             {"minor 10 / major 50", 180}});
         return true;

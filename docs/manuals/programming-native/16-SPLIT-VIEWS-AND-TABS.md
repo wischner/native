@@ -22,15 +22,36 @@ split.set_parent(&window);
 bottom. `set_ratio()` is programmatic and signal-silent. A user drag updates
 the cached ratio and emits `on_ratio_change`.
 
-The implementation uses `BSplitView`, `XmPanedWindow`, `WMSplitView`, and
-`NSSplitView` on their respective backends. Other systems use their normal
-native child-host mechanism and the portable divider interaction.
+The implementation uses Xaw `Paned`, `BSplitView`, `XmPanedWindow`,
+`WMSplitView`, and `NSSplitView` on their respective backends. Other systems
+use their normal native child-host mechanism and the portable divider
+interaction.
 
 `tab_view` borrows one child window per item and creates only the selected
 page. Add pages with `add_item()`, select with `set_selected_index()`, and
 listen to `on_selection_change` for user-originated changes. Native tab
 backends include `BTabView`, `XmNotebook`, `WMTabView`, `NSTabView`, and the
 Win32 tab common control.
+
+Tabs occupy the top edge by default. Placement is portable and may be set
+before or after native creation:
+
+```cpp
+native::tab_view tabs(20, 20, 420, 260);
+tabs.set_tab_placement(native::tab_placement::bottom);
+tabs.add_item("General", general_page);
+tabs.add_item("Advanced", advanced_page);
+```
+
+`get_tab_bounds()` reports labels at the selected edge and
+`get_content_bounds()` reports the remaining page rectangle: below top tabs
+or above bottom tabs. Changing placement preserves every item, the selected
+index, and the selected borrowed page. Like `set_selected_index()`, the
+placement setter is programmatic and does not emit `on_selection_change`.
+Bottom tabs are drawn as downward-facing tabs rather than translated top
+tabs. Native controls are used where their API supports that orientation;
+backends without a native bottom-tab mode use Native's matching portable
+tab renderer for bottom placement.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.
