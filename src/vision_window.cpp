@@ -27,7 +27,7 @@ namespace
     constexpr int command_collections = 303;
     constexpr int command_tables = 304;
     constexpr int command_code_editor = 305;
-    constexpr int command_docking = 306;
+    constexpr int command_splitter = 306;
     constexpr int command_input_chrome = 307;
     constexpr int command_installed_font = 401;
 
@@ -50,7 +50,7 @@ namespace
 
 namespace vision
 {
-    vision_window::vision_window(bool open_docking_on_start,
+    vision_window::vision_window(bool open_splitter_on_start,
                                  bool open_input_chrome_on_start)
         : native::app_wnd("Vision Native Feature Gallery",
                           36, 36, 820, 660)
@@ -76,18 +76,18 @@ namespace vision
         , _show_collections("Collections...", 204, 566, 130, 30)
         , _show_tables("Tables...", 348, 566, 110, 30)
         , _show_code_editor("Code editor...", 472, 566, 130, 30)
-        , _show_docking("Docking...", 616, 566, 150, 30)
+        , _show_splitter("Split view...", 616, 566, 150, 30)
         , _show_input_chrome("Input and window chrome...",
                              20, 606, 210, 30)
         , _status("Starting portable feature gallery...")
-        , _open_docking_on_start(open_docking_on_start)
+        , _open_splitter_on_start(open_splitter_on_start)
         , _open_input_chrome_on_start(open_input_chrome_on_start)
         , _inspector(*this)
         , _layout(*this)
         , _collections(*this)
         , _tables(*this)
         , _code_editor(*this)
-        , _docking(*this)
+        , _splitter(*this)
         , _input_chrome(*this)
         , _dialog(*this)
         , _open_image(*this, "Open PNG or JPEG")
@@ -141,7 +141,7 @@ namespace vision
                  << std::pair<int, std::string>(
                         command_code_editor, "Code &editor")
                  << std::pair<int, std::string>(
-                        command_docking, "Docking &workspace")
+                        command_splitter, "&Split view")
                  << std::pair<int, std::string>(
                         command_input_chrome,
                         "&Input and window chrome"))
@@ -213,8 +213,8 @@ namespace vision
             this, &vision_window::on_show_tables);
         _show_code_editor.on_click.connect(
             this, &vision_window::on_show_code_editor);
-        _show_docking.on_click.connect(
-            this, &vision_window::on_show_docking);
+        _show_splitter.on_click.connect(
+            this, &vision_window::on_show_splitter);
         _show_input_chrome.on_click.connect(
             this, &vision_window::on_show_input_chrome);
         _dialog.on_modal_close.connect(
@@ -245,7 +245,7 @@ namespace vision
         create_child(_show_collections, *this);
         create_child(_show_tables, *this);
         create_child(_show_code_editor, *this);
-        create_child(_show_docking, *this);
+        create_child(_show_splitter, *this);
         create_child(_show_input_chrome, *this);
 
         try {
@@ -255,8 +255,8 @@ namespace vision
             set_status(std::string("Startup feature error: ") +
                        error.what());
         }
-        if (_open_docking_on_start)
-            native::app::post([this] { show_docking(); });
+        if (_open_splitter_on_start)
+            native::app::post([this] { show_splitter(); });
         if (_open_input_chrome_on_start)
             native::app::post([this] { show_input_chrome(); });
         return true;
@@ -390,8 +390,8 @@ namespace vision
             on_show_tables();
         } else if (command == command_code_editor) {
             on_show_code_editor();
-        } else if (command == command_docking) {
-            on_show_docking();
+        } else if (command == command_splitter) {
+            on_show_splitter();
         } else if (command == command_input_chrome) {
             on_show_input_chrome();
         } else if (command == _reset_image_command) {
@@ -503,8 +503,8 @@ namespace vision
         return true;
     }
 
-    bool vision_window::on_show_docking() {
-        show_docking();
+    bool vision_window::on_show_splitter() {
+        show_splitter();
         return true;
     }
 

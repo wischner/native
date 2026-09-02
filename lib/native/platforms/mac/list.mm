@@ -47,7 +47,7 @@ namespace
 {
     NSView *parent(native::list *c) {
         auto *p = c->get_parent();
-        NSView *view = mac::parent_view(p);
+        NSView *view = mac::parent_view(p, c);
         if (!view)
             throw std::runtime_error(
                 "macOS: list requires a created parent.");

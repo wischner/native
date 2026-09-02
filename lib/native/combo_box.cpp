@@ -26,9 +26,15 @@ namespace native
 
     combo_box::combo_box(const std::vector<std::string> &items,
                          combo_box_style style,
+                         const point &position,
+                         const size &dimensions)
+        : combo_box(items, style, position.x, position.y,
+                    dimensions.w, dimensions.h) {}
+
+    combo_box::combo_box(const std::vector<std::string> &items,
+                         combo_box_style style,
                          const rect &bounds)
-        : combo_box(items, style, bounds.p.x, bounds.p.y,
-                    bounds.d.w, bounds.d.h) {}
+        : combo_box(items, style, bounds.p, bounds.d) {}
 
     combo_box::~combo_box() { destroy(); }
 
@@ -42,6 +48,8 @@ namespace native
             _selected_index = -1;
             if (_style == combo_box_style::drop_down_list)
                 _text.clear();
+        } else if (_selected_index >= 0) {
+            _text = _items[static_cast<std::size_t>(_selected_index)];
         }
         if (_created) {
             apply_items();
@@ -144,21 +152,27 @@ namespace native
 
     void combo_box::on_native_selection(int index) {
         validate_index(index);
+        const int previous_index = _selected_index;
+        const std::string previous_text = _text;
         _selected_index = index;
         _text = index >= 0 ? _items[static_cast<std::size_t>(index)]
                            : std::string();
-        on_selection_change.emit(index);
-        on_text_change.emit(_text);
+        if (_selected_index != previous_index)
+            on_selection_change.emit(index);
+        if (_text != previous_text)
+            on_text_change.emit(_text);
     }
 
     void combo_box::on_native_text(const std::string &text) {
         if (_style != combo_box_style::editable)
             return;
+        const std::string previous_text = _text;
         _text = text;
         const auto found = std::find(_items.begin(), _items.end(), text);
         _selected_index = found == _items.end() ? -1
             : static_cast<int>(found-_items.begin());
-        on_text_change.emit(_text);
+        if (_text != previous_text)
+            on_text_change.emit(_text);
     }
 
     void combo_box::on_native_drop_down(bool open) {

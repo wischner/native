@@ -326,10 +326,7 @@ namespace
         native::tree_view &tree,
         collection_state &state) {
         native::wnd *parent = tree.get_parent();
-        Widget parent_widget = parent
-                                   ? linux::openmotif::wnd_bindings
-                                         .handle_from_object(parent)
-                                   : nullptr;
+        Widget parent_widget = linux::openmotif::parent_widget(&tree);
         if (!parent || !parent->get_created() || !parent_widget)
             throw std::runtime_error(
                 "Motif: tree_view requires a created parent.");

@@ -25,7 +25,10 @@ namespace native
         inset,
         popup,
         header,
-        table_header
+        table_header,
+        // Native status-strip background and individual cell divider.
+        status,
+        status_part
     };
 
     // Selects row-shaped or tile-shaped native selection painting.
@@ -55,16 +58,6 @@ namespace native
         close,
         pin,
         unpin
-    };
-
-    // Selects one target in a docking-guide compass.
-    enum class dock_guide_kind
-    {
-        center,
-        left,
-        right,
-        top,
-        bottom
     };
 
     // Selects a separator's logical orientation.
@@ -152,11 +145,6 @@ namespace native
             // unused header space can stretch the trailing visible column
             // without changing its semantic/model width.
             bool table_fill_last_column = false;
-            // Width of an interactive docking boundary. Decorative
-            // separators remain governed by separator_extent.
-            int dock_splitter_extent = 7;
-            int dock_guide_size = 32;
-            int dock_guide_gap = 2;
         };
 
         // Stores colors used when a backend must emulate native
@@ -331,12 +319,6 @@ namespace native
             caption_button_kind kind,
             const state &element_state);
 
-        // Draw one native-looking docking-guide target.
-        virtual theme &draw_dock_guide(
-            const rect &bounds,
-            dock_guide_kind kind,
-            const state &element_state);
-
         // Draw a native separator across its supplied bounds.
         virtual theme &draw_separator(
             const rect &bounds,
@@ -380,13 +362,6 @@ namespace native
         theme &draw_sort_indicator_fallback(
             const rect &bounds,
             sort_indicator_state direction,
-            const state &element_state);
-
-        // Draw a docking-guide target through portable graphics and the
-        // backend's native button renderer.
-        theme &draw_dock_guide_fallback(
-            const rect &bounds,
-            dock_guide_kind kind,
             const state &element_state);
 
         // Draw a separator through portable graphics.

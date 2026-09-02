@@ -1,0 +1,36 @@
+# Split views and tabs
+
+`split_view` places two borrowed child windows on opposite sides of a native
+separator. Construct it with both uncreated panes, choose an orientation, and
+then parent the split view like any other control:
+
+```cpp
+native::list project({"include", "lib", "tests"});
+native::text_edit editor("", native::text_edit_mode::multi_line);
+native::split_view split(
+    project,
+    editor,
+    native::split_orientation::horizontal,
+    native::rect(20, 20, 720, 440));
+
+split.set_ratio(0.3f)
+     .set_minimums(140, 220);
+split.set_parent(&window);
+```
+
+`horizontal` places panes left and right; `vertical` places them top and
+bottom. `set_ratio()` is programmatic and signal-silent. A user drag updates
+the cached ratio and emits `on_ratio_change`.
+
+The implementation uses `BSplitView`, `XmPanedWindow`, `WMSplitView`, and
+`NSSplitView` on their respective backends. Other systems use their normal
+native child-host mechanism and the portable divider interaction.
+
+`tab_view` borrows one child window per item and creates only the selected
+page. Add pages with `add_item()`, select with `set_selected_index()`, and
+listen to `on_selection_change` for user-originated changes. Native tab
+backends include `BTabView`, `XmNotebook`, `WMTabView`, `NSTabView`, and the
+Win32 tab common control.
+
+Both controls detach borrowed children during destruction. The application
+must keep page and pane objects alive longer than their containing control.

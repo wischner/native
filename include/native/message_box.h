@@ -43,6 +43,8 @@ namespace native
     {
     public:
         // Show an owner-modal standard dialog with one to three buttons.
+        // The owner must already be created. Closing the window returns
+        // cancel when that button is present, and none otherwise.
         static message_box_result show(
             app_wnd &owner,
             const std::string &message,

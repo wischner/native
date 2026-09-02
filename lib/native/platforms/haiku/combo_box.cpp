@@ -176,11 +176,11 @@ namespace native
 
     void combo_box::create() const {
         if (_created) return;
-        BView *parent = haiku::parent_view(get_parent());
+        auto *self = const_cast<combo_box *>(this);
+        BView *parent = haiku::parent_view(get_parent(), self);
         if (!parent || !parent->Window())
             throw std::runtime_error(
                 "Haiku: combo box requires a created parent.");
-        auto *self = const_cast<combo_box *>(this);
         auto *state = new haiku::haiku_combo_box;
         auto *root = new native_combo_root(
             BRect(_bounds.p.x, _bounds.p.y,

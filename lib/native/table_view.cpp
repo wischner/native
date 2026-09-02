@@ -583,8 +583,8 @@ namespace native
             return;
         // Keep the header surface inside the table's inset viewport edge.
         // The distinct semantic kind lets a backend match native column
-        // headers without changing accordion, collection, or docking
-        // headers which use the ordinary header role.
+        // headers without changing other collection headers which use
+        // the ordinary header role.
         appearance.draw_surface(
             rect(static_cast<coord>(left),
                  static_cast<coord>(top),

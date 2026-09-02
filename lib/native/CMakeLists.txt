@@ -29,11 +29,14 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/software_image.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/software_text.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/rotated_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/non_client.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ruler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/owned_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modeless_wnd.cpp
@@ -50,7 +53,6 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/control_render_access.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/dock.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp

@@ -539,6 +539,24 @@ namespace windows
                     return windows::handle_tree_notify(
                         tree, notification);
                 }
+                if (auto *tabs =
+                        dynamic_cast<native::tab_view *>(child)) {
+                    if (notification->code == TCN_SELCHANGE) {
+                        const int selected = TabCtrl_GetCurSel(
+                            notification->hwndFrom);
+                        if (selected >= 0 &&
+                            !tabs->get_item(
+                                static_cast<std::size_t>(selected))
+                                 .get_enabled()) {
+                            TabCtrl_SetCurSel(
+                                notification->hwndFrom,
+                                tabs->get_selected_index());
+                        } else if (selected >= 0) {
+                            tabs->on_native_selection(selected);
+                        }
+                    }
+                    return 0;
+                }
                 if (auto *icons =
                         dynamic_cast<native::icon_view *>(child)) {
                     auto *binding = windows::icon_view_bindings

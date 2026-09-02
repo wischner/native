@@ -37,7 +37,7 @@ namespace
     // Return the created native parent view.
     BView *parent_view(native::text_edit *editor) {
         native::wnd *parent = editor->get_parent();
-        BView *view = haiku::parent_view(parent);
+        BView *view = haiku::parent_view(parent, editor);
         if (!parent || !parent->get_created() || !view ||
             !view->Window())
             throw std::runtime_error(

@@ -149,6 +149,10 @@ namespace linux::sdl2
     // Update menu hover state from pointer motion.
     bool handle_menu_motion(sdl2_menu *m, int x, int y, int win_w);
 
+    // Activate a portable accelerator from an SDL key transition.
+    bool handle_menu_key(sdl2_menu *menu,
+                         const SDL_KeyboardEvent &event);
+
     // Update emulated buttons from a mouse-button transition.
     bool handle_button_mouse(
         native::wnd *owner, int x, int y, bool pressed, bool released);
@@ -204,6 +208,7 @@ namespace linux::sdl2
     void render_text_edits(native::wnd *, native::gpx &);
 
     void render_collections(native::wnd *, native::gpx &);
+    void render_tab_views(native::wnd *, native::gpx &);
     bool handle_collection_mouse(native::wnd *,
                                  int,
                                  int,
@@ -256,6 +261,10 @@ namespace linux::sdl2
         text_edit_bindings;
     extern native::bindings<native::accordion *, sdl2_collection *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, sdl2_collection *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, sdl2_collection *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, sdl2_collection *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, sdl2_collection *>
@@ -271,6 +280,7 @@ namespace linux::sdl2
     extern std::vector<native::button *> buttons;
     extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::accordion *> accordions;
+    extern std::vector<native::tab_view *> tab_views;
     extern std::vector<native::icon_view *> icon_views;
     extern std::vector<native::tree_view *> tree_views;
     extern std::vector<native::table_view *> table_views;

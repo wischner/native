@@ -35,10 +35,14 @@ namespace
             : BView(frame,
                     "native_canvas",
                     B_FOLLOW_ALL,
-                    B_WILL_DRAW | B_FRAME_EVENTS)
+                    B_WILL_DRAW | B_FRAME_EVENTS |
+                        B_FULL_UPDATE_ON_RESIZE)
             , _owner(owner)
             , _pressed_button(native::mouse_button::none) {
-            SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+            // Draw() clears every invalid region.  Keeping an opaque view
+            // color would make the app_server erase it once beforehand,
+            // which visibly flashes during frequent non-client updates.
+            SetViewColor(B_TRANSPARENT_COLOR);
         }
 
         void Draw(BRect update_rect) override {
@@ -233,13 +237,13 @@ namespace haiku
 
     void native_window::FrameResized(float new_width,
                                      float new_height) {
+        BWindow::FrameResized(new_width, new_height);
+
         if (_owner) {
             native::size s(static_cast<native::dim>(new_width + 1.0f),
                            static_cast<native::dim>(new_height + 1.0f));
             _owner->on_native_resize(s);
         }
-
-        BWindow::FrameResized(new_width, new_height);
     }
 
     native::app_wnd *native_window::owner() const {

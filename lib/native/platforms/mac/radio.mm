@@ -68,7 +68,7 @@ namespace
     }
     NSView *parent(native::radio *c) {
         auto *p = c->get_parent();
-        NSView *view = mac::parent_view(p);
+        NSView *view = mac::parent_view(p, c);
         if (!view)
             throw std::runtime_error(
                 "macOS: radio requires a created parent.");

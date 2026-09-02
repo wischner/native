@@ -15,6 +15,7 @@
 #include <native/menu.h>
 
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -178,7 +179,9 @@ namespace
             for (const auto &item : top.items) {
                 if (!item.separator)
                     popup_width =
-                        std::max(popup_width, item.label.size() + 3u);
+                        std::max(popup_width,
+                            item.label.size() + item.shortcut.size() +
+                            (item.shortcut.empty() ? 3u : 7u));
             }
             if (popup_width < 8u) {
                 popup_width = 8u;
@@ -234,7 +237,11 @@ namespace
                                       popup_width > 3 ? popup_width-3 : 1,
                                       '-'),
                                   popup_width)
-                            : menu_item_text(item.label, popup_width)),
+                            : menu_item_text(
+                                item.shortcut.empty()
+                                    ? item.label
+                                    : item.label + "    " + item.shortcut,
+                                popup_width)),
                     0,
                     static_cast<WORD>(item_i),
                     static_cast<WORD>(popup_width),
@@ -283,6 +290,42 @@ namespace native
         state.installed = true;
     }
 } // namespace native
+
+namespace linux::gemix
+{
+    bool handle_menu_key(native::app_wnd *owner,
+                         WORD modifiers,
+                         WORD key) {
+        if (!owner)
+            return false;
+        const int ascii = key & 0xff;
+        const int scan = (key >> 8) & 0xff;
+        for (const auto &top : owner->menu.tops()) {
+            for (const auto &item : top.items) {
+                if (item.separator || item.shortcut.empty())
+                    continue;
+                const auto parsed = native::detail::parse_menu_shortcut(
+                    item.shortcut);
+                if (parsed.control != ((modifiers & 0x04) != 0) ||
+                    parsed.alt != ((modifiers & 0x08) != 0) ||
+                    parsed.shift != ((modifiers & 0x03) != 0))
+                    continue;
+                bool matches = false;
+                if (parsed.key.size() == 1) {
+                    matches = std::tolower(static_cast<unsigned char>(
+                        parsed.key[0])) == std::tolower(ascii);
+                } else if (parsed.key == "F4" || parsed.key == "f4") {
+                    matches = scan == 0x3e;
+                }
+                if (matches) {
+                    owner->on_native_menu(item.id);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+} // namespace linux::gemix
 
 namespace linux::gemix
 {

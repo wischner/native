@@ -13,6 +13,7 @@
 
 #include <native/accordion.h>
 #include <native/icon_view.h>
+#include <native/tab_view.h>
 #include <native/theme.h>
 #include <native/tree_view.h>
 
@@ -215,6 +216,18 @@ namespace native::detail
             }
         }
         return false;
+    }
+
+    void draw_tab_view_at(tab_view &control,
+                          gpx &graphics,
+                          point origin) {
+        auto saved = graphics.save_state();
+        offset_graphics translated(
+            graphics, origin, control.get_dimensions());
+        const rect bounds(0, 0,
+                          control.get_dimensions().w,
+                          control.get_dimensions().h);
+        control.on_native_paint(wnd_paint_event(bounds, translated));
     }
 
     void draw_icon_view(icon_view &control, gpx &graphics) {

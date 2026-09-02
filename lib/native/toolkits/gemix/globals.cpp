@@ -20,6 +20,7 @@ namespace linux::gemix
     std::vector<native::combo_box *> combo_boxes;
     std::vector<native::text_edit *> text_edits;
     std::vector<native::accordion *> accordions;
+    std::vector<native::tab_view *> tab_views;
     std::vector<native::icon_view *> icon_views;
     std::vector<native::tree_view *> tree_views;
     std::vector<native::table_view *> table_views;
@@ -92,6 +93,7 @@ namespace linux::gemix
         combo_boxes.clear();
         text_edits.clear();
         accordions.clear();
+        tab_views.clear();
         icon_views.clear();
         tree_views.clear();
         table_views.clear();

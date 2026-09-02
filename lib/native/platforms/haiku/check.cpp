@@ -26,7 +26,7 @@ namespace
     }
     BView *parent_view(native::check *c) {
         auto *p = c->get_parent();
-        BView *view = haiku::parent_view(p);
+        BView *view = haiku::parent_view(p, c);
         if (!p || !p->get_created() || !view || !view->Window())
             throw std::runtime_error(
                 "Haiku: check requires a created parent.");

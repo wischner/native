@@ -173,11 +173,11 @@ namespace native
     void accordion::create() const {
         if (_created)
             return;
-        NSView *parent = mac::parent_view(get_parent());
+        auto *self = const_cast<accordion *>(this);
+        NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
                 "macOS: accordion requires a created parent.");
-        auto *self = const_cast<accordion *>(this);
         native_accordion_stack *stack = [[native_accordion_stack alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,

@@ -383,6 +383,40 @@ namespace
             return *this;
         }
 
+        theme &draw_surface(
+            const native::rect &r,
+            native::surface_kind kind,
+            const state &s) override {
+            if (kind != native::surface_kind::status &&
+                kind != native::surface_kind::status_part) {
+                return theme::draw_surface(r, kind, s);
+            }
+
+            const bool painted = with_view(_g, [&](BView *view) {
+                const rgb_color base =
+                    ui_color(B_PANEL_BACKGROUND_COLOR);
+                const BRect update(
+                    r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
+                if (kind == native::surface_kind::status) {
+                    BRect content(update);
+                    be_control_look->DrawMenuBarBackground(
+                        view, content, update, base);
+                    view->SetHighColor(tint_color(
+                        base, B_DARKEN_2_TINT));
+                    view->StrokeLine(update.LeftTop(),
+                                     update.RightTop());
+                    return;
+                }
+
+                view->SetHighColor(tint_color(
+                    base, B_DARKEN_2_TINT));
+                view->StrokeLine(
+                    BPoint(update.left, update.top + 3.0f),
+                    BPoint(update.left, update.bottom - 3.0f));
+            });
+            return painted ? *this : theme::draw_surface(r, kind, s);
+        }
+
         theme &draw_disclosure(
             const native::rect &r,
             native::disclosure_state disclosure,

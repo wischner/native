@@ -100,13 +100,11 @@ namespace native
     void combo_box::create() const {
         if (_created) return;
         auto *parent = get_parent();
-        Widget parent_widget = parent
-            ? linux::openmotif::wnd_bindings.handle_from_object(parent)
-            : nullptr;
+        auto *self = const_cast<combo_box *>(this);
+        Widget parent_widget = linux::openmotif::parent_widget(self);
         if (!parent || !parent->get_created() || !parent_widget)
             throw std::runtime_error(
                 "Motif: combo box requires a created parent.");
-        auto *self = const_cast<combo_box *>(this);
         Arg arguments[9];
         Cardinal count = 0;
         XtSetArg(arguments[count], XmNx, _bounds.p.x); ++count;

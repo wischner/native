@@ -94,11 +94,11 @@ namespace native
 
     void combo_box::create() const {
         if (_created) return;
-        NSView *parent = mac::parent_view(get_parent());
+        auto *self = const_cast<combo_box *>(this);
+        NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
                 "macOS: combo box requires a created parent.");
-        auto *self = const_cast<combo_box *>(this);
         NSComboBox *combo = [[NSComboBox alloc]
             initWithFrame:NSMakeRect(_bounds.p.x, _bounds.p.y,
                                      _bounds.d.w, _bounds.d.h)];

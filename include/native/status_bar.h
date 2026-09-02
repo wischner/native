@@ -24,23 +24,33 @@ namespace native
     class status_bar : public non_client
     {
     public:
+        // Construct a bottom-edge status bar with a fixed height.
         explicit status_bar(wnd &owner, int height = 22);
 
+        // Return the single flexible status text.
         const std::string &get_text() const;
+
+        // Replace the bar with one flexible text part.
         status_bar &set_text(const std::string &text);
 
+        // Return the ordered fixed and flexible status parts.
         const std::vector<status_bar_part> &get_parts() const;
+
+        // Replace the bar with ordered status parts.
         status_bar &set_parts(std::vector<status_bar_part> parts);
 
     protected:
+        // Paint the complete bar and its resolved parts.
         void draw(gpx &graphics, const rect &bounds) override;
 
+        // Draw the native-themed bar background.
         virtual void draw_background(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,
             const theme::state &state);
 
+        // Draw one resolved fixed or flexible status part.
         virtual void draw_part(gpx &graphics,
                                theme &appearance,
                                const rect &bounds,

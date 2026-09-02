@@ -219,7 +219,7 @@ event translation with identical public behavior. Add each new window type to
 every supported backend and keep all platform differences below the public API.
 
 Interactive controls are windows, not theme drawings. `button`, `check`,
-`radio`, `list`, `text_edit`, `code_edit`, `accordion`, `icon_view`,
+`radio`, `list`, `text_edit`, `code_edit`, `accordion`, `tab_view`, `icon_view`,
 `tree_view`, and `table_view` must use the platform or toolkit's native
 control when one exists. A backend without a widget set may emulate the
 control through its own theme and event loop. Programmatic property setters
@@ -234,6 +234,11 @@ unrelated controls into a `controls` module or add a `_box` suffix to the
 `accordion` owns section state but borrows its section content windows. Its
 default single mode leaves all headers visible and assigns remaining height to
 the expanded body; multiple mode keeps independent expanded states.
+`tab_view` follows the same borrowing rule: it owns stable `tab_item`
+descriptors but never owns the page windows. Only the selected page is
+created. Programmatic selection is silent and only native user selection emits
+`on_selection_change`. Backends use a standard native tab peer when one exists
+and retain the same model and lifecycle through a themed host otherwise.
 `icon_view` remains distinct from the text-only `list`: it owns shared image
 references and item values, wraps image-and-label tiles, scrolls internally,
 and exposes single selection plus activation. Windows maps it to
@@ -247,7 +252,7 @@ interactive controls and menus. It must not replace an available XView widget
 with a custom-painted substitute. Custom OPEN LOOK visuals use OLGX and the
 active Panel color map so their font, geometry, colors, and state match those
 native items. Canvas-backed collection panels are frame siblings rather than
-children of the portable docking surface; their frame position must therefore
+children of the portable composite surface; their frame position must therefore
 include the complete portable ancestor offset and the top-level menu height.
 They must never cover a host-owned tab strip or splitter. Invalidating a
 custom collection paints into its backing Pixmap and copies the requested
@@ -262,7 +267,7 @@ renderer; a table scrollbar begins below its header, and a horizontal bar
 occupies the reserved bottom extent without overlapping the corner. OPEN LOOK
 alternating table rows use the active control CMS background and highlight
 colors rather than hard-coded RGB values.
-OPEN LOOK docking captions use compact, rounded button geometry and the Panel
+OPEN LOOK compact captions use rounded button geometry and the Panel
 control colors, never inverse selection colors or the white 3-D OLGX edge.
 The close mark is drawn directly on that caption fill and must not invoke the
 ordinary button-background painter. Pin states use the OLGX menu pushpin
@@ -283,7 +288,7 @@ and indicator pixmaps. The reference session normalizes the WINGs panel gray
 to the desktop's `#AAAAAA` inactive-title color; only editable text/document
 surfaces are white. Tables use the session's `#D7D7D7` body, `#C8C8C8`
 alternate row, `#555555` selection, and `#808080` header roles. Table,
-accordion/collection, and docking headers share the same compact edge recipe:
+accordion, collection, and table headers share the same compact edge recipe:
 white on the left only, black on top, and dark on the right and bottom.
 
 Window Maker application menus are click-persistent context-style popups, not
@@ -774,7 +779,7 @@ a one-pixel black top/left and white bottom/right relief around that viewport;
 the adjacent WINGs scrollers remain separately framed native controls, matching
 the Task Manager table construction. Column-header cells begin inside that
 viewport relief and use their distinct table-header surface role. Window Maker
-table, collection, and docking headers have a white left edge only; their top
+table and collection headers have a white left edge only; their top
 edge remains black, matching the reference Task Manager rather than an
 ordinary raised-button relief.
 
@@ -907,113 +912,32 @@ selection preservation and removal, disclosure hit testing, disabled rows,
 classic keyboard navigation, scrolling, programmatic silence, exact
 user-action signal counts, and live create/show/destroy on every backend.
 
-## 16. Docking workspaces
+## 16. Split views and tabs
 
-Docking is a portable window-management subsystem, not a new layout policy
-for every window and not a replacement for top-level ownership. A
-`dock_host` coordinates one borrowed `wnd` surface and installs one owned
-`dock_layout_manager` on that surface. The layout manager owns the portable
-split-and-tab tree and performs geometry only. The host owns interaction,
-painting, content reparenting, floating-shell lifecycle, and persistence
-coordination.
+`split_view` is a two-pane child control. It borrows exactly two uncreated
+`wnd` objects, owns neither, and detaches both when destroyed. Orientation,
+ratio, pane minimums, and separator extent are backend-neutral cached state.
+Programmatic changes are signal-silent; a native or pointer drag updates the
+ratio first and then emits one `on_ratio_change` notification.
 
-Each `dock_pane` has a unique non-zero stable ID, UTF-8 title, borrowed child
-`wnd`, minimum content size, and close/float/pin capabilities. The application
-must keep the pane content and docking surface alive longer than the host.
-The host never owns pane content. A pane is in exactly one of four states:
-docked, floating, auto-hidden, or hidden. An auto-hidden pane retains its edge
-and appears as a collapsed edge tab; revealing it creates a temporary overlay
-with a compact caption, pin/unpin button, and optional close button. A tab node
-contains one or more pane IDs and one active pane; a split node contains
-exactly two child nodes, an orientation, and a clamped proportional ratio.
-Empty nodes are pruned and one-child splits collapse immediately.
+Backends use their actual container widget where one exists: Haiku
+`BSplitView`, Motif `XmPanedWindow`, AppKit `NSSplitView`, and Window Maker
+`WMSplitView`. The Motif adapter keeps both pane children adjustable and uses
+the native sash. Backends without a general-purpose stock splitter use a
+native child host and the shared separator interaction without introducing
+top-level window management.
 
-Vertical auto-hide tabs paint the complete pane title rotated 90 degrees,
-clockwise on the left and counter-clockwise on the right so glyph tops face
-the dock content. Top and bottom edge titles remain horizontal. All four
-directions use native control fonts and ellipsize within the tab extent.
-Backends that expose pane content as native child windows must realize a
-revealed pane inside a raised child overlay; host-surface pixels are not an
-overlay because sibling native controls stack above them. Collapsing or
-pinning reparents the borrowed content through the normal lifecycle and
-restores the unchanged dock tree, bounds, selection, and control model.
-Pointer motion and clicks arriving through sibling pane controls participate
-in auto-hide dismissal so crossing directly into a native table, tree, or
-editor cannot leave the overlay stuck open.
+`tab_view` independently borrows any number of page windows and creates only
+the selected page. Native implementations use the platform tab control,
+including Motif `XmNotebook`, Haiku `BTabView`, AppKit `NSTabView`, Win32 tab
+common controls, and Window Maker `WMTabView`. A backend wrapper may provide a
+page-local content host, but it must remain below the public API boundary.
 
-Only the active content window of each docked tab group has a created native
-resource. Switching tabs destroys the previous resource and creates the new
-one without changing either pane's portable model. Floating destroys and
-reparents the content into a `modeless_wnd`; docking performs the reverse
-transition. A floating shell is independently positioned in screen
-coordinates, remains owned by the host's `app_wnd`, and keeps the application
-event loop and owner interactive. Closing a closable native floating shell
-hides its pane. A non-closable floating pane returns to the dock if its native
-shell is closed. A floating tool pane has one client drag caption rather than
-duplicating that caption in the native frame; OPEN LOOK suppresses the outer
-frame label and renders the client caption with its compact rounded OPEN LOOK
-button style.
-
-Pointer interaction begins only on host-owned tab strips, close marks, and
-splitters, so native pane controls retain their own event handling. Splitters
-have an independent native-theme extent rather than borrowing the decorative
-separator width. Hover and press expose their resize affordance; dragging
-updates the split continuously with recursive minimum-size clamping and emits
-one `split_resized` event on release. Backends must retain pointer delivery
-from press through release even after the boundary moves. A titled tab strip
-remains exposed even when its node contains a single pane, giving
-every docked pane a stable drag handle. Dragging a docked tab outside the host
-floats it. Dragging a floating client tab over the host docks it. Once dragging
-begins, one five-part docking compass appears at
-the host client center. Its directional targets create left, right, top, or
-bottom splits, while its center target creates or reorders tabs. Each target
-uses a raised native child surface that persists for the drag and the active
-backend's semantic native button and palette drawing rather than application-
-owned artwork. A compact raised destination label states both the selected
-operation and the target pane. Pointer movement must not repaint the native pane controls
-beneath those surfaces; peerless/custom surfaces may retain a host-painted
-preview fallback.
-Backends that expose root or screen pointer coordinates must retain them with
-the portable motion notification. A moving floating shell uses those absolute
-coordinates for shell placement and host hit testing; repeatedly adding local
-coordinates to a shell whose Configure events lag behind motion is forbidden
-because it makes undocked panes drift and prevents redocking.
-The pin button collapses a docked pane to its nearest edge; an unpin button
-restores the revealed pane to the tree. Leaving a revealed overlay collapses
-it without hiding or unregistering its pane. Tabs, compact captions,
-separators, close/pin marks, and drop previews use the active backend's
-semantic theme surfaces, selections, focus, palette, fonts, and metrics. The
-host exposes protected virtual stages for those parts, including the
-destination label and each docking guide target. No shared painter may
-hard-code the appearance of another platform.
-
-Programmatic dock, float, auto-hide, pin, reveal, collapse, close, show,
-activate, reorder, ratio, and restore operations update portable and native
-state without emitting `on_change`.
-Each accepted pointer or native-shell action updates the cache first and
-calls the virtual `on_native_change()` hook exactly once; its base
-implementation emits one `dock_event`. The event uses stable pane/node IDs and
-never contains a native handle.
-
-`dock_layout_state` is the complete typed persistence value. Native Dock v2
-serialization stores the split tree, ratios, tab order and active tab,
-floating screen bounds, hidden IDs, and auto-hidden pane/edge pairs, but not
-pane titles or content. The parser also accepts Native Dock v1 values and
-treats them as having no auto-hidden panes. A
-restore validates structure, unique IDs, finite ratios, and non-empty floating
-bounds before changing live state. Persisted IDs not registered by the
-application are ignored; registered IDs absent from an older snapshot are
-docked by default. Malformed input throws without exposing a partially parsed
-layout.
-
-The host deliberately reuses existing child-control, top-level
-`modeless_wnd`, paint, theme, and mouse paths. It therefore requires no
-backend-specific substitute widget: all backends must support docking through
-those already-required contracts. Tests must cover tree normalization,
-minimum-size geometry, typed and encoded persistence, malformed state,
-programmatic silence, pointer signal counts, native content recreation,
-floating reparenting, and complete create/show/destroy transitions.
-
+Split views and tabs compose normally and may be placed by any layout manager.
+Neither control creates floating windows, persists layouts, draws drop targets,
+or changes top-level ownership. Tests cover borrowed lifetime, minimum geometry,
+orientation, programmatic silence, user event counts, and native
+create/show/destroy transitions.
 ## 17. Input controls, standard dialogs, and non-client chrome
 
 The public input and chrome API consists of `combo_box`, the `list_box` alias,
@@ -1034,6 +958,12 @@ backend theme and input dispatcher.
 `list_box` is an alias of `list`, not a second list implementation. This keeps
 selection semantics, native widgets, drawing extension points, and event
 hooks identical.
+
+The Haiku status-strip painter follows the compact system `StatusView`
+convention and uses `BControlLook` for its background. Do not substitute
+`BStatusBar`: that class represents progress state and has different layout
+and painting semantics. The root Haiku canvas owns background clearing and
+must request a complete update when a resize moves non-client strips.
 
 `directory_dialog` shares `file_dialog`'s logical modal lifecycle and accepted
 path storage. It must invoke the platform's standard folder chooser or folder

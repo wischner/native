@@ -169,6 +169,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ## Documentation rules
 
 - Keep docs aligned with the actual build flow.
+- Name Markdown files with uppercase words separated by hyphens and a lowercase
+  `.md` suffix, for example `BACKEND-OPEN-ISSUES.md`. Conventional single-word
+  names such as `README.md` remain valid.
 - `docs/manuals/BOOK-OF-NATIVE.md` and `docs/manuals/book-of-native/` describe
   how the current code works; they are not a roadmap.
 - Do not add speculative features, future plans, or "coming soon" text to the book.
@@ -179,8 +182,8 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 - Do not maintain generated API docs yet; `docs/api` should stay absent until that work is intentionally started.
 - If Linux build paths or targets change, update:
   - `README.md`
-  - `docs/manuals/book-of-native/getting-started.md`
-  - `docs/manuals/book-of-native/build-system.md` when relevant
+  - `docs/manuals/book-of-native/GETTING-STARTED.md`
+  - `docs/manuals/book-of-native/BUILD-SYSTEM.md` when relevant
   - `.vscode/launch.json` and `.vscode/tasks.json` when debug paths or build commands change
 
 ## Vision program

@@ -19,14 +19,6 @@
 
 namespace
 {
-    constexpr int dock_project_left_command = 602;
-    constexpr int dock_close_properties_command = 603;
-    constexpr int dock_show_properties_command = 604;
-    constexpr int dock_save_layout_command = 605;
-    constexpr int dock_restore_layout_command = 606;
-    constexpr int dock_auto_hide_project_command = 607;
-    constexpr int dock_pin_project_command = 608;
-
     // Build one alpha-bearing procedural thumbnail using only the
     // public portable graphics API.
     std::shared_ptr<const native::img> make_thumbnail(
@@ -884,194 +876,37 @@ namespace vision
         return true;
     }
 
-    feature_docking::feature_docking(native::app_wnd &owner)
-        : native::modeless_wnd(owner,
-                               "Vision Docking Workspace",
-                               150,
-                               80,
-                               900,
-                               620)
-        , _project(make_tree_items())
-        , _editor(
-              "#include <native.h>\n\n"
-              "int program(int, char **) {\n"
-              "    // Drag a tab, resize a splitter, or float a pane.\n"
-              "    return 0;\n"
-              "}\n")
-        , _output(
-              "Build output\n"
-              "Docked controls retain their portable model state.\n",
-              native::text_edit_mode::multi_line)
-        , _dock(*this) {
-        native::table_column property;
-        property.id = 1;
-        property.title = "Property";
-        property.width = 130;
-        native::table_column value;
-        value.id = 2;
-        value.title = "Value";
-        value.width = 170;
-        _property_store.set_rows({
-            {1, {{1, {"Language", nullptr}},
-                 {2, {"C++20", nullptr}}}},
-            {2, {{1, {"Backend", nullptr}},
-                 {2, {"Native", nullptr}}}},
-            {3, {{1, {"Layout", nullptr}},
-                 {2, {"Docking", nullptr}}}},
-            {4, {{1, {"Persistence", nullptr}},
-                {2, {"NDOCK2", nullptr}}}}
-        });
-        _properties.set_columns({property, value})
-            .set_model(&_property_store)
-            .set_grid_lines(native::table_grid_lines::both);
-        _output.set_read_only(true);
-        _editor.set_language("cpp").set_show_line_numbers(true);
-
-        menu << "Panes"
-             << (native::menu_items("Float Project")
-                 << std::pair<int, std::string>(
-                        dock_project_left_command,
-                        "Dock Project Left")
-                 << std::pair<int, std::string>(
-                        dock_auto_hide_project_command,
-                        "Auto-hide Project")
-                 << std::pair<int, std::string>(
-                        dock_pin_project_command,
-                        "Pin Project")
-                 << std::pair<int, std::string>(
-                        dock_close_properties_command,
-                        "Close Properties")
-                 << std::pair<int, std::string>(
-                        dock_show_properties_command,
-                        "Show Properties")
-                 << std::pair<int, std::string>(
-                        dock_save_layout_command,
-                        "Save Layout")
-                 << std::pair<int, std::string>(
-                        dock_restore_layout_command,
-                        "Restore Layout"));
-        _float_project_command = menu.tops()[0].items[0].id;
-
-        on_wnd_create.connect(this, &feature_docking::on_create);
-        on_menu.connect(this, &feature_docking::on_menu_command);
-        _dock.on_change.connect(
-            this, &feature_docking::on_dock_change);
+    feature_splitter::feature_splitter(native::app_wnd &owner)
+        : native::modeless_wnd(owner, "Vision Split View",
+                               150, 80, 760, 500)
+        , _left({"Project", "Sources", "Resources", "Tests"},
+                0, 0, 240, 420)
+        , _right({"Editor", "Properties", "Output", "Preview"},
+                 0, 0, 440, 420)
+        , _split(_left, _right,
+                 native::split_orientation::horizontal,
+                 native::rect(20, 20, 720, 440)) {
+        _left.set_selected_index(0);
+        _right.set_selected_index(0);
+        _split.set_ratio(0.35f).set_minimums(140, 220);
+        on_wnd_create.connect(this, &feature_splitter::on_create);
+        _split.on_ratio_change.connect(
+            this, &feature_splitter::on_ratio_change);
     }
 
-    void feature_docking::install_default_layout() {
-        native::dock_pane editor(2, "Editor", _editor);
-        editor.closable = false;
-        editor.minimum_size = native::size(280, 180);
-        native::dock_pane project(1, "Project", _project);
-        project.minimum_size = native::size(160, 150);
-        native::dock_pane properties(3, "Properties", _properties);
-        properties.minimum_size = native::size(190, 150);
-        native::dock_pane output(4, "Output", _output);
-        output.minimum_size = native::size(260, 100);
-
-        _dock.add_pane(editor)
-            .add_pane(project, native::dock_position::left, 2)
-            .add_pane(properties, native::dock_position::right, 2)
-            .add_pane(output, native::dock_position::bottom, 2);
-        _saved_layout = _dock.serialize_layout();
-    }
-
-    bool feature_docking::on_create() {
-        if (!_dock.get_layout().get_pane(2)) {
-            install_default_layout();
-        } else {
-            // Reconcile native children after the modeless surface was
-            // closed and later created again.
-            _dock.set_layout_state(_dock.get_layout_state());
-        }
+    bool feature_splitter::on_create() {
+        _split.set_parent(this);
+        _split.create();
+        _split.show();
         return true;
     }
 
-    bool feature_docking::on_menu_command(int command) {
-        if (command == _float_project_command) {
-            const native::point position = get_position();
-            _dock.float_pane(
-                1,
-                native::rect(
-                    static_cast<native::coord>(position.x + 60),
-                    static_cast<native::coord>(position.y + 70),
-                    320,
-                    420));
-            set_title("Vision Docking Workspace - Project floated");
-        } else if (command == dock_project_left_command) {
-            _dock.dock(1, native::dock_position::left, 2);
-            set_title("Vision Docking Workspace - Project docked");
-        } else if (command == dock_auto_hide_project_command) {
-            _dock.auto_hide_pane(1, native::dock_position::left);
-            set_title("Vision Docking Workspace - Project auto-hidden");
-        } else if (command == dock_pin_project_command) {
-            if (_dock.get_layout().get_pane_location(1) ==
-                native::dock_pane_location::auto_hidden) {
-                _dock.pin_pane(1,
-                               native::dock_position::left,
-                               2);
-            }
-            set_title("Vision Docking Workspace - Project pinned");
-        } else if (command == dock_close_properties_command) {
-            _dock.close_pane(3);
-            set_title("Vision Docking Workspace - Properties closed");
-        } else if (command == dock_show_properties_command) {
-            _dock.show_pane(3, native::dock_position::right, 2);
-            set_title("Vision Docking Workspace - Properties shown");
-        } else if (command == dock_save_layout_command) {
-            _saved_layout = _dock.serialize_layout();
-            set_title("Vision Docking Workspace - Layout saved");
-        } else if (command == dock_restore_layout_command) {
-            if (!_saved_layout.empty())
-                _dock.restore_layout(_saved_layout);
-            set_title("Vision Docking Workspace - Layout restored");
-        } else {
-            return false;
-        }
-        return true;
-    }
-
-    bool feature_docking::on_dock_change(native::dock_event event) {
-        const char *action = "changed";
-        switch (event.action) {
-        case native::dock_action::activated:
-            action = "activated";
-            break;
-        case native::dock_action::docked:
-            action = "docked";
-            break;
-        case native::dock_action::floated:
-            action = "floated";
-            break;
-        case native::dock_action::closed:
-            action = "closed";
-            break;
-        case native::dock_action::shown:
-            action = "shown";
-            break;
-        case native::dock_action::tab_reordered:
-            action = "tab reordered";
-            break;
-        case native::dock_action::split_resized:
-            action = "split resized";
-            break;
-        case native::dock_action::auto_hidden:
-            action = "auto-hidden";
-            break;
-        case native::dock_action::pinned:
-            action = "pinned";
-            break;
-        case native::dock_action::auto_hide_revealed:
-            action = "auto-hide revealed";
-            break;
-        case native::dock_action::auto_hide_collapsed:
-            action = "auto-hide collapsed";
-            break;
-        case native::dock_action::layout_restored:
-            action = "layout restored";
-            break;
-        }
-        set_title(std::string("Vision Docking Workspace - ") + action);
+    bool feature_splitter::on_ratio_change(float ratio) {
+        set_title("Vision Split View - " +
+                  std::to_string(static_cast<int>(ratio*100.0f)) +
+                  "% / " +
+                  std::to_string(static_cast<int>((1.0f-ratio)*100.0f)) +
+                  "%");
         return true;
     }
 
@@ -1086,15 +921,23 @@ namespace vision
                           60, 118, 230, 28)
         , _list_box({"One", "Two", "Three", "Four", "Five"},
                     60, 174, 230, 146)
+        , _tab_general({"Native control", "Borrowed page", "Silent API selection"},
+                       0, 0, 220, 100)
+        , _tab_advanced({"User change signal", "Disabled tab support",
+                        "Selected page lifecycle"},
+                        0, 0, 220, 100)
+        , _tabs(330, 174, 250, 146)
         , _choose_folder("Select folder...", 330, 74, 150, 30)
         , _show_message("Three-button message...", 330, 118, 190, 30)
         , _directory(*this, "Select a Workspace Folder")
         , _horizontal_ruler(*this, native::window_edge::top, 24)
-        , _vertical_ruler(*this, native::window_edge::left, 34)
-        , _status_bar(*this, 24) {
+        , _vertical_ruler(*this, native::window_edge::left, 24)
+        , _status_bar(*this, 17) {
         _selection_combo.set_selected_index(0);
         _editable_combo.set_text("25 mm");
         _list_box.set_selected_index(1);
+        _tabs.add_item("General", _tab_general);
+        _tabs.add_item("Advanced", _tab_advanced);
         _horizontal_ruler.set_minor_tick(10).set_major_tick(50)
             .set_track_mouse(true);
         _vertical_ruler.set_minor_tick(10).set_major_tick(50)
@@ -1110,6 +953,8 @@ namespace vision
             this, &feature_input_chrome::on_combo_text);
         _list_box.on_selection_change.connect(
             this, &feature_input_chrome::on_list_selection);
+        _tabs.on_selection_change.connect(
+            this, &feature_input_chrome::on_tab_selection);
         _choose_folder.on_click.connect(
             this, &feature_input_chrome::on_choose_folder);
         _show_message.on_click.connect(
@@ -1127,6 +972,7 @@ namespace vision
                  static_cast<native::wnd *>(&_selection_combo),
                  static_cast<native::wnd *>(&_editable_combo),
                  static_cast<native::wnd *>(&_list_box),
+                 static_cast<native::wnd *>(&_tabs),
                  static_cast<native::wnd *>(&_choose_folder),
                  static_cast<native::wnd *>(&_show_message)}) {
             control->set_parent(this);
@@ -1144,15 +990,14 @@ namespace vision
                           native::point(60, 98));
         event.g.draw_text("Native list_box",
                           native::point(60, 152));
+        event.g.draw_text("Portable tab_view with borrowed pages",
+                          native::point(330, 152));
         event.g.draw_text(
             "The rulers and status bar occupy non-client edge strips.",
-            native::point(330, 184));
+            native::point(330, 334));
         event.g.draw_text(
             "Move the pointer over the client to update ruler tracking.",
-            native::point(330, 208));
-        event.g.draw_text(
-            "Open/save dialogs remain available in the main gallery.",
-            native::point(330, 246));
+            native::point(330, 356));
         return true;
     }
 
@@ -1173,6 +1018,14 @@ namespace vision
     bool feature_input_chrome::on_list_selection(int index) {
         _status_bar.set_parts({
             {"List row " + std::to_string(index+1), 0},
+            {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_tab_selection(int index) {
+        _status_bar.set_parts({
+            {"Tab: " + _tabs.get_item(
+                static_cast<std::size_t>(index)).get_title(), 0},
             {"minor 10 / major 50", 180}});
         return true;
     }

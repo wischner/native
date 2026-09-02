@@ -7,6 +7,8 @@
 
 #include <Application.h>
 #include <CheckBox.h>
+#include <TabView.h>
+#include <SplitView.h>
 #include <ListView.h>
 #include <OptionPopUp.h>
 #include <RadioButton.h>
@@ -38,6 +40,10 @@ namespace haiku
     native::bindings<native::check *, haiku_check *> check_bindings;
     native::bindings<native::radio *, haiku_radio *> radio_bindings;
     native::bindings<native::list *, haiku_list *> list_bindings;
+    native::bindings<native::tab_view *, haiku_tab_view *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, haiku_split_view *>
+        split_view_bindings;
     native::bindings<native::combo_box *, haiku_combo_box *>
         combo_box_bindings;
     native::bindings<native::accordion *, haiku_collection *>
@@ -80,6 +86,14 @@ namespace haiku
             auto *binding = combo_box_bindings.object_from_handle(combo);
             return binding ? binding->view : nullptr;
         }
+        if (auto *tabs = dynamic_cast<native::tab_view *>(control)) {
+            auto *binding = tab_view_bindings.object_from_handle(tabs);
+            return binding ? binding->view : nullptr;
+        }
+        if (auto *split = dynamic_cast<native::split_view *>(control)) {
+            auto *binding = split_view_bindings.object_from_handle(split);
+            return binding ? binding->view : nullptr;
+        }
         if (auto *accordion =
                 dynamic_cast<native::accordion *>(control)) {
             auto *binding =
@@ -116,9 +130,27 @@ namespace haiku
         return nullptr;
     }
 
-    BView *parent_view(native::wnd *parent) {
+    BView *parent_view(native::wnd *parent, native::wnd *child) {
         if (!parent || !parent->get_created())
             return nullptr;
+        if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
+            auto *binding = tab_view_bindings.object_from_handle(tabs);
+            const int selected = tabs->get_selected_index();
+            return binding && selected >= 0 &&
+                           selected < static_cast<int>(binding->pages.size())
+                       ? binding->pages[static_cast<std::size_t>(selected)]
+                       : nullptr;
+        }
+        if (auto *split = dynamic_cast<native::split_view *>(parent)) {
+            auto *binding = split_view_bindings.object_from_handle(split);
+            if (!binding)
+                return nullptr;
+            return child == &split->get_first()
+                ? binding->first
+                : child == &split->get_second()
+                    ? binding->second
+                    : nullptr;
+        }
         if (BView *view = view_from_control(parent))
             return view;
         return content_view(wnd_bindings.handle_from_object(parent));

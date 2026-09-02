@@ -49,13 +49,19 @@ namespace
                                     native::directory_dialog>);
     static_assert(std::is_same_v<native::list_box, native::list>);
     static_assert(std::is_base_of_v<native::wnd, native::combo_box>);
+    static_assert(std::is_base_of_v<native::wnd, native::tab_view>);
+    static_assert(!std::is_copy_constructible_v<native::tab_view>);
+    static_assert(std::is_base_of_v<native::wnd, native::split_view>);
+    static_assert(!std::is_copy_constructible_v<native::split_view>);
+    static_assert(std::is_constructible_v<
+                  native::combo_box,
+                  const std::vector<std::string> &,
+                  native::combo_box_style,
+                  const native::point &,
+                  const native::size &>);
     static_assert(std::is_base_of_v<native::wnd, native::text_edit>);
     static_assert(
         std::is_base_of_v<native::text_edit, native::code_edit>);
-    static_assert(std::is_base_of_v<native::layout_manager,
-                                    native::dock_layout_manager>);
-    static_assert(!std::is_copy_constructible_v<native::dock_host>);
-    static_assert(std::has_virtual_destructor_v<native::dock_host>);
     static_assert(!std::is_copy_constructible_v<native::clipboard>);
     static_assert(std::is_move_constructible_v<native::clipboard>);
 
@@ -252,156 +258,6 @@ namespace
         }
     };
 
-    class extensible_dock_host final : public native::dock_host
-    {
-    public:
-        using native::dock_host::dock_host;
-
-        void on_native_change(
-            const native::dock_event &event) override {
-            ++event_hooks;
-            native::dock_host::on_native_change(event);
-        }
-
-        void paint_tab(recording_gpx &graphics) {
-            auto appearance = native::theme::create(graphics);
-            native::button content("Content");
-            native::dock_pane pane(1, "Pane", content);
-            native::dock_tab_region tab;
-            tab.pane = 1;
-            tab.bounds = native::rect(0, 0, 100, 24);
-            draw_tab(graphics,
-                     *appearance,
-                     pane,
-                     tab,
-                     true,
-                     false,
-                     false,
-                     false);
-        }
-
-        void paint_destination(recording_gpx &graphics) {
-            auto appearance = native::theme::create(graphics);
-            native::button content("Content");
-            native::dock_pane pane(1, "Pane", content);
-            draw_drop_destination(
-                graphics,
-                *appearance,
-                pane,
-                native::dock_position::left,
-                native::rect(0, 0, 180, 24),
-                native::theme::state{});
-        }
-
-        void paint_auto_hide(recording_gpx &graphics,
-                             native::dock_position edge) {
-            auto appearance = native::theme::create(graphics);
-            native::button content("Content");
-            native::dock_pane pane(1, "Properties", content);
-            native::dock_auto_hide_region region;
-            region.pane = 1;
-            region.edge = edge;
-            region.bounds = edge == native::dock_position::left ||
-                                    edge == native::dock_position::right
-                                ? native::rect(0, 0, 24, 120)
-                                : native::rect(0, 0, 120, 24);
-            draw_auto_hide_tab(graphics,
-                               *appearance,
-                               pane,
-                               region,
-                               native::theme::state{});
-        }
-
-        void paint_splitter(recording_gpx &graphics) {
-            auto appearance = native::theme::create(graphics);
-            draw_splitter(graphics,
-                          *appearance,
-                          native::rect(0, 0, 7, 120),
-                          native::dock_orientation::vertical,
-                          native::theme::state{true, true});
-        }
-
-        int event_hooks = 0;
-        int tab_hooks = 0;
-        int destination_hooks = 0;
-        int guide_hooks = 0;
-        int splitter_hooks = 0;
-        int auto_hide_hooks = 0;
-        std::vector<native::rect> guide_bounds;
-
-    protected:
-        void draw_tab(
-            native::gpx &graphics,
-            native::theme &appearance,
-            const native::dock_pane &pane,
-            const native::dock_tab_region &tab,
-            bool selected,
-            bool hot,
-            bool close_pressed,
-            bool pin_pressed) override {
-            ++tab_hooks;
-            native::dock_host::draw_tab(graphics,
-                                        appearance,
-                                        pane,
-                                        tab,
-                                        selected,
-                                        hot,
-                                        close_pressed,
-                                        pin_pressed);
-        }
-
-        void draw_drop_guide(
-            native::gpx &graphics,
-            native::theme &appearance,
-            native::dock_position position,
-            const native::rect &bounds,
-            const native::theme::state &state) override {
-            ++guide_hooks;
-            guide_bounds.push_back(bounds);
-            native::dock_host::draw_drop_guide(
-                graphics, appearance, position, bounds, state);
-        }
-
-        void draw_splitter(
-            native::gpx &graphics,
-            native::theme &appearance,
-            const native::rect &bounds,
-            native::dock_orientation orientation,
-            const native::theme::state &state) override {
-            ++splitter_hooks;
-            native::dock_host::draw_splitter(
-                graphics, appearance, bounds, orientation, state);
-        }
-
-        void draw_auto_hide_tab(
-            native::gpx &graphics,
-            native::theme &appearance,
-            const native::dock_pane &pane,
-            const native::dock_auto_hide_region &region,
-            const native::theme::state &state) override {
-            ++auto_hide_hooks;
-            native::dock_host::draw_auto_hide_tab(
-                graphics, appearance, pane, region, state);
-        }
-
-        void draw_drop_destination(
-            native::gpx &graphics,
-            native::theme &appearance,
-            const native::dock_pane &pane,
-            native::dock_position position,
-            const native::rect &bounds,
-            const native::theme::state &state) override {
-            ++destination_hooks;
-            native::dock_host::draw_drop_destination(
-                graphics,
-                appearance,
-                pane,
-                position,
-                bounds,
-                state);
-        }
-    };
-
     // Record a failed condition without stopping the remaining tests.
     void expect(bool condition, const std::string &description) {
         if (condition)
@@ -491,6 +347,51 @@ namespace
                    tops[1].items[0].mnemonic_index == 0 &&
                    tops[1].items[0].shortcut.empty(),
                "unmarked menu labels receive a first-character mnemonic");
+    }
+
+    // Verify tab ordering, borrowed-page ownership, and event semantics.
+    void test_tab_view_model() {
+        native::button first("First", 0, 0, 10, 10);
+        native::button second("Second", 0, 0, 10, 10);
+        native::tab_view tabs(0, 0, 300, 180);
+        tabs.add_item("General", first);
+        tabs.add_item("Advanced", second).set_enabled(false);
+
+        expect(tabs.get_item_count() == 2 &&
+                   tabs.get_selected_index() == 0 &&
+                   first.get_parent() == &tabs &&
+                   second.get_parent() == &tabs,
+               "tab_view borrows ordered page windows and selects the first");
+        expect(tabs.get_content_bounds().p.y > 0 &&
+                   tabs.get_content_bounds().d.h < tabs.get_dimensions().h,
+               "tab_view reserves a tab strip above its page bounds");
+
+        int changes = 0;
+        tabs.on_selection_change.connect([&](int) {
+            ++changes;
+            return true;
+        });
+        tabs.set_selected_index(1);
+        expect(tabs.get_selected_index() == 1 && changes == 0,
+               "programmatic tab selection is silent");
+        tabs.set_selected_index(0);
+        tabs.on_native_selection(1);
+        expect(tabs.get_selected_index() == 0 && changes == 0,
+               "disabled tabs reject user-originated selection");
+        tabs.get_item(1).set_enabled(true);
+        tabs.on_native_selection(1);
+        expect(tabs.get_selected_index() == 1 && changes == 1,
+               "enabled user tab selection emits once");
+
+        tabs.remove_item(1);
+        expect(tabs.get_item_count() == 1 &&
+                   tabs.get_selected_index() == 0 &&
+                   second.get_parent() == nullptr,
+               "removing a tab detaches its borrowed page");
+        tabs.clear_items();
+        expect(tabs.get_selected_index() == -1 &&
+                   first.get_parent() == nullptr,
+               "clearing tabs detaches all pages and clears selection");
     }
 
     // Verify native callbacks and paint stages dispatch virtually once,
@@ -593,7 +494,7 @@ namespace
     // remains safe when C++ objects are destroyed in either order.
     void test_owned_window_lifetime() {
         auto owner = std::make_unique<native::app_wnd>(
-            "Owner", native::rect(0, 0, 320, 200));
+            "Owner", native::rect(40, 30, 320, 200));
         auto modeless = std::make_unique<native::modeless_wnd>(
             *owner, "Palette", native::rect(360, 0, 180, 240));
         auto modal = std::make_unique<native::modal_wnd>(
@@ -611,6 +512,15 @@ namespace
                    modeless->get_input_enabled() &&
                    modal->get_input_enabled(),
                "unshown owned windows do not block input");
+
+        modeless->center_to_parent();
+        expect(modeless->get_position().x == 110 &&
+                   modeless->get_position().y == 10,
+               "an owned window centers relative to its owner");
+        owner->center_to_parent();
+        expect(owner->get_position().x == 40 &&
+                   owner->get_position().y == 30,
+               "centering a main window without an owner is a no-op");
 
         bool rejected_result = false;
         try {
@@ -753,6 +663,19 @@ namespace
                    combo.get_text() == "Custom" &&
                    selections == 1 && text_changes == 2,
                "native combo selection and editing emit stable events");
+        combo.on_native_text("Custom");
+        combo.on_native_selection(-1);
+        combo.on_native_selection(-1);
+        expect(selections == 1 && text_changes == 3,
+               "combo change events ignore repeated native state");
+
+        combo.set_items({"Alpha", "Beta", "Gamma"});
+        combo.set_selected_index(1);
+        combo.set_items({"One", "Two", "Three"});
+        expect(combo.get_selected_index() == 1 &&
+                   combo.get_text() == "Two",
+               "combo text follows a retained selection after "
+               "replacement");
 
         native::app_wnd window("Chrome", 0, 0, 300, 200);
         native::ruler horizontal(window, native::window_edge::top, 20);
@@ -776,6 +699,12 @@ namespace
         expect(tracked == 100.0 &&
                    horizontal.get_tracked_value().value_or(-1.0) == 100.0,
                "ruler tracking converts host pointer position to units");
+
+        horizontal.set_edge(native::window_edge::right);
+        expect(horizontal.get_orientation() ==
+                   native::ruler_orientation::vertical,
+               "ruler orientation follows its mutable edge");
+        horizontal.set_edge(native::window_edge::top);
 
         vertical.set_visible(false);
         expect(window.get_client_bounds().p.x == 0 &&
@@ -1271,9 +1200,7 @@ namespace
                    metrics.header_height > 0 &&
                    metrics.disclosure_size > 0 &&
                    metrics.icon_view_min_item_width > 0 &&
-                   metrics.scrollbar_extent > 0 &&
-                   metrics.dock_guide_size > 0 &&
-                   metrics.dock_guide_gap >= 0,
+                   metrics.scrollbar_extent > 0,
                "theme reports usable control metrics");
 
         painter->draw_menu_bar(native::rect(0, 0, 40, 20));
@@ -1307,15 +1234,6 @@ namespace
             native::rect(0, 0, 14, 14),
             native::caption_button_kind::close,
             selected);
-        for (native::dock_guide_kind guide : {
-                 native::dock_guide_kind::center,
-                 native::dock_guide_kind::left,
-                 native::dock_guide_kind::right,
-                 native::dock_guide_kind::top,
-                 native::dock_guide_kind::bottom}) {
-            painter->draw_dock_guide(
-                native::rect(0, 0, 32, 32), guide, selected);
-        }
         painter->draw_separator(
             native::rect(0, 0, 80, 1),
             native::separator_orientation::horizontal);
@@ -1880,316 +1798,57 @@ namespace
                "a destroyed child is removed from the layout");
     }
 
-    // Verify split/tab state, floating and hidden panes, geometry, and
-    // the stable persistence grammar without creating native resources.
-    void test_dock_layout_model() {
-        native::app_wnd surface(
-            "Dock", native::rect(0, 0, 900, 600));
+    // Verify split geometry, minimums, orientation, and borrowed ownership.
+    void test_split_view_model() {
         native::button first("First");
         native::button second("Second");
-        native::button third("Third");
-        native::button fourth("Fourth");
-        native::button fifth("Fifth");
-        native::button sixth("Sixth");
-
-        native::dock_layout_manager layout;
-        native::dock_pane first_pane(1, "First", first);
-        first_pane.minimum_size = native::size(180, 120);
-        layout.add_pane(first_pane)
-            .add_pane(native::dock_pane(2, "Second", second),
-                      native::dock_position::right,
-                      1)
-            .add_pane(native::dock_pane(3, "Third", third),
-                      native::dock_position::center,
-                      1)
-            .add_pane(native::dock_pane(4, "Fourth", fourth),
-                      native::dock_position::bottom,
-                      2)
-            .add_pane(native::dock_pane(5, "Fifth", fifth));
-        layout.add_pane(native::dock_pane(6, "Sixth", sixth));
-        layout.activate_pane(3)
-            .move_tab(3, 1)
-            .float_pane(4, native::rect(100, 80, 420, 300))
-            .hide_pane(5)
-            .auto_hide_pane(6, native::dock_position::left);
-
-        native::dock_layout_state state = layout.get_state();
-        expect(state.root.has_value() &&
-                   state.root->kind == native::dock_node_kind::split,
-               "docking beside a pane creates a split tree");
-        expect(layout.get_pane_location(3) ==
-                       native::dock_pane_location::docked &&
-                   layout.get_pane_location(4) ==
-                       native::dock_pane_location::floating &&
-                   layout.get_pane_location(5) ==
-                       native::dock_pane_location::hidden &&
-                   layout.get_pane_location(6) ==
-                       native::dock_pane_location::auto_hidden,
-               "dock panes retain docked, floating, hidden, and "
-               "auto-hidden locations");
-
-        layout.set_split_ratio(state.root->id, 0.30f);
-        layout.relayout(&surface, native::rect(0, 0, 900, 600));
-        expect(!layout.get_regions().empty() &&
-                   !layout.get_auto_hide_regions().empty() &&
-                   third.get_dimensions().w >= 180 &&
-                   third.get_bounds().p.x == first.get_bounds().p.x,
-               "dock layout resolves regions and overlays active tabs in "
-               "one content rectangle");
-        const bool every_region_has_caption = std::all_of(
-            layout.get_regions().begin(),
-            layout.get_regions().end(),
-            [](const native::dock_layout_region &region) {
-                return region.kind != native::dock_node_kind::tabs ||
-                       (!region.tabs.empty() &&
-                        region.tab_strip.d.h > 0 &&
-                        region.content.p.y == region.tab_strip.y2());
-            });
-        expect(every_region_has_caption,
-               "every docked region, including a singleton, reserves an "
-               "exposed draggable caption");
-
-        const std::string encoded =
-            native::serialize_dock_layout(layout.get_state());
-        const native::dock_layout_state decoded =
-            native::deserialize_dock_layout(encoded);
-
-        native::dock_layout_manager restored;
-        restored.add_pane(native::dock_pane(1, "First", first))
-            .add_pane(native::dock_pane(2, "Second", second))
-            .add_pane(native::dock_pane(3, "Third", third))
-            .add_pane(native::dock_pane(4, "Fourth", fourth))
-            .add_pane(native::dock_pane(5, "Fifth", fifth))
-            .add_pane(native::dock_pane(6, "Sixth", sixth));
-        restored.set_state(decoded);
-        expect(native::serialize_dock_layout(restored.get_state()) ==
-                   encoded,
-               "dock layouts round trip with split ratios, tab order, "
-               "floating bounds, hidden panes, and auto-hide edges");
-
-        const native::dock_layout_state legacy =
-            native::deserialize_dock_layout(
-                "NDOCK1;RE;F0;H0");
-        expect(legacy.version == 1 && legacy.auto_hidden.empty(),
-               "Native Dock v2 continues to parse v1 layouts");
-
-        bool malformed_rejected = false;
-        try {
-            native::deserialize_dock_layout(
-                "NDOCK1;RT(1,1,2,1);F0;H0");
-        } catch (const std::invalid_argument &) {
-            malformed_rejected = true;
-        }
-        expect(malformed_rejected,
-               "dock persistence rejects truncated pane lists");
-
-        native::button added("Added");
-        restored.add_pane(native::dock_pane(7, "Added", added));
-        restored.set_state(decoded);
-        expect(restored.get_pane_location(7) ==
-                   native::dock_pane_location::docked,
-               "restoring an older layout docks newly registered panes");
-    }
-
-    // Verify the host installs and releases its layout, reparents borrowed
-    // controls, and keeps programmatic operations signal-silent.
-    void test_dock_host_portable_lifecycle() {
-        native::app_wnd surface(
-            "Dock Host", native::rect(0, 0, 640, 480));
-        native::button tools("Tools");
-        native::button document("Document");
         int changes = 0;
-        native::dock_action last_action =
-            native::dock_action::activated;
-        native::dock_node_id last_node = 0;
 
         {
-            extensible_dock_host host(surface);
-            host.on_change.connect([&](native::dock_event event) {
+            native::split_view split(
+                first,
+                second,
+                native::split_orientation::horizontal,
+                native::rect(0, 0, 400, 200));
+            split.set_splitter_size(8)
+                .set_minimums(80, 100)
+                .set_ratio(0.25f);
+            split.on_ratio_change.connect([&](float) {
                 ++changes;
-                last_action = event.action;
-                last_node = event.node;
                 return false;
             });
-            host.add_pane(native::dock_pane(10, "Tools", tools))
-                .add_pane(native::dock_pane(
-                              20, "Document", document),
-                          native::dock_position::right,
-                          10)
-                .activate_pane(10)
-                .float_pane(20,
-                            native::rect(200, 120, 360, 260))
-                .dock(20, native::dock_position::center, 10)
-                .auto_hide_pane(10, native::dock_position::left);
-            const std::string collapsed_layout =
-                host.serialize_layout();
-            host.reveal_auto_hide(10).collapse_auto_hide();
-            expect(host.serialize_layout() == collapsed_layout,
-                   "temporary auto-hide reveal preserves the complete "
-                   "docked layout state");
-            host
-                .pin_pane(10)
-                .close_pane(20)
-                .show_pane(20, native::dock_position::right, 10);
 
-            expect(surface.get_layout() == &host.get_layout() &&
-                       tools.get_parent() == &surface &&
-                       document.get_parent() == &surface,
-                   "dock host installs its manager and reparents docked "
-                   "content to the surface");
-            expect(changes == 0,
-                   "programmatic docking operations do not emit user "
-                   "change signals");
-            expect(host.serialize_layout().find("NDOCK2;R") == 0,
-                   "dock host exposes its versioned persistent state");
-
-            native::dock_layout_region split;
-            bool found_split = false;
-            for (const native::dock_layout_region &region :
-                 host.get_layout().get_regions()) {
-                if (region.kind == native::dock_node_kind::split) {
-                    split = region;
-                    found_split = true;
-                    break;
-                }
-            }
-            expect(found_split && split.splitter.d.w > 0 &&
-                       split.splitter.d.h > 0,
-                   "docking boundaries expose a non-empty splitter");
-            if (found_split) {
-                const bool vertical =
-                    split.splitter.d.h > split.splitter.d.w;
-                const native::point press(
-                    static_cast<native::coord>(
-                        split.splitter.p.x +
-                        split.splitter.d.w / 2),
-                    static_cast<native::coord>(
-                        split.splitter.p.y +
-                        split.splitter.d.h / 2));
-                native::point moved = press;
-                if (vertical)
-                    moved.x = static_cast<native::coord>(moved.x + 24);
-                else
-                    moved.y = static_cast<native::coord>(moved.y + 24);
-                surface.on_native_mouse_click(native::mouse_event(
-                    native::mouse_button::left,
-                    native::mouse_action::press,
-                    press));
-                surface.on_native_mouse_move(moved);
-                surface.on_native_mouse_click(native::mouse_event(
-                    native::mouse_button::left,
-                    native::mouse_action::release,
-                    moved));
-                bool boundary_moved = false;
-                for (const native::dock_layout_region &region :
-                     host.get_layout().get_regions()) {
-                    if (region.node != split.node)
-                        continue;
-                    boundary_moved = vertical
-                        ? region.splitter.p.x != split.splitter.p.x
-                        : region.splitter.p.y != split.splitter.p.y;
-                    break;
-                }
-                expect(boundary_moved && changes == 1 &&
-                           last_action ==
-                               native::dock_action::split_resized &&
-                           last_node == split.node,
-                       "dragging a splitter resizes the dock and emits "
-                       "one completed change");
-            }
-
-            native::dock_event event;
-            event.action = native::dock_action::activated;
-            event.pane = 10;
-            host.on_native_change(event);
-            recording_gpx graphics;
-            host.paint_tab(graphics);
-            host.paint_destination(graphics);
-            host.paint_splitter(graphics);
-            const int image_count = graphics.image_count;
-            host.paint_auto_hide(
-                graphics, native::dock_position::left);
-            expect(changes == 2 && host.event_hooks == 2 &&
-                       host.tab_hooks == 1 &&
-                       host.destination_hooks == 1 &&
-                       host.splitter_hooks == 1 &&
-                       host.auto_hide_hooks == 1 &&
-                       graphics.image_count == image_count + 1 &&
-                       graphics.painted,
-                   "dock behavior, splitters, and rotated auto-hide "
-                   "painting extend then call base");
-
-            // Exercise the complete user drag path.  Reconciliation replaces
-            // the layout-region vectors, so this guards against retaining a
-            // tab pointer across activation, movement, or drop.
-            native::rect source_tab;
-            native::rect target_content;
-            for (const native::dock_layout_region &region :
-                 host.get_layout().get_regions()) {
-                if (region.kind != native::dock_node_kind::tabs)
-                    continue;
-                for (const native::dock_tab_region &tab : region.tabs) {
-                    if (tab.pane == 10)
-                        source_tab = tab.bounds;
-                    if (tab.pane == 20)
-                        target_content = region.content;
-                }
-            }
-            expect(source_tab.d.w > 0 && target_content.d.w > 0,
-                   "dock drag test resolves source and target regions");
-            const native::point press(
-                static_cast<native::coord>(source_tab.p.x + 3),
-                static_cast<native::coord>(
-                    source_tab.p.y + source_tab.d.h / 2));
-            const native::point drop(
-                static_cast<native::coord>(
-                    target_content.p.x + target_content.d.w / 2),
-                static_cast<native::coord>(
-                    target_content.p.y + target_content.d.h / 2));
-            surface.on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                native::mouse_action::press,
-                press));
-            surface.on_native_mouse_move(drop);
-            graphics.painted = false;
-            surface.on_native_paint(native::wnd_paint_event(
-                native::rect(native::point(0, 0),
-                             surface.get_dimensions()),
-                graphics));
-            expect(host.guide_hooks == 5 && graphics.painted,
-                   "dragging paints five overridable native docking "
-                   "guide targets");
-            expect(!host.guide_bounds.empty() &&
-                       host.guide_bounds.front().p.x +
-                                   host.guide_bounds.front().d.w / 2 ==
-                               surface.get_dimensions().w / 2 &&
-                       host.guide_bounds.front().p.y +
-                                   host.guide_bounds.front().d.h / 2 ==
-                               surface.get_dimensions().h / 2,
-                   "dock compass is centered once in the host rather "
-                   "than once per layout region");
-            surface.on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                native::mouse_action::release,
-                drop));
-            expect(host.get_layout().get_pane_location(10) ==
-                       native::dock_pane_location::docked &&
-                       changes == 4 && host.event_hooks == 4,
-                   "dragging a docked tab reconciles safely and emits "
-                   "activation and docking once each");
+            expect(first.get_parent() == &split &&
+                       second.get_parent() == &split,
+                   "split view borrows and parents both panes");
+            expect(bounds_are(first, 0, 0, 98, 200) &&
+                       bounds_are(second, 106, 0, 294, 200),
+                   "horizontal split resolves its ratio and separator");
+            split.on_native_ratio(0.5f);
+            expect(changes == 1 && split.get_ratio() == 0.5f,
+                   "native splitter movement emits one ratio change");
+            split.set_orientation(native::split_orientation::vertical);
+            expect(first.get_bounds().d.w == 400 &&
+                       second.get_bounds().d.w == 400 &&
+                       first.get_bounds().p.y == 0 &&
+                       second.get_bounds().p.y ==
+                           split.get_splitter_bounds().y2(),
+                   "vertical split stacks panes around the separator");
+            split.set_ratio(0.0f);
+            expect(first.get_dimensions().h == 80,
+                   "split view enforces the first pane minimum");
         }
 
-        expect(surface.get_layout() == nullptr &&
-                   tools.get_parent() == nullptr &&
-                   document.get_parent() == nullptr,
-               "destroying a dock host releases its installed layout and "
-               "borrowed controls");
+        expect(first.get_parent() == nullptr &&
+                   second.get_parent() == nullptr,
+               "destroying a split view detaches both borrowed panes");
     }
 } // namespace
 
 int main() {
     test_cached_properties();
     test_menu_label_metadata();
+    test_tab_view_model();
     test_control_extension_hooks();
     test_parent_lifetime();
     test_owned_window_lifetime();
@@ -2213,7 +1872,6 @@ int main() {
     test_absolute_layout_preserves_bounds();
     test_layout_pass_scheduling();
     test_layout_child_removal();
-    test_dock_layout_model();
-    test_dock_host_portable_lifecycle();
+    test_split_view_model();
     return failure_count == 0 ? 0 : 1;
 }

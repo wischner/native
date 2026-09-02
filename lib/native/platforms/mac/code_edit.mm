@@ -192,11 +192,11 @@ namespace native
     void code_edit::create() const {
         if (_created)
             return;
-        NSView *parent = mac::parent_view(get_parent());
+        auto *self = const_cast<code_edit *>(this);
+        NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
                 "macOS: code_edit requires a created parent.");
-        auto *self = const_cast<code_edit *>(this);
         native_code_edit_view *view = [[native_code_edit_view alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,

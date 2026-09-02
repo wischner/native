@@ -56,6 +56,33 @@ namespace
     }
 }
 
+namespace linux::wmaker
+{
+    void configure_combo_box(native::combo_box &owner,
+                             native_combo_box &state) {
+        const native::size dimensions = owner.get_dimensions();
+        const bool editable = owner.get_style() ==
+            native::combo_box_style::editable;
+        const int popup_width = editable
+            ? std::min<int>(dimensions.w, dimensions.h + 4)
+            : dimensions.w;
+        WMResizeWidget(
+            state.field,
+            std::max(1,
+                     static_cast<int>(dimensions.w)-popup_width),
+            dimensions.h);
+        WMMoveWidget(
+            state.popup,
+            editable
+                ? static_cast<int>(dimensions.w)-popup_width
+                : 0,
+            0);
+        WMResizeWidget(state.popup, popup_width, dimensions.h);
+        WMSetPopUpButtonPullsDown(
+            state.popup, editable ? True : False);
+    }
+} // namespace linux::wmaker
+
 namespace native
 {
     void combo_box::apply_items() {
@@ -88,7 +115,22 @@ namespace native
     }
 
     void combo_box::apply_style() {
-        destroy(); create(); show();
+        auto *state = binding(this);
+        if (!state || !state->frame || !state->field || !state->popup)
+            throw std::runtime_error(
+                "Window Maker/WINGs: missing combo box binding.");
+        const bool editable =
+            get_style() == combo_box_style::editable;
+        linux::wmaker::configure_combo_box(*this, *state);
+
+        if (WMWidgetXID(state->frame) != None) {
+            if (editable) {
+                WMRealizeWidget(state->field);
+                WMMapWidget(state->field);
+            } else {
+                WMUnmapWidget(state->field);
+            }
+        }
     }
 
     void combo_box::create() const {
@@ -107,23 +149,18 @@ namespace native
         const point position = linux::wmaker::control_position(self);
         WMMoveWidget(state->frame, position.x, position.y);
         WMResizeWidget(state->frame, _bounds.d.w, _bounds.d.h);
-        const bool editable = get_style() == combo_box_style::editable;
-        const int popup_width = editable
-            ? std::min<int>(_bounds.d.w, _bounds.d.h+4) : _bounds.d.w;
-        if (editable) {
-            state->field = WMCreateTextField(state->frame);
-            WMResizeWidget(state->field,
-                std::max(1, static_cast<int>(_bounds.d.w)-popup_width),
-                _bounds.d.h);
-            state->delegate.data = self;
-            state->delegate.didChange = field_changed;
-            WMSetTextFieldDelegate(state->field, &state->delegate);
-            WMSetTextFieldText(state->field, get_text().c_str());
+        state->field = WMCreateTextField(state->frame);
+        if (!state->field) {
+            WMDestroyWidget(state->frame);
+            delete state;
+            throw std::runtime_error(
+                "Window Maker/WINGs: unable to create combo box.");
         }
-        WMMoveWidget(state->popup,
-            editable ? static_cast<int>(_bounds.d.w)-popup_width : 0, 0);
-        WMResizeWidget(state->popup, popup_width, _bounds.d.h);
-        WMSetPopUpButtonPullsDown(state->popup, editable ? True : False);
+        state->delegate.data = self;
+        state->delegate.didChange = field_changed;
+        WMSetTextFieldDelegate(state->field, &state->delegate);
+        WMSetTextFieldText(state->field, get_text().c_str());
+        linux::wmaker::configure_combo_box(*self, *state);
         WMSetPopUpButtonAction(state->popup, popup_changed, self);
         replace(state, get_items());
         if (get_selected_index() >= 0)
@@ -141,6 +178,8 @@ namespace native
                 "Window Maker/WINGs: combo box is not created.");
         WMRealizeWidget(state->frame);
         WMMapSubwidgets(state->frame);
+        if (get_style() != combo_box_style::editable)
+            WMUnmapWidget(state->field);
         WMMapWidget(state->frame);
     }
 

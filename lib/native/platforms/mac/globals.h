@@ -100,6 +100,21 @@ namespace mac
         id target = nil;
         std::vector<NSButton *> headers;
     };
+    struct mac_tab_view
+    {
+        NSTabView *view = nil;
+        NSView *page_host = nil;
+        id delegate = nil;
+        bool suppress = false;
+    };
+    struct mac_split_view
+    {
+        NSSplitView *view = nil;
+        NSView *first = nil;
+        NSView *second = nil;
+        id delegate = nil;
+        bool suppress = false;
+    };
     struct mac_icon_view
     {
         NSScrollView *scroll = nil;
@@ -141,6 +156,10 @@ namespace mac
         combo_box_bindings;
     extern native::bindings<native::accordion *, mac_accordion *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, mac_tab_view *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, mac_split_view *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, mac_icon_view *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, mac_tree_view *>
@@ -156,5 +175,6 @@ namespace mac
     NSView *view_from_control(native::wnd *control);
 
     // Return the child-content view of a created window or control.
-    NSView *parent_view(native::wnd *parent);
+    NSView *parent_view(native::wnd *parent,
+                        native::wnd *child = nullptr);
 } // namespace mac

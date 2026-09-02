@@ -24,10 +24,7 @@ namespace
 {
     Widget parent_widget(native::text_edit *editor) {
         native::wnd *parent = editor->get_parent();
-        Widget widget = parent
-                            ? linux::openmotif::wnd_bindings
-                                  .handle_from_object(parent)
-                            : nullptr;
+        Widget widget = linux::openmotif::parent_widget(editor);
         if (!parent || !parent->get_created() || !widget) {
             throw std::runtime_error(
                 "Motif: text_edit requires a created parent.");

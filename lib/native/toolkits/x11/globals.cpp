@@ -32,6 +32,10 @@ namespace linux::x11
         combo_box_bindings;
     native::bindings<native::accordion *, xaw_collection *>
         accordion_bindings;
+    native::bindings<native::tab_view *, xaw_collection *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, xaw_collection *>
+        split_view_bindings;
     native::bindings<native::icon_view *, xaw_collection *>
         icon_view_bindings;
     native::bindings<native::tree_view *, xaw_collection *>

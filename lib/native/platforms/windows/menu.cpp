@@ -9,6 +9,7 @@
 #include <native.h>
 #include <native/menu.h>
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -33,6 +34,8 @@ namespace native
 
         auto *m = windows::menu_bindings.object_from_handle(_id);
         if (m) {
+            if (m->accelerators)
+                DestroyAcceleratorTable(m->accelerators);
             if (m->hmenu) {
                 HWND owner =
                     windows::wnd_bindings.handle_from_object(m->owner);
@@ -59,25 +62,56 @@ namespace native
             return;
 
         HMENU hmenu = CreateMenu();
+        std::vector<ACCEL> accelerators;
         for (const auto &top : _tops) {
             HMENU sub = CreatePopupMenu();
             for (const auto &item : top.items) {
                 if (item.separator)
                     AppendMenuA(sub, MF_SEPARATOR, 0, nullptr);
-                else
+                else {
+                    std::string display =
+                        native::detail::decorate_menu_mnemonic(
+                            item.label, item.mnemonic_index);
+                    if (!item.shortcut.empty())
+                        display += "\t" + item.shortcut;
                     AppendMenuA(sub,
                                 MF_STRING,
                                 (UINT_PTR)item.id,
-                                item.label.c_str());
+                                display.c_str());
+                    const auto parsed = native::detail::parse_menu_shortcut(
+                        item.shortcut);
+                    WORD key = 0;
+                    if (parsed.key.size() == 1)
+                        key = static_cast<WORD>(std::toupper(
+                            static_cast<unsigned char>(parsed.key[0])));
+                    else if (parsed.key.size() > 1 &&
+                             (parsed.key[0] == 'F' || parsed.key[0] == 'f'))
+                        key = static_cast<WORD>(VK_F1 +
+                            std::max(0, std::stoi(parsed.key.substr(1))-1));
+                    if (key) {
+                        BYTE flags = FVIRTKEY;
+                        if (parsed.control) flags |= FCONTROL;
+                        if (parsed.alt) flags |= FALT;
+                        if (parsed.shift) flags |= FSHIFT;
+                        accelerators.push_back(
+                            {flags, key, static_cast<WORD>(item.id)});
+                    }
+                }
             }
-            AppendMenuA(
-                hmenu, MF_POPUP, (UINT_PTR)sub, top.title.c_str());
+            const std::string title =
+                native::detail::decorate_menu_mnemonic(
+                    top.title, top.mnemonic_index);
+            AppendMenuA(hmenu, MF_POPUP, (UINT_PTR)sub, title.c_str());
         }
         SetMenu(hwnd, hmenu);
         DrawMenuBar(hwnd);
 
         auto *h = new windows::win_menu();
         h->hmenu = hmenu;
+        if (!accelerators.empty())
+            h->accelerators = CreateAcceleratorTableW(
+                accelerators.data(),
+                static_cast<int>(accelerators.size()));
         h->owner = &owner;
         _id = next_id();
         windows::menu_bindings.register_pair(_id, h);

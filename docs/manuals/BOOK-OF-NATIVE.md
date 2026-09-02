@@ -27,75 +27,75 @@ the same commit.
 
 ## Chapters
 
-1. [Getting started](book-of-native/getting-started.md)
+1. [Getting started](book-of-native/GETTING-STARTED.md)
    Build the project, run Vision, and understand the output layout.
 
-2. [Build system](book-of-native/build-system.md)
+2. [Build system](book-of-native/BUILD-SYSTEM.md)
    How top-level CMake and Docker-backed backend targets are organized.
 
-3. [Patterns: source layering and native bindings](book-of-native/patterns-layering.md)
+3. [Patterns: source layering and native bindings](book-of-native/PATTERNS-LAYERING.md)
    Public API boundaries, the three implementation layers, and native
    handle/object mappings. Expands Architecture Sections 1 and 2.
 
-4. [Patterns: geometry and type conventions](book-of-native/patterns-geometry.md)
+4. [Patterns: geometry and type conventions](book-of-native/PATTERNS-GEOMETRY.md)
    Shared value types used by geometry, windows, graphics, and events.
 
-5. [Patterns: signal and event dispatching](book-of-native/patterns-signals.md)
+5. [Patterns: signal and event dispatching](book-of-native/PATTERNS-SIGNALS.md)
    Public event contracts, connection lifetimes, and synchronous dispatch.
    Expands Architecture Section 3.
 
-6. [Patterns: cached properties](book-of-native/patterns-properties.md)
+6. [Patterns: cached properties](book-of-native/PATTERNS-PROPERTIES.md)
    Setter/getter naming, portable caches, and native-originated updates.
    Expands Architecture Section 4.
 
-7. [Patterns: windows and app windows](book-of-native/patterns-windows.md)
+7. [Patterns: windows and app windows](book-of-native/PATTERNS-WINDOWS.md)
    Window state, hierarchy, lifecycle, layout, and backend obligations.
    Expands Architecture Section 5.
 
-8. [Patterns: window painting](book-of-native/patterns-painting.md)
+8. [Patterns: window painting](book-of-native/PATTERNS-PAINTING.md)
    Graphics contexts, paint-event lifetimes, clipping, and invalidation.
    Expands Architecture Section 6.
 
-9. [Patterns: custom and themed drawing](book-of-native/patterns-theme.md)
+9. [Patterns: custom and themed drawing](book-of-native/PATTERNS-THEME.md)
    Native theme primitives, semantic control states, and portable fallbacks.
    Expands Architecture Section 7.
 
-10. [Drawing primitives](book-of-native/drawing-primitives.md)
+10. [Drawing primitives](book-of-native/DRAWING-PRIMITIVES.md)
     Application reference for window and image graphics, PNG/JPEG I/O, text
     measurement, and themed control drawing.
 
-11. [Patterns: application entry and main loop](book-of-native/patterns-application.md)
+11. [Patterns: application entry and main loop](book-of-native/PATTERNS-APPLICATION.md)
     Portable startup through `program()`, `app::run()`, and backend launchers.
     Expands Architecture Section 8.
 
-12. [Patterns: screens and virtual desktops](book-of-native/patterns-screens.md)
+12. [Patterns: screens and virtual desktops](book-of-native/PATTERNS-SCREENS.md)
     Snapshot lifetime, work areas, primary selection, and backend detection.
     Expands Architecture Section 9.
 
-13. [Patterns: clipboard and text editing](book-of-native/patterns-clipboard-text-editing.md)
+13. [Patterns: clipboard and text editing](book-of-native/PATTERNS-CLIPBOARD-TEXT-EDITING.md)
     Typed clipboard transactions, editor modes, live complete-value
     validation, selection, and direct or keyboard clipboard commands.
     Expands Architecture Sections 11 and 12.
 
-14. [Patterns: advanced table views](book-of-native/patterns-table-view.md)
+14. [Patterns: advanced table views](book-of-native/PATTERNS-TABLE-VIEW.md)
     Model ownership, stable row identity, virtualization, grouping, search,
     and backend adaptation. Expands Architecture Section 13.
 
-15. [Patterns: source editing](book-of-native/patterns-code-edit.md)
+15. [Patterns: source editing](book-of-native/PATTERNS-CODE-EDIT.md)
     Canonical source storage, overlays, lexers, completion, shared painting,
     and backend input translation. Expands Architecture Section 14.
 
-16. [Patterns: docking workspaces](book-of-native/patterns-docking.md)
+16. [Patterns: split views and tabs](book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md)
     Split/tab layout ownership, native content transitions, floating shells,
     interaction, themed painting, and persistence. Expands Architecture
     Section 16.
 
-17. [Patterns: input, standard dialogs, and window chrome](book-of-native/patterns-input-dialogs-window-chrome.md)
+17. [Patterns: input, standard dialogs, and window chrome](book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
     Combo and list boxes, directory and message dialogs, non-client rulers,
     status bars, native adaptation, and extensibility. Expands Architecture
     Section 17.
 
-18. [Feature matrix](book-of-native/feature-matrix.md)
+18. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
     Per-backend feature and test status for what is implemented now.
 
 For a tutorial organized around complete programs, see

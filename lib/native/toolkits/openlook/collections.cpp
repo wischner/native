@@ -35,6 +35,9 @@ namespace
         if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
             return linux::openlook::accordion_bindings
                 .object_from_handle(accordion);
+        if (auto *tabs = dynamic_cast<native::tab_view *>(&owner))
+            return linux::openlook::tab_view_bindings
+                .object_from_handle(tabs);
         if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
             return linux::openlook::icon_view_bindings
                 .object_from_handle(icons);
@@ -913,6 +916,8 @@ namespace
         if (!state)
             return;
         if (state->panel) {
+            if (state->content_panel)
+                xv_destroy_safe(state->content_panel);
             linux::openlook::collection_paint_bindings
                 .unregister_by_handle(state->paint_window);
             linux::openlook::wnd_bindings.unregister_by_handle(
@@ -952,6 +957,22 @@ namespace linux::openlook
                XV_HEIGHT,
                dimensions.h,
                nullptr);
+        if (state.content_panel) {
+            const auto *tabs = dynamic_cast<native::tab_view *>(&owner);
+            const native::rect content = tabs
+                ? tabs->get_content_bounds()
+                : native::rect(0, 0, dimensions.w, dimensions.h);
+            const int panel_x = static_cast<int>(xv_get(
+                state.panel, XV_X));
+            const int panel_y = static_cast<int>(xv_get(
+                state.panel, XV_Y));
+            xv_set(state.content_panel,
+                   XV_X, panel_x + content.p.x,
+                   XV_Y, panel_y + content.p.y,
+                   XV_WIDTH, content.d.w,
+                   XV_HEIGHT, content.d.h,
+                   nullptr);
+        }
         configure_paint_window(
             owner,
             state,

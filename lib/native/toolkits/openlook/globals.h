@@ -91,6 +91,9 @@ namespace linux::openlook
     struct openlook_collection
     {
         Panel panel = XV_NULL;
+        // Tabs keep page controls on a sibling Panel so the custom-painted
+        // tab canvas cannot overdraw native Panel items.
+        Panel content_panel = XV_NULL;
         Xv_Window paint_window = XV_NULL;
         Scrollbar vertical_scrollbar = XV_NULL;
         Scrollbar horizontal_scrollbar = XV_NULL;
@@ -101,6 +104,13 @@ namespace linux::openlook
             native::invalid_table_row_id;
         native::tree_item_id last_tree_item =
             native::invalid_tree_item_id;
+    };
+
+    struct openlook_split_view
+    {
+        Panel host = XV_NULL;
+        Panel first = XV_NULL;
+        Panel second = XV_NULL;
     };
 
     // Owns one asynchronous standard XView file chooser.
@@ -133,6 +143,10 @@ namespace linux::openlook
         combo_box_bindings;
     extern native::bindings<native::accordion *, openlook_collection *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, openlook_collection *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, openlook_split_view *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, openlook_collection *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, openlook_collection *>

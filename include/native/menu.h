@@ -21,19 +21,22 @@ namespace native
     struct menu_separator_t {};
     inline constexpr menu_separator_t menu_separator{};
 
+    // Stores one parsed command or structural separator.
+    struct menu_entry
+    {
+        int id = 0;
+        std::string label;
+        std::size_t mnemonic_index = std::string::npos;
+        std::string shortcut;
+        bool separator = false;
+    };
+
     // Collects menu items for one top-level menu in the builder API.
     class menu_items_proxy
     {
     public:
-        // Stores the command identifier and visible label for an item.
-        struct entry
-        {
-            int id = 0;
-            std::string label;
-            std::size_t mnemonic_index = std::string::npos;
-            std::string shortcut;
-            bool separator = false;
-        };
+        // Compatibility name for the shared parsed menu entry.
+        using entry = menu_entry;
 
         // Items accumulated by the stream-style builder.
         std::vector<entry> entries;
@@ -98,15 +101,8 @@ namespace native
         // Return the registry identifier, or zero if unattached.
         std::uint32_t id() const;
 
-        // Stores one command within a top-level menu.
-        struct menu_entry
-        {
-            int id = 0;
-            std::string label;
-            std::size_t mnemonic_index = std::string::npos;
-            std::string shortcut;
-            bool separator = false;
-        };
+        // Compatibility name used by existing backend code.
+        using menu_entry = native::menu_entry;
 
         // Stores one top-level title and its commands.
         struct top_entry

@@ -93,6 +93,20 @@ namespace linux::openmotif
             native::invalid_tree_item_id;
     };
 
+    struct motif_tab_view
+    {
+        Widget notebook = nullptr;
+        std::vector<Widget> pages;
+        std::vector<Widget> tabs;
+        bool suppress = false;
+    };
+
+    struct motif_split_view
+    {
+        Widget paned = nullptr;
+        bool suppress = false;
+    };
+
     // Owns the Motif widgets used by one file-dialog session.
     struct motif_file_dialog
     {
@@ -121,6 +135,10 @@ namespace linux::openmotif
         combo_box_bindings;
     extern native::bindings<native::accordion *, motif_collection *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, motif_tab_view *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, motif_split_view *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, motif_collection *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, motif_collection *>
@@ -133,4 +151,7 @@ namespace linux::openmotif
         file_dialog_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
+
+    // Return the native parent for a child, including notebook pages.
+    Widget parent_widget(native::wnd *child);
 } // namespace linux::openmotif

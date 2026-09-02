@@ -67,6 +67,7 @@ namespace
     bool update_control_bounds(native::wnd *window,
                                const native::rect &bounds) {
         if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||
             dynamic_cast<native::table_view *>(window)) {
@@ -89,6 +90,7 @@ namespace
     bool update_control_parent(native::wnd *window,
                                native::wnd *parent) {
         if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||
             dynamic_cast<native::table_view *>(window)) {
@@ -110,6 +112,7 @@ namespace
 
     native::wnd *emulated_parent(native::wnd *window) {
         if (dynamic_cast<native::accordion *>(window) ||
+            dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||
             dynamic_cast<native::table_view *>(window)) {

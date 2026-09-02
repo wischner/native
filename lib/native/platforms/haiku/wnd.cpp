@@ -92,7 +92,7 @@ namespace native
             });
         }
 
-        BView *new_parent = haiku::parent_view(_parent);
+        BView *new_parent = haiku::parent_view(_parent, this);
         BWindow *new_window = new_parent ? new_parent->Window() : nullptr;
         if (new_window) {
             with_locked_window(new_window, [&](BWindow *) {

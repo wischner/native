@@ -116,6 +116,7 @@ namespace native
         wnd_paint_event pe{content_bounds, g};
         wnd->on_native_paint(pe);
 
+        linux::sdl2::render_tab_views(wnd, g);
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
         linux::sdl2::render_radios(wnd, g);
@@ -194,6 +195,13 @@ namespace native
 
                 switch (event.type) {
                 case SDL_KEYDOWN:
+                    if (auto *aw = dynamic_cast<native::app_wnd *>(wnd);
+                        aw && aw->menu.id() &&
+                        linux::sdl2::handle_menu_key(
+                            linux::sdl2::menu_bindings.object_from_handle(
+                                aw->menu.id()), event.key)) {
+                        break;
+                    }
                     if (!linux::sdl2::handle_combo_key(wnd, event.key) &&
                         !linux::sdl2::handle_text_edit_key(
                             wnd, event.key))

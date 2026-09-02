@@ -133,7 +133,7 @@ namespace native
                         // glyph coverage from the color interpolation rather
                         // than making every antialiased fringe pixel opaque;
                         // rotated native text otherwise gains a bright halo
-                        // and becomes illegible on docking edge tabs.
+                        // and becomes illegible on compact dark surfaces.
                         const auto coverage = [](std::uint8_t paper,
                                                  std::uint8_t ink,
                                                  std::uint8_t result) {

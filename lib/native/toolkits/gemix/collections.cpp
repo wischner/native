@@ -95,6 +95,17 @@ namespace linux::gemix
         last_clicked_tree_item = native::invalid_tree_item_id;
     }
 
+    void render_tab_views(native::app_wnd *parent,
+                          native::gpx &graphics) {
+        for (auto *control : tab_views) {
+            if (control && control->get_created() &&
+                root_of(control) == parent) {
+                native::detail::draw_tab_view_at(
+                    *control, graphics, origin_in_root(*control));
+            }
+        }
+    }
+
     void render_collections(native::app_wnd *parent,
                             native::gpx &graphics) {
         for (auto *control : icon_views) {
@@ -125,7 +136,7 @@ namespace linux::gemix
                     *control, graphics, origin_in_root(*control));
             }
         }
-        // Match the native child-window stacking order. Docking creates
+        // Match the native child-window stacking order. Composite controls create
         // transient empty accordions as its raised guide surfaces.
         for (auto *control : accordions) {
             if (control && control->get_created() &&
@@ -250,6 +261,18 @@ namespace linux::gemix
             control->on_native_focus(true);
             native::detail::handle_accordion_click(
                 *control, local_point(*control, point));
+            return true;
+        }
+        for (auto iterator = tab_views.rbegin();
+             iterator != tab_views.rend(); ++iterator) {
+            native::tab_view *control = *iterator;
+            if (!control || !control->get_created() ||
+                root_of(control) != parent || !hit(*control, point))
+                continue;
+            control->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left,
+                native::mouse_action::release,
+                local_point(*control, point)));
             return true;
         }
         return false;
@@ -485,6 +508,38 @@ namespace linux::gemix
 
 namespace native
 {
+    void tab_view::apply_items() { invalidate(); }
+    void tab_view::apply_selected_index() { invalidate(); }
+
+    void tab_view::create() const {
+        if (_created) return;
+        if (!get_parent() || !get_parent()->get_created())
+            throw std::runtime_error(
+                "GEMix: tab_view requires a created parent.");
+        auto *self = const_cast<tab_view *>(this);
+        linux::gemix::tab_views.push_back(self);
+        _created = true;
+        self->synchronize_theme_metrics();
+        self->refresh();
+        self->on_native_create();
+    }
+
+    void tab_view::show() const {
+        if (!_created)
+            throw std::runtime_error("GEMix: tab_view is not created.");
+        invalidate();
+    }
+
+    void tab_view::destroy() const {
+        if (!_created) return;
+        auto *self = const_cast<tab_view *>(this);
+        self->on_native_destroy();
+        linux::gemix::tab_views.erase(
+            std::remove(linux::gemix::tab_views.begin(),
+                        linux::gemix::tab_views.end(), self),
+            linux::gemix::tab_views.end());
+    }
+
     void accordion::apply_items() { invalidate(); }
 
     void accordion::create() const {

@@ -14,6 +14,7 @@
 #include <xview/notice.h>
 
 #include "globals.h"
+#include "../../message_box_common.h"
 
 namespace native
 {
@@ -23,51 +24,42 @@ namespace native
         const std::string &title,
         message_box_buttons buttons,
         message_box_icon) {
+        detail::validate_message_box_owner(owner);
         auto *owner_state = linux::openlook::window_state(&owner);
         if (!owner_state || !owner_state->paint_window)
             throw std::runtime_error(
                 "OpenLook/XView: Message notice has no owner.");
         const std::string text = title.empty()
             ? message : title + "\n\n" + message;
-        int result = 0;
-        switch (buttons) {
-        case message_box_buttons::ok:
+        const int count = detail::message_box_button_count(buttons);
+        int result;
+        if (count == 1) {
             result = notice_prompt(owner_state->paint_window, nullptr,
                 NOTICE_MESSAGE_STRING, text.c_str(),
-                NOTICE_BUTTON, "OK", 1,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 0), 1,
                 nullptr);
-            return result == 1 ? message_box_result::ok
-                               : message_box_result::none;
-        case message_box_buttons::ok_cancel:
+        } else if (count == 2) {
             result = notice_prompt(owner_state->paint_window, nullptr,
                 NOTICE_MESSAGE_STRING, text.c_str(),
-                NOTICE_BUTTON, "OK", 1,
-                NOTICE_BUTTON, "Cancel", 2,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 0), 1,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 1), 2,
                 nullptr);
-            return result == 1 ? message_box_result::ok
-                 : result == 2 ? message_box_result::cancel
-                               : message_box_result::none;
-        case message_box_buttons::yes_no:
+        } else {
             result = notice_prompt(owner_state->paint_window, nullptr,
                 NOTICE_MESSAGE_STRING, text.c_str(),
-                NOTICE_BUTTON, "Yes", 3,
-                NOTICE_BUTTON, "No", 4,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 0), 1,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 1), 2,
+                NOTICE_BUTTON,
+                detail::message_box_button_label(buttons, 2), 3,
                 nullptr);
-            return result == 3 ? message_box_result::yes
-                 : result == 4 ? message_box_result::no
-                               : message_box_result::none;
-        case message_box_buttons::yes_no_cancel:
-            result = notice_prompt(owner_state->paint_window, nullptr,
-                NOTICE_MESSAGE_STRING, text.c_str(),
-                NOTICE_BUTTON, "Yes", 3,
-                NOTICE_BUTTON, "No", 4,
-                NOTICE_BUTTON, "Cancel", 2,
-                nullptr);
-            return result == 3 ? message_box_result::yes
-                 : result == 4 ? message_box_result::no
-                 : result == 2 ? message_box_result::cancel
-                               : message_box_result::none;
         }
-        return message_box_result::none;
+        return result > 0 && result <= count
+            ? detail::message_box_result_for_button(buttons, result - 1)
+            : detail::message_box_dismissed_result(buttons);
     }
 } // namespace native

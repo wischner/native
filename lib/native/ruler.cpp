@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -12,6 +13,8 @@
 
 #include <native/graphics.h>
 #include <native/ruler.h>
+
+#include "rotated_text.h"
 
 namespace
 {
@@ -33,12 +36,10 @@ namespace native
         : non_client(owner,
                      orientation == ruler_orientation::horizontal
                         ? window_edge::top : window_edge::left,
-                     extent)
-        , _orientation(orientation) {}
+                     extent) {}
 
     ruler::ruler(wnd &owner, window_edge edge, int extent)
-        : non_client(owner, edge, extent)
-        , _orientation(orientation_for(edge)) {}
+        : non_client(owner, edge, extent) {}
 
     ruler_orientation ruler::orientation_for(window_edge edge) {
         return edge == window_edge::top || edge == window_edge::bottom
@@ -47,7 +48,7 @@ namespace native
     }
 
     ruler_orientation ruler::get_orientation() const {
-        return _orientation;
+        return orientation_for(get_edge());
     }
 
     double ruler::get_origin() const { return _origin; }
@@ -117,7 +118,8 @@ namespace native
         const theme::palette colors = appearance->native_palette();
         draw_background(graphics, *appearance, bounds, state);
 
-        const int length = _orientation == ruler_orientation::horizontal
+        const ruler_orientation orientation = get_orientation();
+        const int length = orientation == ruler_orientation::horizontal
             ? bounds.w() : bounds.h();
         const double final_value = _origin + length * _units_per_pixel;
         const double first_value =
@@ -135,7 +137,8 @@ namespace native
                                         std::round(major_multiple)) < 0.00001;
             draw_tick(graphics, bounds, axis, major, colors);
             if (major) {
-                const point label = _orientation == ruler_orientation::horizontal
+                const point label =
+                    orientation == ruler_orientation::horizontal
                     ? point(static_cast<coord>(bounds.x1() + axis + 2),
                             static_cast<coord>(bounds.y1() + 2))
                     : point(static_cast<coord>(bounds.x1() + 2),
@@ -152,10 +155,11 @@ namespace native
         if (!_track_mouse)
             return;
         const rect bounds = get_bounds();
-        const int axis = _orientation == ruler_orientation::horizontal
+        const ruler_orientation orientation = get_orientation();
+        const int axis = orientation == ruler_orientation::horizontal
             ? static_cast<int>(position.x) - bounds.x1()
             : static_cast<int>(position.y) - bounds.y1();
-        const int length = _orientation == ruler_orientation::horizontal
+        const int length = orientation == ruler_orientation::horizontal
             ? bounds.w() : bounds.h();
         if (axis < 0 || axis >= length)
             return;
@@ -183,7 +187,7 @@ namespace native
         graphics.set_ink(colors.button_text);
         const int length = major ? 9 : 5;
         const window_edge edge = get_edge();
-        if (_orientation == ruler_orientation::horizontal) {
+        if (get_orientation() == ruler_orientation::horizontal) {
             const coord x = static_cast<coord>(bounds.x1()+axis_position);
             const coord outer = edge == window_edge::top
                 ? static_cast<coord>(bounds.y2()-1) : bounds.y1();
@@ -204,7 +208,23 @@ namespace native
                            const point &position,
                            const std::string &text,
                            const theme::palette &colors) {
-        graphics.set_ink(colors.button_text).draw_text(text, position);
+        graphics.set_ink(colors.button_text);
+        if (get_orientation() == ruler_orientation::horizontal) {
+            graphics.draw_text(text, position);
+            return;
+        }
+
+        const text_metrics metrics = graphics.measure_text(text);
+        const rect label_bounds(
+            static_cast<coord>(position.x - 2),
+            position.y,
+            static_cast<dim>(std::max(1, metrics.height + 4)),
+            static_cast<dim>(std::max(1, metrics.width)));
+        detail::draw_rotated_text(
+            graphics,
+            text,
+            label_bounds,
+            get_edge() == window_edge::left);
     }
 
     void ruler::draw_tracker(gpx &graphics,
@@ -212,7 +232,7 @@ namespace native
                              int axis_position,
                              const theme::palette &colors) {
         graphics.set_ink(colors.focus);
-        if (_orientation == ruler_orientation::horizontal) {
+        if (get_orientation() == ruler_orientation::horizontal) {
             const coord x = static_cast<coord>(bounds.x1()+axis_position);
             graphics.draw_line({x, bounds.y1()},
                                {x, static_cast<coord>(bounds.y2()-1)});

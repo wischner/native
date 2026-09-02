@@ -619,7 +619,7 @@ namespace
                 kind == native::caption_button_kind::pin;
             if (element_state.pressed)
                 pushed_in = !pushed_in;
-            // The docking surface has already painted its background.
+            // The caller has already painted its background.
             // Do not pass OLGX_ERASE here: that implementation uses
             // XClearArea (Window-only), while Native themes paint into a
             // backing Pixmap before copying to the XView window.

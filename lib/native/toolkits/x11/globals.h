@@ -66,6 +66,7 @@ namespace linux::x11
     struct xaw_menu
     {
         Widget menu_bar = nullptr;
+        Widget event_widget = nullptr;
         native::app_wnd *owner = nullptr;
         std::vector<xaw_menu_callback *> callbacks;
     };
@@ -119,6 +120,10 @@ namespace linux::x11
 
     extern native::bindings<native::accordion *, xaw_collection *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, xaw_collection *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, xaw_collection *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, xaw_collection *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, xaw_collection *>

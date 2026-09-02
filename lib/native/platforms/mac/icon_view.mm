@@ -369,11 +369,11 @@ namespace native
     void icon_view::create() const {
         if (_created)
             return;
-        NSView *parent = mac::parent_view(get_parent());
+        auto *self = const_cast<icon_view *>(this);
+        NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
                 "macOS: icon_view requires a created parent.");
-        auto *self = const_cast<icon_view *>(this);
         NSScrollView *scroll = [[NSScrollView alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,

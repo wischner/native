@@ -45,6 +45,10 @@ namespace linux::wmaker
         combo_box_bindings;
     native::bindings<native::accordion *, native_collection *>
         accordion_bindings;
+    native::bindings<native::tab_view *, native_tab_view *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, native_split_view *>
+        split_view_bindings;
     native::bindings<native::icon_view *, native_collection *>
         icon_view_bindings;
     native::bindings<native::tree_view *, native_collection *>
@@ -101,6 +105,26 @@ namespace linux::wmaker
 
     WMWidget *parent_widget(native::wnd *control) {
         native::wnd *parent = control ? control->get_parent() : nullptr;
+        if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
+            auto *state = tab_view_bindings.object_from_handle(tabs);
+            if (state) {
+                for (std::size_t index = 0;
+                     index < tabs->get_item_count() &&
+                     index < state->pages.size(); ++index) {
+                    if (&tabs->get_item(index).get_content() == control)
+                        return state->pages[index];
+                }
+            }
+        }
+        if (auto *split = dynamic_cast<native::split_view *>(parent)) {
+            auto *state = split_view_bindings.object_from_handle(split);
+            if (state) {
+                if (&split->get_first() == control)
+                    return state->first;
+                if (&split->get_second() == control)
+                    return state->second;
+            }
+        }
         WMWidget *widget = parent
                                ? wnd_bindings.handle_from_object(parent)
                                : nullptr;

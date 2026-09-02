@@ -16,6 +16,7 @@ namespace native
     class gpx;
     class icon_view;
     class tree_view;
+    class tab_view;
 
     namespace detail
     {
@@ -30,6 +31,11 @@ namespace native
         // Route a client-relative pointer release to an accordion.
         bool handle_accordion_click(accordion &control,
                                     point position);
+
+        // Draw a portable tab view at an ancestor-relative origin.
+        void draw_tab_view_at(tab_view &control,
+                              gpx &graphics,
+                              point origin);
 
         // Draw one icon view into a backend-owned graphics context.
         void draw_icon_view(icon_view &control, gpx &graphics);

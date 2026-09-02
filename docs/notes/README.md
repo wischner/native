@@ -22,9 +22,10 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 
 ## Current notes
 
-- [Backend open issues](backend-open-issues.md)
-- [Haiku remote runtime and debug](haiku-remote-runtime.md)
-- [macOS remote runtime (leia)](macos-remote-runtime.md)
-- [Production source TODOs](production-source-todos.md)
-- [Lab source TODOs](lab-source-todos.md)
-- [Windows Wine runtime note](windows-wine-runtime.md)
+- [Native versus custom control audit](CUSTOM.md)
+- [Backend open issues](BACKEND-OPEN-ISSUES.md)
+- [Haiku remote runtime and debug](HAIKU-REMOTE-RUNTIME.md)
+- [macOS remote runtime (leia)](MACOS-REMOTE-RUNTIME.md)
+- [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
+- [Lab source TODOs](LAB-SOURCE-TODOS.md)
+- [Windows Wine runtime note](WINDOWS-WINE-RUNTIME.md)

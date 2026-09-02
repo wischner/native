@@ -5,7 +5,7 @@ interface library. It starts with the smallest possible window and then
 introduces painting, input events, menus, controls, layouts, independent
 windows, system dialogs, graphics, fonts, images, clipboard access, text
 editing, collection and tree controls, and virtual multi-column tables.
-It also covers persistent split, tabbed, and floating docking workspaces.
+It also covers portable split views and native tab controls.
 
 The first chapters preserve the former runnable examples as maintained
 documentation while the repository itself builds only the `vision`
@@ -28,23 +28,23 @@ controls.
 
 ## Table of contents
 
-1. [Your first application](programming-native/01-first-application.md)
-2. [Painting and mouse input](programming-native/02-painting-and-input.md)
-3. [Menus and commands](programming-native/03-menus-and-commands.md)
-4. [Buttons and control lifecycle](programming-native/04-buttons.md)
-5. [Configuring controls](programming-native/05-configuring-controls.md)
-6. [Absolute layout](programming-native/06-absolute-layout.md)
-7. [Grid and nested layout](programming-native/07-grid-layout.md)
-8. [Selection controls](programming-native/08-selection-controls.md)
-9. [Owned windows and file dialogs](programming-native/09-owned-windows-and-dialogs.md)
-10. [Graphics, images, fonts, and themes](programming-native/10-graphics-images-fonts-themes.md)
-11. [Clipboard and text editing](programming-native/11-clipboard-and-text-editing.md)
-12. [Building, linking, and distributing](programming-native/12-building-and-distributing.md)
-13. [Collection and disclosure controls](programming-native/13-collection-and-disclosure-controls.md)
-14. [Advanced table views](programming-native/14-advanced-table-views.md)
-15. [Source editing](programming-native/15-source-editing.md)
-16. [Docking workspaces](programming-native/16-docking-workspaces.md)
-17. [Input, dialogs, and window chrome](programming-native/17-input-dialogs-and-window-chrome.md)
+1. [Your first application](programming-native/01-FIRST-APPLICATION.md)
+2. [Painting and mouse input](programming-native/02-PAINTING-AND-INPUT.md)
+3. [Menus and commands](programming-native/03-MENUS-AND-COMMANDS.md)
+4. [Buttons and control lifecycle](programming-native/04-BUTTONS.md)
+5. [Configuring controls](programming-native/05-CONFIGURING-CONTROLS.md)
+6. [Absolute layout](programming-native/06-ABSOLUTE-LAYOUT.md)
+7. [Grid and nested layout](programming-native/07-GRID-LAYOUT.md)
+8. [Selection controls](programming-native/08-SELECTION-CONTROLS.md)
+9. [Owned windows and file dialogs](programming-native/09-OWNED-WINDOWS-AND-DIALOGS.md)
+10. [Graphics, images, fonts, and themes](programming-native/10-GRAPHICS-IMAGES-FONTS-THEMES.md)
+11. [Clipboard and text editing](programming-native/11-CLIPBOARD-AND-TEXT-EDITING.md)
+12. [Building, linking, and distributing](programming-native/12-BUILDING-AND-DISTRIBUTING.md)
+13. [Collection and disclosure controls](programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md)
+14. [Advanced table views](programming-native/14-ADVANCED-TABLE-VIEWS.md)
+15. [Source editing](programming-native/15-SOURCE-EDITING.md)
+16. [Split views and tabs](programming-native/16-SPLIT-VIEWS-AND-TABS.md)
+17. [Input, dialogs, and window chrome](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
 
 ## Building the repository program
 
@@ -78,4 +78,4 @@ Linux toolkit.
 - Backend headers and handles never enter application code. Include
   `<native.h>` and link the CMake target `native`.
 
-Continue with [Your first application](programming-native/01-first-application.md).
+Continue with [Your first application](programming-native/01-FIRST-APPLICATION.md).

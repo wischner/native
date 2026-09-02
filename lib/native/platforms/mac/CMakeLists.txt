@@ -29,6 +29,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/list.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/accordion.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/split_view.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/icon_view.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/table_view.mm

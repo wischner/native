@@ -13,11 +13,13 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <native/geometry.h>
 #include <native/signal.h>
 #include <native/theme.h>
 #include <bindings.h>
+#include <message_box_common.h>
 
 namespace
 {
@@ -27,6 +29,14 @@ namespace
                                      std::declval<native::gpx &>())),
                                  std::unique_ptr<native::theme>>,
                   "theme factory must return the abstract interface");
+    static_assert(native::detail::message_box_button_count(
+                      native::message_box_buttons::yes_no_cancel) == 3);
+    static_assert(native::detail::message_box_result_for_button(
+                      native::message_box_buttons::yes_no, 1) ==
+                  native::message_box_result::no);
+    static_assert(native::detail::message_box_dismissed_result(
+                      native::message_box_buttons::ok_cancel) ==
+                  native::message_box_result::cancel);
 
     int failure_count = 0;
 
@@ -100,6 +110,34 @@ namespace
         event.disconnect_all();
         event.emit(2);
         expect(observed == 20, "disconnected signal has no callbacks");
+
+        native::signal<std::string> value_event;
+        std::vector<std::string> values;
+        value_event.connect([&](std::string value) {
+            values.push_back(std::move(value));
+            return false;
+        });
+        value_event.connect([&](std::string value) {
+            values.push_back(std::move(value));
+            return false;
+        });
+        value_event.emit("payload");
+        expect(values ==
+                   std::vector<std::string>({"payload", "payload"}),
+               "each by-value subscriber receives the event payload");
+
+        int recursive_initialization_count = 0;
+        native::signal<> *initializing_signal = nullptr;
+        native::signal<> initialized_event(
+            [&recursive_initialization_count, &initializing_signal]() {
+                ++recursive_initialization_count;
+                initializing_signal->connect([]() { return false; });
+            });
+        initializing_signal = &initialized_event;
+        initialized_event.connect([]() { return false; });
+        initialized_event.emit();
+        expect(recursive_initialization_count == 1,
+               "signal initialization remains non-recursive");
     }
 
     // Verify replacing either side preserves a bijective binding.

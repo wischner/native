@@ -7,7 +7,9 @@
 
 #include <native.h>
 #include <native/menu.h>
+#include <algorithm>
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -19,6 +21,43 @@ namespace
 
 namespace linux::sdl2
 {
+    bool handle_menu_key(sdl2_menu *menu,
+                         const SDL_KeyboardEvent &event) {
+        if (!menu || !menu->owner || event.type != SDL_KEYDOWN)
+            return false;
+        const SDL_Keymod modifiers = static_cast<SDL_Keymod>(
+            event.keysym.mod);
+        for (const auto &top : menu->tops) {
+            for (const auto &item : top.items) {
+                if (item.separator || item.shortcut.empty())
+                    continue;
+                const auto parsed = native::detail::parse_menu_shortcut(
+                    item.shortcut);
+                if (parsed.control != ((modifiers & KMOD_CTRL) != 0) ||
+                    parsed.alt != ((modifiers & KMOD_ALT) != 0) ||
+                    parsed.shift != ((modifiers & KMOD_SHIFT) != 0) ||
+                    parsed.command != ((modifiers & KMOD_GUI) != 0))
+                    continue;
+                std::string key = SDL_GetKeyName(event.keysym.sym);
+                std::transform(key.begin(), key.end(), key.begin(),
+                    [](unsigned char c) {
+                        return static_cast<char>(std::tolower(c));
+                    });
+                std::string expected = parsed.key;
+                std::transform(expected.begin(), expected.end(),
+                               expected.begin(),
+                    [](unsigned char c) {
+                        return static_cast<char>(std::tolower(c));
+                    });
+                if (key == expected) {
+                    menu->owner->on_native_menu(item.id);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     static int text_width_est(const std::string &s) {
         return linux::sdl2::text_width(s) + 16;
@@ -26,7 +65,20 @@ namespace linux::sdl2
 
     static const int menu_item_height = 20;
     static const int menu_separator_height = 9;
-    static const int popup_width = 180;
+    static int popup_width(const sdl2_menu::top_entry &top) {
+        int width = 180;
+        for (const auto &item : top.items) {
+            if (item.separator)
+                continue;
+            width = std::max(
+                width,
+                linux::sdl2::text_width(
+                    item.shortcut.empty()
+                        ? item.label
+                        : item.label + "    " + item.shortcut) + 24);
+        }
+        return width;
+    }
 
     static int row_height(const native::main_menu::menu_entry &item) {
         return item.separator ? menu_separator_height : menu_item_height;
@@ -59,8 +111,9 @@ namespace linux::sdl2
 
         const auto &top = m->tops[m->open_idx];
         const int popup_h = popup_height(top);
+        const int width = popup_width(top);
 
-        if (!(x >= m->popup_x && x < m->popup_x + popup_width &&
+        if (!(x >= m->popup_x && x < m->popup_x + width &&
               y >= m->popup_y && y < m->popup_y + popup_h))
             return -1;
 
@@ -111,10 +164,11 @@ namespace linux::sdl2
             m->open_idx < static_cast<int>(m->tops.size())) {
             auto &top = m->tops[m->open_idx];
             const int popup_h = popup_height(top);
+            const int width = popup_width(top);
             painter->draw_popup_frame(
                 native::rect(m->popup_x,
                              m->popup_y,
-                             static_cast<native::dim>(popup_width),
+                             static_cast<native::dim>(width),
                              static_cast<native::dim>(popup_h)));
 
             int row_y = m->popup_y+1;
@@ -125,7 +179,7 @@ namespace linux::sdl2
                     painter->draw_separator(
                         native::rect(m->popup_x+6,
                                      static_cast<native::coord>(row_y+height/2),
-                                     static_cast<native::dim>(popup_width-12),
+                                     static_cast<native::dim>(width-12),
                                      2),
                         native::separator_orientation::horizontal);
                     row_y += height;
@@ -138,9 +192,11 @@ namespace linux::sdl2
                     native::rect(
                         m->popup_x + 1,
                         row_y,
-                        static_cast<native::dim>(popup_width - 2),
+                        static_cast<native::dim>(width - 2),
                         static_cast<native::dim>(height)),
-                    item.label,
+                    item.shortcut.empty()
+                        ? item.label
+                        : item.label + "    " + item.shortcut,
                     st);
                 row_y += height;
             }

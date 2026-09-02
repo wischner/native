@@ -36,6 +36,10 @@ namespace linux::sdl2
         text_edit_bindings;
     native::bindings<native::accordion *, sdl2_collection *>
         accordion_bindings;
+    native::bindings<native::tab_view *, sdl2_collection *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, sdl2_collection *>
+        split_view_bindings;
     native::bindings<native::icon_view *, sdl2_collection *>
         icon_view_bindings;
     native::bindings<native::tree_view *, sdl2_collection *>
@@ -51,6 +55,7 @@ namespace linux::sdl2
     std::vector<native::button *> buttons;
     std::vector<native::text_edit *> text_edits;
     std::vector<native::accordion *> accordions;
+    std::vector<native::tab_view *> tab_views;
     std::vector<native::icon_view *> icon_views;
     std::vector<native::tree_view *> tree_views;
     std::vector<native::table_view *> table_views;

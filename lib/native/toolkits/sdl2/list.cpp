@@ -10,6 +10,25 @@
 #include <native/list.h>
 #include "../../control_render_access.h"
 #include "globals.h"
+namespace
+{
+    native::wnd *root_of(native::wnd *control) {
+        while (control && control->get_parent())
+            control = control->get_parent();
+        return control;
+    }
+
+    native::rect bounds_in_root(native::wnd &control) {
+        native::rect bounds = control.get_bounds();
+        for (native::wnd *parent = control.get_parent();
+             parent && parent->get_parent();
+             parent = parent->get_parent()) {
+            bounds.p.x += parent->get_position().x;
+            bounds.p.y += parent->get_position().y;
+        }
+        return bounds;
+    }
+}
 namespace linux::sdl2
 {
     bool
@@ -18,8 +37,8 @@ namespace linux::sdl2
             return false;
         for (auto *c : lists) {
             auto *b = list_bindings.object_from_handle(c);
-            auto r = c->get_bounds();
-            if (!b || b->parent != owner || !b->visible ||
+            auto r = bounds_in_root(*c);
+            if (!b || root_of(c) != owner || !b->visible ||
                 !r.contains(native::point(x, y)))
                 continue;
             int index = (y - r.p.y - 1) / 20;
@@ -35,12 +54,12 @@ namespace linux::sdl2
         auto painter = native::theme::create(g);
         for (auto *c : lists) {
             auto *b = list_bindings.object_from_handle(c);
-            if (b && b->parent == owner && b->visible)
+            if (b && root_of(c) == owner && b->visible)
                 native::detail::control_render_access::draw(
                     *c,
                     g,
                     *painter,
-                    c->get_bounds(),
+                    bounds_in_root(*c),
                     native::theme::state{});
         }
     }

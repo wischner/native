@@ -19,6 +19,8 @@ namespace native
     const std::string &status_bar::get_text() const { return _text; }
 
     status_bar &status_bar::set_text(const std::string &text) {
+        if (_parts.empty() && _text == text)
+            return *this;
         _text = text;
         _parts.clear();
         invalidate();
@@ -32,6 +34,18 @@ namespace native
     status_bar &status_bar::set_parts(std::vector<status_bar_part> parts) {
         for (status_bar_part &part : parts)
             part.width = std::max(0, part.width);
+
+        const bool unchanged = _text.empty() &&
+            _parts.size() == parts.size() &&
+            std::equal(_parts.begin(), _parts.end(), parts.begin(),
+                [](const status_bar_part &left,
+                   const status_bar_part &right) {
+                    return left.text == right.text &&
+                        left.width == right.width;
+                });
+        if (unchanged)
+            return *this;
+
         _parts = std::move(parts);
         _text.clear();
         invalidate();
@@ -41,6 +55,7 @@ namespace native
     void status_bar::draw(gpx &graphics, const rect &bounds) {
         if (!bounds.w() || !bounds.h())
             return;
+        auto saved = graphics.save_state();
         auto appearance = theme::create(graphics);
         const theme::state state{};
         draw_background(graphics, *appearance, bounds, state);
@@ -81,7 +96,7 @@ namespace native
                                      theme &appearance,
                                      const rect &bounds,
                                      const theme::state &state) {
-        appearance.draw_surface(bounds, surface_kind::panel, state);
+        appearance.draw_surface(bounds, surface_kind::status, state);
     }
 
     void status_bar::draw_part(gpx &graphics,
@@ -91,12 +106,13 @@ namespace native
                                const theme::state &state) {
         if (!bounds.w() || !bounds.h())
             return;
-        appearance.draw_surface(bounds, surface_kind::inset, state);
+        appearance.draw_surface(bounds, surface_kind::status_part, state);
         const theme::palette colors = appearance.native_palette();
-        graphics.set_ink(colors.button_text);
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(colors.button_text);
         const rect text_bounds(
-            static_cast<coord>(bounds.x1()+4), bounds.y1(),
-            static_cast<dim>(std::max(0, static_cast<int>(bounds.w())-8)),
+            static_cast<coord>(bounds.x1()+5), bounds.y1(),
+            static_cast<dim>(std::max(0, static_cast<int>(bounds.w())-10)),
             bounds.h());
         graphics.draw_text(part.text, text_bounds,
                            {text_align::start, text_valign::center,

@@ -269,7 +269,12 @@ namespace native
             throw;
         }
 
-        self->menu.attach(*self);
+        // Realize the top-level resource before the portable create
+        // hook constructs and shows children. WINGs requires a
+        // realized parent before a child can be realized; delaying
+        // this until show() violated that lifecycle ordering.
+        window_state->menu_height = self->menu.tops().empty()
+            ? 0 : linux::wmaker::menu_bar_height;
         const native::point position =
             linux::wmaker::constrain_position(_bounds.p, _bounds.d);
         WMSetWindowInitialPosition(window, position.x, position.y);
@@ -296,6 +301,9 @@ namespace native
                 ButtonReleaseMask,
             handle_window_event,
             self);
+
+        WMRealizeWidget(window);
+        self->menu.attach(*self);
 
         _created = true;
         self->on_native_move(position);

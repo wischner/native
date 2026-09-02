@@ -11,6 +11,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "../../message_box_common.h"
 
 namespace native
 {
@@ -20,6 +21,7 @@ namespace native
         const std::string &title,
         message_box_buttons buttons,
         message_box_icon icon) {
+        detail::validate_message_box_owner(owner);
         UINT flags = MB_TASKMODAL;
         switch (buttons) {
         case message_box_buttons::ok: flags |= MB_OK; break;

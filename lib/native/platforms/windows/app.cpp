@@ -10,6 +10,7 @@
 #include <windows.h>
 
 #include "../../post_backend.h"
+#include "globals.h"
 
 namespace native
 {
@@ -25,6 +26,17 @@ namespace native
                 return -1;
             }
 
+            bool translated = false;
+            if (auto *window = app::main_wnd();
+                window && window->menu.id()) {
+                auto *menu = windows::menu_bindings.object_from_handle(
+                    window->menu.id());
+                HWND hwnd = windows::wnd_bindings.handle_from_object(window);
+                translated = menu && menu->accelerators && hwnd &&
+                    TranslateAcceleratorW(hwnd, menu->accelerators, &msg);
+            }
+            if (translated)
+                continue;
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }

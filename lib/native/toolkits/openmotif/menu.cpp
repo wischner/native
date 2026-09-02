@@ -17,6 +17,7 @@
 #include <native.h>
 #include <native/menu.h>
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -90,14 +91,22 @@ namespace native
 
             XmString label = XmStringCreateLocalized(
                 const_cast<char *>(top.title.c_str()));
-            Arg args[2];
-            XtSetArg(args[0], XmNlabelString, label);
-            XtSetArg(args[1], XmNsubMenuId, pulldown);
+            Arg args[3];
+            int arg_count = 0;
+            XtSetArg(args[arg_count], XmNlabelString, label);
+            ++arg_count;
+            XtSetArg(args[arg_count], XmNsubMenuId, pulldown);
+            ++arg_count;
+            if (top.mnemonic_index < top.title.size()) {
+                XtSetArg(args[arg_count], XmNmnemonic,
+                         top.title[top.mnemonic_index]);
+                ++arg_count;
+            }
             Widget cascade = XmCreateCascadeButton(
                 menu_bar,
                 const_cast<char *>(top.title.c_str()),
                 args,
-                2);
+                arg_count);
             XmStringFree(label);
             XtManageChild(cascade);
 
@@ -114,14 +123,42 @@ namespace native
                 hm->callbacks.push_back(cbd);
                 XmString item_label = XmStringCreateLocalized(
                     const_cast<char *>(item.label.c_str()));
-                Arg item_args[1];
-                XtSetArg(item_args[0], XmNlabelString, item_label);
+                Arg item_args[5];
+                int item_arg_count = 0;
+                XtSetArg(item_args[item_arg_count], XmNlabelString,
+                         item_label);
+                ++item_arg_count;
+                if (item.mnemonic_index < item.label.size()) {
+                    XtSetArg(item_args[item_arg_count], XmNmnemonic,
+                             item.label[item.mnemonic_index]);
+                    ++item_arg_count;
+                }
+                XmString accelerator_text = nullptr;
+                std::string accelerator;
+                if (!item.shortcut.empty()) {
+                    const auto parsed = native::detail::parse_menu_shortcut(
+                        item.shortcut);
+                    if (parsed.control) accelerator += "Ctrl ";
+                    if (parsed.alt) accelerator += "Alt ";
+                    if (parsed.shift) accelerator += "Shift ";
+                    accelerator += "<Key>" + parsed.key;
+                    accelerator_text = XmStringCreateLocalized(
+                        const_cast<char *>(item.shortcut.c_str()));
+                    XtSetArg(item_args[item_arg_count], XmNaccelerator,
+                             accelerator.c_str());
+                    ++item_arg_count;
+                    XtSetArg(item_args[item_arg_count], XmNacceleratorText,
+                             accelerator_text);
+                    ++item_arg_count;
+                }
                 Widget btn = XmCreatePushButton(
                     pulldown,
                     const_cast<char *>(item.label.c_str()),
                     item_args,
-                    1);
+                    item_arg_count);
                 XmStringFree(item_label);
+                if (accelerator_text)
+                    XmStringFree(accelerator_text);
                 XtAddCallback(
                     btn, XmNactivateCallback, menu_callback, cbd);
                 XtManageChild(btn);

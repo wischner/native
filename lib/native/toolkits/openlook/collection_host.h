@@ -28,7 +28,7 @@ namespace linux::openlook
 
     // Paint an invalid collection region into its backing pixmap and copy
     // it to the live XView paint window without first exposing a cleared
-    // Panel.  Docking overlays use this path while their hot state changes.
+    // Panel while hover and selection state changes.
     void repaint_collection(native::wnd &owner,
                             const native::rect &area);
 

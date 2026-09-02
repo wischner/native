@@ -167,7 +167,8 @@ namespace native
         if (_created)
             return;
         wnd *parent = get_parent();
-        NSView *parent_content = mac::parent_view(parent);
+        NSView *parent_content = mac::parent_view(
+            parent, const_cast<text_edit *>(this));
         if (!parent_content)
             throw std::runtime_error(
                 "macOS: text_edit requires a created parent.");

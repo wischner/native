@@ -20,7 +20,25 @@
 
 namespace
 {
+    native::wnd *root_of(native::wnd *control) {
+        while (control && control->get_parent())
+            control = control->get_parent();
+        return control;
+    }
+
+    native::rect bounds_in_root(native::wnd &control) {
+        native::rect bounds = control.get_bounds();
+        for (native::wnd *parent = control.get_parent();
+             parent && parent->get_parent();
+             parent = parent->get_parent()) {
+            bounds.p.x += parent->get_position().x;
+            bounds.p.y += parent->get_position().y;
+        }
+        return bounds;
+    }
+
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
+        linux::gemix::render_tab_views(owner, graphics);
         for (auto *button : linux::gemix::buttons) {
             if (!button || !button->get_parent() ||
                 button->get_parent() != owner)
@@ -59,13 +77,13 @@ namespace
                 state);
         }
         for (auto *control : linux::gemix::lists) {
-            if (!control || control->get_parent() != owner)
+            if (!control || root_of(control) != owner)
                 continue;
             native::detail::control_render_access::draw(
                 *control,
                 graphics,
                 *painter,
-                control->get_bounds(),
+                bounds_in_root(*control),
                 native::theme::state{});
         }
         for (auto *control : linux::gemix::combo_boxes) {
@@ -209,11 +227,13 @@ namespace
             }
         }
         for (auto *control : linux::gemix::lists) {
-            if (!control || control->get_parent() != owner ||
-                !control->get_bounds().contains(p))
+            const native::rect bounds = control
+                ? bounds_in_root(*control) : native::rect();
+            if (!control || root_of(control) != owner ||
+                !bounds.contains(p))
                 continue;
             const int index =
-                (p.y - control->get_bounds().p.y - 1) / 20;
+                (p.y - bounds.p.y - 1) / 20;
             if (index >= 0 &&
                 index < static_cast<int>(control->get_items().size())) {
                 control->on_native_selection(index);
@@ -398,6 +418,9 @@ namespace native
                                    : app::main_wnd();
                 if (top && !top->get_input_enabled()) {
                     raise_active_modal(top);
+                } else if (top && linux::gemix::handle_menu_key(
+                                      top, ks, kr)) {
+                    // A menu accelerator consumed this key packet.
                 } else if (top && linux::gemix::handle_combo_key(
                                       top, ks, kr)) {
                     // The focused combo box consumed this key packet.

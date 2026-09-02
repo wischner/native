@@ -700,10 +700,7 @@ namespace
         native::wnd &owner,
         linux::openmotif::motif_collection &state) {
         native::wnd *parent = owner.get_parent();
-        Widget parent_widget = parent
-                                   ? linux::openmotif::wnd_bindings
-                                         .handle_from_object(parent)
-                                   : nullptr;
+        Widget parent_widget = linux::openmotif::parent_widget(&owner);
         if (!parent || !parent->get_created() || !parent_widget)
             throw std::runtime_error(
                 "Motif: collection requires a created parent.");

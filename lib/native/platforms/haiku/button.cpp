@@ -101,13 +101,13 @@ namespace native
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
-        BView *parent = haiku::parent_view(p);
+        auto *self = const_cast<button *>(this);
+        BView *parent = haiku::parent_view(p, self);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
-        auto *self = const_cast<button *>(this);
 
         BButton *btn = nullptr;
         with_locked_window(window, [&](BWindow *) {

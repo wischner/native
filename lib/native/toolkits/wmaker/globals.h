@@ -21,6 +21,8 @@
 
 namespace linux::wmaker
 {
+    inline constexpr int menu_bar_height = 24;
+
     // Owns the WINGs resources representing one portable top level.
     struct window_state
     {
@@ -104,6 +106,10 @@ namespace linux::wmaker
         bool suppress = false;
     };
 
+    // Apply portable combo style and geometry to its native children.
+    void configure_combo_box(native::combo_box &owner,
+                             native_combo_box &state);
+
     struct native_collection
     {
         WMFrame *frame = nullptr;
@@ -117,6 +123,22 @@ namespace linux::wmaker
             native::invalid_table_row_id;
         native::tree_item_id last_tree_item =
             native::invalid_tree_item_id;
+    };
+
+    struct native_tab_view
+    {
+        WMTabView *tabs = nullptr;
+        std::vector<WMFrame *> pages;
+        std::vector<WMTabViewItem *> items;
+        WMTabViewDelegate delegate = {};
+        bool suppress = false;
+    };
+
+    struct native_split_view
+    {
+        WMSplitView *split = nullptr;
+        WMFrame *first = nullptr;
+        WMFrame *second = nullptr;
     };
 
     extern bool initialized;
@@ -141,6 +163,10 @@ namespace linux::wmaker
         combo_box_bindings;
     extern native::bindings<native::accordion *, native_collection *>
         accordion_bindings;
+    extern native::bindings<native::tab_view *, native_tab_view *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, native_split_view *>
+        split_view_bindings;
     extern native::bindings<native::icon_view *, native_collection *>
         icon_view_bindings;
     extern native::bindings<native::tree_view *, native_collection *>

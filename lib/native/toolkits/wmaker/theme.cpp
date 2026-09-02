@@ -451,8 +451,8 @@ namespace
             const native::coord bottom = bounds.y2() - 1;
             // Task Manager column headers are not full raised WINGs
             // buttons: their only light edge is the left divider. Use the
-            // identical recipe for collection and docking headers so all
-            // compact Window Maker headers belong to the same visual family.
+            // identical recipe for collection headers so compact Window
+            // Maker headers belong to the same visual family.
             _g.set_pen(1)
                 .set_ink(colors.button_border)
                 .draw_line(bounds.p,

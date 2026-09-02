@@ -576,7 +576,6 @@ namespace native
         menu->owner = &owner;
         menu->tops = _tops;
         int x = 0;
-        constexpr int menu_height = 24;
         WMFont *font = WMDefaultSystemFont(linux::wmaker::screen);
         menu->background = WMCreateFrame(window_state->window);
         WMSetFrameRelief(menu->background, WRFlat);
@@ -587,7 +586,7 @@ namespace native
             menu->background,
             static_cast<unsigned int>(
                 std::max<int>(1, owner.get_dimensions().w)),
-            menu_height);
+            linux::wmaker::menu_bar_height);
         WMMapWidget(menu->background);
 
         for (std::size_t index = 0; index < _tops.size(); ++index) {
@@ -598,7 +597,8 @@ namespace native
             WMSetFrameRelief(title, WRFlat);
             WMSetWidgetBackgroundColor(title, wing_screen()->gray);
             WMMoveWidget(title, x, 0);
-            WMResizeWidget(title, width, menu_height);
+            WMResizeWidget(
+                title, width, linux::wmaker::menu_bar_height);
 
             auto *callback = new linux::wmaker::menu_callback;
             callback->menu = menu;
@@ -625,7 +625,10 @@ namespace native
         WMSetFrameRelief(menu->separator, WRFlat);
         WMSetWidgetBackgroundColor(menu->separator,
                                    wing_screen()->darkGray);
-        WMMoveWidget(menu->separator, 0, menu_height - 1);
+        WMMoveWidget(
+            menu->separator,
+            0,
+            linux::wmaker::menu_bar_height - 1);
         WMResizeWidget(
             menu->separator,
             static_cast<unsigned int>(
@@ -641,7 +644,7 @@ namespace native
 
         _owner = &owner;
         _id = next_id();
-        window_state->menu_height = menu_height;
+        window_state->menu_height = linux::wmaker::menu_bar_height;
         linux::wmaker::menu_bindings.register_pair(_id, menu);
     }
 } // namespace native

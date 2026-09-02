@@ -460,11 +460,11 @@ namespace native
     void tree_view::create() const {
         if (_created)
             return;
-        NSView *parent = mac::parent_view(get_parent());
+        auto *self = const_cast<tree_view *>(this);
+        NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
                 "macOS: tree_view requires a created parent.");
-        auto *self = const_cast<tree_view *>(this);
         NSScrollView *scroll = [[NSScrollView alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,

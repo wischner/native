@@ -48,12 +48,45 @@ namespace
         for (auto *callback : binding->callbacks) delete callback;
         binding->callbacks.clear();
     }
+
+    void create_menu(native::combo_box *owner,
+                     linux::x11::xaw_combo_box *binding) {
+        binding->menu = XtVaCreatePopupShell(
+            "comboMenu",
+            simpleMenuWidgetClass,
+            binding->root,
+            nullptr);
+        for (std::size_t index = 0;
+             index < owner->get_items().size();
+             ++index) {
+            Widget entry = XtVaCreateManagedWidget(
+                "item",
+                smeBSBObjectClass,
+                binding->menu,
+                XtNlabel,
+                owner->get_items()[index].c_str(),
+                nullptr);
+            auto *callback = new linux::x11::xaw_combo_callback;
+            callback->owner = owner;
+            callback->index = static_cast<int>(index);
+            binding->callbacks.push_back(callback);
+            XtAddCallback(entry, XtNcallback, selected, callback);
+        }
+    }
 }
 
 namespace native
 {
     void combo_box::apply_items() {
-        destroy(); create(); show();
+        auto *binding = state(this);
+        if (!binding || !binding->root)
+            throw std::runtime_error(
+                "X11: Missing combo box binding.");
+        clear_callbacks(binding);
+        if (binding->menu)
+            XtDestroyWidget(binding->menu);
+        binding->menu = nullptr;
+        create_menu(this, binding);
     }
 
     void combo_box::apply_selected_index() { apply_text(); }
@@ -110,18 +143,7 @@ namespace native
             XtNleft, XtChainRight, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,
             nullptr);
-        binding->menu = XtVaCreatePopupShell(
-            "comboMenu", simpleMenuWidgetClass, binding->root, nullptr);
-        for (std::size_t index = 0; index < get_items().size(); ++index) {
-            Widget entry = XtVaCreateManagedWidget(
-                "item", smeBSBObjectClass, binding->menu,
-                XtNlabel, get_items()[index].c_str(), nullptr);
-            auto *callback = new linux::x11::xaw_combo_callback;
-            callback->owner = self;
-            callback->index = static_cast<int>(index);
-            binding->callbacks.push_back(callback);
-            XtAddCallback(entry, XtNcallback, selected, callback);
-        }
+        create_menu(self, binding);
         if (!binding->root || !binding->text || !binding->button ||
             !binding->menu) {
             if (binding->root) XtDestroyWidget(binding->root);

@@ -103,7 +103,10 @@ namespace native
             ensure_init();
             for (auto slot = slots.rbegin(); slot != slots.rend();
                  ++slot) {
-                if (slot->second(std::forward<argument_types>(args)...))
+                // Named arguments are lvalues here. Passing them
+                // without forwarding gives every by-value subscriber
+                // its own copy while preserving reference arguments.
+                if (slot->second(args...))
                     break;
             }
         }
@@ -112,8 +115,8 @@ namespace native
         // Run the optional initializer at most once.
         void ensure_init() const {
             if (!initialized && initializer) {
-                initializer();
                 initialized = true;
+                initializer();
             }
         }
 

@@ -50,6 +50,9 @@ namespace native
         // Return the owning top-level window, or null for the main one.
         virtual app_wnd *get_owner() const;
 
+        // Center an owned window over its owner; main windows are unchanged.
+        app_wnd &center_to_parent();
+
         // Return whether this top-level window has modal semantics.
         virtual bool get_modal() const;
 

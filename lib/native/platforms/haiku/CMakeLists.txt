@@ -20,6 +20,8 @@ set(SRC_FILES
     check.cpp
     radio.cpp
     list.cpp
+    tab_view.cpp
+    split_view.cpp
     collection_view.cpp
     accordion.cpp
     icon_view.cpp

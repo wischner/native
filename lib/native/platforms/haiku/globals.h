@@ -35,6 +35,8 @@ class BRefFilter;
 class BColumn;
 class BColumnListView;
 class BRow;
+class BTabView;
+class BSplitView;
 
 namespace haiku
 {
@@ -108,6 +110,18 @@ namespace haiku
     {
         BListView *view = nullptr;
     };
+    struct haiku_tab_view
+    {
+        BTabView *view = nullptr;
+        std::vector<BView *> pages;
+    };
+    struct haiku_split_view
+    {
+        BSplitView *view = nullptr;
+        BView *first = nullptr;
+        BView *second = nullptr;
+        bool suppress = false;
+    };
     struct haiku_combo_box
     {
         BView *view = nullptr;
@@ -144,6 +158,10 @@ namespace haiku
     extern native::bindings<native::radio *, haiku_radio *>
         radio_bindings;
     extern native::bindings<native::list *, haiku_list *> list_bindings;
+    extern native::bindings<native::tab_view *, haiku_tab_view *>
+        tab_view_bindings;
+    extern native::bindings<native::split_view *, haiku_split_view *>
+        split_view_bindings;
     extern native::bindings<native::combo_box *, haiku_combo_box *>
         combo_box_bindings;
     extern native::bindings<native::accordion *, haiku_collection *>
@@ -169,5 +187,6 @@ namespace haiku
     BView *view_from_control(native::wnd *control);
 
     // Return the created content view which can own a child control.
-    BView *parent_view(native::wnd *parent);
+    BView *parent_view(native::wnd *parent,
+                       native::wnd *child = nullptr);
 } // namespace haiku

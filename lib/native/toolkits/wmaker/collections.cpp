@@ -856,8 +856,8 @@ namespace native
             throw std::runtime_error(
                 "Window Maker/WINGs: accordion is not created.");
         // Accordions can also be created dynamically after their parent
-        // was realized (the docking compass uses this path).  WINGs does
-        // not realize such descendants merely by mapping them.
+        // was realized. WINGs does not realize such descendants merely
+        // by mapping them.
         WMRealizeWidget(state->frame);
         WMMapWidget(state->frame);
         WMRaiseWidget(state->frame);

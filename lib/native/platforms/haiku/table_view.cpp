@@ -434,7 +434,7 @@ namespace
 
     BView *create_native_table(native::table_view &table,
                                haiku::haiku_collection &binding) {
-        BView *parent = haiku::parent_view(table.get_parent());
+        BView *parent = haiku::parent_view(table.get_parent(), &table);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
             throw std::runtime_error(

@@ -305,12 +305,11 @@ namespace vision
                    "gutter and overlays.");
     }
 
-    void vision_window::show_docking() {
-        if (!_docking.get_created())
-            _docking.create();
-        _docking.show();
-        set_status("Opened the split, tabbed, floating, and persistent "
-                   "docking workspace.");
+    void vision_window::show_splitter() {
+        if (!_splitter.get_created())
+            _splitter.create();
+        _splitter.show();
+        set_status("Opened the native two-pane split view.");
     }
 
     void vision_window::show_input_chrome() {

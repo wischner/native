@@ -16,6 +16,7 @@
 #include <native.h>
 #include <native/menu.h>
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -125,10 +126,31 @@ namespace native
                 }
                 BMessage *msg =
                     new BMessage(static_cast<uint32>(item.id));
-                sub->AddItem(new BMenuItem(item.label.c_str(), msg));
+                const auto parsed = native::detail::parse_menu_shortcut(
+                    item.shortcut);
+                uint32 modifiers = 0;
+                if (parsed.control) modifiers |= B_CONTROL_KEY;
+                if (parsed.alt) modifiers |= B_OPTION_KEY;
+                if (parsed.shift) modifiers |= B_SHIFT_KEY;
+                if (parsed.command) modifiers |= B_COMMAND_KEY;
+                const char shortcut = parsed.key.size() == 1
+                    ? static_cast<char>(std::tolower(
+                          static_cast<unsigned char>(parsed.key[0])))
+                    : 0;
+                BMenuItem *native_item = new BMenuItem(
+                    item.label.c_str(), msg, shortcut, modifiers);
+                if (item.mnemonic_index < item.label.size())
+                    native_item->SetTrigger(
+                        item.label[item.mnemonic_index]);
+                sub->AddItem(native_item);
                 h->item_ids.insert(item.id);
             }
             bar->AddItem(sub);
+            if (top.mnemonic_index < top.title.size() &&
+                sub->Superitem()) {
+                sub->Superitem()->SetTrigger(
+                    top.title[top.mnemonic_index]);
+            }
         }
 
         win->AddChild(bar);

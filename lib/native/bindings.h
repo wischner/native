@@ -21,12 +21,30 @@ namespace native
         // Register or replace a handle/object association.
         void register_pair(const handle_type &handle,
                            const object_type &object) {
+            const auto existing_handle = handle_to_object_.find(handle);
+            const auto existing_object = object_to_handle_.find(object);
+            if (existing_handle != handle_to_object_.end() &&
+                existing_object != object_to_handle_.end() &&
+                existing_handle->second == object &&
+                existing_object->second == handle)
+                return;
+
             // Remove either previous side so the two maps cannot retain
             // stale associations when a handle or object is reused.
             unregister_by_handle(handle);
             unregister_by_object(object);
-            handle_to_object_[handle] = object;
-            object_to_handle_[object] = handle;
+
+            // Roll back the first insertion if allocating the reverse
+            // entry fails. Previous associations may already be gone,
+            // but the registry itself always remains bijective.
+            const auto inserted =
+                handle_to_object_.emplace(handle, object).first;
+            try {
+                object_to_handle_.emplace(object, handle);
+            } catch (...) {
+                handle_to_object_.erase(inserted);
+                throw;
+            }
         }
 
         // Remove the association identified by a backend handle.

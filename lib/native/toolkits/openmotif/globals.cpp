@@ -31,6 +31,10 @@ namespace linux::openmotif
     native::bindings<native::combo_box *, Widget> combo_box_bindings;
     native::bindings<native::accordion *, motif_collection *>
         accordion_bindings;
+    native::bindings<native::tab_view *, motif_tab_view *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, motif_split_view *>
+        split_view_bindings;
     native::bindings<native::icon_view *, motif_collection *>
         icon_view_bindings;
     native::bindings<native::tree_view *, motif_collection *>
@@ -43,4 +47,23 @@ namespace linux::openmotif
         file_dialog_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;
+
+    Widget parent_widget(native::wnd *child) {
+        native::wnd *parent = child ? child->get_parent() : nullptr;
+        if (!parent || !parent->get_created())
+            return nullptr;
+        if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
+            auto *state = tab_view_bindings.object_from_handle(tabs);
+            if (!state)
+                return nullptr;
+            for (std::size_t index = 0;
+                 index < tabs->get_item_count() &&
+                 index < state->pages.size(); ++index) {
+                if (&tabs->get_item(index).get_content() == child)
+                    return state->pages[index];
+            }
+            return nullptr;
+        }
+        return wnd_bindings.handle_from_object(parent);
+    }
 } // namespace linux::openmotif

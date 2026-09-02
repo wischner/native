@@ -35,6 +35,10 @@ namespace
             return linux::openlook::accordion_bindings
                 .object_from_handle(accordion);
         }
+        if (auto *tabs = dynamic_cast<native::tab_view *>(window)) {
+            return linux::openlook::tab_view_bindings
+                .object_from_handle(tabs);
+        }
         if (auto *icons = dynamic_cast<native::icon_view *>(window)) {
             return linux::openlook::icon_view_bindings
                 .object_from_handle(icons);
@@ -131,6 +135,16 @@ namespace native
                    XV_Y,
                    position.y + menu_height,
                    nullptr);
+            if (state->content_panel) {
+                const auto *tabs = dynamic_cast<tab_view *>(this);
+                const rect content = tabs
+                    ? tabs->get_content_bounds()
+                    : rect(0, 0, _bounds.d.w, _bounds.d.h);
+                xv_set(state->content_panel,
+                       XV_X, position.x + content.p.x,
+                       XV_Y, position.y + menu_height + content.p.y,
+                       nullptr);
+            }
             return;
         }
         if (auto *state = combo_state(this)) {

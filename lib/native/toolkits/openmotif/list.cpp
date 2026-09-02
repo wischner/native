@@ -18,7 +18,7 @@ namespace
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "Motif: list requires a created parent.");
-        Widget w = linux::openmotif::wnd_bindings.handle_from_object(p);
+        Widget w = linux::openmotif::parent_widget(c);
         if (!w)
             throw std::runtime_error(
                 "Motif: list parent has no widget.");

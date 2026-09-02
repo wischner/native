@@ -45,6 +45,7 @@ namespace windows
     struct win_menu
     {
         HMENU hmenu = nullptr;
+        HACCEL accelerators = nullptr;
         native::app_wnd *owner = nullptr;
     };
 

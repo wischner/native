@@ -53,8 +53,8 @@ namespace native
             throw std::runtime_error(
                 "Motif: button parent is not created.");
 
-        Widget parent_widget =
-            linux::openmotif::wnd_bindings.handle_from_object(p);
+        auto *self = const_cast<button *>(this);
+        Widget parent_widget = linux::openmotif::parent_widget(self);
         if (!parent_widget)
             throw std::runtime_error(
                 "Motif: button parent is not created.");
@@ -83,7 +83,6 @@ namespace native
         if (!btn)
             throw std::runtime_error("Motif: Failed to create button.");
 
-        auto *self = const_cast<button *>(this);
         XtAddCallback(btn, XmNactivateCallback, button_activate, self);
 
         linux::openmotif::wnd_bindings.register_pair(btn, self);

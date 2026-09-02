@@ -126,6 +126,11 @@ namespace native
                     MENU_CLIENT_DATA,
                     callback,
                     nullptr));
+                if (!entry.shortcut.empty())
+                    xv_set(item,
+                           MENU_ACCELERATOR,
+                           entry.shortcut.c_str(),
+                           nullptr);
                 xv_set(menu, MENU_APPEND_ITEM, item, nullptr);
                 previous = item;
             }

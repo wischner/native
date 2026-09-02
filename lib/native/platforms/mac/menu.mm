@@ -9,6 +9,7 @@
 #include <native.h>
 #include <native/menu.h>
 #include "globals.h"
+#include "../../menu_shortcut.h"
 
 namespace
 {
@@ -87,12 +88,24 @@ namespace native
                     [[native_menu_target alloc] init];
                 target->_owner = &owner;
                 target->_item_id = item.id;
+                const auto parsed = native::detail::parse_menu_shortcut(
+                    item.shortcut);
+                NSString *key = parsed.key.size() == 1
+                    ? [[NSString stringWithUTF8String:parsed.key.c_str()]
+                          lowercaseString]
+                    : @"";
                 NSMenuItem *mi = [[NSMenuItem alloc]
                     initWithTitle:[NSString
                                       stringWithUTF8String:item.label
                                                                .c_str()]
                            action:@selector(menu_action:)
-                    keyEquivalent:@""];
+                    keyEquivalent:key];
+                NSEventModifierFlags modifiers = 0;
+                if (parsed.control) modifiers |= NSEventModifierFlagControl;
+                if (parsed.alt) modifiers |= NSEventModifierFlagOption;
+                if (parsed.shift) modifiers |= NSEventModifierFlagShift;
+                if (parsed.command) modifiers |= NSEventModifierFlagCommand;
+                [mi setKeyEquivalentModifierMask:modifiers];
                 [mi setTarget:target];
                 [mi setRepresentedObject:target]; // keep alive
                 [target release];

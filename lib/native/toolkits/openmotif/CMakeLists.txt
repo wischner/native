@@ -37,6 +37,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/collections.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
@@ -59,8 +61,9 @@ else()
 endif()
 
 # Link libraries
+# Xt's pkg-config contract already includes X11. Listing X11 again is
+# harmless with GNU ld but produces duplicate-library warnings on Tribblix.
 target_link_libraries(native PRIVATE
-    ${X11_LIBRARIES}
     ${MOTIF_LIBRARIES}
     ${XT_LIBRARIES}
 )

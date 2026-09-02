@@ -53,6 +53,7 @@ namespace linux::gemix
     extern std::vector<native::combo_box *> combo_boxes;
     extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::accordion *> accordions;
+    extern std::vector<native::tab_view *> tab_views;
     extern std::vector<native::icon_view *> icon_views;
     extern std::vector<native::tree_view *> tree_views;
     extern std::vector<native::table_view *> table_views;
@@ -61,6 +62,11 @@ namespace linux::gemix
     extern native::app_wnd *active_window;
     extern std::unordered_map<native::app_wnd *, menu_state>
         menu_states;
+
+    // Activate a menu shortcut from one AES keyboard packet.
+    bool handle_menu_key(native::app_wnd *owner,
+                         WORD modifiers,
+                         WORD key);
 
     struct gem_text_edit
     {
@@ -98,6 +104,7 @@ namespace linux::gemix
 
     // Draw every created collection descendant of an AES window.
     void render_collections(native::app_wnd *parent, native::gpx &g);
+    void render_tab_views(native::app_wnd *parent, native::gpx &g);
 
     // Route a local click release to a collection control.
     bool activate_collection(native::app_wnd *parent,

@@ -56,6 +56,12 @@ namespace
         return state && state->visible && control.get_created();
     }
 
+    bool visible(native::tab_view &control) {
+        auto *state = linux::sdl2::tab_view_bindings
+                          .object_from_handle(&control);
+        return state && state->visible && control.get_created();
+    }
+
     bool visible(native::icon_view &control) {
         auto *state = linux::sdl2::icon_view_bindings
                           .object_from_handle(&control);
@@ -106,6 +112,14 @@ namespace
 
 namespace linux::sdl2
 {
+    void render_tab_views(native::wnd *owner, native::gpx &graphics) {
+        for (auto *control : tab_views) {
+            if (control && visible(*control) && root_of(control) == owner)
+                native::detail::draw_tab_view_at(
+                    *control, graphics, origin_in_root(*control));
+        }
+    }
+
     void render_collections(native::wnd *owner, native::gpx &graphics) {
         for (auto *control : icon_views) {
             if (control && visible(*control) && root_of(control) == owner)
@@ -129,8 +143,7 @@ namespace linux::sdl2
         }
         // Accordion hosts are real child surfaces on native toolkits and
         // therefore occupy the front collection layer. Keep the emulated
-        // renderer consistent; docking uses a transient empty accordion
-        // as its raised guide surface.
+        // renderer consistent.
         for (auto *control : accordions) {
             if (control && visible(*control) && root_of(control) == owner)
                 native::detail::draw_accordion_at(
@@ -245,6 +258,19 @@ namespace linux::sdl2
                 clear_focus(owner);
                 control->on_native_focus(true);
             }
+            control->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left,
+                pressed ? native::mouse_action::press
+                        : native::mouse_action::release,
+                local_point(*control, x, y)));
+            return true;
+        }
+        for (auto iterator = tab_views.rbegin();
+             iterator != tab_views.rend(); ++iterator) {
+            native::tab_view *control = *iterator;
+            if (!control || !visible(*control) ||
+                root_of(control) != owner || !hit(*control, x, y))
+                continue;
             control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
@@ -618,6 +644,46 @@ namespace linux::sdl2
 
 namespace native
 {
+    void tab_view::apply_items() { invalidate(); }
+    void tab_view::apply_selected_index() { invalidate(); }
+
+    void tab_view::create() const {
+        if (_created) return;
+        if (!get_parent() || !get_parent()->get_created())
+            throw std::runtime_error(
+                "SDL2: tab_view requires a created parent.");
+        auto *self = const_cast<tab_view *>(this);
+        linux::sdl2::tab_view_bindings.register_pair(
+            self, new linux::sdl2::sdl2_collection());
+        linux::sdl2::tab_views.push_back(self);
+        _created = true;
+        self->synchronize_theme_metrics();
+        self->refresh();
+        self->on_native_create();
+    }
+
+    void tab_view::show() const {
+        auto *state = linux::sdl2::tab_view_bindings.object_from_handle(
+            const_cast<tab_view *>(this));
+        if (!_created || !state)
+            throw std::runtime_error("SDL2: tab_view is not created.");
+        state->visible = true;
+        invalidate();
+    }
+
+    void tab_view::destroy() const {
+        if (!_created) return;
+        auto *self = const_cast<tab_view *>(this);
+        auto *state = linux::sdl2::tab_view_bindings.object_from_handle(self);
+        self->on_native_destroy();
+        linux::sdl2::tab_views.erase(
+            std::remove(linux::sdl2::tab_views.begin(),
+                        linux::sdl2::tab_views.end(), self),
+            linux::sdl2::tab_views.end());
+        linux::sdl2::tab_view_bindings.unregister_by_handle(self);
+        delete state;
+    }
+
     void accordion::apply_items() { invalidate(); }
 
     void accordion::create() const {

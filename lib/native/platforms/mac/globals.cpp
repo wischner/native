@@ -28,6 +28,10 @@ namespace mac
         combo_box_bindings;
     native::bindings<native::accordion *, mac_accordion *>
         accordion_bindings;
+    native::bindings<native::tab_view *, mac_tab_view *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, mac_split_view *>
+        split_view_bindings;
     native::bindings<native::icon_view *, mac_icon_view *>
         icon_view_bindings;
     native::bindings<native::tree_view *, mac_tree_view *>
@@ -62,6 +66,14 @@ namespace mac
                 accordion_bindings.object_from_handle(accordion);
             return binding ? binding->stack : nil;
         }
+        if (auto *tabs = dynamic_cast<native::tab_view *>(control)) {
+            auto *binding = tab_view_bindings.object_from_handle(tabs);
+            return binding ? binding->view : nil;
+        }
+        if (auto *split = dynamic_cast<native::split_view *>(control)) {
+            auto *binding = split_view_bindings.object_from_handle(split);
+            return binding ? binding->view : nil;
+        }
         if (auto *icons = dynamic_cast<native::icon_view *>(control)) {
             auto *binding = icon_view_bindings.object_from_handle(icons);
             return binding ? binding->scroll : nil;
@@ -91,9 +103,20 @@ namespace mac
         return nil;
     }
 
-    NSView *parent_view(native::wnd *parent) {
+    NSView *parent_view(native::wnd *parent, native::wnd *child) {
         if (!parent || !parent->get_created())
             return nil;
+        if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
+            auto *binding = tab_view_bindings.object_from_handle(tabs);
+            return binding ? binding->page_host : nil;
+        }
+        if (auto *split = dynamic_cast<native::split_view *>(parent)) {
+            auto *binding = split_view_bindings.object_from_handle(split);
+            if (!binding) return nil;
+            return child == &split->get_second()
+                       ? binding->second
+                       : binding->first;
+        }
         if (NSView *view = view_from_control(parent))
             return view;
         NSWindow *window = wnd_bindings.handle_from_object(parent);

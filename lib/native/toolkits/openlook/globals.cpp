@@ -37,6 +37,10 @@ namespace linux::openlook
         combo_box_bindings;
     native::bindings<native::accordion *, openlook_collection *>
         accordion_bindings;
+    native::bindings<native::tab_view *, openlook_collection *>
+        tab_view_bindings;
+    native::bindings<native::split_view *, openlook_split_view *>
+        split_view_bindings;
     native::bindings<native::icon_view *, openlook_collection *>
         icon_view_bindings;
     native::bindings<native::tree_view *, openlook_collection *>
@@ -69,9 +73,23 @@ namespace linux::openlook
             throw std::runtime_error(
                 "OpenLook/XView: control requires a created parent.");
         }
-        Xv_opaque handle = parent
-                               ? wnd_bindings.handle_from_object(parent)
-                               : XV_NULL;
+        Xv_opaque handle = XV_NULL;
+        if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
+            auto *state = tab_view_bindings.object_from_handle(tabs);
+            handle = state ? state->content_panel : XV_NULL;
+        } else if (auto *split =
+                       dynamic_cast<native::split_view *>(parent)) {
+            auto *state = split_view_bindings.object_from_handle(split);
+            if (state) {
+                handle = control == &split->get_second()
+                             ? state->second
+                             : state->first;
+            }
+        } else {
+            handle = parent
+                         ? wnd_bindings.handle_from_object(parent)
+                         : XV_NULL;
+        }
         if (!handle) {
             throw std::runtime_error(
                 "OpenLook/XView: parent has no content panel.");
@@ -144,6 +162,13 @@ namespace linux::openlook
                 dynamic_cast<native::accordion *>(window)) {
             auto *state = accordion_bindings.object_from_handle(
                 accordion);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *tabs = dynamic_cast<native::tab_view *>(window)) {
+            auto *state = tab_view_bindings.object_from_handle(tabs);
             return state && state->paint_window
                        ? static_cast<Window>(xv_get(
                              state->paint_window, XV_XID))

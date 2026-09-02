@@ -11,6 +11,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "../../message_box_common.h"
 
 namespace native
 {
@@ -20,6 +21,7 @@ namespace native
         const std::string &title,
         message_box_buttons buttons,
         message_box_icon icon) {
+        detail::validate_message_box_owner(owner);
         Uint32 flags = 0;
         switch (icon) {
         case message_box_icon::information:
@@ -32,37 +34,23 @@ namespace native
         default: break;
         }
         SDL_MessageBoxButtonData data[3]{};
-        int count = 0;
-        auto add = [&](const char *label, int id, bool primary = false) {
-            data[count].flags = primary
+        const int count = detail::message_box_button_count(buttons);
+        for (int index = 0; index < count; ++index) {
+            data[index].flags = index == 0
                 ? SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT : 0;
-            data[count].buttonid = id;
-            data[count].text = label;
-            ++count;
-        };
-        switch (buttons) {
-        case message_box_buttons::ok:
-            add("OK", 1, true); break;
-        case message_box_buttons::ok_cancel:
-            add("OK", 1, true); add("Cancel", 2); break;
-        case message_box_buttons::yes_no:
-            add("Yes", 3, true); add("No", 4); break;
-        case message_box_buttons::yes_no_cancel:
-            add("Yes", 3, true); add("No", 4); add("Cancel", 2); break;
+            data[index].buttonid = index;
+            data[index].text =
+                detail::message_box_button_label(buttons, index);
         }
         SDL_Window *window = linux::sdl2::wnd_bindings
                                  .handle_from_object(&owner);
         SDL_MessageBoxData box{flags, window, title.c_str(),
                                message.c_str(), count, data, nullptr};
-        int id = -1;
-        if (SDL_ShowMessageBox(&box, &id) != 0)
+        int index = -1;
+        if (SDL_ShowMessageBox(&box, &index) != 0)
             return message_box_result::none;
-        switch (id) {
-        case 1: return message_box_result::ok;
-        case 2: return message_box_result::cancel;
-        case 3: return message_box_result::yes;
-        case 4: return message_box_result::no;
-        default: return message_box_result::none;
-        }
+        return index >= 0 && index < count
+            ? detail::message_box_result_for_button(buttons, index)
+            : detail::message_box_dismissed_result(buttons);
     }
 } // namespace native

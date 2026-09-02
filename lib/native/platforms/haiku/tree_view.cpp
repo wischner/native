@@ -304,7 +304,7 @@ namespace native
         if (_created)
             return;
         auto *self = const_cast<tree_view *>(this);
-        BView *parent = haiku::parent_view(get_parent());
+        BView *parent = haiku::parent_view(get_parent(), self);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
             throw std::runtime_error(

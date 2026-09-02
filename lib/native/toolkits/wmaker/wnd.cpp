@@ -11,6 +11,7 @@
 #include <WINGs/WINGs.h>
 
 #include <native/app_wnd.h>
+#include <native/combo_box.h>
 #include <native/wnd.h>
 
 #include "../../gpx_wnd.h"
@@ -58,6 +59,13 @@ namespace native
         WMResizeWidget(widget,
                        static_cast<unsigned int>(_bounds.d.w),
                        static_cast<unsigned int>(height));
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state = linux::wmaker::combo_box_bindings
+                              .object_from_handle(combo);
+            if (!state || !state->field || !state->popup)
+                return;
+            linux::wmaker::configure_combo_box(*combo, *state);
+        }
     }
 
     void wnd::apply_bounds() {

@@ -15,6 +15,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "../../message_box_common.h"
 
 namespace
 {
@@ -30,28 +31,31 @@ namespace
 
     void accept(Widget, XtPointer data, XtPointer) {
         auto *state = static_cast<result_state *>(data);
-        state->result = native::message_box_result::ok;
+        state->result = native::detail::message_box_result_for_button(
+            state->buttons, 0);
         state->done = true;
     }
 
     void reject(Widget, XtPointer data, XtPointer) {
         auto *state = static_cast<result_state *>(data);
-        state->result =
-            state->buttons == native::message_box_buttons::yes_no ||
-            state->buttons == native::message_box_buttons::yes_no_cancel
-                ? native::message_box_result::no
-                : native::message_box_result::cancel;
+        state->result = native::detail::message_box_result_for_button(
+            state->buttons, 1);
         state->done = true;
     }
 
     void auxiliary(Widget, XtPointer data, XtPointer) {
         auto *state = static_cast<result_state *>(data);
-        state->result = native::message_box_result::cancel;
+        state->result = native::detail::message_box_result_for_button(
+            state->buttons, 2);
         state->done = true;
     }
 
     void destroyed(Widget, XtPointer data, XtPointer) {
         auto *state = static_cast<result_state *>(data);
+        if (!state->done)
+            state->result =
+                native::detail::message_box_dismissed_result(
+                    state->buttons);
         state->destroyed = true;
         state->done = true;
     }
@@ -65,6 +69,7 @@ namespace native
         const std::string &title,
         message_box_buttons buttons,
         message_box_icon icon) {
+        detail::validate_message_box_owner(owner);
         Widget parent =
             linux::openmotif::shell_bindings.handle_from_object(&owner);
         if (!parent)
@@ -118,10 +123,10 @@ namespace native
         } else if (buttons == message_box_buttons::ok_cancel) {
             if (help) XtUnmanageChild(help);
         } else {
-            XmString yes = XmStringCreateLocalized(
-                const_cast<char *>("Yes"));
-            XmString no = XmStringCreateLocalized(
-                const_cast<char *>("No"));
+            XmString yes = XmStringCreateLocalized(const_cast<char *>(
+                detail::message_box_button_label(buttons, 0)));
+            XmString no = XmStringCreateLocalized(const_cast<char *>(
+                detail::message_box_button_label(buttons, 1)));
             XtVaSetValues(dialog,
                           XmNokLabelString, yes,
                           XmNcancelLabelString, no,
@@ -132,7 +137,8 @@ namespace native
                 if (help) XtUnmanageChild(help);
             } else if (help) {
                 XmString cancel = XmStringCreateLocalized(
-                    const_cast<char *>("Cancel"));
+                    const_cast<char *>(
+                        detail::message_box_button_label(buttons, 2)));
                 XtVaSetValues(help, XmNlabelString, cancel, nullptr);
                 XmStringFree(cancel);
             }
@@ -148,10 +154,6 @@ namespace native
                               XtIMAll);
         if (!state.destroyed)
             XtDestroyWidget(dialog);
-        if ((buttons == message_box_buttons::yes_no ||
-             buttons == message_box_buttons::yes_no_cancel) &&
-            state.result == message_box_result::ok)
-            return message_box_result::yes;
         return state.result;
     }
 } // namespace native

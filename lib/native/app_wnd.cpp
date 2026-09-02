@@ -56,6 +56,20 @@ namespace native
         return nullptr;
     }
 
+    app_wnd &app_wnd::center_to_parent() {
+        app_wnd *owner = get_owner();
+        if (!owner)
+            return *this;
+        const rect parent = owner->get_bounds();
+        const size dimensions = get_dimensions();
+        set_position(point(
+            static_cast<coord>(parent.p.x +
+                (static_cast<int>(parent.d.w)-dimensions.w)/2),
+            static_cast<coord>(parent.p.y +
+                (static_cast<int>(parent.d.h)-dimensions.h)/2)));
+        return *this;
+    }
+
     bool app_wnd::get_modal() const {
         return false;
     }

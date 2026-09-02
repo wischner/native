@@ -13,6 +13,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "../../message_box_common.h"
 
 namespace native
 {
@@ -22,38 +23,27 @@ namespace native
         const std::string &title,
         message_box_buttons buttons,
         message_box_icon) {
+        detail::validate_message_box_owner(owner);
         auto *owner_state = linux::wmaker::state(&owner);
         if (!owner_state || !owner_state->window)
             throw std::runtime_error(
                 "Window Maker/WINGs: Message box has no owner.");
 
-        const char *first = "OK";
-        const char *second = nullptr;
-        const char *third = nullptr;
-        if (buttons == message_box_buttons::ok_cancel)
-            second = "Cancel";
-        else if (buttons == message_box_buttons::yes_no) {
-            first = "Yes"; second = "No";
-        } else if (buttons == message_box_buttons::yes_no_cancel) {
-            first = "Yes"; second = "No"; third = "Cancel";
-        }
+        const int count = detail::message_box_button_count(buttons);
+        const char *first =
+            detail::message_box_button_label(buttons, 0);
+        const char *second = count > 1
+            ? detail::message_box_button_label(buttons, 1) : nullptr;
+        const char *third = count > 2
+            ? detail::message_box_button_label(buttons, 2) : nullptr;
         const int result = WMRunAlertPanel(
             linux::wmaker::screen, owner_state->window,
             title.c_str(), message.c_str(), first, second, third);
-        if (buttons == message_box_buttons::ok)
-            return result == WAPRDefault ? message_box_result::ok
-                                         : message_box_result::none;
-        if (buttons == message_box_buttons::ok_cancel)
-            return result == WAPRDefault ? message_box_result::ok
-                 : result == WAPRAlternate ? message_box_result::cancel
-                                           : message_box_result::none;
-        if (buttons == message_box_buttons::yes_no)
-            return result == WAPRDefault ? message_box_result::yes
-                 : result == WAPRAlternate ? message_box_result::no
-                                           : message_box_result::none;
-        return result == WAPRDefault ? message_box_result::yes
-             : result == WAPRAlternate ? message_box_result::no
-             : result == WAPROther ? message_box_result::cancel
-                                   : message_box_result::none;
+        const int index = result == WAPRDefault ? 0
+                        : result == WAPRAlternate ? 1
+                        : result == WAPROther ? 2 : -1;
+        return index >= 0 && index < count
+            ? detail::message_box_result_for_button(buttons, index)
+            : detail::message_box_dismissed_result(buttons);
     }
 } // namespace native
