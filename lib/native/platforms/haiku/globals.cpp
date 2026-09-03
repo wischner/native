@@ -15,6 +15,8 @@
 #include <ScrollView.h>
 #include <TextView.h>
 #include <View.h>
+
+#include <algorithm>
 #include <native.h>
 #include <bindings.h>
 
@@ -86,6 +88,20 @@ namespace haiku
 
     BView *content_view(BWindow *window) {
         return window ? window->ChildAt(0) : nullptr;
+    }
+
+    void report_client_dimensions(BWindow *window,
+                                  native::app_wnd *owner) {
+        if (!window || !owner)
+            return;
+        BView *content = content_view(window);
+        const BRect bounds = content ? content->Bounds()
+                                     : window->Bounds();
+        const float width = std::max(0.0f, bounds.Width() + 1.0f);
+        const float height = std::max(0.0f, bounds.Height() + 1.0f);
+        owner->on_native_resize(native::size(
+            static_cast<native::dim>(width),
+            static_cast<native::dim>(height)));
     }
 
     BView *view_from_control(native::wnd *control) {

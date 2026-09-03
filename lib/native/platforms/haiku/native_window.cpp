@@ -239,11 +239,7 @@ namespace haiku
                                      float new_height) {
         BWindow::FrameResized(new_width, new_height);
 
-        if (_owner) {
-            native::size s(static_cast<native::dim>(new_width + 1.0f),
-                           static_cast<native::dim>(new_height + 1.0f));
-            _owner->on_native_resize(s);
-        }
+        report_client_dimensions(this, _owner);
     }
 
     native::app_wnd *native_window::owner() const {

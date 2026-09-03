@@ -200,6 +200,10 @@ namespace haiku
     // window.
     BView *content_view(BWindow *window);
 
+    // Publish the root content view's actual client dimensions.
+    void report_client_dimensions(BWindow *window,
+                                  native::app_wnd *owner);
+
     // Return the BView used by any public child control.
     BView *view_from_control(native::wnd *control);
 

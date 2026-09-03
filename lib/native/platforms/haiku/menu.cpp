@@ -155,6 +155,7 @@ namespace native
 
         win->AddChild(bar);
         reserve_menu_area(win, bar);
+        haiku::report_client_dimensions(win, &owner);
         bar->SetTargetForItems(win);
 
         win->Unlock();
