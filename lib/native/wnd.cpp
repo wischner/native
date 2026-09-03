@@ -415,10 +415,15 @@ namespace native
                         static_cast<dim>(target->_extent),
                         static_cast<dim>(std::max(0, height-top_total-bottom_total)));
         case window_edge::bottom:
-            return rect(static_cast<coord>(left_total),
+        {
+            const bool spans_window =
+                dynamic_cast<const status_bar *>(target) != nullptr;
+            return rect(static_cast<coord>(spans_window ? 0 : left_total),
                         static_cast<coord>(height-before-target->_extent),
-                        static_cast<dim>(std::max(0, width-left_total-right_total)),
+                        static_cast<dim>(spans_window ? width :
+                            std::max(0, width-left_total-right_total)),
                         static_cast<dim>(target->_extent));
+        }
         case window_edge::left:
             return rect(static_cast<coord>(before),
                         static_cast<coord>(top_total),

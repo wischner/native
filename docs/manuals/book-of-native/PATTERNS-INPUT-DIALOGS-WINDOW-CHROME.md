@@ -123,6 +123,8 @@ when it wants the standard appearance plus an addition.
 `status_bar` reserves the bottom edge. `set_text()` displays one flexible
 part. `set_parts()` accepts ordered `status_bar_part` values; a positive width
 is fixed and width zero shares the remaining width among all flexible parts.
+The status bar spans the full window width and owns both lower corners; side
+non-client strips stop above it.
 
 ```cpp
 native::status_bar status(window, 22);

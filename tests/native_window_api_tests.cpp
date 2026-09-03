@@ -926,7 +926,10 @@ namespace
                "non-client rulers and status reserve stacked edge space");
         expect(horizontal.get_bounds().p.x == 30 &&
                    horizontal.get_bounds().d.w == 270 &&
-                   status.get_bounds().p.y == 178,
+                   vertical.get_bounds().y2() == 178 &&
+                   status.get_bounds().p.x == 0 &&
+                   status.get_bounds().p.y == 178 &&
+                   status.get_bounds().d.w == 300,
                "non-client element bounds meet at the client corners");
 
         double tracked = -1.0;

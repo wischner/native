@@ -995,9 +995,10 @@ moving the top-level native frame.
 Rulers may occupy all four edges. Orientation follows the edge. Origins,
 units-per-pixel, and positive minor/major intervals are finite doubles.
 Optional pointer tracking uses host-relative motion, updates the cached value,
-and emits once per changed ruler pixel. Status bars occupy the bottom edge and
-divide their width into fixed parts and equal shares of remaining flexible
-parts.
+and emits once per changed ruler pixel. Status bars occupy the full bottom edge,
+including both lower corners, while side non-client strips stop above them.
+Status bars divide their width into fixed parts and equal shares of remaining
+flexible parts.
 
 The complete default rendering must occur inside each protected virtual draw
 stage. Derived classes may replace a stage or call its base implementation and

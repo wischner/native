@@ -134,9 +134,11 @@ pixel count. Mouse tracking exposes the current coordinate through
 `get_tracked_value()` and `on_tracking`.
 
 Status parts with a positive width are fixed. Parts whose width is zero share
-the remaining space. Both controls provide protected virtual drawing stages,
-so an application-specific derived control can call the base implementation
-and add detail without a duplicate default-paint pass.
+the remaining space. A bottom status bar spans the full window width and owns
+both lower corners; side rulers and other side strips stop above it. Both
+controls provide protected virtual drawing stages, so an application-specific
+derived control can call the base implementation and add detail without a
+duplicate default-paint pass.
 
 Windows uses the native common-controls status bar for the exact base
 `status_bar` type and maps these widths and strings with `SB_SETPARTS` and
