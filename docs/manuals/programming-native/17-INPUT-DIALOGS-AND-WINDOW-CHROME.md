@@ -147,8 +147,9 @@ protected drawing-stage overrides remain effective.
 
 On Haiku, the compact status strip follows the system `StatusView` chrome:
 the menu-bar background, a dark top rule, short cell dividers, panel text, and
-the `B_H_SCROLL_BAR_HEIGHT` system metric, which aligns it with the resize
-handle. Haiku's similarly named `BStatusBar` is a progress indicator, so it is
-not used for this text-only, multipart strip.
+a platform theme height aligned with the titled-window resize marker. This
+height is distinct from the smaller scrollbar extent. Haiku's similarly named
+`BStatusBar` is a progress indicator, so it is not used for this text-only,
+multipart strip.
 
 Return to the [manual contents](../PROGRAMMING-NATIVE.md).

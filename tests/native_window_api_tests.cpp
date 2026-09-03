@@ -1457,8 +1457,7 @@ namespace
 #if defined(__HAIKU__)
         expect(metrics.scrollbar_extent ==
                        static_cast<int>(B_H_SCROLL_BAR_HEIGHT) &&
-                   metrics.status_bar_height ==
-                       static_cast<int>(B_H_SCROLL_BAR_HEIGHT),
+                   metrics.status_bar_height == 18,
                "Haiku status bars align with the system resize handle");
 #endif
         expect(painter->get_button_height() == metrics.button_height &&

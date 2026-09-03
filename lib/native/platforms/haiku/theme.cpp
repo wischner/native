@@ -113,7 +113,10 @@ namespace
             metrics m;
             m.scrollbar_extent = std::max(
                 1, static_cast<int>(B_H_SCROLL_BAR_HEIGHT));
-            m.status_bar_height = m.scrollbar_extent;
+            // The titled-window resize marker reaches 18 pixels into the
+            // client edge. Keep the status strip level with that marker;
+            // it is intentionally taller than a Haiku scrollbar.
+            m.status_bar_height = 18;
             if (!be_app) {
                 const native::font_t &font = native::font_t::stock(
                     native::font_role::control);
