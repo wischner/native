@@ -32,6 +32,13 @@ namespace
         if (!already_locked)
             window->Unlock();
     }
+
+    float native_extent(native::dim dimension) {
+        return dimension > 0
+                   ? static_cast<float>(dimension - 1)
+                   : 0.0f;
+    }
+
 } // namespace
 
 namespace native
@@ -53,14 +60,16 @@ namespace native
     void wnd::apply_dimensions() {
         if (BView *control = haiku::view_from_control(this)) {
             with_locked_window(control->Window(), [&](BWindow *) {
-                control->ResizeTo(_bounds.d.w, _bounds.d.h);
+                control->ResizeTo(native_extent(_bounds.d.w),
+                                  native_extent(_bounds.d.h));
             });
             return;
         }
 
         BWindow *window = haiku::wnd_bindings.handle_from_object(this);
         with_locked_window(window, [&](BWindow *locked) {
-            locked->ResizeTo(_bounds.d.w, _bounds.d.h);
+            locked->ResizeTo(native_extent(_bounds.d.w),
+                             native_extent(_bounds.d.h));
         });
     }
 
@@ -68,7 +77,8 @@ namespace native
         if (BView *control = haiku::view_from_control(this)) {
             with_locked_window(control->Window(), [&](BWindow *) {
                 control->MoveTo(_bounds.p.x, _bounds.p.y);
-                control->ResizeTo(_bounds.d.w, _bounds.d.h);
+                control->ResizeTo(native_extent(_bounds.d.w),
+                                  native_extent(_bounds.d.h));
             });
             return;
         }
@@ -76,7 +86,8 @@ namespace native
         BWindow *window = haiku::wnd_bindings.handle_from_object(this);
         with_locked_window(window, [&](BWindow *locked) {
             locked->MoveTo(_bounds.p.x, _bounds.p.y);
-            locked->ResizeTo(_bounds.d.w, _bounds.d.h);
+            locked->ResizeTo(native_extent(_bounds.d.w),
+                             native_extent(_bounds.d.h));
         });
     }
 
