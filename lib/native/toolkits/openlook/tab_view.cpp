@@ -56,7 +56,7 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: failed to create tab content panel.");
         }
-        self->_content_host_is_page = true;
+        self->configure_page_host(true, false);
         self->refresh();
         self->on_native_create();
     }

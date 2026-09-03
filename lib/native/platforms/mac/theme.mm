@@ -108,6 +108,7 @@ namespace
                 1, static_cast<int>(std::ceil([table rowHeight])));
             m.table_row_height = m.list_item_height;
             [table release];
+            m.tab_height = m.header_height;
             return m;
         }
 

@@ -170,7 +170,7 @@ namespace native
         auto *state = new linux::wmaker::native_tab_view();
         linux::wmaker::tab_view_bindings.register_pair(self, state);
         _created = true;
-        self->_content_host_is_page = true;
+        self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
         self->on_native_create();

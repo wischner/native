@@ -88,6 +88,7 @@ namespace
                 }
                 ReleaseDC(nullptr, hdc);
             }
+            m.tab_height = m.header_height;
             return m;
         }
 

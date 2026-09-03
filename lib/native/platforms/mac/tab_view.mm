@@ -173,7 +173,7 @@ namespace native
         apply_placement(*self, *state);
         _created = true;
         self->synchronize_theme_metrics();
-        self->_content_host_is_page = true;
+        self->configure_page_host(true, false);
         const NSRect content = [view contentRect];
         self->_tab_height = std::max(
             1,

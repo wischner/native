@@ -10,15 +10,382 @@
 #include <native/theme.h>
 
 #include <algorithm>
+#include <limits>
 
 #include <native/graphics.h>
+#include <native/ruler.h>
 
 namespace native
 {
+    namespace
+    {
+        rgba opaque(rgba color, rgba fallback) {
+            if (color.a == 0)
+                color = fallback;
+            color.a = 255;
+            return color;
+        }
+
+        rgba alternate_content(const theme::palette &colors) {
+            if (colors.content_alt_bg.a != 0)
+                return opaque(colors.content_alt_bg, colors.content_bg);
+
+            return rgba(
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned int>(colors.content_bg.r) *
+                         247U +
+                     static_cast<unsigned int>(colors.separator.r) * 8U) /
+                    255U),
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned int>(colors.content_bg.g) *
+                         247U +
+                     static_cast<unsigned int>(colors.separator.g) * 8U) /
+                    255U),
+                static_cast<std::uint8_t>(
+                    (static_cast<unsigned int>(colors.content_bg.b) *
+                         247U +
+                     static_cast<unsigned int>(colors.separator.b) * 8U) /
+                    255U),
+                255);
+        }
+
+        dim bounded_dimension(int value) {
+            return static_cast<dim>(std::max(
+                0,
+                std::min(
+                    value,
+                    static_cast<int>(std::numeric_limits<dim>::max()))));
+        }
+    } // namespace
+
     theme::theme(gpx &painter)
         : _g(painter) {}
 
     theme::~theme() = default;
+
+    int theme::get_button_height() const {
+        return defaults().button_height;
+    }
+
+    int theme::get_menu_bar_height() const {
+        return defaults().menu_bar_height;
+    }
+
+    int theme::get_menu_item_height() const {
+        return defaults().menu_item_height;
+    }
+
+    int theme::get_popup_width() const {
+        return defaults().popup_width;
+    }
+
+    int theme::get_text_padding_x() const {
+        return defaults().text_padding_x;
+    }
+
+    int theme::get_text_edit_height() const {
+        return defaults().text_edit_height;
+    }
+
+    int theme::get_check_height() const {
+        return defaults().check_height;
+    }
+
+    int theme::get_radio_height() const {
+        return defaults().radio_height;
+    }
+
+    int theme::get_list_item_height() const {
+        return defaults().list_item_height;
+    }
+
+    int theme::get_table_row_height() const {
+        return defaults().table_row_height;
+    }
+
+    int theme::get_table_outer_border_extent() const {
+        return defaults().table_outer_border_extent;
+    }
+
+    int theme::get_focus_inset() const {
+        return defaults().focus_inset;
+    }
+
+    int theme::get_disclosure_size() const {
+        return defaults().disclosure_size;
+    }
+
+    int theme::get_sort_indicator_size() const {
+        return defaults().sort_indicator_size;
+    }
+
+    int theme::get_caption_button_size() const {
+        return defaults().caption_button_size;
+    }
+
+    bool theme::get_tree_lines_visible() const {
+        return defaults().tree_lines_visible;
+    }
+
+    int theme::get_tree_row_height() const {
+        return defaults().tree_row_height;
+    }
+
+    int theme::get_tree_horizontal_padding() const {
+        return defaults().tree_horizontal_padding;
+    }
+
+    int theme::get_tree_indent_width() const {
+        return defaults().tree_indent_width;
+    }
+
+    int theme::get_tree_item_gap() const {
+        return defaults().tree_item_gap;
+    }
+
+    int theme::get_tree_icon_vertical_padding() const {
+        return defaults().tree_icon_vertical_padding;
+    }
+
+    int theme::get_header_height() const {
+        return defaults().header_height;
+    }
+
+    int theme::get_header_padding_x() const {
+        return defaults().header_padding_x;
+    }
+
+    int theme::get_header_gap() const {
+        return defaults().header_gap;
+    }
+
+    int theme::get_tab_height() const {
+        return defaults().tab_height;
+    }
+
+    int theme::get_icon_view_padding_x() const {
+        return defaults().icon_view_padding_x;
+    }
+
+    int theme::get_icon_view_padding_y() const {
+        return defaults().icon_view_padding_y;
+    }
+
+    int theme::get_icon_view_item_gap_x() const {
+        return defaults().icon_view_item_gap_x;
+    }
+
+    int theme::get_icon_view_item_gap_y() const {
+        return defaults().icon_view_item_gap_y;
+    }
+
+    int theme::get_icon_view_label_gap() const {
+        return defaults().icon_view_label_gap;
+    }
+
+    int theme::get_icon_view_min_item_width() const {
+        return defaults().icon_view_min_item_width;
+    }
+
+    int theme::get_separator_extent() const {
+        return defaults().separator_extent;
+    }
+
+    int theme::get_scrollbar_extent() const {
+        return defaults().scrollbar_extent;
+    }
+
+    int theme::get_scrollbar_min_thumb() const {
+        return defaults().scrollbar_min_thumb;
+    }
+
+    int theme::get_status_bar_height() const {
+        return defaults().status_bar_height;
+    }
+
+    int theme::get_ruler_extent() const {
+        return defaults().ruler_extent;
+    }
+
+    bool theme::get_table_fill_last_column() const {
+        return defaults().table_fill_last_column;
+    }
+
+    size theme::get_separator_size(
+        separator_orientation orientation,
+        int length) const {
+        const dim extent = bounded_dimension(get_separator_extent());
+        const dim main = bounded_dimension(length);
+        return orientation == separator_orientation::horizontal
+                   ? size(main, extent)
+                   : size(extent, main);
+    }
+
+    size theme::get_scrollbar_size(
+        scrollbar_orientation orientation,
+        int length) const {
+        const dim extent = bounded_dimension(get_scrollbar_extent());
+        const dim main = bounded_dimension(length);
+        return orientation == scrollbar_orientation::horizontal
+                   ? size(main, extent)
+                   : size(extent, main);
+    }
+
+    size theme::get_status_bar_size(int width) const {
+        return size(bounded_dimension(width),
+                    bounded_dimension(get_status_bar_height()));
+    }
+
+    size theme::get_ruler_size(
+        ruler_orientation orientation,
+        int length) const {
+        const dim extent = bounded_dimension(get_ruler_extent());
+        const dim main = bounded_dimension(length);
+        return orientation == ruler_orientation::horizontal
+                   ? size(main, extent)
+                   : size(extent, main);
+    }
+
+    rgba theme::get_button_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_bg, colors.content_bg);
+    }
+
+    rgba theme::get_button_border_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_border, colors.button_text);
+    }
+
+    rgba theme::get_button_highlight_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_highlight, colors.button_bg);
+    }
+
+    rgba theme::get_button_shadow_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_shadow, colors.button_border);
+    }
+
+    rgba theme::get_button_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_text, colors.content_text);
+    }
+
+    rgba theme::get_button_disabled_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_disabled_text, colors.button_text);
+    }
+
+    rgba theme::get_button_hot_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_hot_bg, colors.button_bg);
+    }
+
+    rgba theme::get_button_hot_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_hot_text, colors.button_text);
+    }
+
+    rgba theme::get_button_pressed_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_pressed_bg, colors.button_bg);
+    }
+
+    rgba theme::get_button_pressed_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.button_pressed_text, colors.button_text);
+    }
+
+    rgba theme::get_menu_bar_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_bar_bg, colors.button_bg);
+    }
+
+    rgba theme::get_menu_bar_top_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_bar_line_top, colors.menu_bar_bg);
+    }
+
+    rgba theme::get_menu_bar_bottom_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_bar_line_bottom, colors.menu_bar_bg);
+    }
+
+    rgba theme::get_menu_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_text, colors.button_text);
+    }
+
+    rgba theme::get_menu_disabled_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_disabled_text, colors.menu_text);
+    }
+
+    rgba theme::get_menu_hot_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_hot_bg, colors.menu_bar_bg);
+    }
+
+    rgba theme::get_menu_hot_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_hot_text, colors.menu_text);
+    }
+
+    rgba theme::get_menu_popup_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_popup_bg, colors.menu_bar_bg);
+    }
+
+    rgba theme::get_menu_popup_border_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.menu_popup_border, colors.button_border);
+    }
+
+    rgba theme::get_content_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.content_bg, colors.button_bg);
+    }
+
+    rgba theme::get_content_alternate_background_color() const {
+        return alternate_content(native_palette());
+    }
+
+    rgba theme::get_content_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.content_text, colors.button_text);
+    }
+
+    rgba theme::get_selection_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.selection_bg, colors.button_pressed_bg);
+    }
+
+    rgba theme::get_selection_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.selection_text, colors.content_text);
+    }
+
+    rgba theme::get_inactive_selection_background_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.selection_inactive_bg,
+                      colors.selection_bg);
+    }
+
+    rgba theme::get_inactive_selection_foreground_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.selection_inactive_text,
+                      colors.selection_text);
+    }
+
+    rgba theme::get_separator_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.separator, colors.button_shadow);
+    }
+
+    rgba theme::get_focus_color() const {
+        const palette colors = native_palette();
+        return opaque(colors.focus, colors.button_text);
+    }
 
     theme &theme::draw_button(const rect &bounds,
                               const std::string &text) {

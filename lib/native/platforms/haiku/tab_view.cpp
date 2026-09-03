@@ -271,7 +271,7 @@ namespace native
         auto *binding = new haiku::haiku_tab_view();
         haiku::tab_view_bindings.register_pair(self, binding);
         _created = true;
-        self->_content_host_is_page = true;
+        self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
         self->on_native_create();

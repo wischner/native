@@ -119,6 +119,11 @@ namespace
 
         void show() const override {}
 
+        simulated_tab_view &preserve_pages() {
+            configure_page_host(true, true);
+            return *this;
+        }
+
         int item_applications = 0;
         int selection_applications = 0;
 
@@ -536,7 +541,8 @@ namespace
         expect(live_tabs.get_selected_index() == selected_before &&
                    live_tabs.get_content_bounds().p.x > 0 &&
                    placement_events == 1,
-               "left placement after creation is silent and preserves selection");
+               "left placement after creation is silent and preserves "
+               "selection");
         live_tabs.set_tab_placement(native::tab_placement::right);
         const native::rect live_content =
             live_tabs.get_content_bounds();
@@ -553,7 +559,24 @@ namespace
                    placement_events == 1 &&
                    same_rect(live_second.get_bounds(),
                              live_tabs.get_content_bounds()),
-               "returning to top placement remains silent and preserves selection");
+               "returning to top placement remains silent and preserves "
+               "selection");
+
+        simulated_page retained_first(0, 0, 10, 10);
+        simulated_page retained_second(0, 0, 10, 10);
+        simulated_tab_view retained_tabs(0, 0, 240, 140);
+        retained_tabs.preserve_pages()
+            .add_item("First", retained_first);
+        retained_tabs.add_item("Second", retained_second);
+        retained_tabs.create();
+        retained_tabs.on_native_selection(1);
+        expect(retained_first.get_created() &&
+                   retained_second.get_created(),
+               "independent page hosts preserve previously visited content");
+        retained_tabs.on_native_selection(0);
+        expect(retained_first.get_created() &&
+                   retained_second.get_created(),
+               "repeated side-page switching retains borrowed content");
     }
 
     // Verify native callbacks and paint stages dispatch virtually once,
@@ -1354,16 +1377,149 @@ namespace
             return;
 
         const native::theme::metrics metrics = painter->defaults();
-        expect(metrics.menu_bar_height > 0 &&
+        expect(metrics.button_height > 0 &&
+                   metrics.menu_bar_height > 0 &&
                    metrics.check_height > 0 &&
                    metrics.radio_height > 0 &&
+                   metrics.text_edit_height > 0 &&
                    metrics.list_item_height > 0 &&
                    metrics.table_row_height > 0 &&
                    metrics.header_height > 0 &&
                    metrics.disclosure_size > 0 &&
+                   metrics.sort_indicator_size > 0 &&
+                   metrics.caption_button_size > 0 &&
+                   metrics.tab_height > 0 &&
                    metrics.icon_view_min_item_width > 0 &&
-                   metrics.scrollbar_extent > 0,
+                   metrics.scrollbar_extent > 0 &&
+                   metrics.status_bar_height > 0 &&
+                   metrics.ruler_extent > 0,
                "theme reports usable control metrics");
+        expect(painter->get_button_height() == metrics.button_height &&
+                   painter->get_menu_bar_height() ==
+                       metrics.menu_bar_height &&
+                   painter->get_menu_item_height() ==
+                       metrics.menu_item_height &&
+                   painter->get_popup_width() == metrics.popup_width &&
+                   painter->get_text_padding_x() ==
+                       metrics.text_padding_x &&
+                   painter->get_text_edit_height() ==
+                       metrics.text_edit_height &&
+                   painter->get_check_height() == metrics.check_height &&
+                   painter->get_radio_height() == metrics.radio_height &&
+                   painter->get_list_item_height() ==
+                       metrics.list_item_height &&
+                   painter->get_table_row_height() ==
+                       metrics.table_row_height &&
+                   painter->get_disclosure_size() ==
+                       metrics.disclosure_size &&
+                   painter->get_sort_indicator_size() ==
+                       metrics.sort_indicator_size &&
+                   painter->get_caption_button_size() ==
+                       metrics.caption_button_size &&
+                   painter->get_header_height() ==
+                       metrics.header_height &&
+                   painter->get_tab_height() == metrics.tab_height &&
+                   painter->get_separator_extent() ==
+                       metrics.separator_extent &&
+                   painter->get_scrollbar_extent() ==
+                       metrics.scrollbar_extent &&
+                   painter->get_scrollbar_min_thumb() ==
+                       metrics.scrollbar_min_thumb &&
+                   painter->get_status_bar_height() ==
+                       metrics.status_bar_height &&
+                   painter->get_ruler_extent() ==
+                       metrics.ruler_extent,
+               "theme exposes named getters for shape metrics");
+        expect(painter->get_table_outer_border_extent() ==
+                       metrics.table_outer_border_extent &&
+                   painter->get_focus_inset() == metrics.focus_inset &&
+                   painter->get_tree_lines_visible() ==
+                       metrics.tree_lines_visible &&
+                   painter->get_tree_row_height() ==
+                       metrics.tree_row_height &&
+                   painter->get_tree_horizontal_padding() ==
+                       metrics.tree_horizontal_padding &&
+                   painter->get_tree_indent_width() ==
+                       metrics.tree_indent_width &&
+                   painter->get_tree_item_gap() ==
+                       metrics.tree_item_gap &&
+                   painter->get_tree_icon_vertical_padding() ==
+                       metrics.tree_icon_vertical_padding &&
+                   painter->get_header_padding_x() ==
+                       metrics.header_padding_x &&
+                   painter->get_header_gap() == metrics.header_gap &&
+                   painter->get_icon_view_padding_x() ==
+                       metrics.icon_view_padding_x &&
+                   painter->get_icon_view_padding_y() ==
+                       metrics.icon_view_padding_y &&
+                   painter->get_icon_view_item_gap_x() ==
+                       metrics.icon_view_item_gap_x &&
+                   painter->get_icon_view_item_gap_y() ==
+                       metrics.icon_view_item_gap_y &&
+                   painter->get_icon_view_label_gap() ==
+                       metrics.icon_view_label_gap &&
+                   painter->get_icon_view_min_item_width() ==
+                       metrics.icon_view_min_item_width &&
+                   painter->get_table_fill_last_column() ==
+                       metrics.table_fill_last_column,
+               "theme metric getters cover collection and frame shapes");
+
+        const native::size horizontal_scrollbar =
+            painter->get_scrollbar_size(
+                native::scrollbar_orientation::horizontal, 120);
+        const native::size vertical_scrollbar =
+            painter->get_scrollbar_size(
+                native::scrollbar_orientation::vertical, 90);
+        expect(horizontal_scrollbar.w == 120 &&
+                   horizontal_scrollbar.h == metrics.scrollbar_extent &&
+                   vertical_scrollbar.w == metrics.scrollbar_extent &&
+                   vertical_scrollbar.h == 90 &&
+                   painter->get_separator_size(
+                       native::separator_orientation::horizontal, 80)
+                           .h == metrics.separator_extent &&
+                   painter->get_status_bar_size(200).h ==
+                       metrics.status_bar_height &&
+                   painter->get_ruler_size(
+                       native::ruler_orientation::vertical, 70)
+                           .w == metrics.ruler_extent,
+               "theme sizes linear shapes on the correct axis");
+
+        const native::rgba colors[] = {
+            painter->get_button_background_color(),
+            painter->get_button_border_color(),
+            painter->get_button_highlight_color(),
+            painter->get_button_shadow_color(),
+            painter->get_button_foreground_color(),
+            painter->get_button_disabled_foreground_color(),
+            painter->get_button_hot_background_color(),
+            painter->get_button_hot_foreground_color(),
+            painter->get_button_pressed_background_color(),
+            painter->get_button_pressed_foreground_color(),
+            painter->get_menu_bar_background_color(),
+            painter->get_menu_bar_top_color(),
+            painter->get_menu_bar_bottom_color(),
+            painter->get_menu_foreground_color(),
+            painter->get_menu_disabled_foreground_color(),
+            painter->get_menu_hot_background_color(),
+            painter->get_menu_hot_foreground_color(),
+            painter->get_menu_popup_background_color(),
+            painter->get_menu_popup_border_color(),
+            painter->get_content_background_color(),
+            painter->get_content_alternate_background_color(),
+            painter->get_content_foreground_color(),
+            painter->get_selection_background_color(),
+            painter->get_selection_foreground_color(),
+            painter->get_inactive_selection_background_color(),
+            painter->get_inactive_selection_foreground_color(),
+            painter->get_separator_color(),
+            painter->get_focus_color()};
+        expect(std::all_of(
+                   std::begin(colors),
+                   std::end(colors),
+                   [](const native::rgba &color) {
+                       return color.a == 255;
+                   }),
+               "theme color getters always return opaque colors");
 
         painter->draw_menu_bar(native::rect(0, 0, 40, 20));
         native::theme::state selected;

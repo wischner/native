@@ -143,6 +143,11 @@ namespace native
         // Refresh native metrics, pages, and painting.
         virtual void refresh();
 
+        // Configure whether a backend supplies page-local coordinates and
+        // independently hides inactive page hosts.
+        void configure_page_host(bool page_local,
+                                 bool preserve_inactive_pages);
+
         // Refresh the tab height from the active native control.
         virtual void synchronize_theme_metrics();
 
@@ -198,6 +203,7 @@ namespace native
         rgba _inactive_tab_highlight;
         tab_placement _tab_placement = tab_placement::top;
         bool _content_host_is_page = false;
+        bool _preserve_inactive_pages = false;
 
         void validate_index(int index) const;
         void refresh_contents();

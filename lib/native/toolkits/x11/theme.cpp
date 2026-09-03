@@ -134,6 +134,7 @@ namespace
             result.list_item_height = row_height;
             result.table_row_height = result.list_item_height;
             result.header_height = row_height + 4;
+            result.tab_height = result.header_height;
             return result;
         }
 

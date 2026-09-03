@@ -217,6 +217,7 @@ namespace
             result.list_item_height = text_height() + 5;
             result.table_row_height = result.list_item_height;
             result.header_height = text_height() + 6;
+            result.tab_height = result.header_height;
             result.scrollbar_extent = std::max(
                 1, scrollbar_width_for_scale(WIN_SCALE_MEDIUM));
             result.scrollbar_min_thumb = result.scrollbar_extent;

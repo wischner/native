@@ -125,6 +125,7 @@ namespace
                 m.text_padding_x = 8;
                 m.list_item_height = height + 2;
                 m.table_row_height = m.list_item_height;
+                m.tab_height = m.header_height;
                 return m;
             }
             font_height height{};
@@ -142,6 +143,7 @@ namespace
             m.text_padding_x = 8;
             m.list_item_height = text_height + 2;
             m.table_row_height = m.list_item_height;
+            m.tab_height = m.header_height;
             return m;
         }
 

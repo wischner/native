@@ -225,7 +225,6 @@ Create a short-lived theme around a borrowed context:
 
 ```cpp
 auto controls = native::theme::create(event.g);
-const native::theme::metrics metrics = controls->defaults();
 
 native::theme::state state;
 state.hot = pointer_inside;
@@ -233,13 +232,15 @@ state.pressed = mouse_down;
 state.disabled = !can_continue;
 
 controls->draw_button(
-    native::rect(16, 16, 120, 32), "Continue", state);
+    native::rect(16, 16, 120, controls->get_button_height()),
+    "Continue",
+    state);
 controls->draw_menu_bar(
-    native::rect(0, 60, 320, metrics.menu_bar_height));
+    native::rect(0, 60, 320, controls->get_menu_bar_height()));
 
 state.selected = true;
 controls->draw_check(
-    native::rect(160, 16, 140, metrics.check_height),
+    native::rect(160, 16, 140, controls->get_check_height()),
     "Remember",
     state);
 ```
@@ -251,6 +252,23 @@ disclosure indicators, separators, and scrollbar parts. `state` describes
 hot, pressed, selected, disabled, focused, and active visuals. `defaults()`
 supplies backend metrics; `native_palette()` supplies colors for custom
 compositions.
+
+Prefer the named metric and color getters in new code. There is a getter for
+every field in `theme::metrics` and `theme::palette`, including button,
+editor, menu, list, table, tree, header, tab, icon-view, scrollbar, status-bar,
+ruler, selection, separator, and focus values. Color getters always return
+opaque values, so callers do not need to recognize a transparent fallback
+sentinel. Variable-length shapes also have orientation-aware helpers:
+
+```cpp
+const native::size scroll = controls->get_scrollbar_size(
+    native::scrollbar_orientation::vertical, viewport_height);
+const native::size ruler = controls->get_ruler_size(
+    native::ruler_orientation::horizontal, viewport_width);
+
+event.g.clear(controls->get_content_background_color())
+       .set_ink(controls->get_content_foreground_color());
+```
 
 The backend uses its native painter where that painter supports the target:
 Windows uses GDI control primitives, OpenMotif uses Motif shadow primitives,

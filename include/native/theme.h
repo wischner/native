@@ -17,6 +17,8 @@
 
 namespace native
 {
+    enum class ruler_orientation;
+
     // Selects a semantic native-looking background or frame.
     enum class surface_kind
     {
@@ -102,10 +104,12 @@ namespace native
         // Stores dimensions selected by the active platform or toolkit.
         struct metrics
         {
+            int button_height = 28;
             int menu_bar_height = 20;
             int menu_item_height = 20;
             int popup_width = 180;
             int text_padding_x = 8;
+            int text_edit_height = 24;
             int check_height = 22;
             int radio_height = 22;
             int list_item_height = 20;
@@ -118,6 +122,8 @@ namespace native
             int table_outer_border_extent = 0;
             int focus_inset = 2;
             int disclosure_size = 12;
+            int sort_indicator_size = 8;
+            int caption_button_size = 16;
             // Whether a tree draws classic hierarchy connector branches by
             // default. Controls retain an explicit set_lines_visible()
             // override across later native metric synchronization.
@@ -132,6 +138,7 @@ namespace native
             int header_height = 24;
             int header_padding_x = 6;
             int header_gap = 4;
+            int tab_height = 24;
             int icon_view_padding_x = 6;
             int icon_view_padding_y = 6;
             int icon_view_item_gap_x = 4;
@@ -141,6 +148,8 @@ namespace native
             int separator_extent = 1;
             int scrollbar_extent = 16;
             int scrollbar_min_thumb = 16;
+            int status_bar_height = 22;
+            int ruler_extent = 24;
             // Native table implementations that conventionally consume
             // unused header space can stretch the trailing visible column
             // without changing its semantic/model width.
@@ -203,8 +212,88 @@ namespace native
         // Return dimensions selected by the active backend.
         virtual metrics defaults() const = 0;
 
+        // Return individual native dimensions used by themed shapes.
+        int get_button_height() const;
+        int get_menu_bar_height() const;
+        int get_menu_item_height() const;
+        int get_popup_width() const;
+        int get_text_padding_x() const;
+        int get_text_edit_height() const;
+        int get_check_height() const;
+        int get_radio_height() const;
+        int get_list_item_height() const;
+        int get_table_row_height() const;
+        int get_table_outer_border_extent() const;
+        int get_focus_inset() const;
+        int get_disclosure_size() const;
+        int get_sort_indicator_size() const;
+        int get_caption_button_size() const;
+        bool get_tree_lines_visible() const;
+        int get_tree_row_height() const;
+        int get_tree_horizontal_padding() const;
+        int get_tree_indent_width() const;
+        int get_tree_item_gap() const;
+        int get_tree_icon_vertical_padding() const;
+        int get_header_height() const;
+        int get_header_padding_x() const;
+        int get_header_gap() const;
+        int get_tab_height() const;
+        int get_icon_view_padding_x() const;
+        int get_icon_view_padding_y() const;
+        int get_icon_view_item_gap_x() const;
+        int get_icon_view_item_gap_y() const;
+        int get_icon_view_label_gap() const;
+        int get_icon_view_min_item_width() const;
+        int get_separator_extent() const;
+        int get_scrollbar_extent() const;
+        int get_scrollbar_min_thumb() const;
+        int get_status_bar_height() const;
+        int get_ruler_extent() const;
+        bool get_table_fill_last_column() const;
+
+        // Return complete bounds for variable-length linear shapes. The
+        // caller supplies the length along the shape's main axis.
+        size get_separator_size(separator_orientation orientation,
+                                int length) const;
+        size get_scrollbar_size(scrollbar_orientation orientation,
+                                int length) const;
+        size get_status_bar_size(int width) const;
+        size get_ruler_size(ruler_orientation orientation,
+                            int length) const;
+
         // Return colors selected by the active backend.
         virtual palette native_palette() const = 0;
+
+        // Return opaque colors for custom compositions. Unlike the raw
+        // palette, these getters never use transparency as a sentinel.
+        rgba get_button_background_color() const;
+        rgba get_button_border_color() const;
+        rgba get_button_highlight_color() const;
+        rgba get_button_shadow_color() const;
+        rgba get_button_foreground_color() const;
+        rgba get_button_disabled_foreground_color() const;
+        rgba get_button_hot_background_color() const;
+        rgba get_button_hot_foreground_color() const;
+        rgba get_button_pressed_background_color() const;
+        rgba get_button_pressed_foreground_color() const;
+        rgba get_menu_bar_background_color() const;
+        rgba get_menu_bar_top_color() const;
+        rgba get_menu_bar_bottom_color() const;
+        rgba get_menu_foreground_color() const;
+        rgba get_menu_disabled_foreground_color() const;
+        rgba get_menu_hot_background_color() const;
+        rgba get_menu_hot_foreground_color() const;
+        rgba get_menu_popup_background_color() const;
+        rgba get_menu_popup_border_color() const;
+        rgba get_content_background_color() const;
+        rgba get_content_alternate_background_color() const;
+        rgba get_content_foreground_color() const;
+        rgba get_selection_background_color() const;
+        rgba get_selection_foreground_color() const;
+        rgba get_inactive_selection_background_color() const;
+        rgba get_inactive_selection_foreground_color() const;
+        rgba get_separator_color() const;
+        rgba get_focus_color() const;
 
         // Draw a button in its default state.
         theme &draw_button(const rect &bounds, const std::string &text);

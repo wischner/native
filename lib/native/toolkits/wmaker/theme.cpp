@@ -123,6 +123,7 @@ namespace
             result.disclosure_size = 9;
             result.tree_lines_visible = false;
             result.header_height = height + 10;
+            result.tab_height = result.header_height;
             result.scrollbar_extent = SCROLLER_WIDTH;
             result.scrollbar_min_thumb = SCROLLER_WIDTH;
             result.table_fill_last_column = true;

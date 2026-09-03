@@ -709,34 +709,10 @@ namespace native
         std::size_t model_row,
         const rect &bounds,
         const theme::state &state) {
-        const theme::palette colors = appearance.native_palette();
-        rgba background = colors.content_bg;
-        if (_alternating_rows && (model_row & 1U) != 0) {
-            if (colors.content_alt_bg.a != 0) {
-                background = colors.content_alt_bg;
-            } else {
-                background = rgba(
-                    static_cast<std::uint8_t>(
-                        (static_cast<unsigned int>(colors.content_bg.r) *
-                             247 +
-                         static_cast<unsigned int>(colors.separator.r) *
-                             8) /
-                        255),
-                    static_cast<std::uint8_t>(
-                        (static_cast<unsigned int>(colors.content_bg.g) *
-                             247 +
-                         static_cast<unsigned int>(colors.separator.g) *
-                             8) /
-                        255),
-                    static_cast<std::uint8_t>(
-                        (static_cast<unsigned int>(colors.content_bg.b) *
-                             247 +
-                         static_cast<unsigned int>(colors.separator.b) *
-                             8) /
-                        255),
-                    255);
-            }
-        }
+        rgba background = appearance.get_content_background_color();
+        if (_alternating_rows && (model_row & 1U) != 0)
+            background =
+                appearance.get_content_alternate_background_color();
         graphics.set_ink(background).draw_rect(bounds, true);
         appearance.draw_selection(bounds, selection_shape::row, state);
     }

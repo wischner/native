@@ -34,6 +34,7 @@ namespace
             m.popup_width = character_width * 22;
             m.text_padding_x = character_width;
             m.header_height = character_height + 6;
+            m.tab_height = m.header_height;
             m.disclosure_size = std::max(5, character_height - 2);
             m.icon_view_padding_x = std::max(2, character_width);
             m.icon_view_padding_y = 4;

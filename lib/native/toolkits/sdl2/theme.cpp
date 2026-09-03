@@ -61,6 +61,7 @@ namespace
                         .get_metrics()
                         .height +
                     8);
+            m.tab_height = m.header_height;
             return m;
         }
 

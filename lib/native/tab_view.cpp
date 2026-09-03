@@ -400,6 +400,13 @@ namespace native
         invalidate();
     }
 
+    void tab_view::configure_page_host(
+        bool page_local,
+        bool preserve_inactive_pages) {
+        _content_host_is_page = page_local;
+        _preserve_inactive_pages = preserve_inactive_pages;
+    }
+
     void tab_view::refresh_contents() {
         rect content_bounds = get_content_bounds();
         if (_content_host_is_page) {
@@ -415,7 +422,8 @@ namespace native
                     content.create();
                     content.show();
                 }
-            } else if (content.get_created()) {
+            } else if (content.get_created() &&
+                       !_preserve_inactive_pages) {
                 content.destroy();
             }
         }
@@ -440,8 +448,7 @@ namespace native
             root = root->get_parent();
         try {
             auto appearance = theme::create(root->get_gpx());
-            _tab_height = std::max(
-                1, appearance->defaults().header_height);
+            _tab_height = std::max(1, appearance->get_tab_height());
         } catch (const std::runtime_error &) {
             // A native child can provide its precise metric later.
         }

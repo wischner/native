@@ -94,6 +94,7 @@ namespace
             m.list_item_height = text_height() + 2;
             m.table_row_height = m.list_item_height;
             m.header_height = text_height() + 8;
+            m.tab_height = m.header_height;
             if (native_infolib_tree()) {
                 // Dtinfo's OutlineList is a compact, indentation-only tree.
                 m.disclosure_size = infolib_disclosure_side;

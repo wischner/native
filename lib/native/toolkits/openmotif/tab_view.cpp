@@ -269,7 +269,7 @@ namespace native
         XtAddCallback(state->notebook, XmNpageChangedCallback,
                       page_changed, self);
         _created = true;
-        self->_content_host_is_page = true;
+        self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
         self->on_native_create();

@@ -120,10 +120,41 @@ draw the primitive. Every backend must provide a usable result.
 
 ## Palette and metrics
 
-The facade exposes backend-selected control metrics and a native palette.
-These values provide menu and header heights, disclosure, icon-grid and
-splitter spacing, scrollbar dimensions, padding, popup dimensions, and
-state-sensitive colors to portable rendering code.
+The facade exposes every backend-selected control dimension through a named
+getter. Fixed shapes use getters such as `get_button_height()`,
+`get_text_edit_height()`, `get_tab_height()`, `get_status_bar_height()`, and
+`get_disclosure_size()`. Collection geometry includes row, header, tree,
+icon-view, border, and padding getters. Linear shapes expose both their fixed
+thickness and an orientation-aware size helper:
+
+```cpp
+const native::size vertical_scroll = appearance->get_scrollbar_size(
+    native::scrollbar_orientation::vertical, available_height);
+const native::size bottom_status =
+    appearance->get_status_bar_size(available_width);
+```
+
+`get_separator_size()`, `get_scrollbar_size()`, and `get_ruler_size()` put the
+native extent on the correct axis. Their length argument is supplied by the
+layout because a theme cannot determine the available window dimension.
+
+Named color getters cover the complete semantic palette. Buttons and menus
+provide normal, disabled, hot, and pressed foreground/background colors plus
+their borders, highlights, and shadows. Content, alternating content,
+selection, inactive selection, separators, and focus indicators have matching
+getters. Every color getter returns an opaque `rgba`; in particular,
+`get_content_alternate_background_color()` resolves a backend's optional
+alternate-row sentinel into a usable derived color.
+
+```cpp
+event.g.clear(appearance->get_content_background_color())
+       .set_ink(appearance->get_content_foreground_color());
+appearance->draw_selection(row, native::selection_shape::row, state);
+```
+
+`defaults()` and `native_palette()` remain available for code that needs a
+single snapshot. New custom drawing should prefer named getters, which make
+the meaning of each value explicit and guarantee opaque color results.
 
 Defaults are only a fallback. A backend should obtain colors, fonts, spacing,
 and dimensions from its toolkit whenever possible. Hard-coded values copied
