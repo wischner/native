@@ -521,9 +521,9 @@ namespace linux::x11
             XtNvertDistance,
             bounds.p.y,
             XtNwidth,
-            bounds.d.w,
+            linux::x11::widget_dimension(bounds.d.w),
             XtNheight,
-            bounds.d.h,
+            linux::x11::widget_dimension(bounds.d.h),
             XtNresizable,
             True,
             nullptr);

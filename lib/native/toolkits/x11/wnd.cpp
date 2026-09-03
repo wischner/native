@@ -56,9 +56,9 @@ namespace native
         if (shell) {
             XtVaSetValues(shell,
                           XtNwidth,
-                          _bounds.d.w,
+                          linux::x11::widget_dimension(_bounds.d.w),
                           XtNheight,
-                          _bounds.d.h,
+                          linux::x11::widget_dimension(_bounds.d.h),
                           nullptr);
             const point position =
                 linux::x11::constrain_shell_position(
@@ -72,9 +72,9 @@ namespace native
         } else if (widget && !dynamic_cast<split_view *>(_parent)) {
             XtVaSetValues(widget,
                           XtNwidth,
-                          _bounds.d.w,
+                          linux::x11::widget_dimension(_bounds.d.w),
                           XtNheight,
-                          _bounds.d.h,
+                          linux::x11::widget_dimension(_bounds.d.h),
                           nullptr);
         }
     }
@@ -95,9 +95,9 @@ namespace native
                           XtNy,
                           position.y,
                           XtNwidth,
-                          _bounds.d.w,
+                          linux::x11::widget_dimension(_bounds.d.w),
                           XtNheight,
-                          _bounds.d.h,
+                          linux::x11::widget_dimension(_bounds.d.h),
                           nullptr);
         } else if (widget && !dynamic_cast<split_view *>(_parent)) {
             XtVaSetValues(widget,
@@ -106,9 +106,9 @@ namespace native
                           XtNvertDistance,
                           _bounds.p.y,
                           XtNwidth,
-                          _bounds.d.w,
+                          linux::x11::widget_dimension(_bounds.d.w),
                           XtNheight,
-                          _bounds.d.h,
+                          linux::x11::widget_dimension(_bounds.d.h),
                           nullptr);
         }
     }

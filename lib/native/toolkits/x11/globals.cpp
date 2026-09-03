@@ -16,6 +16,10 @@
 
 namespace linux::x11
 {
+    Dimension widget_dimension(int value) {
+        return static_cast<Dimension>(value > 0 ? value : 1);
+    }
+
     XtAppContext app_instance = nullptr;
     bool exit_requested = false;
     native::bindings<Widget, native::wnd *> wnd_bindings;

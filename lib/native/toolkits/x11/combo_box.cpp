@@ -121,14 +121,15 @@ namespace native
         binding->root = XtVaCreateWidget(
             "comboBox", formWidgetClass, parent,
             XtNx, _bounds.p.x, XtNy, _bounds.p.y,
-            XtNwidth, _bounds.d.w, XtNheight, _bounds.d.h,
+            XtNwidth, linux::x11::widget_dimension(_bounds.d.w),
+            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
             XtNborderWidth, 0, nullptr);
         const int button_width = std::min<int>(_bounds.d.w, _bounds.d.h+4);
         binding->text = XtVaCreateManagedWidget(
             "comboText", asciiTextWidgetClass, binding->root,
             XtNx, 0, XtNy, 0,
             XtNwidth, std::max(1, static_cast<int>(_bounds.d.w)-button_width),
-            XtNheight, _bounds.d.h,
+            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
             XtNstring, get_text().c_str(),
             XtNeditType, get_style() == combo_box_style::editable
                 ? XawtextEdit : XawtextRead,
@@ -138,7 +139,8 @@ namespace native
         binding->button = XtVaCreateManagedWidget(
             "comboButton", menuButtonWidgetClass, binding->root,
             XtNx, static_cast<int>(_bounds.d.w)-button_width, XtNy, 0,
-            XtNwidth, button_width, XtNheight, _bounds.d.h,
+            XtNwidth, linux::x11::widget_dimension(button_width),
+            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
             XtNlabel, "v", XtNmenuName, "comboMenu",
             XtNleft, XtChainRight, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,

@@ -196,9 +196,9 @@ namespace native
             XtNvertDistance,
             _bounds.p.y,
             XtNwidth,
-            _bounds.d.w,
+            linux::x11::widget_dimension(_bounds.d.w),
             XtNheight,
-            _bounds.d.h,
+            linux::x11::widget_dimension(_bounds.d.h),
             XtNorientation,
             get_orientation() == split_orientation::horizontal
                 ? XtorientHorizontal

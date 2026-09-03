@@ -144,6 +144,9 @@ Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
 must update cached bounds and relayout children. Backend resize notifications
 must update the cache and layout without requesting the same resize again.
+Portable layout may temporarily assign a child zero width or zero height. A
+backend whose native window system requires non-zero dimensions must use its
+minimum native backing size without changing the cached portable bounds.
 The core ignores a notification repeating the cached dimensions and never lets
 a layout pass re-enter itself, so a backend may report geometry freely,
 including synchronously from inside the call that applied it. A backend must

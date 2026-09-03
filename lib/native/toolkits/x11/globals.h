@@ -19,6 +19,9 @@
 
 namespace linux::x11
 {
+    // Convert a portable dimension to the non-zero size required by X11.
+    Dimension widget_dimension(int value);
+
     // Xt callbacks carry widgets, so process-wide registries recover
     // the corresponding C++ objects during event dispatch.
     extern XtAppContext app_instance;

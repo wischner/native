@@ -385,9 +385,9 @@ namespace native
                       XtNy,
                       position.y,
                       XtNwidth,
-                      _bounds.d.w,
+                      linux::x11::widget_dimension(_bounds.d.w),
                       XtNheight,
-                      _bounds.d.h,
+                      linux::x11::widget_dimension(_bounds.d.h),
                       XtNtitle,
                       _title.c_str(),
                       nullptr);
@@ -396,9 +396,11 @@ namespace native
                                                      formWidgetClass,
                                                      shell,
                                                      XtNwidth,
-                                                     _bounds.d.w,
+                                                     linux::x11::widget_dimension(
+                                                         _bounds.d.w),
                                                      XtNheight,
-                                                     _bounds.d.h,
+                                                     linux::x11::widget_dimension(
+                                                         _bounds.d.h),
                                                      XtNborderWidth,
                                                      0,
                                                      XtNdefaultDistance,
@@ -447,9 +449,11 @@ namespace native
                                              XtNhorizDistance,
                                              0,
                                              XtNwidth,
-                                             _bounds.d.w,
+                                             linux::x11::widget_dimension(
+                                                 _bounds.d.w),
                                              XtNheight,
-                                             canvas_height,
+                                             linux::x11::widget_dimension(
+                                                 canvas_height),
                                              XtNborderWidth,
                                              0,
                                              XtNdefaultDistance,
@@ -474,9 +478,11 @@ namespace native
                                              XtNvertDistance,
                                              0,
                                              XtNwidth,
-                                             _bounds.d.w,
+                                             linux::x11::widget_dimension(
+                                                 _bounds.d.w),
                                              XtNheight,
-                                             _bounds.d.h,
+                                             linux::x11::widget_dimension(
+                                                 _bounds.d.h),
                                              XtNborderWidth,
                                              0,
                                              XtNdefaultDistance,
