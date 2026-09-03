@@ -20,6 +20,10 @@
 #include <utility>
 #include <vector>
 
+#if defined(__HAIKU__)
+#include <ScrollBar.h>
+#endif
+
 #include <native.h>
 
 namespace
@@ -1450,6 +1454,13 @@ namespace
                    metrics.status_bar_height > 0 &&
                    metrics.ruler_extent > 0,
                "theme reports usable control metrics");
+#if defined(__HAIKU__)
+        expect(metrics.scrollbar_extent ==
+                       static_cast<int>(B_H_SCROLL_BAR_HEIGHT) &&
+                   metrics.status_bar_height ==
+                       static_cast<int>(B_H_SCROLL_BAR_HEIGHT),
+               "Haiku status bars align with the system resize handle");
+#endif
         expect(painter->get_button_height() == metrics.button_height &&
                    painter->get_menu_bar_height() ==
                        metrics.menu_bar_height &&

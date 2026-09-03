@@ -962,8 +962,9 @@ hooks identical.
 The Haiku status-strip painter follows the compact system `StatusView`
 convention and uses `BControlLook` for its background. Do not substitute
 `BStatusBar`: that class represents progress state and has different layout
-and painting semantics. The root Haiku canvas owns background clearing and
-must request a complete update when a resize moves non-client strips.
+and painting semantics. Its height is `B_H_SCROLL_BAR_HEIGHT`, matching the
+system resize handle. The root Haiku canvas owns background clearing and must
+request a complete update when a resize moves non-client strips.
 
 Native non-client peers must preserve the same in-host edge reservation; they
 must not ask a top-level layout manager to reserve a second strip. Windows

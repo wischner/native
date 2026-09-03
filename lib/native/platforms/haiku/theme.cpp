@@ -17,6 +17,7 @@
 #include <InterfaceDefs.h>
 #include <Looper.h>
 #include <Region.h>
+#include <ScrollBar.h>
 #include <View.h>
 
 #include <native.h>
@@ -110,6 +111,9 @@ namespace
 
         metrics defaults() const override {
             metrics m;
+            m.scrollbar_extent = std::max(
+                1, static_cast<int>(B_H_SCROLL_BAR_HEIGHT));
+            m.status_bar_height = m.scrollbar_extent;
             if (!be_app) {
                 const native::font_t &font = native::font_t::stock(
                     native::font_role::control);

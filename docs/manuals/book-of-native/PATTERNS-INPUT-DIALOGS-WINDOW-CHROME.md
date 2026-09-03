@@ -143,8 +143,9 @@ their protected-stage overrides continue to work.
 
 The Haiku backend uses its native compact status-view recipe: a system
 menu-bar background, dark top rule, short dividers, panel text, and the same
-height as a horizontal scrollbar. `BStatusBar` is Haiku's progress indicator;
-it does not represent this text-only multipart window strip.
+`B_H_SCROLL_BAR_HEIGHT` metric as a horizontal scrollbar and resize handle.
+`BStatusBar` is Haiku's progress indicator; it does not represent this
+text-only multipart window strip.
 
 Vision exposes these APIs under **Window -> Input and window chrome**.
 For automated desktop smoke tests, `vision --input-chrome` opens the same
