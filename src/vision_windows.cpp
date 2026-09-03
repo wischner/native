@@ -921,7 +921,7 @@ namespace vision
                           60, 118, 230, 28)
         , _list_box({"One", "Two", "Three", "Four", "Five"},
                     60, 174, 230, 146)
-        , _tab_general({"Native control", "Borrowed page", "Silent API selection"},
+        , _tab_general({"Strip-only page", "Borrowed page", "Silent API selection"},
                        0, 0, 220, 100)
         , _tab_advanced({"User change signal", "Disabled tab support",
                         "Selected page lifecycle"},
@@ -957,6 +957,7 @@ namespace vision
         _selection_combo.set_selected_index(0);
         _editable_combo.set_text("25 mm");
         _list_box.set_selected_index(1);
+        _tabs.set_page_frame_visible(false);
         _tabs.add_item("General", _tab_general);
         _tabs.add_item("Advanced", _tab_advanced);
         _bottom_tabs.set_tab_placement(native::tab_placement::bottom);
@@ -1029,7 +1030,7 @@ namespace vision
                           native::point(60, 98));
         event.g.draw_text("Native list_box",
                           native::point(60, 152));
-        event.g.draw_text("Top tab_view with borrowed pages",
+        event.g.draw_text("Top strip-only tab_view (flush page)",
                           native::point(400, 152));
         event.g.draw_text("Bottom tab_view (downward-facing)",
                           native::point(400, 310));

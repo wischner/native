@@ -287,6 +287,18 @@ namespace native
         return *this;
     }
 
+    bool tab_view::get_page_frame_visible() const {
+        return _page_frame_visible;
+    }
+
+    tab_view &tab_view::set_page_frame_visible(bool visible) {
+        if (_page_frame_visible == visible)
+            return *this;
+        _page_frame_visible = visible;
+        refresh();
+        return *this;
+    }
+
     rect tab_view::get_tab_bounds(std::size_t index) const {
         const tab_item &item = get_item(index);
         const font_t &font = font_t::stock(font_role::control);
@@ -340,6 +352,35 @@ namespace native
     }
 
     rect tab_view::get_content_bounds() const {
+        if (!_page_frame_visible) {
+            constexpr int separator = 1;
+            if (!horizontal_tabs(_tab_placement)) {
+                const int width = std::max(
+                    0,
+                    static_cast<int>(_bounds.d.w) - _tab_height -
+                        separator);
+                return rect(
+                    static_cast<coord>(
+                        _tab_placement == tab_placement::left
+                            ? _tab_height + separator
+                            : 0),
+                    0,
+                    non_negative_dimension(width),
+                    _bounds.d.h);
+            }
+            const int height = std::max(
+                0,
+                static_cast<int>(_bounds.d.h) - _tab_height -
+                    separator);
+            return rect(
+                0,
+                static_cast<coord>(
+                    _tab_placement == tab_placement::top
+                        ? _tab_height + separator
+                        : 0),
+                _bounds.d.w,
+                non_negative_dimension(height));
+        }
         if (!horizontal_tabs(_tab_placement)) {
             const int width = std::max(
                 0,
@@ -505,6 +546,7 @@ namespace native
                               tab_bounds,
                               state);
             }
+            draw_page_separator(*appearance, bounds);
             return;
         }
         for (std::size_t index = 0; index < _items.size(); ++index) {
@@ -534,6 +576,45 @@ namespace native
                             tab_bounds,
                             state);
         }
+        draw_page_separator(*appearance, bounds);
+    }
+
+    void tab_view::draw_page_separator(theme &appearance,
+                                       const rect &bounds) {
+        if (_page_frame_visible || !bounds.d.w || !bounds.d.h)
+            return;
+        const int extent = std::max(1, appearance.get_separator_extent());
+        if (horizontal_tabs(_tab_placement)) {
+            const int y = _tab_placement == tab_placement::top
+                              ? _tab_height
+                              : static_cast<int>(bounds.d.h) -
+                                    _tab_height - extent;
+            appearance.draw_separator(
+                rect(0,
+                     static_cast<coord>(std::clamp(
+                         y,
+                         0,
+                         std::max(0,
+                                  static_cast<int>(bounds.d.h) - extent))),
+                     bounds.d.w,
+                     non_negative_dimension(extent)),
+                separator_orientation::horizontal);
+            return;
+        }
+        const int x = _tab_placement == tab_placement::left
+                          ? _tab_height
+                          : static_cast<int>(bounds.d.w) - _tab_height -
+                                extent;
+        appearance.draw_separator(
+            rect(static_cast<coord>(std::clamp(
+                     x,
+                     0,
+                     std::max(0,
+                              static_cast<int>(bounds.d.w) - extent))),
+                 0,
+                 non_negative_dimension(extent),
+                 bounds.d.h),
+            separator_orientation::vertical);
     }
 
     bool tab_view::handle_click(const mouse_event &event) {
@@ -556,6 +637,12 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &state) {
+        if (!_page_frame_visible) {
+            appearance.draw_surface(bounds, surface_kind::panel, state);
+            appearance.draw_surface(
+                get_content_bounds(), surface_kind::content, state);
+            return;
+        }
         if (_sloped_tabs) {
             const theme::palette colors = appearance.native_palette();
             graphics.set_pen(1)

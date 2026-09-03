@@ -62,7 +62,7 @@ in those backends.
 | `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. |
 | `text_edit` | **N/H** | Xaw `AsciiText`; portable validation and clipboard policy wrap the native editor. |
 | `accordion` | **C** | Library-painted collection in an Xaw host. |
-| `tab_view` | **C** | Library-painted tabs and borrowed-page routing in an Xaw host. |
+| `tab_view` | **C** | Library-painted tabs, framed/strip-only page chrome, and borrowed-page routing in an Xaw host. |
 | `icon_view` | **C** | Library-painted wrapping grid in the shared collection host. |
 | `tree_view` | **C** | Library-painted hierarchy in the shared collection host. |
 | `table_view` | **C** | Model-backed library table painter in the shared collection host. |
@@ -82,7 +82,7 @@ in those backends.
 | `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch. |
 | `button`, `check`, `radio` | **C** | Library-painted themed controls. |
 | `list`, `combo_box`, `text_edit` | **C** | Library layout, painting, selection, editing, and popup behavior; SDL text-input and clipboard services are used. |
-| `accordion`, `tab_view` | **C** | Library-painted headers/tabs and page routing. |
+| `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only tab pages, and page routing. |
 | `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, hit testing, and scrolling. |
 | `code_edit` | **C** | Portable document/editor and library painting. |
 | `split_view` | **C** | Library pane geometry, hit testing, and drag handling. |
@@ -103,7 +103,7 @@ in those backends.
 | `combo_box` | **N** | `XmDropDownList` or editable `XmComboBox`. |
 | `text_edit` | **N/H** | `XmTextField` or `XmText`; portable validation and clipboard policy wrap it. |
 | `accordion` | **C** | Library-painted collection in `XmDrawingArea`. |
-| `tab_view` | **N/H** | `XmNotebook`; side-tab label pixmaps are rotated to satisfy the portable contract, while page-host plumbing uses Motif forms/buttons. |
+| `tab_view` | **N/H** | `XmNotebook`; side-tab labels are rotated, page hosts use Motif forms, and strip-only mode uses `XmSeparatorGadget`. |
 | `icon_view` | **N/H** | Spatial `XmContainer` and `XmIconGadget` entries in `XmScrolledWindow`; portable code materializes the owned item vector and images. |
 | `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget`; the mode changes native gadget relief rather than selecting a custom painter. |
 | `table_view` | **N/H** | Materialized mode uses `XmContainer` detail view; virtual models use the library-painted collection fallback. |
@@ -126,7 +126,7 @@ in those backends.
 | `list` | **N** | `PANEL_LIST`. |
 | `combo_box` | **H** | `PANEL_TEXT` plus `PANEL_CHOICE_STACK`; XView has no single combo widget matching both public modes. |
 | `text_edit` | **N/H** | `PANEL_TEXT` or `PANEL_MULTILINE_TEXT`; portable validation and clipboard policy wrap it. |
-| `accordion`, `tab_view` | **C/H** | Library-painted OLGX collection/tab chrome in XView panel hosts. |
+| `accordion`, `tab_view` | **C/H** | Library-painted OLGX collection/tab chrome, including framed/strip-only pages, in XView panel hosts. |
 | `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content with native XView `SCROLLBAR` objects. |
 | `code_edit` | **C/H** | Portable editor painted in an XView host with native XView scrollbars. |
 | `split_view` | **H** | Two XView child `Panel` panes; the current implementation is not `OPENWIN_SPLIT` and has portable geometry. |
@@ -148,7 +148,7 @@ in those backends.
 | `combo_box` | **H** | `WMPopUpButton` and optional `WMTextField` inside a `WMFrame`. |
 | `text_edit` | **N/H** | `WMTextField` or `WMText`; portable validation and clipboard policy wrap it. |
 | `accordion`, `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content in a `WMFrame`, with native `WMScroller` controls. |
-| `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom and side tabs. |
+| `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for framed top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom, side, and strip-only tabs. |
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
@@ -164,7 +164,7 @@ in those backends.
 | `main_menu` | **N/H** | The library builds an AES `OBJECT` tree and installs it with `menu_bar`; AES owns normal menu interaction while portable code maps commands and shortcuts. |
 | `button`, `check`, `radio` | **C** | GEM-themed library painting and AES event handling. |
 | `list`, `combo_box`, `text_edit` | **C** | Library painting, editing, popup/list, scrolling, and selection over AES/VDI. |
-| `accordion`, `tab_view` | **C** | Library-painted headers/tabs and page routing. |
+| `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only pages, and page routing. |
 | `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling. |
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
@@ -184,7 +184,7 @@ in those backends.
 | `combo_box` | **N** | Win32 `COMBOBOX`. |
 | `text_edit` | **N/H** | Win32 `EDIT`; portable validation and clipboard policy subclass it. |
 | `accordion` | **C** | Library child-window class and theme painting. |
-| `tab_view` | **N/H** | Common-controls `WC_TABCONTROL`; portable borrowed-page host routing. |
+| `tab_view` | **N/H** | Common-controls `WC_TABCONTROL`; portable borrowed-page routing and a post-paint separator for strip-only pages. |
 | `icon_view` | **N/H** | Common-controls `WC_LISTVIEW` in icon mode with portable images/model mapping. |
 | `tree_view` | **N/H** | Common-controls `WC_TREEVIEW` with custom draw for portable theme/details. |
 | `table_view` | **N/H** | Report `WC_LISTVIEW`, owner-data virtualization, groups, and custom draw. |
@@ -209,7 +209,7 @@ in those backends.
 | `combo_box` | **N/H** | Selection-only uses `BOptionPopUp`; editable mode composes `BTextControl` and `BOptionPopUp`. |
 | `text_edit` | **N/H** | `BTextView` and optional `BScrollView`; subclass supplies portable validation. |
 | `accordion` | **C** | Library-painted collection `BView`. |
-| `tab_view` | **N/H** | Native `BTabView`/`BTab` for top and bottom; directional `BView` host for rotated side tabs and portable borrowed pages. |
+| `tab_view` | **N/H** | Native `BTabView`/`BTab` for top and bottom, using `B_NO_BORDER` plus one separator in strip-only mode; directional `BView` host for rotated side tabs. |
 | `icon_view` | **C** | Library-painted collection `BView` with native scrollbar objects in its host. |
 | `tree_view` | **N/H** | `BOutlineListView`, `BStringItem`, and `BScrollView`; custom item drawing adds portable icons. |
 | `table_view` | **N/H** | `BColumnListView`, `BTitledColumn`, and `BRow`; virtual mode retains a custom collection fallback. |
@@ -232,7 +232,7 @@ in those backends.
 | `combo_box` | **N** | `NSComboBox`. |
 | `text_edit` | **N/H** | `NSTextField` or `NSTextView` in `NSScrollView`; delegates enforce portable validation. |
 | `accordion` | **N/H** | `NSStackView` with disclosure-style `NSButton` headers and portable page routing. |
-| `tab_view` | **N/H** | `NSTabView`/`NSTabViewItem` with portable borrowed-page hosts. |
+| `tab_view` | **N/H** | `NSTabView`/`NSTabViewItem` with portable borrowed-page hosts; strip-only mode disables the page background and draws one separator. |
 | `icon_view` | **N/H** | `NSCollectionView` in `NSScrollView`, adapted to the portable model. |
 | `tree_view` | **N/H** | `NSOutlineView` in `NSScrollView`, with portable data source and images. |
 | `table_view` | **N/H** | Data-source-driven `NSTableView` in `NSScrollView`, retaining native headers, reuse, grids, and stripes. |

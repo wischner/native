@@ -46,6 +46,37 @@ namespace
                 _owner->on_native_selection(Selection());
         }
 
+        void DrawBox(BRect selected_tab) override {
+            if (!_owner || _owner->get_page_frame_visible()) {
+                BTabView::DrawBox(selected_tab);
+                return;
+            }
+            const BRect bounds = Bounds();
+            PushState();
+            SetHighColor(ui_color(B_CONTROL_BORDER_COLOR));
+            switch (TabSide()) {
+            case kTopSide:
+                StrokeLine(BPoint(0, TabHeight()),
+                           BPoint(bounds.right, TabHeight()));
+                break;
+            case kBottomSide: {
+                const float y = bounds.bottom - TabHeight();
+                StrokeLine(BPoint(0, y), BPoint(bounds.right, y));
+                break;
+            }
+            case kLeftSide:
+                StrokeLine(BPoint(TabHeight(), 0),
+                           BPoint(TabHeight(), bounds.bottom));
+                break;
+            case kRightSide: {
+                const float x = bounds.right - TabHeight();
+                StrokeLine(BPoint(x, 0), BPoint(x, bounds.bottom));
+                break;
+            }
+            }
+            PopState();
+        }
+
         bool _suppress = false;
 
     private:
@@ -112,6 +143,9 @@ namespace
                         native::tab_placement::bottom
                     ? BTabView::kBottomSide
                     : BTabView::kTopSide);
+            view->SetBorder(control.get_page_frame_visible()
+                                ? B_FANCY_BORDER
+                                : B_NO_BORDER);
             const native::rect bounds = control.get_bounds();
             view->MoveTo(bounds.p.x, bounds.p.y);
             view->ResizeTo(
@@ -132,6 +166,9 @@ namespace
             control.get_tab_placement() == native::tab_placement::bottom
                 ? BTabView::kBottomSide
                 : BTabView::kTopSide);
+        view.SetBorder(control.get_page_frame_visible()
+                           ? B_FANCY_BORDER
+                           : B_NO_BORDER);
         for (std::size_t index = 0;
              index < control.get_item_count(); ++index) {
             native::wnd &content = control.get_item(index).get_content();

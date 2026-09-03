@@ -20,6 +20,12 @@
 }
 @end
 
+@interface native_tab_view : NSTabView {
+@public
+    native::tab_view *_owner;
+}
+@end
+
 @interface native_tab_page_host : NSView {
 @public
     CGFloat _tabHeight;
@@ -32,6 +38,48 @@
     if (point.y < _tabHeight)
         return nil;
     return [super hitTest:point];
+}
+@end
+
+@implementation native_tab_view
+- (void)drawRect:(NSRect)dirtyRect {
+    [super drawRect:dirtyRect];
+    if (!_owner || _owner->get_page_frame_visible())
+        return;
+
+    const NSRect bounds = [self bounds];
+    const native::rect content = _owner->get_content_bounds();
+    native::rect separator;
+    switch (_owner->get_tab_placement()) {
+    case native::tab_placement::top:
+        separator = native::rect(
+            0, static_cast<native::coord>(content.p.y - 1),
+            _owner->get_dimensions().w, 1);
+        break;
+    case native::tab_placement::bottom:
+        separator = native::rect(
+            0, static_cast<native::coord>(content.y2()),
+            _owner->get_dimensions().w, 1);
+        break;
+    case native::tab_placement::left:
+        separator = native::rect(
+            static_cast<native::coord>(content.p.x - 1), 0, 1,
+            _owner->get_dimensions().h);
+        break;
+    case native::tab_placement::right:
+        separator = native::rect(
+            static_cast<native::coord>(content.x2()), 0, 1,
+            _owner->get_dimensions().h);
+        break;
+    }
+    const CGFloat height = NSHeight(bounds);
+    const NSRect native_separator = NSMakeRect(
+        separator.p.x,
+        height - separator.p.y - separator.d.h,
+        separator.d.w,
+        separator.d.h);
+    [[NSColor separatorColor] setFill];
+    NSRectFill(NSIntersectionRect(native_separator, bounds));
 }
 @end
 
@@ -83,12 +131,26 @@ namespace
         return NSTopTabsBezelBorder;
     }
 
+    NSRect page_host_frame(native::tab_view &owner,
+                           NSTabView *view) {
+        if (owner.get_page_frame_visible())
+            return [view contentRect];
+        const native::rect content = owner.get_content_bounds();
+        return NSMakeRect(
+            content.p.x,
+            static_cast<CGFloat>(owner.get_dimensions().h) -
+                content.p.y - content.d.h,
+            content.d.w,
+            content.d.h);
+    }
+
     void apply_placement(native::tab_view &owner,
                          mac::mac_tab_view &state) {
         [state.view setTabViewType:
             native_placement(owner.get_tab_placement())];
+        [state.view setDrawsBackground:owner.get_page_frame_visible()];
         if (state.page_host) {
-            [state.page_host setFrame:[state.view contentRect]];
+            [state.page_host setFrame:page_host_frame(owner, state.view)];
             [state.page_host setNeedsDisplay:YES];
         }
         [state.view setNeedsDisplay:YES];
@@ -148,11 +210,12 @@ namespace native
         if (!parent)
             throw std::runtime_error(
                 "macOS: tab_view requires a created parent.");
-        NSTabView *view = [[NSTabView alloc]
+        native_tab_view *view = [[native_tab_view alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,
                                      _bounds.d.w,
                                      _bounds.d.h)];
+        view->_owner = self;
         [view setTabViewType:native_placement(get_tab_placement())];
         native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
         delegate->_owner = self;

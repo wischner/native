@@ -82,6 +82,7 @@ namespace native
                 break;
             }
         }
+        InvalidateRect(tabs, nullptr, TRUE);
     }
 
     void tab_view::apply_selected_index() {

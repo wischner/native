@@ -541,6 +541,56 @@ namespace windows
                 }
                 if (auto *tabs =
                         dynamic_cast<native::tab_view *>(child)) {
+                    if (notification->code == NM_CUSTOMDRAW &&
+                        !tabs->get_page_frame_visible()) {
+                        auto *drawing =
+                            reinterpret_cast<NMCUSTOMDRAW *>(
+                                notification);
+                        if (drawing->dwDrawStage == CDDS_PREPAINT)
+                            return CDRF_NOTIFYPOSTPAINT;
+                        if (drawing->dwDrawStage == CDDS_POSTPAINT) {
+                            RECT client{};
+                            GetClientRect(notification->hwndFrom,
+                                          &client);
+                            const native::rect content =
+                                tabs->get_content_bounds();
+                            HPEN pen = CreatePen(
+                                PS_SOLID,
+                                1,
+                                GetSysColor(COLOR_3DSHADOW));
+                            HGDIOBJ previous = SelectObject(
+                                drawing->hdc, pen);
+                            switch (tabs->get_tab_placement()) {
+                            case native::tab_placement::top: {
+                                const int y = content.p.y - 1;
+                                MoveToEx(drawing->hdc, 0, y, nullptr);
+                                LineTo(drawing->hdc, client.right, y);
+                                break;
+                            }
+                            case native::tab_placement::bottom: {
+                                const int y = content.y2();
+                                MoveToEx(drawing->hdc, 0, y, nullptr);
+                                LineTo(drawing->hdc, client.right, y);
+                                break;
+                            }
+                            case native::tab_placement::left: {
+                                const int x = content.p.x - 1;
+                                MoveToEx(drawing->hdc, x, 0, nullptr);
+                                LineTo(drawing->hdc, x, client.bottom);
+                                break;
+                            }
+                            case native::tab_placement::right: {
+                                const int x = content.x2();
+                                MoveToEx(drawing->hdc, x, 0, nullptr);
+                                LineTo(drawing->hdc, x, client.bottom);
+                                break;
+                            }
+                            }
+                            SelectObject(drawing->hdc, previous);
+                            DeleteObject(pen);
+                            return CDRF_DODEFAULT;
+                        }
+                    }
                     if (notification->code == TCN_SELCHANGE) {
                         const int selected = TabCtrl_GetCurSel(
                             notification->hwndFrom);

@@ -6,6 +6,7 @@
 #include <Xm/Form.h>
 #include <Xm/Notebook.h>
 #include <Xm/PushB.h>
+#include <Xm/SeparatoG.h>
 
 #include <native.h>
 
@@ -138,6 +139,10 @@ namespace
             notebook_orientation(owner.get_tab_placement()),
             XmNbackPagePlacement,
             notebook_placement(owner.get_tab_placement()),
+            XmNshadowThickness,
+            owner.get_page_frame_visible()
+                ? state.frame_shadow_thickness
+                : 0,
             nullptr);
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
             native::wnd &content = owner.get_item(index).get_content();
@@ -146,7 +151,7 @@ namespace
         }
         for (Widget tab : state.tabs)
             XtDestroyWidget(tab);
-        for (Widget page : state.pages)
+        for (Widget page : state.page_frames)
             XtDestroyWidget(page);
         if (!state.label_pixmaps.empty())
             XSync(linux::openmotif::cached_display, False);
@@ -155,18 +160,125 @@ namespace
                 XFreePixmap(linux::openmotif::cached_display, pixmap);
         }
         state.tabs.clear();
+        state.page_frames.clear();
         state.pages.clear();
         state.label_pixmaps.clear();
 
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
             const int page_number = static_cast<int>(index)+1;
-            Widget page = XtVaCreateManagedWidget(
+            Widget page_frame = XtVaCreateManagedWidget(
                 "page", xmFormWidgetClass, state.notebook,
                 XmNnotebookChildType, XmPAGE,
                 XmNpageNumber, page_number,
                 XmNmarginWidth, 0,
                 XmNmarginHeight, 0,
+                XmNshadowThickness, 0,
                 nullptr);
+            Widget page = page_frame;
+            if (!owner.get_page_frame_visible()) {
+                const native::tab_placement placement =
+                    owner.get_tab_placement();
+                const bool horizontal = !side_tabs(placement);
+                Arg separator_args[16];
+                Cardinal separator_count = 0;
+                XtSetArg(separator_args[separator_count],
+                         XmNorientation,
+                         horizontal ? XmHORIZONTAL : XmVERTICAL);
+                ++separator_count;
+                XtSetArg(separator_args[separator_count],
+                         XmNseparatorType, XmSINGLE_LINE);
+                ++separator_count;
+                if (horizontal) {
+                    XtSetArg(separator_args[separator_count],
+                             XmNheight, 1);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             XmNleftAttachment, XmATTACH_FORM);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             XmNrightAttachment, XmATTACH_FORM);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             placement == native::tab_placement::top
+                                 ? XmNtopAttachment
+                                 : XmNbottomAttachment,
+                             XmATTACH_FORM);
+                    ++separator_count;
+                } else {
+                    XtSetArg(separator_args[separator_count],
+                             XmNwidth, 1);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             XmNtopAttachment, XmATTACH_FORM);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             XmNbottomAttachment, XmATTACH_FORM);
+                    ++separator_count;
+                    XtSetArg(separator_args[separator_count],
+                             placement == native::tab_placement::left
+                                 ? XmNleftAttachment
+                                 : XmNrightAttachment,
+                             XmATTACH_FORM);
+                    ++separator_count;
+                }
+                Widget separator = XtCreateManagedWidget(
+                    "pageSeparator",
+                    xmSeparatorGadgetClass,
+                    page_frame,
+                    separator_args,
+                    separator_count);
+                Arg page_args[16];
+                Cardinal page_count = 0;
+                XtSetArg(page_args[page_count], XmNmarginWidth, 0);
+                ++page_count;
+                XtSetArg(page_args[page_count], XmNmarginHeight, 0);
+                ++page_count;
+                XtSetArg(page_args[page_count], XmNshadowThickness, 0);
+                ++page_count;
+                XtSetArg(page_args[page_count], XmNleftAttachment,
+                         placement == native::tab_placement::left
+                             ? XmATTACH_WIDGET
+                             : XmATTACH_FORM);
+                ++page_count;
+                if (placement == native::tab_placement::left) {
+                    XtSetArg(page_args[page_count], XmNleftWidget,
+                             separator);
+                    ++page_count;
+                }
+                XtSetArg(page_args[page_count], XmNrightAttachment,
+                         placement == native::tab_placement::right
+                             ? XmATTACH_WIDGET
+                             : XmATTACH_FORM);
+                ++page_count;
+                if (placement == native::tab_placement::right) {
+                    XtSetArg(page_args[page_count], XmNrightWidget,
+                             separator);
+                    ++page_count;
+                }
+                XtSetArg(page_args[page_count], XmNtopAttachment,
+                         placement == native::tab_placement::top
+                             ? XmATTACH_WIDGET
+                             : XmATTACH_FORM);
+                ++page_count;
+                if (placement == native::tab_placement::top) {
+                    XtSetArg(page_args[page_count], XmNtopWidget,
+                             separator);
+                    ++page_count;
+                }
+                XtSetArg(page_args[page_count], XmNbottomAttachment,
+                         placement == native::tab_placement::bottom
+                             ? XmATTACH_WIDGET
+                             : XmATTACH_FORM);
+                ++page_count;
+                if (placement == native::tab_placement::bottom) {
+                    XtSetArg(page_args[page_count], XmNbottomWidget,
+                             separator);
+                    ++page_count;
+                }
+                page = XtCreateManagedWidget(
+                    "content", xmFormWidgetClass, page_frame,
+                    page_args, page_count);
+            }
             XmString label = XmStringCreateLocalized(const_cast<char *>(
                 owner.get_item(index).get_title().c_str()));
             Widget tab = XtVaCreateManagedWidget(
@@ -195,6 +307,7 @@ namespace
                     state.label_pixmaps.push_back(pixmap);
                 }
             }
+            state.page_frames.push_back(page_frame);
             state.pages.push_back(page);
             state.tabs.push_back(tab);
         }
@@ -264,6 +377,10 @@ namespace native
             delete state;
             throw std::runtime_error("Motif: failed to create XmNotebook.");
         }
+        XtVaGetValues(state->notebook,
+                      XmNshadowThickness,
+                      &state->frame_shadow_thickness,
+                      nullptr);
         linux::openmotif::wnd_bindings.register_pair(state->notebook, self);
         linux::openmotif::tab_view_bindings.register_pair(self, state);
         XtAddCallback(state->notebook, XmNpageChangedCallback,

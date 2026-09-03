@@ -39,7 +39,8 @@ before or after native creation:
 
 ```cpp
 native::tab_view tabs(20, 20, 420, 260);
-tabs.set_tab_placement(native::tab_placement::bottom);
+tabs.set_tab_placement(native::tab_placement::bottom)
+    .set_page_frame_visible(false);
 tabs.add_item("General", general_page);
 tabs.add_item("Advanced", advanced_page);
 ```
@@ -57,6 +58,14 @@ Every placement has a directional free edge rather than merely translating
 a top-facing control. Native controls are used where their APIs support the
 requested orientation and label direction; other combinations use Native's
 matching directional renderer.
+
+The complete page frame is visible by default for compatibility.
+`set_page_frame_visible(false)` switches to strip-only presentation: the
+page is flush to the control's cross-axis edges and a single separator spans
+the complete boundary between the page and the tab labels. The getter is
+`get_page_frame_visible()`. The setter works before or after `create()`,
+preserves items, selection, and borrowed page contents, and does not emit a
+selection-change signal.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.

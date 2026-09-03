@@ -109,6 +109,12 @@ namespace native
         // Move the tab labels without changing selection or emitting an event.
         tab_view &set_tab_placement(tab_placement placement);
 
+        // Return whether tab pages have a complete native frame.
+        bool get_page_frame_visible() const;
+
+        // Show a complete page frame or a flush page with one separator.
+        tab_view &set_page_frame_visible(bool visible);
+
         // Return the client-relative bounds occupied by one tab.
         rect get_tab_bounds(std::size_t index) const;
 
@@ -202,6 +208,7 @@ namespace native
         rgba _inactive_tab_background;
         rgba _inactive_tab_highlight;
         tab_placement _tab_placement = tab_placement::top;
+        bool _page_frame_visible = true;
         bool _content_host_is_page = false;
         bool _preserve_inactive_pages = false;
 
@@ -209,6 +216,8 @@ namespace native
         void refresh_contents();
         void detach_item(tab_item &item);
         void draw(gpx &graphics);
+        void draw_page_separator(theme &appearance,
+                                 const rect &bounds);
         bool handle_click(const mouse_event &event);
     };
 } // namespace native

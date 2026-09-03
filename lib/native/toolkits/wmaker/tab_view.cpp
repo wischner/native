@@ -79,8 +79,8 @@ namespace
                 native::tab_placement::top,
             native::rgba(132, 132, 132, 255),
             native::rgba(217, 217, 217, 255));
-        if (owner.get_tab_placement() !=
-            native::tab_placement::top) {
+        if (owner.get_tab_placement() != native::tab_placement::top ||
+            !owner.get_page_frame_visible()) {
             state.portable =
                 linux::wmaker::create_collection_frame(owner);
             return;

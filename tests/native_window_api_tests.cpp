@@ -55,6 +55,10 @@ namespace
                   decltype(std::declval<const native::tab_view &>()
                                .get_tab_placement()),
                   native::tab_placement>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::tab_view &>()
+                               .get_page_frame_visible()),
+                  bool>);
     static_assert(std::is_base_of_v<native::wnd, native::split_view>);
     static_assert(!std::is_copy_constructible_v<native::split_view>);
     static_assert(std::is_constructible_v<
@@ -156,8 +160,10 @@ namespace
             return *this;
         }
 
-        native::gpx &draw_line(native::point, native::point) override {
+        native::gpx &draw_line(native::point from,
+                               native::point to) override {
             painted = true;
+            lines.emplace_back(from, to);
             return *this;
         }
 
@@ -183,6 +189,7 @@ namespace
         native::rect clip = native::rect(0, 0, 40, 20);
         bool painted = false;
         int image_count = 0;
+        std::vector<std::pair<native::point, native::point>> lines;
     };
 
     class extensible_app_window final : public native::app_wnd
@@ -426,11 +433,17 @@ namespace
         native::tab_view tabs(0, 0, 300, 180);
         tabs.add_item("General", first);
         tabs.add_item("Advanced", second).set_enabled(false);
+        int changes = 0;
+        tabs.on_selection_change.connect([&](int) {
+            ++changes;
+            return true;
+        });
 
         expect(tabs.get_item_count() == 2 &&
                    tabs.get_selected_index() == 0 &&
                    tabs.get_tab_placement() ==
                        native::tab_placement::top &&
+                   tabs.get_page_frame_visible() &&
                    first.get_parent() == &tabs &&
                    second.get_parent() == &tabs,
                "tab_view borrows ordered page windows and selects the first");
@@ -440,6 +453,32 @@ namespace
 
         const native::rect top_tabs = tabs.get_tab_bounds(0);
         const native::rect top_content = tabs.get_content_bounds();
+        tabs.set_page_frame_visible(false);
+        const native::rect flush_top_content =
+            tabs.get_content_bounds();
+        expect(!tabs.get_page_frame_visible() &&
+                   tabs.get_selected_index() == 0 &&
+                   flush_top_content.p.x == 0 &&
+                   flush_top_content.d.w == tabs.get_dimensions().w &&
+                   flush_top_content.p.y == top_tabs.y2() + 1 &&
+                   flush_top_content.y2() ==
+                       tabs.get_dimensions().h &&
+                   changes == 0,
+               "strip-only tabs use flush page bounds and change silently");
+        recording_gpx flush_graphics;
+        flush_graphics.set_clip(native::rect(0, 0, 300, 180));
+        tabs.on_native_paint(native::wnd_paint_event(
+            native::rect(0, 0, 300, 180), flush_graphics));
+        const bool has_full_width_separator = std::any_of(
+            flush_graphics.lines.begin(),
+            flush_graphics.lines.end(),
+            [](const auto &line) {
+                return line.first.x == 0 && line.second.x == 299 &&
+                       line.first.y == line.second.y;
+            });
+        expect(has_full_width_separator,
+               "strip-only top tabs draw one full-width separator");
+        tabs.set_page_frame_visible(true);
         tabs.set_tab_placement(native::tab_placement::bottom);
         const native::rect bottom_tabs = tabs.get_tab_bounds(0);
         const native::rect bottom_content = tabs.get_content_bounds();
@@ -473,11 +512,6 @@ namespace
                "side tab labels use the portable rotated-text path");
         tabs.set_tab_placement(native::tab_placement::bottom);
 
-        int changes = 0;
-        tabs.on_selection_change.connect([&](int) {
-            ++changes;
-            return true;
-        });
         tabs.set_selected_index(1);
         expect(tabs.get_selected_index() == 1 && changes == 0,
                "programmatic tab selection is silent");
@@ -515,6 +549,16 @@ namespace
         expect(live_tabs.get_created() && live_second.get_created() &&
                    !live_first.get_created(),
                "created tabs materialize only their selected borrowed page");
+        live_tabs.set_page_frame_visible(false);
+        expect(!live_tabs.get_page_frame_visible() &&
+                   live_tabs.get_selected_index() == 1 &&
+                   live_tabs.get_item_count() == 2 &&
+                   live_second.get_created() &&
+                   same_rect(live_second.get_bounds(),
+                             live_tabs.get_content_bounds()) &&
+                   placement_events == 0,
+               "page-frame changes after creation preserve page state and "
+               "emit no selection signal");
         const int selected_before = live_tabs.get_selected_index();
         const int applications_before =
             live_tabs.selection_applications;
@@ -561,6 +605,15 @@ namespace
                              live_tabs.get_content_bounds()),
                "returning to top placement remains silent and preserves "
                "selection");
+        live_tabs.set_page_frame_visible(true);
+        expect(live_tabs.get_page_frame_visible() &&
+                   live_tabs.get_selected_index() == selected_before &&
+                   live_second.get_created() &&
+                   same_rect(live_second.get_bounds(),
+                             live_tabs.get_content_bounds()) &&
+                   placement_events == 1,
+               "restoring the page frame preserves selected borrowed "
+               "content without a selection signal");
 
         simulated_page retained_first(0, 0, 10, 10);
         simulated_page retained_second(0, 0, 10, 10);

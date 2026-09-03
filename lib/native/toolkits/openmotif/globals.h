@@ -97,9 +97,11 @@ namespace linux::openmotif
     struct motif_tab_view
     {
         Widget notebook = nullptr;
+        std::vector<Widget> page_frames;
         std::vector<Widget> pages;
         std::vector<Widget> tabs;
         std::vector<Pixmap> label_pixmaps;
+        Dimension frame_shadow_thickness = 0;
         bool suppress = false;
     };
 
