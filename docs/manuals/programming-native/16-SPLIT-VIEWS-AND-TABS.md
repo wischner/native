@@ -33,7 +33,8 @@ listen to `on_selection_change` for user-originated changes. Native tab
 backends include `BTabView`, `XmNotebook`, `WMTabView`, `NSTabView`, and the
 Win32 tab common control.
 
-Tabs occupy the top edge by default. Placement is portable and may be set
+Tabs occupy the top edge by default. Top, bottom, left, and right placement
+is portable and may be set
 before or after native creation:
 
 ```cpp
@@ -43,15 +44,19 @@ tabs.add_item("General", general_page);
 tabs.add_item("Advanced", advanced_page);
 ```
 
+Left and right tabs rotate their labels: left labels read bottom-to-top and
+right labels read top-to-bottom.
+
 `get_tab_bounds()` reports labels at the selected edge and
 `get_content_bounds()` reports the remaining page rectangle: below top tabs
-or above bottom tabs. Changing placement preserves every item, the selected
+or above bottom tabs, to the right of left tabs, or to the left of right
+tabs. Changing placement preserves every item, the selected
 index, and the selected borrowed page. Like `set_selected_index()`, the
 placement setter is programmatic and does not emit `on_selection_change`.
-Bottom tabs are drawn as downward-facing tabs rather than translated top
-tabs. Native controls are used where their API supports that orientation;
-backends without a native bottom-tab mode use Native's matching portable
-tab renderer for bottom placement.
+Every placement has a directional free edge rather than merely translating
+a top-facing control. Native controls are used where their APIs support the
+requested orientation and label direction; other combinations use Native's
+matching directional renderer.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.

@@ -19,11 +19,18 @@ namespace native
 {
     class tab_view;
 
+    namespace detail
+    {
+        class control_render_access;
+    }
+
     // Selects the edge occupied by a tab view's labels.
     enum class tab_placement
     {
         top,
-        bottom
+        bottom,
+        left,
+        right
     };
 
     // Stores one tab label and its borrowed page window.
@@ -56,7 +63,7 @@ namespace native
         bool _enabled = true;
     };
 
-    // Presents one selected page beneath a row of native tabs.
+    // Presents one selected page beside tabs on any window edge.
     class tab_view : public wnd
     {
     public:
@@ -175,10 +182,20 @@ namespace native
 
     private:
         friend class tab_item;
+        friend class detail::control_render_access;
 
         std::vector<std::unique_ptr<tab_item>> _items;
         int _selected_index = -1;
         int _tab_height = 24;
+        int _tab_inset = 0;
+        int _tab_padding = 20;
+        int _tab_overlap = 0;
+        int _page_inset = 2;
+        int _page_trailing = 2;
+        int _page_tab_gap = 0;
+        bool _sloped_tabs = false;
+        rgba _inactive_tab_background;
+        rgba _inactive_tab_highlight;
         tab_placement _tab_placement = tab_placement::top;
         bool _content_host_is_page = false;
 

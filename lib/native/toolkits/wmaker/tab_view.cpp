@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <WINGs/WINGs.h>
 #include <native.h>
+#include "../../control_render_access.h"
 #include "collection_host.h"
 #include "globals.h"
 
@@ -62,8 +63,24 @@ namespace
 
     void create_host(native::tab_view &owner,
                      linux::wmaker::native_tab_view &state) {
-        if (owner.get_tab_placement() ==
-            native::tab_placement::bottom) {
+        WMScreen *screen = linux::wmaker::screen;
+        WMFont *font = screen ? WMDefaultSystemFont(screen) : nullptr;
+        const int height = font ? WMFontHeight(font) + 3 : 20;
+        native::detail::control_render_access::configure_tab_layout(
+            owner,
+            height,
+            8,
+            30,
+            10,
+            1,
+            2,
+            1,
+            owner.get_tab_placement() !=
+                native::tab_placement::top,
+            native::rgba(132, 132, 132, 255),
+            native::rgba(217, 217, 217, 255));
+        if (owner.get_tab_placement() !=
+            native::tab_placement::top) {
             state.portable =
                 linux::wmaker::create_collection_frame(owner);
             return;

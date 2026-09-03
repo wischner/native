@@ -925,7 +925,10 @@ a native child host and the shared separator interaction without introducing
 top-level window management.
 
 `tab_view` independently borrows any number of page windows and creates only
-the selected page. Native implementations use the platform tab control,
+the selected page. Its top, bottom, left, and right placement remains a pure
+C++ model property; side labels use directional rotation. Native
+implementations use the platform tab control where its placement and label
+direction satisfy that contract,
 including Motif `XmNotebook`, Haiku `BTabView`, AppKit `NSTabView`, Win32 tab
 common controls, and Window Maker `WMTabView`. A backend wrapper may provide a
 page-local content host, but it must remain below the public API boundary.

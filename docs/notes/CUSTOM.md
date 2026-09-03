@@ -103,7 +103,7 @@ in those backends.
 | `combo_box` | **N** | `XmDropDownList` or editable `XmComboBox`. |
 | `text_edit` | **N/H** | `XmTextField` or `XmText`; portable validation and clipboard policy wrap it. |
 | `accordion` | **C** | Library-painted collection in `XmDrawingArea`. |
-| `tab_view` | **N/H** | `XmNotebook`; portable page-host plumbing uses Motif forms/buttons. |
+| `tab_view` | **N/H** | `XmNotebook`; side-tab label pixmaps are rotated to satisfy the portable contract, while page-host plumbing uses Motif forms/buttons. |
 | `icon_view` | **N/H** | Spatial `XmContainer` and `XmIconGadget` entries in `XmScrolledWindow`; portable code materializes the owned item vector and images. |
 | `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget`; the mode changes native gadget relief rather than selecting a custom painter. |
 | `table_view` | **N/H** | Materialized mode uses `XmContainer` detail view; virtual models use the library-painted collection fallback. |
@@ -148,7 +148,7 @@ in those backends.
 | `combo_box` | **H** | `WMPopUpButton` and optional `WMTextField` inside a `WMFrame`. |
 | `text_edit` | **N/H** | `WMTextField` or `WMText`; portable validation and clipboard policy wrap it. |
 | `accordion`, `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content in a `WMFrame`, with native `WMScroller` controls. |
-| `tab_view` | **N/H** | `WMTabView` and `WMTabViewItem`; portable borrowed-page hosts. |
+| `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom and side tabs. |
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
@@ -209,7 +209,7 @@ in those backends.
 | `combo_box` | **N/H** | Selection-only uses `BOptionPopUp`; editable mode composes `BTextControl` and `BOptionPopUp`. |
 | `text_edit` | **N/H** | `BTextView` and optional `BScrollView`; subclass supplies portable validation. |
 | `accordion` | **C** | Library-painted collection `BView`. |
-| `tab_view` | **N/H** | `BTabView` and `BTab`; portable borrowed-page hosts. |
+| `tab_view` | **N/H** | Native `BTabView`/`BTab` for top and bottom; directional `BView` host for rotated side tabs and portable borrowed pages. |
 | `icon_view` | **C** | Library-painted collection `BView` with native scrollbar objects in its host. |
 | `tree_view` | **N/H** | `BOutlineListView`, `BStringItem`, and `BScrollView`; custom item drawing adds portable icons. |
 | `table_view` | **N/H** | `BColumnListView`, `BTitledColumn`, and `BRow`; virtual mode retains a custom collection fallback. |

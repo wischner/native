@@ -99,6 +99,7 @@ namespace linux::openmotif
         Widget notebook = nullptr;
         std::vector<Widget> pages;
         std::vector<Widget> tabs;
+        std::vector<Pixmap> label_pixmaps;
         bool suppress = false;
     };
 

@@ -69,12 +69,24 @@ namespace
         return mac::tab_view_bindings.object_from_handle(&owner);
     }
 
+    NSTabViewType native_placement(native::tab_placement placement) {
+        switch (placement) {
+        case native::tab_placement::top:
+            return NSTopTabsBezelBorder;
+        case native::tab_placement::bottom:
+            return NSBottomTabsBezelBorder;
+        case native::tab_placement::left:
+            return NSLeftTabsBezelBorder;
+        case native::tab_placement::right:
+            return NSRightTabsBezelBorder;
+        }
+        return NSTopTabsBezelBorder;
+    }
+
     void apply_placement(native::tab_view &owner,
                          mac::mac_tab_view &state) {
         [state.view setTabViewType:
-            owner.get_tab_placement() == native::tab_placement::bottom
-                ? NSBottomTabsBezelBorder
-                : NSTopTabsBezelBorder];
+            native_placement(owner.get_tab_placement())];
         if (state.page_host) {
             [state.page_host setFrame:[state.view contentRect]];
             [state.page_host setNeedsDisplay:YES];
@@ -90,6 +102,14 @@ namespace native
         if (!state || !state->view)
             throw std::runtime_error("macOS: missing tab-view binding.");
         apply_placement(*this, *state);
+        const NSRect content = [state->view contentRect];
+        _tab_height = std::max(
+            1,
+            static_cast<int>(
+                get_tab_placement() == tab_placement::left ||
+                        get_tab_placement() == tab_placement::right
+                    ? _bounds.d.w - content.size.width
+                    : _bounds.d.h - content.size.height));
         state->suppress = true;
         while ([state->view numberOfTabViewItems] > 0)
             [state->view removeTabViewItem:
@@ -133,10 +153,7 @@ namespace native
                                      _bounds.p.y,
                                      _bounds.d.w,
                                      _bounds.d.h)];
-        [view setTabViewType:
-            get_tab_placement() == tab_placement::bottom
-                ? NSBottomTabsBezelBorder
-                : NSTopTabsBezelBorder];
+        [view setTabViewType:native_placement(get_tab_placement())];
         native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
         delegate->_owner = self;
         [view setDelegate:delegate];
@@ -157,9 +174,14 @@ namespace native
         _created = true;
         self->synchronize_theme_metrics();
         self->_content_host_is_page = true;
-        const CGFloat content_height = [view contentRect].size.height;
+        const NSRect content = [view contentRect];
         self->_tab_height = std::max(
-            1, static_cast<int>(_bounds.d.h - content_height));
+            1,
+            static_cast<int>(
+                get_tab_placement() == tab_placement::left ||
+                        get_tab_placement() == tab_placement::right
+                    ? _bounds.d.w - content.size.width
+                    : _bounds.d.h - content.size.height));
         self->refresh();
         self->on_native_create();
     }

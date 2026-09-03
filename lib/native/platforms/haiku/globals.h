@@ -129,8 +129,10 @@ namespace haiku
     };
     struct haiku_tab_view
     {
-        BTabView *view = nullptr;
+        BView *view = nullptr;
+        BTabView *tabs = nullptr;
         std::vector<BView *> pages;
+        int visible_page = -1;
     };
     struct haiku_split_view
     {

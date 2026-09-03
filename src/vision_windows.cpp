@@ -912,7 +912,7 @@ namespace vision
 
     feature_input_chrome::feature_input_chrome(native::app_wnd &owner)
         : native::modeless_wnd(owner, "Vision Input and Window Chrome",
-                               170, 100, 650, 560)
+                               120, 60, 790, 730)
         , _selection_combo({"CDE", "OpenLook", "Window Maker", "Haiku"},
                            native::combo_box_style::drop_down_list,
                            60, 74, 230, 28)
@@ -926,14 +926,28 @@ namespace vision
         , _tab_advanced({"User change signal", "Disabled tab support",
                         "Selected page lifecycle"},
                         0, 0, 220, 100)
-        , _tabs(330, 174, 250, 118)
+        , _tabs(400, 174, 300, 118)
         , _bottom_tab_general(
               {"Labels below content", "Straight edge joins above"},
               0, 0, 220, 72)
         , _bottom_tab_advanced(
               {"Rounded edge faces down", "Selection remains portable"},
               0, 0, 220, 72)
-        , _bottom_tabs(330, 332, 250, 118)
+        , _bottom_tabs(400, 332, 300, 118)
+        , _left_tab_general(
+              {"Counter-clockwise labels", "Content follows the strip"},
+              0, 0, 250, 100)
+        , _left_tab_advanced(
+              {"Runtime placement", "Borrowed page preserved"},
+              0, 0, 250, 100)
+        , _left_tabs(60, 516, 300, 142)
+        , _right_tab_general(
+              {"Clockwise labels", "Content precedes the strip"},
+              0, 0, 250, 100)
+        , _right_tab_advanced(
+              {"Directional free edge", "Silent selection state"},
+              0, 0, 250, 100)
+        , _right_tabs(400, 516, 300, 142)
         , _choose_folder("Select folder...", 330, 74, 150, 30)
         , _show_message("Three-button message...", 330, 118, 190, 30)
         , _directory(*this, "Select a Workspace Folder")
@@ -948,6 +962,12 @@ namespace vision
         _bottom_tabs.set_tab_placement(native::tab_placement::bottom);
         _bottom_tabs.add_item("Bottom", _bottom_tab_general);
         _bottom_tabs.add_item("Details", _bottom_tab_advanced);
+        _left_tabs.set_tab_placement(native::tab_placement::left);
+        _left_tabs.add_item("Left", _left_tab_general);
+        _left_tabs.add_item("Details", _left_tab_advanced);
+        _right_tabs.set_tab_placement(native::tab_placement::right);
+        _right_tabs.add_item("Right", _right_tab_general);
+        _right_tabs.add_item("Details", _right_tab_advanced);
         _horizontal_ruler.set_minor_tick(10).set_major_tick(50)
             .set_track_mouse(true);
         _vertical_ruler.set_minor_tick(10).set_major_tick(50)
@@ -967,6 +987,10 @@ namespace vision
             this, &feature_input_chrome::on_tab_selection);
         _bottom_tabs.on_selection_change.connect(
             this, &feature_input_chrome::on_bottom_tab_selection);
+        _left_tabs.on_selection_change.connect(
+            this, &feature_input_chrome::on_side_tab_selection);
+        _right_tabs.on_selection_change.connect(
+            this, &feature_input_chrome::on_side_tab_selection);
         _choose_folder.on_click.connect(
             this, &feature_input_chrome::on_choose_folder);
         _show_message.on_click.connect(
@@ -986,6 +1010,8 @@ namespace vision
                  static_cast<native::wnd *>(&_list_box),
                  static_cast<native::wnd *>(&_tabs),
                  static_cast<native::wnd *>(&_bottom_tabs),
+                 static_cast<native::wnd *>(&_left_tabs),
+                 static_cast<native::wnd *>(&_right_tabs),
                  static_cast<native::wnd *>(&_choose_folder),
                  static_cast<native::wnd *>(&_show_message)}) {
             control->set_parent(this);
@@ -1004,15 +1030,19 @@ namespace vision
         event.g.draw_text("Native list_box",
                           native::point(60, 152));
         event.g.draw_text("Top tab_view with borrowed pages",
-                          native::point(330, 152));
+                          native::point(400, 152));
         event.g.draw_text("Bottom tab_view (downward-facing)",
-                          native::point(330, 310));
+                          native::point(400, 310));
+        event.g.draw_text("Left tab_view (rotated labels)",
+                          native::point(60, 494));
+        event.g.draw_text("Right tab_view (rotated labels)",
+                          native::point(400, 494));
         event.g.draw_text(
             "The rulers and status bar occupy non-client edge strips.",
-            native::point(60, 474));
+            native::point(60, 674));
         event.g.draw_text(
             "Move the pointer over the client to update ruler tracking.",
-            native::point(60, 496));
+            native::point(400, 674));
         return true;
     }
 
@@ -1050,6 +1080,13 @@ namespace vision
             {"Bottom tab: " + _bottom_tabs.get_item(
                 static_cast<std::size_t>(index)).get_title(), 0},
             {"minor 10 / major 50", 180}});
+        return true;
+    }
+
+    bool feature_input_chrome::on_side_tab_selection(int) {
+        _status_bar.set_parts({
+            {"Side tabs use rotated labels", 0},
+            {"left / right", 180}});
         return true;
     }
 

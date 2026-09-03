@@ -259,6 +259,12 @@ namespace vision
         native::list _bottom_tab_general;
         native::list _bottom_tab_advanced;
         native::tab_view _bottom_tabs;
+        native::list _left_tab_general;
+        native::list _left_tab_advanced;
+        native::tab_view _left_tabs;
+        native::list _right_tab_general;
+        native::list _right_tab_advanced;
+        native::tab_view _right_tabs;
         native::button _choose_folder;
         native::button _show_message;
         native::directory_dialog _directory;
@@ -273,6 +279,7 @@ namespace vision
         bool on_list_selection(int index);
         bool on_tab_selection(int index);
         bool on_bottom_tab_selection(int index);
+        bool on_side_tab_selection(int index);
         bool on_choose_folder();
         bool on_folder_selected(native::dialog_result result);
         bool on_show_message();

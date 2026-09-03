@@ -27,6 +27,7 @@ namespace native
     class radio;
     class text_edit;
     class table_view;
+    class tab_view;
     struct text_span;
     struct table_cell;
     struct table_column;
@@ -173,6 +174,19 @@ namespace native
                 const rect &bounds,
                 const theme::state &state,
                 bool draw_hierarchy = true);
+
+            static void configure_tab_layout(
+                tab_view &control,
+                int height,
+                int inset,
+                int padding,
+                int overlap,
+                int page_inset,
+                int page_trailing,
+                int page_tab_gap,
+                bool sloped,
+                rgba inactive_background = {},
+                rgba inactive_highlight = {});
         };
     } // namespace detail
 } // namespace native

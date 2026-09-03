@@ -447,6 +447,27 @@ namespace
                    first.get_parent() == &tabs,
                "placement set before creation preserves tabs and selection");
 
+        tabs.set_tab_placement(native::tab_placement::left);
+        const native::rect left_tabs = tabs.get_tab_bounds(0);
+        const native::rect left_content = tabs.get_content_bounds();
+        expect(left_tabs.p.x == 0 &&
+                   left_content.p.x >= left_tabs.x2() &&
+                   left_tabs.d.h > left_tabs.d.w,
+               "left tabs reserve a vertical strip before their content");
+        tabs.set_tab_placement(native::tab_placement::right);
+        const native::rect right_tabs = tabs.get_tab_bounds(0);
+        const native::rect right_content = tabs.get_content_bounds();
+        expect(right_tabs.p.x >= right_content.x2() &&
+                   right_tabs.d.h > right_tabs.d.w,
+               "right tabs reserve a vertical strip after their content");
+        recording_gpx side_graphics;
+        side_graphics.set_clip(native::rect(0, 0, 300, 180));
+        tabs.on_native_paint(native::wnd_paint_event(
+            native::rect(0, 0, 300, 180), side_graphics));
+        expect(side_graphics.image_count == 2,
+               "side tab labels use the portable rotated-text path");
+        tabs.set_tab_placement(native::tab_placement::bottom);
+
         int changes = 0;
         tabs.on_selection_change.connect([&](int) {
             ++changes;
@@ -490,24 +511,46 @@ namespace
                    !live_first.get_created(),
                "created tabs materialize only their selected borrowed page");
         const int selected_before = live_tabs.get_selected_index();
+        const int applications_before =
+            live_tabs.selection_applications;
         live_tabs.set_tab_placement(native::tab_placement::bottom);
         expect(live_tabs.get_selected_index() == selected_before &&
                    live_tabs.get_item_count() == 2 &&
                    live_second.get_created() && placement_events == 0,
                "placement set after creation preserves pages and is silent");
+        live_tabs.set_dimensions({360, 220});
+        expect(same_rect(live_second.get_bounds(),
+                         live_tabs.get_content_bounds()) &&
+                   live_tabs.get_content_bounds().y2() <=
+                       live_tabs.get_tab_bounds(0).p.y,
+               "resizing preserves bottom placement and page layout");
+        live_tabs.on_native_selection(0);
+        expect(live_tabs.get_selected_index() == 0 &&
+                   live_first.get_created() && !live_second.get_created() &&
+                   live_tabs.selection_applications ==
+                       applications_before + 2 &&
+                   placement_events == 1,
+               "user tab changes apply the backend page and emit once");
+        live_tabs.set_selected_index(1);
+        live_tabs.set_tab_placement(native::tab_placement::left);
+        expect(live_tabs.get_selected_index() == selected_before &&
+                   live_tabs.get_content_bounds().p.x > 0 &&
+                   placement_events == 1,
+               "left placement after creation is silent and preserves selection");
+        live_tabs.set_tab_placement(native::tab_placement::right);
         const native::rect live_content =
             live_tabs.get_content_bounds();
         expect(same_rect(live_second.get_bounds(), live_content),
-               "selected borrowed content receives bottom content bounds");
+               "selected borrowed content receives side content bounds");
         live_tabs.set_dimensions({420, 260});
         expect(same_rect(live_second.get_bounds(),
                          live_tabs.get_content_bounds()) &&
-                   live_tabs.get_tab_bounds(0).p.y >=
-                       live_tabs.get_content_bounds().y2(),
-               "resizing preserves bottom placement and selected page layout");
+                   live_tabs.get_tab_bounds(0).p.x >=
+                       live_tabs.get_content_bounds().x2(),
+               "resizing preserves side placement and selected page layout");
         live_tabs.set_tab_placement(native::tab_placement::top);
         expect(live_tabs.get_selected_index() == selected_before &&
-                   placement_events == 0 &&
+                   placement_events == 1 &&
                    same_rect(live_second.get_bounds(),
                              live_tabs.get_content_bounds()),
                "returning to top placement remains silent and preserves selection");

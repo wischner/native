@@ -56,6 +56,8 @@ objects. `set_selected_index()` is silent. Individual items expose a mutable
 UTF-8 title and enabled state. Haiku uses `BTabView`/`BTab`, Windows uses the
 common tab control, macOS uses `NSTabView`/`NSTabViewItem`, and backends without
 a standard tab peer use the same themed portable renderer and lifecycle.
+`set_tab_placement()` selects top, bottom, left, or right; side labels are
+rotated and all placement changes preserve the selected borrowed page.
 
 ## Directory and message dialogs
 

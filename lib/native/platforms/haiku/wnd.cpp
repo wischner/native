@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 #include <Button.h>
 #include <Window.h>
@@ -39,6 +40,22 @@ namespace
                    : 0.0f;
     }
 
+    void resize_portable_tab_pages(native::wnd &owner) {
+        auto *tabs = dynamic_cast<native::tab_view *>(&owner);
+        if (!tabs)
+            return;
+        auto *binding = haiku::tab_view_bindings.object_from_handle(tabs);
+        if (!binding || binding->tabs)
+            return;
+        const native::rect content = tabs->get_content_bounds();
+        for (BView *page : binding->pages) {
+            page->MoveTo(content.p.x, content.p.y);
+            page->ResizeTo(
+                std::max(0, static_cast<int>(content.d.w) - 1),
+                std::max(0, static_cast<int>(content.d.h) - 1));
+        }
+    }
+
 } // namespace
 
 namespace native
@@ -62,6 +79,7 @@ namespace native
             with_locked_window(control->Window(), [&](BWindow *) {
                 control->ResizeTo(native_extent(_bounds.d.w),
                                   native_extent(_bounds.d.h));
+                resize_portable_tab_pages(*this);
             });
             return;
         }
@@ -79,6 +97,7 @@ namespace native
                 control->MoveTo(_bounds.p.x, _bounds.p.y);
                 control->ResizeTo(native_extent(_bounds.d.w),
                                   native_extent(_bounds.d.h));
+                resize_portable_tab_pages(*this);
             });
             return;
         }

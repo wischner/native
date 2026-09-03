@@ -14,6 +14,8 @@
 
 #include <native/graphics.h>
 
+#include "rotated_text.h"
+
 namespace
 {
     native::dim non_negative_dimension(int value) {
@@ -22,6 +24,100 @@ namespace
             0,
             static_cast<int>(
                 std::numeric_limits<native::dim>::max())));
+    }
+
+    bool horizontal_tabs(native::tab_placement placement) {
+        return placement == native::tab_placement::top ||
+               placement == native::tab_placement::bottom;
+    }
+
+    std::vector<native::point> tab_outline(
+        native::tab_placement placement,
+        const native::rect &bounds,
+        bool sloped,
+        bool selected) {
+        const int left = bounds.x1();
+        const int right = bounds.x2() - 1;
+        const int top = bounds.y1();
+        const int bottom = bounds.y2() - 1;
+        const auto p = [](int x, int y) {
+            return native::point(static_cast<native::coord>(x),
+                                 static_cast<native::coord>(y));
+        };
+        if (sloped) {
+            const int offset = selected ? 0 : 1;
+            switch (placement) {
+            case native::tab_placement::top:
+                return {p(left + offset, bottom - offset + 1),
+                        p(left + 3, bottom - 2),
+                        p(left + 7, top + 3),
+                        p(left + 10, top),
+                        p(right - 9, top),
+                        p(right - 6, top + 3),
+                        p(right - 2, bottom - 2),
+                        p(right - offset + 1,
+                          bottom - offset + 1)};
+            case native::tab_placement::bottom:
+                return {p(left + offset, top + offset),
+                        p(left + 3, top + 3),
+                        p(left + 7, bottom - 3),
+                        p(left + 10, bottom),
+                        p(right - 9, bottom),
+                        p(right - 6, bottom - 3),
+                        p(right - 2, top + 3),
+                        p(right - offset + 1, top + offset)};
+            case native::tab_placement::left:
+                return {p(right - offset + 1, top + offset),
+                        p(right - 2, top + 3),
+                        p(left + 3, top + 7),
+                        p(left, top + 10),
+                        p(left, bottom - 9),
+                        p(left + 3, bottom - 6),
+                        p(right - 2, bottom - 2),
+                        p(right - offset + 1,
+                          bottom - offset + 1)};
+            case native::tab_placement::right:
+                return {p(left + offset, top + offset),
+                        p(left + 3, top + 3),
+                        p(right - 3, top + 7),
+                        p(right, top + 10),
+                        p(right, bottom - 9),
+                        p(right - 3, bottom - 6),
+                        p(left + 3, bottom - 2),
+                        p(left + offset, bottom - offset + 1)};
+            }
+        }
+        switch (placement) {
+        case native::tab_placement::top:
+            return {p(left, bottom),
+                    p(left, top + 2),
+                    p(left + 2, top),
+                    p(right - 2, top),
+                    p(right, top + 2),
+                    p(right, bottom)};
+        case native::tab_placement::bottom:
+            return {p(left, top),
+                    p(left, bottom - 2),
+                    p(left + 2, bottom),
+                    p(right - 2, bottom),
+                    p(right, bottom - 2),
+                    p(right, top)};
+        case native::tab_placement::left:
+            return {p(right, top),
+                    p(left + 2, top),
+                    p(left, top + 2),
+                    p(left, bottom - 2),
+                    p(left + 2, bottom),
+                    p(right, bottom)};
+        case native::tab_placement::right:
+            return {p(left, top),
+                    p(right - 2, top),
+                    p(right, top + 2),
+                    p(right, bottom - 2),
+                    p(right - 2, bottom),
+                    p(left, bottom)};
+        }
+        return {};
     }
 } // namespace
 
@@ -194,44 +290,87 @@ namespace native
     rect tab_view::get_tab_bounds(std::size_t index) const {
         const tab_item &item = get_item(index);
         const font_t &font = font_t::stock(font_role::control);
-        int x = 0;
+        int offset = _tab_inset;
         for (std::size_t current = 0; current < index; ++current) {
-            x += std::max(
+            const int extent = std::max(
                 36,
-                font.measure_text(_items[current]->_title).width + 20);
+                font.measure_text(_items[current]->_title).width +
+                    _tab_padding);
+            offset += std::max(1, extent - _tab_overlap);
         }
-        const int natural_width = std::max(
-            36, font.measure_text(item._title).width + 20);
+        const int natural_extent = std::max(
+            36,
+            font.measure_text(item._title).width + _tab_padding);
+        if (!horizontal_tabs(_tab_placement)) {
+            const int available = std::max(
+                0, static_cast<int>(_bounds.d.h) - offset);
+            const int tab_x = _tab_placement == tab_placement::left
+                                  ? 0
+                                  : std::max(
+                                        0,
+                                        static_cast<int>(_bounds.d.w) -
+                                            _tab_height);
+            return rect(
+                static_cast<coord>(tab_x),
+                static_cast<coord>(std::min(
+                    offset,
+                    static_cast<int>(
+                        std::numeric_limits<coord>::max()))),
+                non_negative_dimension(_tab_height),
+                non_negative_dimension(
+                    std::min(natural_extent, available)));
+        }
         const int available = std::max(
-            0, static_cast<int>(_bounds.d.w) - x);
+            0, static_cast<int>(_bounds.d.w) - offset);
         const int tab_y = _tab_placement == tab_placement::top
                               ? 0
-                              : std::max(0,
-                                  static_cast<int>(_bounds.d.h) -
-                                      _tab_height);
+                              : std::max(
+                                    0,
+                                    static_cast<int>(_bounds.d.h) -
+                                        _tab_height);
         return rect(
             static_cast<coord>(std::min(
-                x,
+                offset,
                 static_cast<int>(
                     std::numeric_limits<coord>::max()))),
             static_cast<coord>(tab_y),
-            non_negative_dimension(std::min(natural_width, available)),
+            non_negative_dimension(
+                std::min(natural_extent, available)),
             non_negative_dimension(_tab_height));
     }
 
     rect tab_view::get_content_bounds() const {
-        const int border = 2;
+        if (!horizontal_tabs(_tab_placement)) {
+            const int width = std::max(
+                0,
+                static_cast<int>(_bounds.d.w) - _tab_height -
+                    _page_tab_gap - _page_trailing);
+            return rect(
+                static_cast<coord>(
+                    _tab_placement == tab_placement::left
+                        ? _tab_height + _page_tab_gap
+                        : _page_trailing),
+                static_cast<coord>(_page_inset),
+                non_negative_dimension(width),
+                non_negative_dimension(
+                    std::max(0,
+                             static_cast<int>(_bounds.d.h) -
+                                 _page_inset - _page_trailing)));
+        }
         const int height = std::max(
             0,
-            static_cast<int>(_bounds.d.h) - _tab_height - border);
+            static_cast<int>(_bounds.d.h) - _tab_height -
+                _page_tab_gap - _page_trailing);
         return rect(
-            static_cast<coord>(border),
+            static_cast<coord>(_page_inset),
             static_cast<coord>(
                 _tab_placement == tab_placement::top
-                    ? _tab_height
-                    : border),
+                    ? _tab_height + _page_tab_gap
+                    : _page_trailing),
             non_negative_dimension(
-                std::max(0, static_cast<int>(_bounds.d.w)-border*2)),
+                std::max(0,
+                         static_cast<int>(_bounds.d.w) -
+                             _page_inset - _page_trailing)),
             non_negative_dimension(height));
     }
 
@@ -241,6 +380,8 @@ namespace native
             return;
         _selected_index = index;
         refresh_contents();
+        if (_created)
+            apply_selected_index();
         invalidate();
         on_selection_change.emit(index);
     }
@@ -312,6 +453,53 @@ namespace native
         const rect bounds(point(0, 0), get_dimensions());
         draw_background(
             graphics, *appearance, bounds, theme::state{});
+        if (_sloped_tabs) {
+            const auto draw_shape = [&](std::size_t index) {
+                const rect tab_bounds = get_tab_bounds(index);
+                if (!tab_bounds.d.w || !tab_bounds.d.h)
+                    return;
+                theme::state state;
+                state.selected =
+                    static_cast<int>(index) == _selected_index;
+                state.pressed = state.selected;
+                state.disabled = !_items[index]->_enabled;
+                draw_tab_background(graphics,
+                                    *appearance,
+                                    index,
+                                    *_items[index],
+                                    tab_bounds,
+                                    state);
+                draw_tab_border(graphics,
+                                *appearance,
+                                index,
+                                *_items[index],
+                                tab_bounds,
+                                state);
+            };
+            for (std::size_t index = _items.size(); index-- > 0;) {
+                if (static_cast<int>(index) != _selected_index)
+                    draw_shape(index);
+            }
+            if (_selected_index >= 0)
+                draw_shape(static_cast<std::size_t>(_selected_index));
+            for (std::size_t index = 0; index < _items.size(); ++index) {
+                const rect tab_bounds = get_tab_bounds(index);
+                if (!tab_bounds.d.w || !tab_bounds.d.h)
+                    continue;
+                theme::state state;
+                state.selected =
+                    static_cast<int>(index) == _selected_index;
+                state.pressed = state.selected;
+                state.disabled = !_items[index]->_enabled;
+                draw_tab_text(graphics,
+                              *appearance,
+                              index,
+                              *_items[index],
+                              tab_bounds,
+                              state);
+            }
+            return;
+        }
         for (std::size_t index = 0; index < _items.size(); ++index) {
             const rect tab_bounds = get_tab_bounds(index);
             if (!tab_bounds.d.w || !tab_bounds.d.h)
@@ -357,10 +545,75 @@ namespace native
     }
 
     void tab_view::draw_background(
-        gpx &,
+        gpx &graphics,
         theme &appearance,
         const rect &bounds,
         const theme::state &state) {
+        if (_sloped_tabs) {
+            const theme::palette colors = appearance.native_palette();
+            graphics.set_pen(1)
+                .set_ink(colors.button_bg)
+                .draw_rect(bounds, true);
+            if (!bounds.d.w || !bounds.d.h)
+                return;
+            const int right = bounds.x2() - 1;
+            const int bottom = bounds.y2() - 1;
+            const auto p = [](int x, int y) {
+                return point(static_cast<coord>(x),
+                             static_cast<coord>(y));
+            };
+            int page_left = 0;
+            int page_top = 0;
+            int page_right = right;
+            int page_bottom = bottom;
+            switch (_tab_placement) {
+            case tab_placement::top:
+                page_top = _tab_height - 1;
+                break;
+            case tab_placement::bottom:
+                page_bottom = static_cast<int>(bounds.d.h) -
+                              _tab_height;
+                break;
+            case tab_placement::left:
+                page_left = _tab_height - 1;
+                break;
+            case tab_placement::right:
+                page_right = static_cast<int>(bounds.d.w) -
+                             _tab_height;
+                break;
+            }
+            graphics.set_ink(colors.button_highlight)
+                .draw_line(p(page_left, page_top),
+                           p(page_right, page_top))
+                .draw_line(p(page_left, page_top),
+                           p(page_left, page_bottom))
+                .set_ink(colors.button_border)
+                .draw_line(p(page_left, page_bottom),
+                           p(page_right, page_bottom))
+                .draw_line(p(page_right, page_top),
+                           p(page_right, page_bottom));
+            if (page_right - page_left > 2 &&
+                page_bottom - page_top > 2) {
+                graphics.set_ink(colors.button_shadow)
+                    .draw_line(p(page_left + 1, page_bottom - 1),
+                               p(page_right - 1, page_bottom - 1))
+                    .draw_line(p(page_right - 1, page_top + 1),
+                               p(page_right - 1, page_bottom - 1));
+            }
+            graphics.set_ink(colors.button_highlight);
+            if (_tab_placement == tab_placement::top)
+                graphics.draw_line(p(0, page_top), p(right, page_top));
+            else if (_tab_placement == tab_placement::bottom)
+                graphics.draw_line(p(0, page_bottom),
+                                   p(right, page_bottom));
+            else if (_tab_placement == tab_placement::left)
+                graphics.draw_line(p(page_left, 0),
+                                   p(page_left, bottom));
+            else
+                graphics.draw_line(p(page_right, 0),
+                                   p(page_right, bottom));
+            return;
+        }
         appearance.draw_surface(bounds, surface_kind::panel, state);
         appearance.draw_surface(
             get_content_bounds(), surface_kind::content, state);
@@ -380,24 +633,17 @@ namespace native
         const int bottom = bounds.y2() - 1;
         if (right < left || bottom < top)
             return;
-        const auto p = [](int x, int y) {
-            return point(static_cast<coord>(x),
-                         static_cast<coord>(y));
-        };
-        const std::vector<point> outline =
-            _tab_placement == tab_placement::top
-                ? std::vector<point>{p(left, top + 2),
-                                     p(left + 2, top),
-                                     p(right - 2, top),
-                                     p(right, top + 2),
-                                     p(right, bottom),
-                                     p(left, bottom)}
-                : std::vector<point>{p(left, top),
-                                     p(right, top),
-                                     p(right, bottom - 2),
-                                     p(right - 2, bottom),
-                                     p(left + 2, bottom),
-                                     p(left, bottom - 2)};
+        const std::vector<point> outline = tab_outline(
+            _tab_placement, bounds, _sloped_tabs, state.selected);
+        if (_sloped_tabs) {
+            const rgba inactive = _inactive_tab_background.a
+                                      ? _inactive_tab_background
+                                      : colors.button_bg;
+            graphics.set_pen(1)
+                .set_ink(state.selected ? colors.button_bg : inactive)
+                .draw_polygon(outline, true);
+            return;
+        }
         const rgba fill = state.pressed
                               ? colors.button_pressed_bg
                               : (state.hot ? colors.button_hot_bg
@@ -415,13 +661,23 @@ namespace native
         const theme::palette colors = appearance.native_palette();
         graphics.set_font(font_t::stock(font_role::control))
             .set_ink(state.disabled ? colors.button_disabled_text
-                                    : colors.button_text)
-            .draw_text(item.get_title(),
-                       bounds,
-                       {text_align::center,
-                        text_valign::center,
-                        text_overflow::ellipsis,
-                        true});
+                                    : colors.button_text);
+        if (_tab_placement == tab_placement::left ||
+            _tab_placement == tab_placement::right) {
+            detail::draw_rotated_text(
+                graphics,
+                item.get_title(),
+                bounds,
+                _tab_placement == tab_placement::right,
+                _sloped_tabs ? 10 : 4);
+        } else {
+            graphics.draw_text(item.get_title(),
+                               bounds,
+                               {text_align::center,
+                                text_valign::center,
+                                text_overflow::ellipsis,
+                                true});
+        }
     }
 
     void tab_view::draw_tab_border(
@@ -438,30 +694,36 @@ namespace native
         const int bottom = bounds.y2() - 1;
         if (right < left || bottom < top)
             return;
-        const auto p = [](int x, int y) {
-            return point(static_cast<coord>(x),
-                         static_cast<coord>(y));
-        };
-        graphics.set_pen(1).set_ink(colors.button_border);
-        if (_tab_placement == tab_placement::top) {
-            graphics.draw_polyline({p(left, bottom),
-                                    p(left, top + 2),
-                                    p(left + 2, top),
-                                    p(right - 2, top),
-                                    p(right, top + 2),
-                                    p(right, bottom)});
-            if (!state.selected)
-                graphics.draw_line(p(left, bottom), p(right, bottom));
-        } else {
-            graphics.draw_polyline({p(left, top),
-                                    p(left, bottom - 2),
-                                    p(left + 2, bottom),
-                                    p(right - 2, bottom),
-                                    p(right, bottom - 2),
-                                    p(right, top)});
-            if (!state.selected)
-                graphics.draw_line(p(left, top), p(right, top));
+        const std::vector<point> outline = tab_outline(
+            _tab_placement, bounds, _sloped_tabs, state.selected);
+        if (_sloped_tabs) {
+            const rgba inactive_highlight =
+                _inactive_tab_highlight.a
+                    ? _inactive_tab_highlight
+                    : colors.button_highlight;
+            const rgba highlight = state.selected
+                                       ? colors.button_highlight
+                                       : inactive_highlight;
+            graphics.set_pen(1).set_ink(highlight)
+                .draw_line(outline[0], outline[1])
+                .draw_line(outline[1], outline[2])
+                .draw_line(outline[2], outline[3])
+                .draw_line(outline[3], outline[4])
+                .set_ink(colors.button_shadow)
+                .draw_line(outline[4], outline[5])
+                .set_ink(colors.button_border)
+                .draw_line(outline[5], outline[6])
+                .draw_line(outline[6], outline[7])
+                .set_ink(state.selected
+                             ? colors.button_bg
+                             : colors.button_highlight)
+                .draw_line(outline[0], outline[7]);
+            return;
         }
+        graphics.set_pen(1).set_ink(colors.button_border);
+        graphics.draw_polyline(outline);
+        if (!state.selected && outline.size() >= 2)
+            graphics.draw_line(outline.front(), outline.back());
         if (state.focused) {
             rect focus = bounds;
             focus.p.x += 3;

@@ -18,10 +18,35 @@
 #include <native/radio.h>
 #include <native/text_edit.h>
 #include <native/table_view.h>
+#include <native/tab_view.h>
 #include <native/tree_view.h>
 
 namespace native::detail
 {
+    void control_render_access::configure_tab_layout(
+        tab_view &control,
+        int height,
+        int inset,
+        int padding,
+        int overlap,
+        int page_inset,
+        int page_trailing,
+        int page_tab_gap,
+        bool sloped,
+        rgba inactive_background,
+        rgba inactive_highlight) {
+        control._tab_height = std::max(1, height);
+        control._tab_inset = std::max(0, inset);
+        control._tab_padding = std::max(0, padding);
+        control._tab_overlap = std::max(0, overlap);
+        control._page_inset = std::max(0, page_inset);
+        control._page_trailing = std::max(0, page_trailing);
+        control._page_tab_gap = std::max(0, page_tab_gap);
+        control._sloped_tabs = sloped;
+        control._inactive_tab_background = inactive_background;
+        control._inactive_tab_highlight = inactive_highlight;
+    }
+
     void control_render_access::draw(
         combo_box &control,
         gpx &graphics,
