@@ -151,6 +151,8 @@ namespace linux::openmotif
         table_view_bindings;
     extern native::bindings<native::code_edit *, motif_collection *>
         code_edit_bindings;
+    extern native::bindings<native::canvas *, motif_collection *>
+        canvas_bindings;
     extern native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     extern Display *cached_display;

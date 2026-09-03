@@ -205,6 +205,25 @@ namespace native
         // Apply the cached parent to a created backend resource.
         virtual void apply_parent();
 
+        //
+        // Return the host-relative area left for non-client elements
+        // and the client after this window's own edge chrome.
+        //
+        // Notes:
+        //      A plain window reserves nothing and returns its
+        //      complete bounds. Controls which own permanent edge
+        //      furniture, such as canvas scrollbars, subtract it
+        //      here so both get_client_bounds() and non-client strip
+        //      placement stay inside the remaining area.
+        //
+        virtual rect get_chrome_bounds() const;
+
+        // Reduce a host-relative area by every visible non-client edge.
+        rect reserve_non_client(const rect &available) const;
+
+        // Paint visible non-client strips over their current bounds.
+        void draw_non_client(gpx &graphics);
+
     private:
         friend class non_client;
 

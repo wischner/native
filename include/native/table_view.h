@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "scrollbar.h"
 #include "table_model.h"
 #include "theme.h"
 #include "wnd.h"
@@ -44,14 +45,6 @@ namespace native
     {
         single,
         multiple
-    };
-
-    // Selects automatic, permanently shown, or hidden scrollbars.
-    enum class scrollbar_policy
-    {
-        automatic,
-        always,
-        never
     };
 
     // Selects which table cell separators are visible.

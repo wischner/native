@@ -29,6 +29,8 @@ namespace linux::gemix
         text_edit_bindings;
     native::bindings<native::combo_box *, gem_combo_box *>
         combo_box_bindings;
+    std::vector<native::panel *> panels;
+    std::vector<native::canvas *> canvases;
     std::vector<native::app_wnd *> windows;
     native::app_wnd *active_window = nullptr;
     std::unordered_map<native::app_wnd *, menu_state> menu_states;

@@ -95,7 +95,12 @@ the same commit.
     status bars, native adaptation, and extensibility. Expands Architecture
     Section 17.
 
-18. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
+18. [Patterns: structural panels and paintable canvases](book-of-native/PATTERNS-PANELS-AND-CANVASES.md)
+    Container and drawing-surface roles, explicit child lifecycle, chrome
+    versus client geometry, 32-bit content bounds, scrollbar resolution,
+    and painting order. Expands Architecture Sections 18 and 19.
+
+19. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
     Per-backend feature and test status for what is implemented now.
 
 For a tutorial organized around complete programs, see

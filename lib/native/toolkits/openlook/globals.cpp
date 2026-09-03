@@ -49,6 +49,8 @@ namespace linux::openlook
         table_view_bindings;
     native::bindings<native::code_edit *, openlook_collection *>
         code_edit_bindings;
+    native::bindings<native::canvas *, openlook_collection *>
+        canvas_bindings;
     native::bindings<Xv_Window, native::wnd *>
         collection_paint_bindings;
     native::bindings<
@@ -197,6 +199,13 @@ namespace linux::openlook
         }
         if (auto *editor = dynamic_cast<native::code_edit *>(window)) {
             auto *state = code_edit_bindings.object_from_handle(editor);
+            return state && state->paint_window
+                       ? static_cast<Window>(xv_get(
+                             state->paint_window, XV_XID))
+                       : None;
+        }
+        if (auto *surface = dynamic_cast<native::canvas *>(window)) {
+            auto *state = canvas_bindings.object_from_handle(surface);
             return state && state->paint_window
                        ? static_cast<Window>(xv_get(
                              state->paint_window, XV_XID))

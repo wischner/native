@@ -182,7 +182,7 @@ namespace linux::sdl2
             for (native::text_edit *editor : text_edits) {
                 auto *binding =
                     text_edit_bindings.object_from_handle(editor);
-                if (binding && binding->parent == parent &&
+                if (binding && root_of(editor) == parent &&
                     binding->mouse_selecting) {
                     binding->cursor = hit_offset(
                         editor, binding, x, y);
@@ -197,14 +197,14 @@ namespace linux::sdl2
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->parent == parent &&
+            if (binding && root_of(editor) == parent &&
                 binding->visible &&
                 binding->bounds.contains(native::point(x, y))) {
                 hit = editor;
             }
-            if (binding && binding->parent == parent)
+            if (binding && root_of(editor) == parent)
                 binding->focused = false;
-            if (binding && binding->parent == parent)
+            if (binding && root_of(editor) == parent)
                 binding->mouse_selecting = false;
         }
         if (!hit) {
@@ -227,7 +227,7 @@ namespace linux::sdl2
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->parent == parent &&
+            if (binding && root_of(editor) == parent &&
                 binding->mouse_selecting) {
                 binding->cursor = hit_offset(editor, binding, x, y);
                 update_scroll(editor, binding);
@@ -247,7 +247,7 @@ namespace linux::sdl2
         for (native::text_edit *editor : text_edits) {
             auto *candidate =
                 text_edit_bindings.object_from_handle(editor);
-            if (candidate && candidate->parent == parent &&
+            if (candidate && root_of(editor) == parent &&
                 candidate->visible && candidate->focused) {
                 owner = editor;
                 binding = candidate;
@@ -359,7 +359,7 @@ namespace linux::sdl2
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->parent == parent &&
+            if (binding && root_of(editor) == parent &&
                 binding->visible && binding->focused) {
                 return replace_selection(
                     editor, binding, text ? text : "");
@@ -403,7 +403,7 @@ namespace native
         auto *self = const_cast<text_edit *>(this);
         auto *binding = new linux::sdl2::sdl2_text_edit;
         binding->parent = parent;
-        binding->bounds = _bounds;
+        binding->bounds = linux::sdl2::root_bounds(*this);
         binding->cursor = _text.size();
         binding->anchor = binding->cursor;
         linux::sdl2::text_edit_bindings.register_pair(self, binding);

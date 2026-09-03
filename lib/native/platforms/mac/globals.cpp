@@ -21,6 +21,10 @@ namespace mac
     native::bindings<native::button *, mac_button *> button_bindings;
     native::bindings<native::text_edit *, mac_text_edit *>
         text_edit_bindings;
+    // Bind: structural panel host to its container view.
+    native::bindings<native::panel *, mac_surface *> panel_bindings;
+    // Bind: paintable canvas to its drawing view.
+    native::bindings<native::canvas *, mac_surface *> canvas_bindings;
     native::bindings<native::check *, mac_check *> check_bindings;
     native::bindings<native::radio *, mac_radio *> radio_bindings;
     native::bindings<native::list *, mac_list *> list_bindings;
@@ -44,6 +48,14 @@ namespace mac
         file_dialog_bindings;
 
     NSView *view_from_control(native::wnd *control) {
+        if (auto *host = dynamic_cast<native::panel *>(control)) {
+            auto *binding = panel_bindings.object_from_handle(host);
+            return binding ? binding->view : nil;
+        }
+        if (auto *surface = dynamic_cast<native::canvas *>(control)) {
+            auto *binding = canvas_bindings.object_from_handle(surface);
+            return binding ? binding->view : nil;
+        }
         if (auto *button = dynamic_cast<native::button *>(control)) {
             auto *binding = button_bindings.object_from_handle(button);
             return binding ? binding->ns_button : nil;

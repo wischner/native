@@ -502,7 +502,8 @@ namespace
 
 namespace linux::x11
 {
-    Widget create_collection_host(native::wnd &owner) {
+    Widget create_collection_host(native::wnd &owner,
+                                  const char *name) {
         native::wnd *parent = owner.get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
@@ -513,7 +514,7 @@ namespace linux::x11
                 "X11/Athena: collection parent has no widget.");
         const native::rect bounds = owner.get_bounds();
         Widget widget = XtVaCreateWidget(
-            "collection",
+            name,
             formWidgetClass,
             parent_widget,
             XtNhorizDistance,

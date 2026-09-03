@@ -116,6 +116,7 @@ namespace native
         wnd_paint_event pe{content_bounds, g};
         wnd->on_native_paint(pe);
 
+        linux::sdl2::render_surfaces(wnd, g);
         linux::sdl2::render_tab_views(wnd, g);
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
@@ -261,6 +262,12 @@ namespace native
                         wnd, event.motion.x, logical_y);
                     linux::sdl2::handle_collection_motion(
                         wnd, event.motion.x, logical_y);
+                    if (linux::sdl2::handle_canvas_motion(
+                            wnd, event.motion.x, logical_y))
+                        break;
+                    if (linux::sdl2::handle_panel_motion(
+                            wnd, event.motion.x, logical_y))
+                        break;
                     int screen_x = 0;
                     int screen_y = 0;
                     SDL_GetGlobalMouseState(&screen_x, &screen_y);
@@ -337,6 +344,16 @@ namespace native
                         break;
                     }
 
+                    if (linux::sdl2::handle_canvas_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
                     if (linux::sdl2::handle_combo_mouse(
                             wnd, event.button.x, logical_y,
                             event.type == SDL_MOUSEBUTTONUP)) {
@@ -379,6 +396,16 @@ namespace native
                             wnd,
                             event.button.x,
                             logical_y,
+                            event.type == SDL_MOUSEBUTTONUP)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
+                    if (linux::sdl2::handle_panel_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP)) {
                         invalidate_live_window();
                         break;
@@ -432,6 +459,12 @@ namespace native
                             delta * 24)) {
                         break;
                     }
+                    if (linux::sdl2::handle_canvas_wheel(
+                            wnd, pointer_x, pointer_y, delta * 24))
+                        break;
+                    if (linux::sdl2::handle_panel_wheel(
+                            wnd, pointer_x, pointer_y, delta * 24))
+                        break;
                     mouse_wheel_event whe(point(pointer_x, pointer_y),
                                           delta,
                                           dir);

@@ -177,6 +177,8 @@ namespace linux::wmaker
         table_view_bindings;
     extern native::bindings<native::code_edit *, native_collection *>
         code_edit_bindings;
+    extern native::bindings<native::canvas *, native_collection *>
+        canvas_bindings;
 
     // Initialize the process-wide display and WINGs application screen.
     void initialize();

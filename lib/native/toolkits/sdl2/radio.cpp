@@ -22,9 +22,9 @@ namespace linux::sdl2
         bool changed = false;
         for (auto *c : radios) {
             auto *b = radio_bindings.object_from_handle(c);
-            if (!b || b->parent != owner || !b->visible)
+            if (!b || root_of(c) != owner || !b->visible)
                 continue;
-            bool h = hit(c->get_bounds(), x, y);
+            bool h = hit(root_bounds(*c), x, y);
             if (h != b->hover) {
                 b->hover = h;
                 changed = true;
@@ -39,9 +39,9 @@ namespace linux::sdl2
         bool used = false;
         for (auto *c : radios) {
             auto *b = radio_bindings.object_from_handle(c);
-            if (!b || b->parent != owner || !b->visible)
+            if (!b || root_of(c) != owner || !b->visible)
                 continue;
-            bool h = hit(c->get_bounds(), x, y);
+            bool h = hit(root_bounds(*c), x, y);
             if (pressed) {
                 b->pressed = h;
                 used |= h;
@@ -61,13 +61,13 @@ namespace linux::sdl2
         auto painter = native::theme::create(g);
         for (auto *c : radios) {
             auto *b = radio_bindings.object_from_handle(c);
-            if (!b || b->parent != owner || !b->visible)
+            if (!b || root_of(c) != owner || !b->visible)
                 continue;
             native::theme::state s;
             s.hot = b->hover;
             s.pressed = b->pressed;
             native::detail::control_render_access::draw(
-                *c, g, *painter, c->get_bounds(), s);
+                *c, g, *painter, root_bounds(*c), s);
         }
     }
 } // namespace linux::sdl2

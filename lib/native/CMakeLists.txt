@@ -32,6 +32,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/rotated_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/panel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/canvas.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/non_client.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ruler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp

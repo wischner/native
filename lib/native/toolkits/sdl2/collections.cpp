@@ -19,24 +19,8 @@
 
 namespace
 {
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
-
-    native::point origin_in_root(const native::wnd &control) {
-        int x = control.get_position().x;
-        int y = control.get_position().y;
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            x += parent->get_position().x;
-            y += parent->get_position().y;
-        }
-        return native::point(static_cast<native::coord>(x),
-                             static_cast<native::coord>(y));
-    }
+    using linux::sdl2::origin_in_root;
+    using linux::sdl2::root_of;
 
     native::point local_point(native::wnd &control, int x, int y) {
         const native::point origin = origin_in_root(control);

@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-09-02.
+Audit date: 2026-09-03.
 
 ## Legend
 
@@ -42,6 +42,8 @@ services rather than controls and are outside this control inventory.
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | Windows, macOS, and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
 | All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
+| All `canvas` scrollbars | Keep **C**. Native scrollbars (`BScrollBar`, `XmScrollBar`, `WMScroller`, `NSScroller`, `SBS_*`) carry a narrower or differently-shaped range than the portable signed 32-bit content contract, which requires both endpoints to stay exactly reachable. The themed portable scrollbar also keeps the ruler/scrollbar and scrollbar/scrollbar corners inside one geometry pass. |
+| All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; only the client, ruler, and scrollbar painting is portable, because the application owns the client pixels by contract. |
 
 There is no stock general-purpose Win32 splitter, accordion, code editor, or
 ruler equivalent to the portable contracts. SDL2 and GEM/AES likewise do not
@@ -68,6 +70,8 @@ in those backends.
 | `table_view` | **C** | Model-backed library table painter in the shared collection host. |
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
 | `split_view` | **N/H** | Xaw `Paned`; portable ratio/minimum state maps to native pane constraints and `XawPanedSetMinMax`. |
+| `panel` | **N** | Xaw `Form` child; Athena owns the container background and it is a real Xt parent for every control. |
+| `canvas` | **H** | Xaw `Form` drawable host with library paint/input routing; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
@@ -86,6 +90,7 @@ in those backends.
 | `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, hit testing, and scrolling. |
 | `code_edit` | **C** | Portable document/editor and library painting. |
 | `split_view` | **C** | Library pane geometry, hit testing, and drag handling. |
+| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting, clipping through an SDL viewport, and root-relative hit testing are library-owned. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips. |
 | File open/save/directory | **E** | Zenity or KDialog desktop helper; returns cancel/unavailable when neither exists. |
 | `message_box` | **N** | `SDL_ShowMessageBox`. |
@@ -109,6 +114,8 @@ in those backends.
 | `table_view` | **N/H** | Materialized mode uses `XmContainer` detail view; virtual models use the library-painted collection fallback. |
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N** | `XmPanedWindow`, including native sash behavior and pane minimum resources. |
+| `panel` | **N** | `XmForm` child with `XmRESIZE_NONE`; Motif fills it and it is a real Xt parent. |
+| `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using Motif theme resources. |
 | File open/save/directory | **N/H** | `XmFileSelectionDialog`; portable code adapts save confirmation and directory-only behavior. |
 | `message_box` | **N** | Motif error, warning, question, or information dialogs. |
@@ -130,6 +137,8 @@ in those backends.
 | `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content with native XView `SCROLLBAR` objects. |
 | `code_edit` | **C/H** | Portable editor painted in an XView host with native XView scrollbars. |
 | `split_view` | **H** | Two XView child `Panel` panes; the current implementation is not `OPENWIN_SPLIT` and has portable geometry. |
+| `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
+| `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using the OPEN LOOK theme. |
 | File open/save/directory | **N/H** | XView `FILE_CHOOSER`, adapted for directory-only and save behavior. |
 | `message_box` | **N** | XView `NOTICE` with one to three buttons. |
@@ -151,6 +160,8 @@ in those backends.
 | `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for framed top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom, side, and strip-only tabs. |
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior. |
+| `panel` | **N** | `WMFrame` with `WRFlat` relief; WINGs fills it and it is a real parent widget. |
+| `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
 | File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode. |
 | `message_box` | **N** | `WMRunAlertPanel`. |
@@ -168,6 +179,7 @@ in those backends.
 | `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling. |
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
+| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting through an offset context and root-relative hit testing are library-owned. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips through VDI. |
 | File open/save/directory | **N/H** | AES `fsel_input`; portable code adapts mode, path, and overwrite confirmation. |
 | `message_box` | **N** | AES `form_alert`. |
@@ -190,6 +202,8 @@ in those backends.
 | `table_view` | **N/H** | Report `WC_LISTVIEW`, owner-data virtualization, groups, and custom draw. |
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
+| `panel` | **N** | Child window of a Native class whose background brush is `COLOR_BTNFACE`; Win32 fills it and it is a real parent HWND. |
+| `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
 | `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
 | `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. |
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
@@ -215,6 +229,8 @@ in those backends.
 | `table_view` | **N/H** | `BColumnListView`, `BTitledColumn`, and `BRow`; virtual mode retains a custom collection fallback. |
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
+| `panel` | **N** | Child `BView` with the panel background view color and no `B_WILL_DRAW`; the app_server fills it and it is a real parent view. |
+| `canvas` | **H** | Shared collection host `BView`; the client, rulers, and themed scrollbars are painted by portable code. Native `BScrollBar` is not used because the portable scroll range is signed 32-bit content, not view pixels. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. `BStatusBar` is intentionally not used because it is a progress indicator rather than a footer. |
 | File open/save/directory | **N** | `BFilePanel`, configured for files, save, or directories. |
@@ -238,6 +254,8 @@ in those backends.
 | `table_view` | **N/H** | Data-source-driven `NSTableView` in `NSScrollView`, retaining native headers, reuse, grids, and stripes. |
 | `code_edit` | **C** | Portable document/editor painted in a custom `NSView`. |
 | `split_view` | **N** | `NSSplitView`. |
+| `panel` | **N** | Child `NSView` filling `windowBackgroundColor`; a real AppKit parent for every control. |
+| `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler` | **C** | Shared library-painted non-client strip; `NSRulerView` is not currently used. |
 | `status_bar` | **C** | Shared library-painted non-client strip. AppKit has no direct window-status-bar peer to the portable control. |
 | File open/save/directory | **N** | `NSOpenPanel`/`NSSavePanel`, including directory-selection mode. |

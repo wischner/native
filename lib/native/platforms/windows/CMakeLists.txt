@@ -22,6 +22,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/radio.cpp
     ${CMAKE_CURRENT_LIST_DIR}/list.cpp
     ${CMAKE_CURRENT_LIST_DIR}/accordion.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/surfaces.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tab_view.cpp
     ${CMAKE_CURRENT_LIST_DIR}/split_view.cpp
     ${CMAKE_CURRENT_LIST_DIR}/icon_view.cpp

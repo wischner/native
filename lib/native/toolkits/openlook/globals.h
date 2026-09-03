@@ -155,6 +155,8 @@ namespace linux::openlook
         table_view_bindings;
     extern native::bindings<native::code_edit *, openlook_collection *>
         code_edit_bindings;
+    extern native::bindings<native::canvas *, openlook_collection *>
+        canvas_bindings;
     extern native::bindings<Xv_Window, native::wnd *>
         collection_paint_bindings;
     extern native::bindings<

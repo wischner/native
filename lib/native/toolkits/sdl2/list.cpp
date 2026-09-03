@@ -10,25 +10,6 @@
 #include <native/list.h>
 #include "../../control_render_access.h"
 #include "globals.h"
-namespace
-{
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
-
-    native::rect bounds_in_root(native::wnd &control) {
-        native::rect bounds = control.get_bounds();
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            bounds.p.x += parent->get_position().x;
-            bounds.p.y += parent->get_position().y;
-        }
-        return bounds;
-    }
-}
 namespace linux::sdl2
 {
     bool
@@ -37,7 +18,7 @@ namespace linux::sdl2
             return false;
         for (auto *c : lists) {
             auto *b = list_bindings.object_from_handle(c);
-            auto r = bounds_in_root(*c);
+            auto r = root_bounds(*c);
             if (!b || root_of(c) != owner || !b->visible ||
                 !r.contains(native::point(x, y)))
                 continue;
@@ -59,7 +40,7 @@ namespace linux::sdl2
                     *c,
                     g,
                     *painter,
-                    bounds_in_root(*c),
+                    root_bounds(*c),
                     native::theme::state{});
         }
     }

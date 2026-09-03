@@ -31,10 +31,10 @@ namespace linux::sdl2
 
         for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
-            if (!h || h->parent != owner || !h->visible)
+            if (!h || root_of(btn) != owner || !h->visible)
                 continue;
 
-            h->bounds = btn->get_bounds();
+            h->bounds = root_bounds(*btn);
             const bool now_hover = is_inside(h->bounds, x, y);
             if (now_hover != h->hover) {
                 h->hover = now_hover;
@@ -57,10 +57,10 @@ namespace linux::sdl2
 
         for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
-            if (!h || h->parent != owner || !h->visible)
+            if (!h || root_of(btn) != owner || !h->visible)
                 continue;
 
-            h->bounds = btn->get_bounds();
+            h->bounds = root_bounds(*btn);
 
             if (pressed) {
                 const bool hit = is_inside(h->bounds, x, y);
@@ -99,10 +99,10 @@ namespace linux::sdl2
         auto painter = native::theme::create(g);
         for (auto *btn : buttons) {
             auto *h = button_bindings.object_from_handle(btn);
-            if (!h || h->parent != owner || !h->visible)
+            if (!h || root_of(btn) != owner || !h->visible)
                 continue;
 
-            h->bounds = btn->get_bounds();
+            h->bounds = root_bounds(*btn);
 
             native::theme::state st;
             st.hot = h->hover;

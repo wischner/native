@@ -771,7 +771,10 @@ namespace
             frame,
             (dynamic_cast<native::table_view *>(&owner) ||
              dynamic_cast<native::tab_view *>(&owner) ||
-             dynamic_cast<native::accordion *>(&owner))
+             dynamic_cast<native::accordion *>(&owner) ||
+             // A canvas hands every client pixel to the application
+             // and adds no frame of its own.
+             dynamic_cast<native::canvas *>(&owner))
                 ? WRFlat
                 : WRSunken);
         linux::wmaker::wnd_bindings.register_pair(frame, &owner);

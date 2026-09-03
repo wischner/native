@@ -159,6 +159,13 @@ namespace haiku
         bool native_table = false;
     };
 
+    // A structural panel host and a paintable canvas each own one
+    // plain child view; nothing else about them is backend state.
+    struct haiku_surface
+    {
+        BView *view = nullptr;
+    };
+
     struct haiku_tree_view
     {
         BOutlineListView *view = nullptr;
@@ -172,6 +179,10 @@ namespace haiku
         BScrollView *scroll = nullptr;
     };
 
+    extern native::bindings<native::panel *, haiku_surface *>
+        panel_bindings;
+    extern native::bindings<native::canvas *, haiku_surface *>
+        canvas_bindings;
     extern native::bindings<native::check *, haiku_check *>
         check_bindings;
     extern native::bindings<native::radio *, haiku_radio *>

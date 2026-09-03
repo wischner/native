@@ -23,6 +23,8 @@ set(SRC_FILES
     tab_view.cpp
     split_view.cpp
     collection_view.cpp
+    panel.cpp
+    canvas.cpp
     accordion.cpp
     icon_view.cpp
     tree_view.cpp

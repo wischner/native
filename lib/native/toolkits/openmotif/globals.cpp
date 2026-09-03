@@ -43,6 +43,8 @@ namespace linux::openmotif
         table_view_bindings;
     native::bindings<native::code_edit *, motif_collection *>
         code_edit_bindings;
+    native::bindings<native::canvas *, motif_collection *>
+        canvas_bindings;
     native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     Display *cached_display = nullptr;

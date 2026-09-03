@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -64,6 +65,22 @@ namespace
                                .get_page_frame_visible()),
                   bool>);
     static_assert(std::is_base_of_v<native::wnd, native::split_view>);
+    static_assert(std::is_base_of_v<native::wnd, native::panel>);
+    static_assert(std::is_base_of_v<native::wnd, native::canvas>);
+    static_assert(!std::is_abstract_v<native::panel>);
+    static_assert(!std::is_abstract_v<native::canvas>);
+    // A container and a drawing surface are unrelated siblings; neither
+    // may be used where the other's contract is expected.
+    static_assert(!std::is_base_of_v<native::panel, native::canvas>);
+    static_assert(!std::is_base_of_v<native::canvas, native::panel>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::canvas &>()
+                               .get_horizontal_scrollbar_policy()),
+                  native::scrollbar_policy>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::table_view &>()
+                               .get_vertical_scrollbar_policy()),
+                  native::scrollbar_policy>);
     static_assert(!std::is_copy_constructible_v<native::split_view>);
     static_assert(std::is_constructible_v<
                   native::combo_box,
@@ -2229,6 +2246,325 @@ namespace
                "a destroyed child is removed from the layout");
     }
 
+
+    // Simulate a structural container without a backend resource.
+    class simulated_panel final : public native::panel
+    {
+    public:
+        using native::panel::panel;
+
+        ~simulated_panel() override {
+            destroy();
+        }
+
+        void create() const override {
+            _created = true;
+        }
+
+        void destroy() const override {
+            if (!_created)
+                return;
+            const_cast<simulated_panel *>(this)->on_native_destroy();
+        }
+
+        void show() const override {}
+    };
+
+    // Simulate a drawing surface without a backend resource.
+    class simulated_canvas final : public native::canvas
+    {
+    public:
+        using native::canvas::canvas;
+
+        ~simulated_canvas() override {
+            destroy();
+        }
+
+        void create() const override {
+            _created = true;
+        }
+
+        void destroy() const override {
+            if (!_created)
+                return;
+            const_cast<simulated_canvas *>(this)->on_native_destroy();
+        }
+
+        void show() const override {}
+    };
+
+    // Counts its own backend lifecycle without owning a real resource.
+    class counted_child final : public native::wnd
+    {
+    public:
+        using native::wnd::wnd;
+
+        void create() const override {
+            _created = true;
+            ++creates;
+        }
+
+        void destroy() const override {
+            if (!_created)
+                return;
+            _created = false;
+            ++destroys;
+        }
+
+        void show() const override {}
+
+        mutable int creates = 0;
+        mutable int destroys = 0;
+    };
+
+    // Verify panel construction, hierarchy, layout, and destruction.
+    void test_panel_container() {
+        expect(bounds_are(simulated_panel(), 0, 0, 320, 240),
+               "a default panel keeps the documented bounds");
+
+        const simulated_panel scalar(5, 6, 70, 80);
+        expect(bounds_are(scalar, 5, 6, 70, 80),
+               "the scalar panel constructor preserves bounds");
+        const simulated_panel split(native::point(7, 8),
+                                    native::size(90, 100));
+        expect(bounds_are(split, 7, 8, 90, 100),
+               "the position/size panel constructor preserves bounds");
+        const simulated_panel whole(native::rect(9, 10, 110, 120));
+        expect(bounds_are(whole, 9, 10, 110, 120),
+               "the rect panel constructor preserves bounds");
+
+        // A child assigned before the layout and one assigned after it
+        // must each be registered exactly once.
+        simulated_panel host(native::rect(0, 0, 200, 100));
+        counted_child early(native::rect(0, 0, 10, 10));
+        counted_child late(native::rect(0, 0, 10, 10));
+
+        early.set_parent(&host);
+        auto grid = std::make_unique<native::grid_layout_manager>(1, 2);
+        host.set_layout(std::move(grid));
+        late.set_parent(&host);
+
+        expect(host.get_layout()->children().size() == 2,
+               "a panel layout registers each child exactly once");
+        expect(bounds_are(early, 0, 0, 100, 100),
+               "a panel lays out the child assigned before the layout");
+        expect(bounds_are(late, 100, 0, 100, 100),
+               "a panel lays out the child assigned after the layout");
+
+        // Detaching an uncreated child updates the panel and layout.
+        late.set_parent(nullptr);
+        expect(host.get_layout()->children().size() == 1,
+               "detaching a child removes it from the panel layout");
+
+        // Nested panels keep their parent pointers and reject cycles.
+        simulated_panel inner(native::rect(0, 0, 50, 50));
+        inner.set_parent(&host);
+        expect(inner.get_parent() == &host,
+               "a nested panel records its container as parent");
+        bool rejected = false;
+        try {
+            host.set_parent(&inner);
+        } catch (const std::invalid_argument &) {
+            rejected = true;
+        }
+        expect(rejected, "a panel cycle is rejected");
+
+        // The layout region is the client area after non-client edges.
+        native::ruler edge(host, native::ruler_orientation::horizontal);
+        edge.set_visible(true);
+        const int reserved = edge.get_extent();
+        expect(host.get_client_bounds().p.y == reserved,
+               "a visible panel edge reserves space before layout");
+
+        // Destroying the panel releases created child resources without
+        // deleting the borrowed child objects.
+        host.create();
+        early.create();
+        inner.create();
+        expect(early.creates == 1 && inner.get_created(),
+               "panel children create their own backend resources");
+        host.destroy();
+        expect(early.destroys == 1,
+               "destroying a panel destroys created child resources");
+        expect(!host.get_created() && !early.get_created() &&
+                   !inner.get_created(),
+               "a destroyed panel and its children report no resource");
+        expect(early.get_parent() == &host &&
+                   inner.get_parent() == &host,
+               "destroying a panel does not delete borrowed children");
+    }
+
+    // Verify canvas construction, content bounds, and clamping.
+    void test_canvas_content_and_clamping() {
+        constexpr std::int32_t int32_lowest =
+            std::numeric_limits<std::int32_t>::min();
+
+        expect(bounds_are(simulated_canvas(), 0, 0, 320, 240),
+               "a default canvas keeps the documented bounds");
+        const simulated_canvas scalar(3, 4, 60, 70);
+        expect(bounds_are(scalar, 3, 4, 60, 70),
+               "the scalar canvas constructor preserves bounds");
+        const simulated_canvas split(native::point(5, 6),
+                                     native::size(80, 90));
+        expect(bounds_are(split, 5, 6, 80, 90),
+               "the position/size canvas constructor preserves bounds");
+        const simulated_canvas whole(native::rect(7, 8, 100, 110));
+        expect(bounds_are(whole, 7, 8, 100, 110),
+               "the rect canvas constructor preserves bounds");
+
+        simulated_canvas surface(native::rect(0, 0, 100, 100));
+        surface.set_vertical_scrollbar_policy(
+            native::scrollbar_policy::never);
+        surface.set_horizontal_scrollbar_policy(
+            native::scrollbar_policy::never);
+
+        // Empty content has no valid interval and reports zero.
+        surface.set_scroll_position({50, 50});
+        expect(surface.get_scroll_position().x == 0 &&
+                   surface.get_scroll_position().y == 0,
+               "empty canvas content clamps the position to zero");
+
+        // Content smaller than the viewport pins the leading edge.
+        surface.set_content_bounds({-20, -30, 40, 50});
+        surface.set_scroll_position({100, 100});
+        expect(surface.get_scroll_position().x == -20 &&
+                   surface.get_scroll_position().y == -30,
+               "content inside the viewport clamps to the origin");
+
+        // A negative origin and a span past the screen range survive.
+        surface.set_content_bounds({-4000, -3000, 12000, 9000});
+        surface.set_scroll_position({0, 0});
+        expect(surface.get_content_bounds().x == -4000 &&
+                   surface.get_content_bounds().width == 12000,
+               "canvas content bounds keep values outside coord range");
+        expect(surface.get_scroll_position().x == 0,
+               "a position inside the content interval is kept exactly");
+        surface.set_scroll_position({99999, 99999});
+        expect(surface.get_scroll_position().x == -4000 + 12000 - 100,
+               "the horizontal position clamps to the last full page");
+        expect(surface.get_scroll_position().y == -3000 + 9000 - 100,
+               "the vertical position clamps to the last full page");
+        surface.set_scroll_position({-99999, -99999});
+        expect(surface.get_scroll_position().x == -4000 &&
+                   surface.get_scroll_position().y == -3000,
+               "a position below the origin clamps to the origin");
+
+        // Overflowing bounds must saturate instead of wrapping.
+        constexpr std::int32_t limit =
+            std::numeric_limits<std::int32_t>::max();
+        surface.set_content_bounds(
+            {limit - 10, limit - 10,
+             static_cast<std::uint32_t>(limit),
+             static_cast<std::uint32_t>(limit)});
+        surface.set_scroll_position({limit, limit});
+        expect(surface.get_scroll_position().x == limit &&
+                   surface.get_scroll_position().y == limit,
+               "an overflowing content range saturates at the maximum");
+
+        // The full unsigned span is a valid content width, and the
+        // last valid position is still one page short of its end.
+        surface.set_content_bounds(
+            {int32_lowest, int32_lowest,
+             std::numeric_limits<std::uint32_t>::max(),
+             std::numeric_limits<std::uint32_t>::max()});
+        const int page = surface.get_client_bounds().d.w;
+        surface.set_scroll_position({limit, limit});
+        expect(surface.get_scroll_position().x == limit - page &&
+                   surface.get_scroll_position().y == limit - page,
+               "a full-range content span clamps without wrapping");
+        surface.set_scroll_position({int32_lowest, int32_lowest});
+        expect(surface.get_scroll_position().x == int32_lowest &&
+                   surface.get_scroll_position().y == int32_lowest,
+               "a lowest-value content origin stays reachable");
+    }
+
+    // Verify scrollbar policy, viewport reservation, and signalling.
+    void test_canvas_scrollbars() {
+        simulated_canvas surface(native::rect(0, 0, 100, 100));
+        const int viewport = surface.get_client_bounds().d.w;
+        expect(viewport == 100,
+               "an unscrolled canvas reserves no viewport space");
+        expect(!surface.get_horizontal_scrollbar_visible() &&
+                   !surface.get_vertical_scrollbar_visible(),
+               "automatic scrollbars stay hidden without overflow");
+
+        // never neither reserves nor shows, but still scrolls.
+        surface.set_content_bounds({0, 0, 1000, 1000});
+        surface.set_horizontal_scrollbar_policy(
+            native::scrollbar_policy::never);
+        surface.set_vertical_scrollbar_policy(
+            native::scrollbar_policy::never);
+        expect(!surface.get_horizontal_scrollbar_visible() &&
+                   !surface.get_vertical_scrollbar_visible(),
+               "the never policy hides an overflowing scrollbar");
+        expect(surface.get_client_bounds().d.w == 100,
+               "the never policy reserves no viewport space");
+        surface.set_scroll_position({40, 40});
+        expect(surface.get_scroll_position().x == 40,
+               "the never policy still permits programmatic scrolling");
+
+        // always reserves even when no movement is possible.
+        simulated_canvas fixed(native::rect(0, 0, 100, 100));
+        fixed.set_horizontal_scrollbar_policy(
+            native::scrollbar_policy::always);
+        fixed.set_vertical_scrollbar_policy(
+            native::scrollbar_policy::always);
+        expect(fixed.get_horizontal_scrollbar_visible() &&
+                   fixed.get_vertical_scrollbar_visible(),
+               "the always policy shows a scrollbar without overflow");
+        const int reserved = 100 - fixed.get_client_bounds().d.w;
+        expect(reserved > 0,
+               "the always policy reserves viewport space");
+        expect(100 - fixed.get_client_bounds().d.h == reserved,
+               "both axes reserve the same themed scrollbar extent");
+
+        // One scrollbar can push the other axis into overflow. The
+        // automatic decision has to settle with both visible.
+        simulated_canvas coupled(native::rect(0, 0, 100, 100));
+        coupled.set_content_bounds({0, 0, 100, 200});
+        expect(coupled.get_vertical_scrollbar_visible(),
+               "overflowing height shows the vertical scrollbar");
+        expect(coupled.get_horizontal_scrollbar_visible(),
+               "a vertical scrollbar narrowing the viewport shows the "
+               "horizontal scrollbar too");
+        expect(coupled.get_client_bounds().d.w == 100 - reserved &&
+                   coupled.get_client_bounds().d.h == 100 - reserved,
+               "the resolved viewport reserves both scrollbars once");
+
+        // Rulers reserve canvas space inside the scrollbar edges.
+        native::ruler top(coupled,
+                          native::ruler_orientation::horizontal);
+        top.set_visible(true);
+        expect(coupled.get_client_bounds().d.h ==
+                   100 - reserved - top.get_extent(),
+               "a canvas ruler reserves space inside its scrollbars");
+        expect(top.get_bounds().d.w == 100 - reserved,
+               "a horizontal ruler stops before a vertical scrollbar");
+
+        // A backend scroll emits once and only when the position moves.
+        int emitted = 0;
+        native::canvas_scroll_position last{};
+        coupled.on_scroll.connect(
+            [&](native::canvas_scroll_position position) {
+                ++emitted;
+                last = position;
+                return true;
+            });
+        coupled.set_scroll_position({0, 20});
+        expect(emitted == 0,
+               "a programmatic canvas scroll emits no action signal");
+        coupled.on_native_scroll({0, 40});
+        expect(emitted == 1 && last.y == 40,
+               "a backend scroll emits the effective position once");
+        coupled.on_native_scroll({0, 40});
+        expect(emitted == 1,
+               "an unchanged backend scroll emits nothing");
+        coupled.on_native_scroll({0, 99999});
+        expect(emitted == 2 &&
+                   last.y == 200 - coupled.get_client_bounds().d.h,
+               "a clamped backend scroll emits the clamped position");
+    }
+
     // Verify split geometry, minimums, orientation, and borrowed ownership.
     void test_split_view_model() {
         native::button first("First");
@@ -2304,5 +2640,8 @@ int main() {
     test_layout_pass_scheduling();
     test_layout_child_removal();
     test_split_view_model();
+    test_panel_container();
+    test_canvas_content_and_clamping();
+    test_canvas_scrollbars();
     return failure_count == 0 ? 0 : 1;
 }

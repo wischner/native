@@ -137,6 +137,34 @@ namespace linux::sdl2
         bool visible = false;
     };
 
+    // A structural panel and a paintable canvas are child regions of
+    // the emulated tree rather than separate SDL windows, so their
+    // whole backend state is one visibility flag.
+    struct sdl2_surface
+    {
+        bool visible = false;
+    };
+
+    //
+    // Return the top-level window an emulated control belongs to.
+    //
+    // Notes:
+    //      Every SDL2 event and repaint is addressed to a window, and
+    //      emulated controls may sit any number of panels deep inside
+    //      it, so dispatch matches on the root rather than on the
+    //      immediate parent.
+    //
+    native::wnd *root_of(native::wnd *control);
+
+    // Return a control's origin in its root window's coordinates.
+    native::point origin_in_root(const native::wnd &control);
+
+    // Return a control's bounds in its root window's coordinates.
+    native::rect root_bounds(const native::wnd &control);
+
+    // Return the number of ancestors above a control.
+    int depth_of(const native::wnd &control);
+
     // Render an emulated menu bar and open popup.
     void render_menu(sdl2_menu *menu,
                      native::gpx &graphics,
@@ -209,6 +237,20 @@ namespace linux::sdl2
 
     void render_collections(native::wnd *, native::gpx &);
     void render_tab_views(native::wnd *, native::gpx &);
+
+    // Render panel and canvas regions parent-first, under every other
+    // emulated control they contain.
+    void render_surfaces(native::wnd *, native::gpx &);
+
+    // Route pointer input to the topmost visible canvas region.
+    bool handle_canvas_mouse(native::wnd *, int, int, bool, bool);
+    bool handle_canvas_motion(native::wnd *, int, int);
+    bool handle_canvas_wheel(native::wnd *, int, int, int);
+
+    // Report otherwise unconsumed empty-space events to a panel.
+    bool handle_panel_mouse(native::wnd *, int, int, bool, bool);
+    bool handle_panel_motion(native::wnd *, int, int);
+    bool handle_panel_wheel(native::wnd *, int, int, int);
     bool handle_collection_mouse(native::wnd *,
                                  int,
                                  int,
@@ -259,6 +301,10 @@ namespace linux::sdl2
         combo_box_bindings;
     extern native::bindings<native::text_edit *, sdl2_text_edit *>
         text_edit_bindings;
+    extern native::bindings<native::panel *, sdl2_surface *>
+        panel_bindings;
+    extern native::bindings<native::canvas *, sdl2_surface *>
+        canvas_bindings;
     extern native::bindings<native::accordion *, sdl2_collection *>
         accordion_bindings;
     extern native::bindings<native::tab_view *, sdl2_collection *>
@@ -285,6 +331,8 @@ namespace linux::sdl2
     extern std::vector<native::tree_view *> tree_views;
     extern std::vector<native::table_view *> table_views;
     extern std::vector<native::code_edit *> code_edits;
+    extern std::vector<native::panel *> panels;
+    extern std::vector<native::canvas *> canvases;
     extern std::vector<native::app_wnd *> windows;
 #ifdef HAVE_SDL2_TTF
     extern native::bindings<uint32_t, sdl2_font *> font_bindings;

@@ -147,6 +147,17 @@ namespace mac
         NSView *view = nil;
     };
 
+    // A structural panel host and a paintable canvas each own one
+    // plain child view; nothing else about them is backend state.
+    struct mac_surface
+    {
+        NSView *view = nil;
+    };
+
+    extern native::bindings<native::panel *, mac_surface *>
+        panel_bindings;
+    extern native::bindings<native::canvas *, mac_surface *>
+        canvas_bindings;
     extern native::bindings<native::check *, mac_check *>
         check_bindings;
     extern native::bindings<native::radio *, mac_radio *>

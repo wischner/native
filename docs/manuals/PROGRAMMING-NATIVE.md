@@ -5,7 +5,8 @@ interface library. It starts with the smallest possible window and then
 introduces painting, input events, menus, controls, layouts, independent
 windows, system dialogs, graphics, fonts, images, clipboard access, text
 editing, collection and tree controls, and virtual multi-column tables.
-It also covers portable split views and native tab controls.
+It also covers portable split views, native tab controls, structural
+panels, and paintable canvases.
 
 The first chapters preserve the former runnable examples as maintained
 documentation while the repository itself builds only the `vision`
@@ -45,6 +46,7 @@ controls.
 15. [Source editing](programming-native/15-SOURCE-EDITING.md)
 16. [Split views and tabs](programming-native/16-SPLIT-VIEWS-AND-TABS.md)
 17. [Input, dialogs, and window chrome](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
+18. [Panels and canvases](programming-native/18-PANELS-AND-CANVASES.md)
 
 ## Building the repository program
 

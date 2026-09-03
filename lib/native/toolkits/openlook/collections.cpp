@@ -50,6 +50,9 @@ namespace
         if (auto *editor = dynamic_cast<native::code_edit *>(&owner))
             return linux::openlook::code_edit_bindings
                 .object_from_handle(editor);
+        if (auto *surface = dynamic_cast<native::canvas *>(&owner))
+            return linux::openlook::canvas_bindings
+                .object_from_handle(surface);
         return nullptr;
     }
 

@@ -126,7 +126,11 @@ namespace native
         return _bounds;
     }
 
-    rect wnd::get_client_bounds() const {
+    rect wnd::get_chrome_bounds() const {
+        return rect(0, 0, _bounds.d.w, _bounds.d.h);
+    }
+
+    rect wnd::reserve_non_client(const rect &available) const {
         int left = 0;
         int top = 0;
         int right = 0;
@@ -152,13 +156,17 @@ namespace native
         }
 
         const int width = std::max(0,
-            static_cast<int>(_bounds.d.w) - left - right);
+            static_cast<int>(available.d.w) - left - right);
         const int height = std::max(0,
-            static_cast<int>(_bounds.d.h) - top - bottom);
-        return rect(static_cast<coord>(left),
-                    static_cast<coord>(top),
+            static_cast<int>(available.d.h) - top - bottom);
+        return rect(static_cast<coord>(available.p.x + left),
+                    static_cast<coord>(available.p.y + top),
                     static_cast<dim>(width),
                     static_cast<dim>(height));
+    }
+
+    rect wnd::get_client_bounds() const {
+        return reserve_non_client(get_chrome_bounds());
     }
 
     wnd &wnd::set_bounds(const rect &bounds) {
@@ -284,12 +292,13 @@ namespace native
 
     void wnd::on_native_paint(wnd_paint_event event) {
         on_wnd_paint.emit(event);
+        draw_non_client(event.g);
+    }
 
-        if (!_non_client.empty()) {
-            for (non_client *element : _non_client) {
-                if (element && element->_visible)
-                    element->draw(event.g, non_client_bounds(element));
-            }
+    void wnd::draw_non_client(gpx &graphics) {
+        for (non_client *element : _non_client) {
+            if (element && element->_visible)
+                element->draw(graphics, non_client_bounds(element));
         }
     }
 
@@ -401,32 +410,38 @@ namespace native
                 before += element->_extent;
         }
 
-        const int width = static_cast<int>(_bounds.d.w);
-        const int height = static_cast<int>(_bounds.d.h);
+        // Strips stack inside the area this window's own edge chrome
+        // leaves behind, so a canvas ruler stops at its scrollbars
+        // instead of running under them.
+        const rect chrome = get_chrome_bounds();
+        const int origin_x = chrome.p.x;
+        const int origin_y = chrome.p.y;
+        const int width = static_cast<int>(chrome.d.w);
+        const int height = static_cast<int>(chrome.d.h);
         switch (target->_edge) {
         case window_edge::top:
-            return rect(static_cast<coord>(left_total),
-                        static_cast<coord>(before),
+            return rect(static_cast<coord>(origin_x+left_total),
+                        static_cast<coord>(origin_y+before),
                         static_cast<dim>(std::max(0, width-left_total-right_total)),
                         static_cast<dim>(target->_extent));
         case window_edge::right:
-            return rect(static_cast<coord>(width-before-target->_extent),
-                        static_cast<coord>(top_total),
+            return rect(static_cast<coord>(origin_x+width-before-target->_extent),
+                        static_cast<coord>(origin_y+top_total),
                         static_cast<dim>(target->_extent),
                         static_cast<dim>(std::max(0, height-top_total-bottom_total)));
         case window_edge::bottom:
         {
             const bool spans_window =
                 dynamic_cast<const status_bar *>(target) != nullptr;
-            return rect(static_cast<coord>(spans_window ? 0 : left_total),
-                        static_cast<coord>(height-before-target->_extent),
+            return rect(static_cast<coord>(origin_x + (spans_window ? 0 : left_total)),
+                        static_cast<coord>(origin_y+height-before-target->_extent),
                         static_cast<dim>(spans_window ? width :
                             std::max(0, width-left_total-right_total)),
                         static_cast<dim>(target->_extent));
         }
         case window_edge::left:
-            return rect(static_cast<coord>(before),
-                        static_cast<coord>(top_total),
+            return rect(static_cast<coord>(origin_x+before),
+                        static_cast<coord>(origin_y+top_total),
                         static_cast<dim>(target->_extent),
                         static_cast<dim>(std::max(0, height-top_total-bottom_total)));
         }

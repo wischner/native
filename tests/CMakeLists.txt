@@ -67,6 +67,20 @@ if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
     set_tests_properties(native_collection_runtime_tests PROPERTIES
         ENVIRONMENT "SDL_VIDEODRIVER=dummy;ASAN_OPTIONS=detect_leaks=0")
 
+    add_executable(native_surface_runtime_tests
+        native_surface_runtime_tests.cpp
+    )
+
+    target_link_libraries(native_surface_runtime_tests PRIVATE
+        native
+        native_developer_options
+    )
+
+    add_test(NAME native_surface_runtime_tests
+        COMMAND native_surface_runtime_tests)
+    set_tests_properties(native_surface_runtime_tests PROPERTIES
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy;ASAN_OPTIONS=detect_leaks=0")
+
     add_executable(native_modal_runtime_tests
         native_modal_runtime_tests.cpp
     )

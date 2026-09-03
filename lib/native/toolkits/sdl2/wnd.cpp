@@ -27,9 +27,14 @@ namespace
         auto *control = dynamic_cast<public_type *>(window);
         if (!control)
             return false;
+        (void)bounds;
         auto *binding = registry.object_from_handle(control);
         if (binding) {
-            binding->bounds = bounds;
+            // Emulated controls are painted and hit-tested in their
+            // root window's space, so a control nested inside panels
+            // caches the accumulated origin rather than the bounds
+            // its own parent gave it.
+            binding->bounds = linux::sdl2::root_bounds(*control);
             if (binding->parent)
                 binding->parent->invalidate();
         }
@@ -66,7 +71,9 @@ namespace
 
     bool update_control_bounds(native::wnd *window,
                                const native::rect &bounds) {
-        if (dynamic_cast<native::accordion *>(window) ||
+        if (dynamic_cast<native::panel *>(window) ||
+            dynamic_cast<native::canvas *>(window) ||
+            dynamic_cast<native::accordion *>(window) ||
             dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||
@@ -89,7 +96,9 @@ namespace
 
     bool update_control_parent(native::wnd *window,
                                native::wnd *parent) {
-        if (dynamic_cast<native::accordion *>(window) ||
+        if (dynamic_cast<native::panel *>(window) ||
+            dynamic_cast<native::canvas *>(window) ||
+            dynamic_cast<native::accordion *>(window) ||
             dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||
@@ -111,7 +120,9 @@ namespace
     }
 
     native::wnd *emulated_parent(native::wnd *window) {
-        if (dynamic_cast<native::accordion *>(window) ||
+        if (dynamic_cast<native::panel *>(window) ||
+            dynamic_cast<native::canvas *>(window) ||
+            dynamic_cast<native::accordion *>(window) ||
             dynamic_cast<native::tab_view *>(window) ||
             dynamic_cast<native::icon_view *>(window) ||
             dynamic_cast<native::tree_view *>(window) ||

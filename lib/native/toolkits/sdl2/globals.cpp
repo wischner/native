@@ -14,6 +14,38 @@
 
 namespace linux::sdl2
 {
+    native::wnd *root_of(native::wnd *control) {
+        while (control && control->get_parent())
+            control = control->get_parent();
+        return control;
+    }
+
+    native::point origin_in_root(const native::wnd &control) {
+        int x = control.get_position().x;
+        int y = control.get_position().y;
+        for (native::wnd *parent = control.get_parent();
+             parent && parent->get_parent();
+             parent = parent->get_parent()) {
+            x += parent->get_position().x;
+            y += parent->get_position().y;
+        }
+        return native::point(static_cast<native::coord>(x),
+                             static_cast<native::coord>(y));
+    }
+
+    native::rect root_bounds(const native::wnd &control) {
+        return native::rect(origin_in_root(control),
+                            control.get_dimensions());
+    }
+
+    int depth_of(const native::wnd &control) {
+        int depth = 0;
+        for (native::wnd *parent = control.get_parent(); parent;
+             parent = parent->get_parent())
+            ++depth;
+        return depth;
+    }
+
     int content_origin_y(native::wnd *window) {
         auto *application_window =
             dynamic_cast<native::app_wnd *>(window);
@@ -34,6 +66,8 @@ namespace linux::sdl2
         combo_box_bindings;
     native::bindings<native::text_edit *, sdl2_text_edit *>
         text_edit_bindings;
+    native::bindings<native::panel *, sdl2_surface *> panel_bindings;
+    native::bindings<native::canvas *, sdl2_surface *> canvas_bindings;
     native::bindings<native::accordion *, sdl2_collection *>
         accordion_bindings;
     native::bindings<native::tab_view *, sdl2_collection *>
@@ -60,6 +94,8 @@ namespace linux::sdl2
     std::vector<native::tree_view *> tree_views;
     std::vector<native::table_view *> table_views;
     std::vector<native::code_edit *> code_edits;
+    std::vector<native::panel *> panels;
+    std::vector<native::canvas *> canvases;
     std::vector<native::app_wnd *> windows;
 #ifdef HAVE_SDL2_TTF
     native::bindings<uint32_t, sdl2_font *> font_bindings;

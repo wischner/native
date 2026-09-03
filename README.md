@@ -31,6 +31,10 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Classic trees**: Stable-ID hierarchical `tree_view` with native
   disclosure, selection, images, navigation, and scrolling on every backend
+- **Structural panels**: Empty child containers that parent and lay out any
+  control, nest freely, and work as tab or split content
+- **Paintable canvases**: Child drawing surfaces with 32-bit content bounds,
+  themed automatic scrollbars, and application-owned client painting
 - **Docking workspaces**: Stable-ID split and tab layouts, draggable panes,
   modeless floating windows, pinning and edge auto-hide, compact captions,
   native-themed compass drop targets, and versioned persistence

@@ -20,28 +20,14 @@
 
 namespace
 {
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
-
-    native::rect bounds_in_root(native::wnd &control) {
-        native::rect bounds = control.get_bounds();
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            bounds.p.x += parent->get_position().x;
-            bounds.p.y += parent->get_position().y;
-        }
-        return bounds;
-    }
+    using linux::gemix::root_bounds;
+    using linux::gemix::root_of;
 
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
+        linux::gemix::render_surfaces(owner, graphics);
         linux::gemix::render_tab_views(owner, graphics);
         for (auto *button : linux::gemix::buttons) {
-            if (!button || !button->get_parent() ||
-                button->get_parent() != owner)
+            if (!button || root_of(button) != owner)
                 continue;
 
             auto painter = native::theme::create(graphics);
@@ -49,31 +35,31 @@ namespace
                 *button,
                 graphics,
                 *painter,
-                button->get_bounds(),
+                root_bounds(*button),
                 native::theme::state{});
         }
 
         auto painter = native::theme::create(graphics);
         for (auto *control : linux::gemix::checks) {
-            if (!control || control->get_parent() != owner)
+            if (!control || root_of(control) != owner)
                 continue;
             native::theme::state state;
             native::detail::control_render_access::draw(
                 *control,
                 graphics,
                 *painter,
-                control->get_bounds(),
+                root_bounds(*control),
                 state);
         }
         for (auto *control : linux::gemix::radios) {
-            if (!control || control->get_parent() != owner)
+            if (!control || root_of(control) != owner)
                 continue;
             native::theme::state state;
             native::detail::control_render_access::draw(
                 *control,
                 graphics,
                 *painter,
-                control->get_bounds(),
+                root_bounds(*control),
                 state);
         }
         for (auto *control : linux::gemix::lists) {
@@ -83,20 +69,21 @@ namespace
                 *control,
                 graphics,
                 *painter,
-                bounds_in_root(*control),
+                root_bounds(*control),
                 native::theme::state{});
         }
         for (auto *control : linux::gemix::combo_boxes) {
-            if (!control || control->get_parent() != owner) continue;
+            if (!control || root_of(control) != owner) continue;
+            const native::rect combo_bounds = root_bounds(*control);
             native::detail::control_render_access::draw(
-                *control, graphics, *painter, control->get_bounds(),
+                *control, graphics, *painter, combo_bounds,
                 native::theme::state{});
             auto *state = linux::gemix::combo_box_bindings
                               .object_from_handle(control);
             if (!state || !state->open) continue;
             const int row_height = painter->defaults().list_item_height;
-            const native::rect box(control->get_bounds().x1(),
-                control->get_bounds().y2(), control->get_bounds().w(),
+            const native::rect box(combo_bounds.x1(),
+                combo_bounds.y2(), combo_bounds.w(),
                 static_cast<native::dim>(
                     control->get_items().size()*row_height));
             painter->draw_popup_frame(box);
@@ -172,9 +159,9 @@ namespace
 
     native::button *button_at(native::app_wnd *owner, native::point p) {
         for (auto *button : linux::gemix::buttons) {
-            if (!button || button->get_parent() != owner)
+            if (!button || root_of(button) != owner)
                 continue;
-            if (button->get_bounds().contains(p))
+            if (root_bounds(*button).contains(p))
                 return button;
         }
         return nullptr;
@@ -186,11 +173,12 @@ namespace
             auto *state = control
                 ? linux::gemix::combo_box_bindings.object_from_handle(control)
                 : nullptr;
-            if (!control || !state || control->get_parent() != owner)
+            if (!control || !state || root_of(control) != owner)
                 continue;
+            const native::rect combo_bounds = root_bounds(*control);
             const int row_height = 20;
-            const native::rect popup(control->get_bounds().x1(),
-                control->get_bounds().y2(), control->get_bounds().w(),
+            const native::rect popup(combo_bounds.x1(),
+                combo_bounds.y2(), combo_bounds.w(),
                 static_cast<native::dim>(
                     control->get_items().size()*row_height));
             if (state->open && popup.contains(p)) {
@@ -202,7 +190,7 @@ namespace
                 owner->invalidate();
                 return;
             }
-            if (control->get_bounds().contains(p)) {
+            if (combo_bounds.contains(p)) {
                 state->open = !state->open;
                 state->focused = true;
                 control->on_native_drop_down(state->open);
@@ -213,22 +201,22 @@ namespace
             state->focused = false;
         }
         for (auto *control : linux::gemix::checks) {
-            if (control && control->get_parent() == owner &&
-                control->get_bounds().contains(p)) {
+            if (control && root_of(control) == owner &&
+                root_bounds(*control).contains(p)) {
                 control->on_native_checked(!control->get_checked());
                 return;
             }
         }
         for (auto *control : linux::gemix::radios) {
-            if (control && control->get_parent() == owner &&
-                control->get_bounds().contains(p)) {
+            if (control && root_of(control) == owner &&
+                root_bounds(*control).contains(p)) {
                 control->on_native_selected();
                 return;
             }
         }
         for (auto *control : linux::gemix::lists) {
             const native::rect bounds = control
-                ? bounds_in_root(*control) : native::rect();
+                ? root_bounds(*control) : native::rect();
             if (!control || root_of(control) != owner ||
                 !bounds.contains(p))
                 continue;
@@ -369,32 +357,44 @@ namespace native
                         pointer_window, local);
                     linux::gemix::update_collection_pointer(
                         pointer_window, local);
-                    pointer_window->on_native_mouse_move(
-                        local, point(mx, my));
+                    if (!linux::gemix::dispatch_surface_move(
+                            pointer_window, local)) {
+                        pointer_window->on_native_mouse_move(
+                            local, point(mx, my));
+                    }
                 }
 
                 if ((prev_mb & 1) == 0 && (mb & 1) != 0) {
                     linux::gemix::active_window = pointer_window;
                     linux::gemix::focus_text_edit(pointer_window,
                                                   local);
-                    pointer_window->on_native_mouse_click(mouse_event(
-                        mouse_button::left,
-                        mouse_action::press,
-                        local));
+                    if (!linux::gemix::dispatch_surface_click(
+                            pointer_window, local, true)) {
+                        pointer_window->on_native_mouse_click(
+                            mouse_event(mouse_button::left,
+                                        mouse_action::press,
+                                        local));
+                    }
                 }
 
                 if ((prev_mb & 1) != 0 && (mb & 1) == 0) {
-                    pointer_window->on_native_mouse_click(mouse_event(
-                        mouse_button::left,
-                        mouse_action::release,
-                        local));
-                    if (auto *button =
-                            button_at(pointer_window, local)) {
-                        button->on_native_click();
-                    } else if (!linux::gemix::activate_collection(
-                                   pointer_window, local)) {
-                        activate_selection_control(pointer_window,
-                                                   local);
+                    if (linux::gemix::dispatch_surface_click(
+                            pointer_window, local, false)) {
+                        // A canvas or panel region owns this
+                        // position, so no control activation follows.
+                    } else {
+                        pointer_window->on_native_mouse_click(
+                            mouse_event(mouse_button::left,
+                                        mouse_action::release,
+                                        local));
+                        if (auto *button =
+                                button_at(pointer_window, local)) {
+                            button->on_native_click();
+                        } else if (!linux::gemix::activate_collection(
+                                       pointer_window, local)) {
+                            activate_selection_control(pointer_window,
+                                                       local);
+                        }
                     }
                 }
             } else if (pointer_window &&

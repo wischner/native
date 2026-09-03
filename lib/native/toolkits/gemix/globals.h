@@ -58,6 +58,8 @@ namespace linux::gemix
     extern std::vector<native::tree_view *> tree_views;
     extern std::vector<native::table_view *> table_views;
     extern std::vector<native::code_edit *> code_edits;
+    extern std::vector<native::panel *> panels;
+    extern std::vector<native::canvas *> canvases;
     extern std::vector<native::app_wnd *> windows;
     extern native::app_wnd *active_window;
     extern std::unordered_map<native::app_wnd *, menu_state>
@@ -101,6 +103,32 @@ namespace linux::gemix
 
     // Render every visible text editor belonging to a window.
     void render_text_edits(native::app_wnd *parent, native::gpx &g);
+
+    //
+    // Return the top-level window an emulated control belongs to.
+    //
+    // Notes:
+    //      Emulated controls may sit any number of panels deep inside
+    //      an AES window, so painting and dispatch match on the root
+    //      rather than on the immediate parent.
+    //
+    native::wnd *root_of(native::wnd *control);
+
+    // Return a control's origin in its root window's coordinates.
+    native::point origin_in_root(const native::wnd &control);
+
+    // Return a control's bounds in its root window's coordinates.
+    native::rect root_bounds(const native::wnd &control);
+
+    // Draw panel and canvas regions under every control they contain.
+    void render_surfaces(native::app_wnd *parent, native::gpx &g);
+
+    // Route a local pointer position to a canvas or panel region.
+    bool dispatch_surface_click(native::app_wnd *parent,
+                                native::point point,
+                                bool pressed);
+    bool dispatch_surface_move(native::app_wnd *parent,
+                               native::point point);
 
     // Draw every created collection descendant of an AES window.
     void render_collections(native::app_wnd *parent, native::gpx &g);

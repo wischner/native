@@ -21,8 +21,8 @@ namespace linux::sdl2
         bool consumed = false;
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || state->parent != owner || !state->visible) continue;
-            const native::rect bounds = combo->get_bounds();
+            if (!state || root_of(combo) != owner || !state->visible) continue;
+            const native::rect bounds = root_bounds(*combo);
             const int item_height = 20;
             const native::rect popup(
                 bounds.x1(), bounds.y2(), bounds.w(),
@@ -57,8 +57,8 @@ namespace linux::sdl2
         if (event.type != SDL_KEYDOWN) return false;
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || state->parent != owner || !state->focused ||
-                !state->visible) continue;
+            if (!state || root_of(combo) != owner ||
+                !state->focused || !state->visible) continue;
             if (event.keysym.sym == SDLK_BACKSPACE &&
                 combo->get_style() == native::combo_box_style::editable &&
                 !combo->get_text().empty()) {
@@ -89,8 +89,8 @@ namespace linux::sdl2
     bool handle_combo_text(native::wnd *owner, const char *value) {
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || state->parent != owner || !state->focused ||
-                !state->visible ||
+            if (!state || root_of(combo) != owner ||
+                !state->focused || !state->visible ||
                 combo->get_style() != native::combo_box_style::editable)
                 continue;
             combo->on_native_text(combo->get_text()+
@@ -106,17 +106,18 @@ namespace linux::sdl2
         const auto metrics = appearance->defaults();
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || state->parent != owner || !state->visible) continue;
+            if (!state || root_of(combo) != owner || !state->visible) continue;
             native::theme::state control_state;
             control_state.focused = state->focused;
+            const native::rect bounds = root_bounds(*combo);
             native::detail::control_render_access::draw(
                 *combo, graphics, *appearance,
-                combo->get_bounds(), control_state);
+                bounds, control_state);
             if (!state->open) continue;
-            int y = combo->get_bounds().y2();
+            int y = bounds.y2();
             const int row_height = metrics.list_item_height;
-            const native::rect popup(combo->get_bounds().x1(),
-                static_cast<native::coord>(y), combo->get_bounds().w(),
+            const native::rect popup(bounds.x1(),
+                static_cast<native::coord>(y), bounds.w(),
                 static_cast<native::dim>(
                     combo->get_items().size()*row_height));
             appearance->draw_popup_frame(popup);

@@ -57,6 +57,8 @@ namespace linux::wmaker
         table_view_bindings;
     native::bindings<native::code_edit *, native_collection *>
         code_edit_bindings;
+    native::bindings<native::canvas *, native_collection *>
+        canvas_bindings;
 
     void initialize() {
         if (initialized)

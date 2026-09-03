@@ -1016,3 +1016,97 @@ Vision exposes the combined demonstration through **Window -> Input and
 window chrome**. Portable tests cover pre-create state, silent programmatic
 updates, native event ordering, edge reservation, relayout, and ruler
 tracking; Docker builds compile every backend implementation.
+
+## 18. Structural containers
+
+`panel` is a concrete, empty child `wnd` whose purpose is to parent and lay out
+other windows. Its header is `include/native/panel.h` and is exported through
+`include/native.h`. It adds no collection API: child registration, ownership,
+geometry, and layout are the inherited `wnd` facilities. Children call
+`set_parent()`, the panel owns a `layout_manager` through `set_layout()`, and
+`get_client_bounds()` remains the layout region after non-client edges.
+
+A panel is a child container, never a top-level window. The caller owns the
+panel and every child; the panel only borrows children through the existing
+parent relationship. Destroying a panel destroys the native resources of
+created children without deleting their C++ objects. Reparenting follows
+`wnd::set_parent()` validation, including cycle rejection.
+
+`panel::create()` creates only the panel's own backend host and is idempotent.
+It must establish the backend parent binding and set `get_created()` before
+emitting `on_wnd_create`, so that handler can create children. `show()` shows
+only the panel; `destroy()` is idempotent and releases created child resources
+through the inherited destruction path. A panel never creates or shows a
+registered child implicitly, because it cannot know whether that child should
+start visible.
+
+A panel is visually empty: no caption, border, bevel, focus ring, or padding,
+and it is not keyboard-focusable merely by existing. Exposed panel space shows
+the backend's ordinary themed container background and must not retain stale
+pixels. Visible children receive hit-tested pointer input before the panel, an
+event consumed by a child is not delivered again as a panel event, and empty
+panel space activates nothing. Inherited pointer signals may report otherwise
+unconsumed empty-space events; the panel adds no semantic action signal.
+
+A panel and a `canvas` are distinct, unrelated siblings below `wnd`.
+Inheritance must not be used to merge their roles: a panel hosts controls and a
+canvas draws application content.
+
+## 19. Paintable child surfaces
+
+`canvas` is a concrete child `wnd` whose entire client viewport is owned by
+application painting, together with optional horizontal and vertical
+scrollbars. Its header is `include/native/canvas.h`. It uses the signals
+already defined by `wnd` — `on_wnd_paint`, `on_mouse_move`, `on_mouse_click`,
+`on_mouse_wheel`, and the lifecycle and geometry signals — and adds only
+`on_scroll`. A canvas is not a general child-control host.
+
+`scrollbar_policy` is the shared control concept declared in
+`include/native/scrollbar.h`; `canvas` and `table_view` use that one
+definition.
+
+Content bounds are half-open and expressed in signed 32-bit content pixels
+through `canvas_content_bounds`, independent of `coord` and `dim`. A negative
+origin is valid. The scroll position identifies the content coordinate mapped
+to the viewport's leading edge. Given content interval `[origin, origin + span)`
+and viewport span `page`, the valid interval is
+`[origin, max(origin, origin + span - page)]`; empty content uses position
+zero. Bounds arithmetic must be checked and must not wrap.
+
+The default policy on each axis is `automatic`, which shows a scrollbar only
+when the content cannot fit the available viewport. `always` reserves the
+themed extent and draws an inactive scrollbar disabled. `never` neither
+reserves nor draws one, and does not disable programmatic scrolling. Because
+one scrollbar shrinks the other axis, automatic visibility must be evaluated
+until neither decision changes.
+
+Scrollbars reserve the outermost canvas edges. `wnd::get_chrome_bounds()` is
+the protected hook a control overrides to declare such reservations; non-client
+strips stack inside the returned area, so a ruler stops at a visible scrollbar
+rather than running under it. `get_client_bounds()` is therefore the drawable
+viewport after both scrollbars and rulers, and scrollbar tracks are never
+included in application paint bounds.
+
+`set_scroll_position()` clamps, invalidates on a change, and emits nothing.
+A backend scrollbar action calls `on_native_scroll()` with an absolute content
+position; that function clamps, stores, invalidates, and emits `on_scroll`
+exactly once when the effective position changed. Wheel input over a movable
+axis scrolls it, and the normalized `on_mouse_wheel` event is still emitted
+exactly once. Thumb size and position represent the viewport inside the full
+32-bit range and must let both endpoints be reached exactly. Scrollbar
+appearance, hit geometry, minimum thumb size, and extents come from theme
+metrics and `theme::draw_scrollbar_part`.
+
+One backend paint notification dispatches exactly one logical
+`wnd_paint_event`. The supplied drawer is clipped to the viewport and must not
+reach a sibling, the parent, a ruler, or a scrollbar track. The canvas adds no
+border, label, focus ring, padding, or theme fill, and must not clear over
+application output after the callback. Scrollbars and their corner filler are
+control chrome, painted after non-client strips and never delegated to the
+paint subscriber. Native does not translate the drawer by the scroll position;
+paint rectangles and pointer positions stay viewport-local, and the subscriber
+applies its own content transform.
+
+Pointer actions inside scrollbar tracks, thumbs, and step controls are handled
+as chrome and are not emitted as client mouse clicks. Every other pointer event
+reaches the inherited `wnd` dispatch with canvas-local coordinates.
