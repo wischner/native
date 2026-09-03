@@ -105,6 +105,7 @@ horizontal.set_origin(-20)
           .set_units_per_pixel(0.5)
           .set_minor_tick(5)
           .set_major_tick(25)
+          .set_edge_visible(true)
           .set_track_mouse(true);
 horizontal.on_tracking.connect([](double value) {
     update_coordinate_readout(value);
@@ -114,9 +115,11 @@ horizontal.on_tracking.connect([](double value) {
 
 Tracking observes host pointer motion and emits only when the tracked ruler
 pixel changes. The protected virtual stages `draw_background()`,
-`draw_tick()`, `draw_label()`, and `draw_tracker()` perform the actual default
-drawing. A derived ruler can replace one stage and call its base implementation
-when it wants the standard appearance plus an addition.
+`draw_tick()`, `draw_label()`, `draw_edge()`, and `draw_tracker()` perform the
+actual default drawing. The optional edge is the bottom rule for horizontal
+rulers and the right rule for vertical rulers, using the tick color. A derived
+ruler can replace one stage and call its base implementation when it wants the
+standard appearance plus an addition.
 
 ## Status bars
 

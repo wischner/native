@@ -80,7 +80,7 @@ in those backends.
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, modality filtering, positioning, and results. |
 | `wnd` and all child-control hosts | **C** | SDL event routing and renderer-backed library windows; SDL2 supplies no desktop widget set. |
 | `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch. |
-| `button`, `check`, `radio` | **C** | Library-painted themed controls. |
+| `button`, `check`, `radio` | **C** | Library-painted controls using SDL's neutral system-gray emulation palette. |
 | `list`, `combo_box`, `text_edit` | **C** | Library layout, painting, selection, editing, and popup behavior; SDL text-input and clipboard services are used. |
 | `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only tab pages, and page routing. |
 | `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, hit testing, and scrolling. |

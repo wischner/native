@@ -66,6 +66,12 @@ namespace native
         // Enable or disable host pointer tracking.
         ruler &set_track_mouse(bool enabled);
 
+        // Return whether a rule is drawn along the strip's trailing edge.
+        bool get_edge_visible() const;
+
+        // Show or hide the trailing edge rule.
+        ruler &set_edge_visible(bool visible);
+
         // Return the latest tracked logical value, when available.
         std::optional<double> get_tracked_value() const;
 
@@ -105,12 +111,18 @@ namespace native
                                   int axis_position,
                                   const theme::palette &colors);
 
+        // Draw the optional bottom or right ruler edge.
+        virtual void draw_edge(gpx &graphics,
+                               const rect &bounds,
+                               const theme::palette &colors);
+
     private:
         double _origin = 0.0;
         double _units_per_pixel = 1.0;
         double _minor_tick = 10.0;
         double _major_tick = 50.0;
         bool _track_mouse = false;
+        bool _edge_visible = false;
         std::optional<double> _tracked_value;
         std::optional<int> _tracked_axis;
 

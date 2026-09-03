@@ -970,9 +970,9 @@ namespace vision
         _right_tabs.add_item("Right", _right_tab_general);
         _right_tabs.add_item("Details", _right_tab_advanced);
         _horizontal_ruler.set_minor_tick(10).set_major_tick(50)
-            .set_track_mouse(true);
+            .set_track_mouse(true).set_edge_visible(true);
         _vertical_ruler.set_minor_tick(10).set_major_tick(50)
-            .set_track_mouse(true);
+            .set_track_mouse(true).set_edge_visible(true);
         _status_bar.set_parts({
             {"Ready", 0}, {"minor 10 / major 50", 180}});
 

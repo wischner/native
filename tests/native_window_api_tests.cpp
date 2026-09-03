@@ -168,6 +168,7 @@ namespace
                                native::point to) override {
             painted = true;
             lines.emplace_back(from, to);
+            line_inks.push_back(get_ink());
             return *this;
         }
 
@@ -194,6 +195,7 @@ namespace
         bool painted = false;
         int image_count = 0;
         std::vector<std::pair<native::point, native::point>> lines;
+        std::vector<native::rgba> line_inks;
     };
 
     class extensible_app_window final : public native::app_wnd
@@ -935,6 +937,51 @@ namespace
                    status.get_bounds().p.y == 178 &&
                    status.get_bounds().d.w == 300,
                "non-client element bounds meet at the client corners");
+
+        expect(!horizontal.get_edge_visible() &&
+                   !vertical.get_edge_visible(),
+               "ruler edge rules are hidden by default");
+        horizontal.set_edge_visible(true);
+        vertical.set_edge_visible(true);
+        recording_gpx ruler_graphics;
+        ruler_graphics.set_clip(native::rect(0, 0, 300, 200));
+        window.on_native_paint(native::wnd_paint_event(
+            native::rect(0, 0, 300, 200), ruler_graphics));
+        const auto same_color = [](native::rgba left,
+                                   native::rgba right) {
+            return left.r == right.r && left.g == right.g &&
+                   left.b == right.b && left.a == right.a;
+        };
+        const auto line_index = [&](native::point from,
+                                    native::point to) {
+            for (std::size_t index = 0;
+                 index < ruler_graphics.lines.size(); ++index) {
+                if (ruler_graphics.lines[index].first.x == from.x &&
+                    ruler_graphics.lines[index].first.y == from.y &&
+                    ruler_graphics.lines[index].second.x == to.x &&
+                    ruler_graphics.lines[index].second.y == to.y) {
+                    return index;
+                }
+            }
+            return ruler_graphics.lines.size();
+        };
+        const std::size_t horizontal_tick =
+            line_index({30, 19}, {30, 10});
+        const std::size_t horizontal_edge =
+            line_index({30, 19}, {299, 19});
+        const std::size_t vertical_tick =
+            line_index({29, 20}, {20, 20});
+        const std::size_t vertical_edge =
+            line_index({29, 20}, {29, 177});
+        expect(horizontal_tick < ruler_graphics.lines.size() &&
+                   horizontal_edge < ruler_graphics.lines.size() &&
+                   vertical_tick < ruler_graphics.lines.size() &&
+                   vertical_edge < ruler_graphics.lines.size() &&
+                   same_color(ruler_graphics.line_inks[horizontal_tick],
+                              ruler_graphics.line_inks[horizontal_edge]) &&
+                   same_color(ruler_graphics.line_inks[vertical_tick],
+                              ruler_graphics.line_inks[vertical_edge]),
+               "rulers draw bottom and right edges in the tick color");
 
         double tracked = -1.0;
         horizontal.set_units_per_pixel(2.0).set_track_mouse(true);

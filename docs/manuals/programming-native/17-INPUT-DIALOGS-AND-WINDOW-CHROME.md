@@ -113,9 +113,11 @@ public:
           status(*this, 22) {
         horizontal.set_minor_tick(10)
                   .set_major_tick(50)
+                  .set_edge_visible(true)
                   .set_track_mouse(true);
         vertical.set_minor_tick(10)
                 .set_major_tick(50)
+                .set_edge_visible(true)
                 .set_track_mouse(true);
         status.set_parts({{"Ready", 0}, {"100%", 80}});
     }
@@ -132,6 +134,11 @@ manager receives this reduced rectangle automatically. Ruler origin, scale,
 minor ticks, and major ticks use `double`, while the strip extent remains a
 pixel count. Mouse tracking exposes the current coordinate through
 `get_tracked_value()` and `on_tracking`.
+
+Ruler edge rules are hidden by default. `set_edge_visible(true)` draws a
+continuous bottom line on a horizontal ruler or right line on a vertical
+ruler. The rule uses the same theme color as the ticks; its state is returned
+by `get_edge_visible()`.
 
 Status parts with a positive width are fixed. Parts whose width is zero share
 the remaining space. A bottom status bar spans the full window width and owns

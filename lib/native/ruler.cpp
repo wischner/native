@@ -106,6 +106,16 @@ namespace native
         return *this;
     }
 
+    bool ruler::get_edge_visible() const { return _edge_visible; }
+
+    ruler &ruler::set_edge_visible(bool visible) {
+        if (_edge_visible == visible)
+            return *this;
+        _edge_visible = visible;
+        invalidate();
+        return *this;
+    }
+
     std::optional<double> ruler::get_tracked_value() const {
         return _tracked_value;
     }
@@ -147,6 +157,9 @@ namespace native
                 draw_label(graphics, label, format_value(value), colors);
             }
         }
+
+        if (_edge_visible)
+            draw_edge(graphics, bounds, colors);
 
         if (_track_mouse && _tracked_axis)
             draw_tracker(graphics, bounds, *_tracked_axis, colors);
@@ -241,6 +254,21 @@ namespace native
             const coord y = static_cast<coord>(bounds.y1()+axis_position);
             graphics.draw_line({bounds.x1(), y},
                                {static_cast<coord>(bounds.x2()-1), y});
+        }
+    }
+
+    void ruler::draw_edge(gpx &graphics,
+                          const rect &bounds,
+                          const theme::palette &colors) {
+        graphics.set_ink(colors.button_text);
+        if (get_orientation() == ruler_orientation::horizontal) {
+            const coord y = static_cast<coord>(bounds.y2() - 1);
+            graphics.draw_line({bounds.x1(), y},
+                               {static_cast<coord>(bounds.x2() - 1), y});
+        } else {
+            const coord x = static_cast<coord>(bounds.x2() - 1);
+            graphics.draw_line({x, bounds.y1()},
+                               {x, static_cast<coord>(bounds.y2() - 1)});
         }
     }
 } // namespace native

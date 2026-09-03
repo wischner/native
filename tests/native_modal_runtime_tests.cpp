@@ -113,6 +113,29 @@ namespace
         owner.destroy();
     }
 
+    // Keep SDL's emulated desktop controls on a neutral system-gray palette.
+    void test_neutral_control_palette() {
+        native::app_wnd owner(
+            "Palette", native::rect(10, 10, 160, 100));
+        owner.create();
+        auto appearance = native::theme::create(owner.get_gpx());
+        const native::theme::palette colors =
+            appearance->native_palette();
+        const auto neutral = [](native::rgba color) {
+            return color.r == color.g && color.g == color.b &&
+                   color.a == 255;
+        };
+        expect(neutral(colors.button_bg) &&
+                   neutral(colors.button_hot_bg) &&
+                   neutral(colors.button_pressed_bg) &&
+                   neutral(colors.menu_bar_bg) &&
+                   neutral(colors.menu_hot_bg) &&
+                   neutral(colors.selection_bg) &&
+                   neutral(colors.focus),
+               "SDL controls and selections use a neutral gray palette");
+        owner.destroy();
+    }
+
     // Exercise the SDL system clipboard and emulated editor through
     // their public contracts while the dummy video service is live.
     void test_clipboard_and_text_edit() {
@@ -358,6 +381,7 @@ namespace
 
 int main() {
     try {
+        test_neutral_control_palette();
         test_modal_stack();
         test_clipboard_and_text_edit();
         test_unavailable_file_dialogs();

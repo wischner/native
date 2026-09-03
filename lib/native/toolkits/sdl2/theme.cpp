@@ -67,33 +67,33 @@ namespace
 
         palette native_palette() const override {
             palette p;
-            p.button_bg = native::rgba(245, 247, 250, 255);
-            p.button_border = native::rgba(92, 99, 112, 255);
+            p.button_bg = native::rgba(212, 212, 212, 255);
+            p.button_border = native::rgba(64, 64, 64, 255);
             p.button_highlight = native::rgba(255, 255, 255, 255);
-            p.button_shadow = native::rgba(152, 160, 172, 255);
-            p.button_text = native::rgba(32, 37, 43, 255);
-            p.button_disabled_text = native::rgba(142, 147, 155, 255);
-            p.button_hot_bg = native::rgba(230, 239, 255, 255);
+            p.button_shadow = native::rgba(128, 128, 128, 255);
+            p.button_text = native::rgba(32, 32, 32, 255);
+            p.button_disabled_text = native::rgba(128, 128, 128, 255);
+            p.button_hot_bg = native::rgba(228, 228, 228, 255);
             p.button_hot_text = p.button_text;
-            p.button_pressed_bg = native::rgba(30, 108, 203, 255);
-            p.button_pressed_text = native::rgba(255, 255, 255, 255);
-            p.menu_bar_bg = native::rgba(245, 247, 250, 255);
+            p.button_pressed_bg = native::rgba(192, 192, 192, 255);
+            p.button_pressed_text = p.button_text;
+            p.menu_bar_bg = p.button_bg;
             p.menu_bar_line_top = native::rgba(255, 255, 255, 255);
-            p.menu_bar_line_bottom = native::rgba(195, 201, 210, 255);
+            p.menu_bar_line_bottom = p.button_shadow;
             p.menu_text = p.button_text;
             p.menu_disabled_text = p.button_disabled_text;
-            p.menu_hot_bg = native::rgba(26, 115, 232, 255);
+            p.menu_hot_bg = native::rgba(96, 96, 96, 255);
             p.menu_hot_text = native::rgba(255, 255, 255, 255);
             p.menu_popup_bg = native::rgba(255, 255, 255, 255);
-            p.menu_popup_border = native::rgba(120, 126, 136, 255);
+            p.menu_popup_border = p.button_border;
             p.content_bg = native::rgba(255, 255, 255, 255);
             p.content_text = p.button_text;
             p.selection_bg = p.menu_hot_bg;
             p.selection_text = p.menu_hot_text;
-            p.selection_inactive_bg = native::rgba(178, 187, 201, 255);
+            p.selection_inactive_bg = native::rgba(176, 176, 176, 255);
             p.selection_inactive_text = p.button_text;
             p.separator = p.menu_bar_line_bottom;
-            p.focus = p.menu_hot_bg;
+            p.focus = native::rgba(0, 0, 0, 255);
             return p;
         }
 
