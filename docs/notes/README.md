@@ -26,7 +26,7 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 - [Native versus custom control audit](CUSTOM.md)
 - [Deferred theme-interface split review](REFACTOR.md)
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
-- [Haiku remote runtime and debug](HAIKU-REMOTE-RUNTIME.md)
+- [Haiku remote runtime, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
 - [macOS remote runtime (leia)](MACOS-REMOTE-RUNTIME.md)
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)

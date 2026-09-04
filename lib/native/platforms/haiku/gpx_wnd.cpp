@@ -25,9 +25,9 @@ static void apply_bview_state(BView *view,
     if (!view || !cache)
         return;
 
-    // Set high color (foreground) if changed
-    if (!cache->current_fg_valid ||
-        cache->current_fg != self->get_ink()) {
+    // Native widgets and BControlLook share this view. Their drawing state
+    // is not represented by our cache, so establish it for every primitive.
+    {
         native::rgba c = self->get_ink();
         rgb_color color = {c.r, c.g, c.b, c.a};
         view->SetHighColor(color);
@@ -35,8 +35,8 @@ static void apply_bview_state(BView *view,
         cache->current_fg_valid = true;
     }
 
-    // Set pen size if changed
-    if (cache->current_thickness != self->get_pen()) {
+    // Reestablish the pen for the same reason as the foreground.
+    {
         view->SetPenSize(self->get_pen());
         cache->current_thickness = self->get_pen();
     }
@@ -63,7 +63,9 @@ static void with_locked_view(BView *view, function_type &&function) {
     if (!already_locked && !looper->Lock())
         return;
 
+    view->PushState();
     function(view);
+    view->PopState();
 
     if (!already_locked)
         looper->Unlock();
@@ -136,6 +138,7 @@ namespace native
             return *this;
 
         with_locked_view(cache->view, [&](BView *view) {
+            apply_bview_state(view, this, cache);
             rgb_color c = {color.r, color.g, color.b, color.a};
             view->SetHighColor(c);
 
@@ -198,6 +201,7 @@ namespace native
             if (fh)
                 view->SetFont(&fh->bfont);
 
+            view->SetDrawingMode(B_OP_OVER);
             view->DrawString(
                 text.c_str(),
                 BPoint(p.x, p.y + get_font_metrics().ascent));

@@ -164,8 +164,10 @@ namespace native
                 std::max(0, static_cast<int>(_bounds.d.h)-1));
             view->SetInsets(0);
             view->SetSplitterSize(get_splitter_size());
-            auto *first = new BView("native_split_first", B_WILL_DRAW);
-            auto *second = new BView("native_split_second", B_WILL_DRAW);
+            auto *first = new BView("native_split_first",
+                B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE);
+            auto *second = new BView("native_split_second",
+                B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE);
             first->SetViewUIColor(B_PANEL_BACKGROUND_COLOR);
             second->SetViewUIColor(B_PANEL_BACKGROUND_COLOR);
             view->AddChild(first, get_ratio());

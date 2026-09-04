@@ -14,6 +14,7 @@
 #include <unordered_set>
 
 #include "table_visible_rows.h"
+#include "table_render.h"
 
 namespace native
 {
@@ -226,27 +227,16 @@ namespace native
             on_selection_change.emit(_selection);
     }
 
-    std::size_t table_view::rows_per_page() const {
-        const int header = _header_visible ? _native_header_height : 0;
-        int available = std::max(
-            1, static_cast<int>(_bounds.d.h) - header);
+    std::size_t table_view::rows_per_page(bool include_partial) const {
+        const int available = std::max<int>(
+            1, detail::table_body_bounds(*this, _theme_metrics).d.h);
         const int height = _row_height
                                ? static_cast<int>(*_row_height)
                                : _native_row_height;
-        int content_width = 0;
-        for (const table_column &column : _columns) {
-            if (column.visible)
-                content_width += column.width;
-        }
-        const bool horizontal =
-            _horizontal_policy == scrollbar_policy::always ||
-            (_horizontal_policy == scrollbar_policy::automatic &&
-             content_width > static_cast<int>(_bounds.d.w));
-        if (horizontal)
-            available = std::max(
-                1, available - std::max(1, _theme_metrics.scrollbar_extent));
+        const int rounding = _theme_metrics.table_fit_visible_rows || include_partial
+            ? std::max(1, height) - 1 : 0;
         return static_cast<std::size_t>(
-            std::max(1, (available + std::max(1, height) - 1) /
+            std::max(1, (available + rounding) /
                             std::max(1, height)));
     }
 
@@ -289,7 +279,7 @@ namespace native
         if (count == 0)
             return {};
         const std::size_t first = std::min(_vertical_row, count - 1);
-        return {first, std::min(rows_per_page(), count - first)};
+        return {first, std::min(rows_per_page(true), count - first)};
     }
 
     std::optional<table_row_id>
@@ -512,7 +502,8 @@ namespace native
                 content_width += column.width;
         }
         const int horizontal_maximum = std::max(
-            0, content_width - static_cast<int>(_bounds.d.w));
+            0, content_width - static_cast<int>(
+                detail::table_body_bounds(*this, _theme_metrics).d.w));
         const int horizontal = std::clamp(
             horizontal_offset, 0, horizontal_maximum);
         if (_vertical_row == vertical &&

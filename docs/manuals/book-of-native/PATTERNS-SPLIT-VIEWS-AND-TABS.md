@@ -46,6 +46,11 @@ portable geometry and renderer. WINGs exposes only top tabs, so Window Maker
 keeps `WMTabView` for framed top placement and uses a WINGs-matched Native
 renderer for bottom, left, right, and strip-only placement.
 
+Haiku uses `BTabView` on all four edges. Its own rotated-label renderer draws
+side-tab text directly, and label-sized widths keep short vertical strips
+usable. Split pane hosts and painted lists request full repaint on resize so
+the previous trailing borders are erased as the divider moves.
+
 Window Maker also keeps `WMSplitView` fully native. Size notifications from
 its pane views update the portable ratio after the current WINGs dispatch,
 then resize both borrowed controls to the exact native dimensions of their

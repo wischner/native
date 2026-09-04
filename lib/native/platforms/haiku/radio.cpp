@@ -105,6 +105,7 @@ namespace native
                                       _text.c_str(),
                                       self);
             v->SetValue(_selected ? B_CONTROL_ON : B_CONTROL_OFF);
+            v->Hide();
             parent->AddChild(v);
         });
         if (!v)

@@ -24,6 +24,7 @@
 #include <native.h>
 
 #include "collection_view.h"
+#include "table_scrollbars.h"
 #include "../../control_render_access.h"
 #include "globals.h"
 
@@ -76,7 +77,7 @@ namespace
                             column.width,
                             column.min_width,
                             column.max_width,
-                            alignment_for(column.alignment))
+                            B_ALIGN_LEFT)
             , _owner(owner)
             , _column(column) {}
 
@@ -106,16 +107,29 @@ namespace
             if (value->group != 0) {
                 native::table_model *model = _owner.get_model();
                 if (model) {
-                    const auto group = group_for_row(
+                    auto group = group_for_row(
                         *model, value->model_row);
                     if (group) {
+                        // Native outline owns the latch. Paint each field
+                        // as a clipped portion of one full-width group row.
+                        group->collapsible = false;
+                        const BRect viewport = target->Bounds();
+                        const float left = std::max(15.0f,
+                            haiku::table_view_bindings.object_from_handle(
+                                &_owner)->column_view->LatchWidth());
+                        native::rect group_bounds(
+                            static_cast<native::coord>(left),
+                            cell_bounds.p.y,
+                            static_cast<native::dim>(std::max(0.0f,
+                                viewport.right - left + 1)),
+                            cell_bounds.d.h);
                         native::detail::control_render_access::
                             draw_table_group(
                                 _owner,
                                 graphics,
                                 *appearance,
                                 *group,
-                                cell_bounds,
+                                group_bounds,
                                 state);
                     }
                 }
@@ -124,6 +138,9 @@ namespace
             native::table_cell cell;
             cell.text = value->text();
             cell.image = value->image();
+            native::detail::control_render_access::draw_table_row_background(
+                _owner, graphics, *appearance, value->row, value->model_row,
+                cell_bounds, state);
             native::detail::control_render_access::draw_table_cell(
                 _owner,
                 graphics,
@@ -154,24 +171,19 @@ namespace
         native::table_view &_owner;
         native::table_column _column;
 
-        static alignment alignment_for(
-            native::table_alignment value) {
-            if (value == native::table_alignment::center)
-                return B_ALIGN_CENTER;
-            if (value == native::table_alignment::end)
-                return B_ALIGN_RIGHT;
-            return B_ALIGN_LEFT;
-        }
     };
 
     class native_data_row : public BRow
     {
     public:
-        native_data_row(native::table_row_id id, float height)
+        native_data_row(native::table_row_id id, std::size_t model_row,
+                        float height)
             : BRow(height)
-            , id(id) {}
+            , id(id)
+            , model_row(model_row) {}
 
         native::table_row_id id;
+        std::size_t model_row;
     };
 
     class native_group_row final : public BRow
@@ -209,6 +221,67 @@ namespace
 
         void set_suppress(bool suppress) {
             _suppress = suppress;
+        }
+
+        // Column widths exclude their one-pixel dividers and the outline
+        // margin; neither those nor the native scrollbar is data space.
+        void fit_last_column() {
+            if (!_owner.get_fill_last_column() || !ScrollView()) return;
+            BColumn *last = nullptr;
+            float preceding = std::max(15.0f, LatchWidth());
+            for (int32 index = 0; index < CountColumns(); ++index) {
+                BColumn *column = ColumnAt(index);
+                if (!column || !column->IsVisible()) continue;
+                if (last) preceding += last->Width() + 1;
+                last = column;
+            }
+            if (last) {
+                const auto &columns = _owner.get_columns();
+                const float requested = columns[last->LogicalFieldNum()].width;
+                last->SetWidth(std::max(requested,
+                    ScrollView()->Bounds().Width() - preceding));
+            }
+        }
+
+        void FrameResized(float width, float height) override {
+            BColumnListView::FrameResized(width, height);
+            fit_last_column();
+        }
+
+        void DrawLatch(BView *target, BRect frame,
+                       LatchType type, BRow *row) override {
+            target->PushState();
+            if (dynamic_cast<native_group_row *>(row)) {
+                target->SetHighColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+                target->FillRect(frame);
+            } else if (auto *data = dynamic_cast<native_data_row *>(row)) {
+                haiku::scoped_gpx_target drawing_target(_owner, target);
+                auto &graphics = _owner.get_gpx();
+                const native::gpx_state restore(graphics);
+                const native::rect gutter(0,
+                    static_cast<native::coord>(frame.top),
+                    static_cast<native::dim>(frame.right + 1),
+                    static_cast<native::dim>(frame.Height() + 1));
+                graphics.set_clip(gutter);
+                auto appearance = native::theme::create(graphics);
+                native::theme::state state;
+                const auto selected = _owner.get_selected_rows();
+                state.selected = std::find(selected.begin(), selected.end(),
+                    data->id) != selected.end();
+                native::detail::control_render_access::draw_table_row_background(
+                    _owner, graphics, *appearance, data->id, data->model_row,
+                    gutter, state);
+            }
+            BColumnListView::DrawLatch(target, frame, type, row);
+            const auto grid = _owner.get_grid_lines();
+            if (grid == native::table_grid_lines::horizontal ||
+                grid == native::table_grid_lines::both) {
+                auto appearance = native::theme::create(_owner.get_gpx());
+                const auto color = appearance->get_separator_color();
+                target->SetHighColor({color.r, color.g, color.b, color.a});
+                target->StrokeLine(BPoint(0, frame.bottom), frame.RightBottom());
+            }
+            target->PopState();
         }
 
         void SelectionChanged() override {
@@ -371,20 +444,7 @@ namespace
                 view.AddColumn(column, static_cast<int32>(index));
                 view.SetColumnVisible(column, columns[index].visible);
             }
-            if (table.get_fill_last_column()) {
-                BColumn *last = nullptr;
-                float total = 0.0f;
-                for (int32 index = 0; index < view.CountColumns(); ++index) {
-                    BColumn *column = view.ColumnAt(index);
-                    if (!column || !column->IsVisible())
-                        continue;
-                    total += column->Width();
-                    last = column;
-                }
-                const float available = view.Bounds().Width() + 1.0f;
-                if (last && available > total)
-                    last->SetWidth(last->Width() + available - total);
-            }
+            view.fit_last_column();
 
             native::table_model *model = table.get_model();
             if (!model) {
@@ -392,20 +452,22 @@ namespace
                 return;
             }
             const float row_height = static_cast<float>(
-                table.get_row_height().value_or(20));
+                table.get_row_height().value_or(
+                    native::theme::create(table.get_gpx())->defaults().table_row_height)
+                - 1);
             for (std::size_t index = 0;
                  index < model->group_count(); ++index) {
                 const native::table_group group = model->group(index);
                 auto *row = new native_group_row(
                     group.id, group.collapsible, row_height);
-                if (!columns.empty()) {
+                for (std::size_t column = 0; column < columns.size(); ++column) {
                     row->SetField(new native_table_field(
                                       group.title,
                                       nullptr,
                                       native::invalid_table_row_id,
                                       group.first_row,
                                       group.id),
-                                  0);
+                                  static_cast<int32>(column));
                 }
                 view.AddRow(row);
                 binding.group_rows.push_back(row);
@@ -414,7 +476,7 @@ namespace
             for (std::size_t row_index = 0;
                  row_index < model->row_count(); ++row_index) {
                 auto *row = new native_data_row(
-                    model->row_id(row_index), row_height);
+                    model->row_id(row_index), row_index, row_height);
                 for (std::size_t column = 0;
                      column < columns.size(); ++column) {
                     const native::table_cell cell = model->cell(
@@ -562,6 +624,11 @@ namespace native
         }
         haiku::table_view_bindings.register_pair(self, binding);
         self->synchronize_theme_metrics();
+        if (!binding->native_table) {
+            with_locked_view(binding->view, [&] {
+                haiku::create_table_scrollbars(*self);
+            });
+        }
         if (binding->native_table) {
             rebuild_native(*self);
             self->apply_selection();

@@ -76,7 +76,10 @@ that relief because the WINGs scrollers carry their own frames.
 Library-painted adapters also draw their outer frame after the row pass, use a
 gentle theme-provided gray for alternating rows, and distribute the last
 visible page through the viewport so every row is complete without leaving a
-fixed empty strip.
+fixed empty strip. This fitting is controlled by
+`theme::metrics::table_fit_visible_rows`. Haiku turns it off to keep
+materialized and virtual row heights identical; a final row may be partially
+visible, just as in its native table. Both Haiku modes use native scrollbars.
 Their final fitted header covers the top-right area above a vertical scrollbar.
 Scrollbars include arrow step buttons and a gripped thumb with matching raised
 relief, and the table frame is drawn after all of them so the right and bottom

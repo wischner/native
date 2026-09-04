@@ -15,7 +15,6 @@
 
 #include <native.h>
 
-#include "collection_view.h"
 #include "globals.h"
 
 namespace
@@ -91,11 +90,14 @@ namespace
                    : nullptr;
     }
 
-    bool uses_native_tabs(const native::tab_view &control) {
-        return control.get_tab_placement() ==
-                   native::tab_placement::top ||
-               control.get_tab_placement() ==
-                   native::tab_placement::bottom;
+    BTabView::tab_side native_side(native::tab_placement placement) {
+        switch (placement) {
+        case native::tab_placement::top: return BTabView::kTopSide;
+        case native::tab_placement::bottom: return BTabView::kBottomSide;
+        case native::tab_placement::left: return BTabView::kLeftSide;
+        case native::tab_placement::right: return BTabView::kRightSide;
+        }
+        return BTabView::kTopSide;
     }
 
     void destroy_borrowed_contents(native::tab_view &control) {
@@ -120,15 +122,10 @@ namespace
         binding.view = nullptr;
         binding.tabs = nullptr;
         binding.pages.clear();
-        binding.visible_page = -1;
     }
 
     void create_host(native::tab_view &control,
                      haiku::haiku_tab_view &binding) {
-        if (!uses_native_tabs(control)) {
-            binding.view = haiku::create_collection_view(control);
-            return;
-        }
         BView *parent = haiku::parent_view(
             control.get_parent(), &control);
         if (!parent || !parent->Window()) {
@@ -138,11 +135,7 @@ namespace
         native_tab_view *view = nullptr;
         locked(parent->Window(), [&] {
             view = new native_tab_view(&control);
-            view->SetTabSide(
-                control.get_tab_placement() ==
-                        native::tab_placement::bottom
-                    ? BTabView::kBottomSide
-                    : BTabView::kTopSide);
+            view->SetTabSide(native_side(control.get_tab_placement()));
             view->SetBorder(control.get_page_frame_visible()
                                 ? B_FANCY_BORDER
                                 : B_NO_BORDER);
@@ -162,10 +155,11 @@ namespace
 
     void rebuild_native(native::tab_view &control,
                         native_tab_view &view) {
-        view.SetTabSide(
-            control.get_tab_placement() == native::tab_placement::bottom
-                ? BTabView::kBottomSide
-                : BTabView::kTopSide);
+        view.SetTabSide(native_side(control.get_tab_placement()));
+        view.SetTabWidth(control.get_tab_placement() ==
+                native::tab_placement::left || control.get_tab_placement() ==
+                native::tab_placement::right
+                    ? B_WIDTH_FROM_LABEL : B_WIDTH_AS_USUAL);
         view.SetBorder(control.get_page_frame_visible()
                            ? B_FANCY_BORDER
                            : B_NO_BORDER);
@@ -179,8 +173,6 @@ namespace
             haiku::tab_view_bindings.object_from_handle(&control);
         if (binding)
             binding->pages.clear();
-        if (binding)
-            binding->visible_page = -1;
         view._suppress = true;
         while (view.CountTabs() > 0) {
             BTab *tab = view.RemoveTab(view.CountTabs() - 1);
@@ -210,37 +202,6 @@ namespace
         view.Invalidate();
     }
 
-    void rebuild_portable(native::tab_view &control,
-                          haiku::haiku_tab_view &binding) {
-        destroy_borrowed_contents(control);
-        BWindow *window = binding.view ? binding.view->Window() : nullptr;
-        locked(window, [&] {
-            for (BView *page : binding.pages) {
-                page->RemoveSelf();
-                delete page;
-            }
-            binding.pages.clear();
-            const native::rect content = control.get_content_bounds();
-            for (std::size_t index = 0;
-                 index < control.get_item_count(); ++index) {
-                BView *page = new BView(
-                    BRect(content.p.x,
-                          content.p.y,
-                          std::max<int>(content.p.x,
-                                        content.x2() - 1),
-                          std::max<int>(content.p.y,
-                                        content.y2() - 1)),
-                    "native_tab_page",
-                    B_FOLLOW_NONE,
-                    B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE);
-                page->SetViewUIColor(B_PANEL_BACKGROUND_COLOR);
-                page->Hide();
-                binding.view->AddChild(page);
-                binding.pages.push_back(page);
-            }
-        });
-        binding.visible_page = -1;
-    }
 } // namespace
 
 namespace native
@@ -250,18 +211,8 @@ namespace native
         auto *binding = haiku::tab_view_bindings.object_from_handle(this);
         if (!binding)
             throw std::runtime_error("Haiku: missing tab-view binding.");
-        const bool native = uses_native_tabs(*this);
-        if (!binding->view || native != (binding->tabs != nullptr)) {
-            if (binding->view) {
-                delete _gpx;
-                _gpx = nullptr;
-                destroy_host(*this, *binding);
-            }
+        if (!binding->view) {
             create_host(*this, *binding);
-            // The binding is installed before create_host() because the
-            // refresh path needs to find it.  Publish the host afterwards
-            // so custom left/right tab views can obtain their BWindow while
-            // painting instead of falling through to the top-level lookup.
             native::detail::wnd_peer_access::assign_content(
                 *this, binding->view);
         }
@@ -272,8 +223,6 @@ namespace native
             });
             _tab_height = std::max(
                 1, static_cast<int>(std::ceil(view->TabHeight())));
-        } else {
-            rebuild_portable(*this, *binding);
         }
     }
 
@@ -283,27 +232,10 @@ namespace native
         if (!binding || !binding->view)
             throw std::runtime_error("Haiku: missing tab-view binding.");
         locked(binding->view->Window(), [&] {
-            if (view) {
-                view->_suppress = true;
-                if (get_selected_index() >= 0)
-                    view->Select(get_selected_index());
-                view->_suppress = false;
-                return;
-            }
-            const int selected = get_selected_index();
-            if (binding->visible_page == selected)
-                return;
-            if (binding->visible_page >= 0 &&
-                binding->visible_page <
-                    static_cast<int>(binding->pages.size())) {
-                binding->pages[static_cast<std::size_t>(
-                    binding->visible_page)]->Hide();
-            }
-            if (selected >= 0 &&
-                selected < static_cast<int>(binding->pages.size())) {
-                binding->pages[static_cast<std::size_t>(selected)]->Show();
-            }
-            binding->visible_page = selected;
+            view->_suppress = true;
+            if (get_selected_index() >= 0)
+                view->Select(get_selected_index());
+            view->_suppress = false;
         });
     }
 

@@ -21,10 +21,18 @@ Their base implementations emit `on_selection_change`, `on_text_change`, and
 the normal signal is still wanted.
 
 Backends use their standard combo widget where one exists: Win32 `COMBOBOX`,
-AppKit `NSComboBox`, Motif `XmComboBox`, Haiku `BOptionPopUp`, WINGs popup and
+AppKit `NSComboBox`, Motif `XmComboBox`, WINGs popup and
 text controls, and XView choice and text controls. Athena composes its standard
 text, menu-button, and menu widgets. SDL2 and GEMix route the control through
 their existing backend-owned theme and input systems.
+Haiku composes native buttons, `BTextControl`, and `BPopUpMenu`. A
+selection-only button paints through the system menu-field primitives;
+editable mode places its arrow child inside one full-width native text border,
+reserving editor space to keep text clear of the arrow. Both popup styles
+open immediately below the field and match its width, rather than following
+`BMenuField`'s selected-item overlay positioning. Presentation switching tests each
+child's own hidden state, not inherited window visibility, and editing targets
+are assigned after attachment to the window looper.
 In Window Maker editable mode, the arrow-only native popup button is inset at
 the right edge of the full-width native text field. It does not consume a
 second control-sized region or extend beyond the field. Its WINGs menu remains

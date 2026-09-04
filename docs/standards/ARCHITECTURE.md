@@ -936,9 +936,16 @@ Window Maker table and collection headers have a white left edge only; their top
 edge remains black, matching the reference Task Manager rather than an
 ordinary raised-button relief.
 
-Library-painted tables distribute the final visible page over the complete
-body when the viewport height is not an exact multiple of row height. Every
-visible row is complete and no unpainted strip remains below the items. Their
+Library-painted tables normally distribute the final visible page over the
+complete body when its height is not an exact multiple of row height.
+`theme::metrics::table_fit_visible_rows` defaults to true; Haiku disables it
+to preserve the same row pitch as its native materialized table, clipping the
+last row at the viewport edge instead of compressing every row. Both Haiku
+table modes use real `BScrollBar` controls, and honor alternating-row state.
+Native-pitch scrolling counts full rows at its endpoint so the final model
+row can be revealed completely. Painting, paging, and native scrollbar hosts
+share the same viewport geometry, including scrollbar reservations.
+With page fitting enabled every visible row is complete. Their
 complete outer frame is the last paint stage. A portable scrollbar includes
 decrement and increment arrow buttons, a page trough, and a gripped thumb; all
 parts use the active backend palette.

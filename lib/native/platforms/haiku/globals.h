@@ -26,7 +26,7 @@ class BMenuBar;
 class BCheckBox;
 class BRadioButton;
 class BListView;
-class BOptionPopUp;
+class BScrollBar;
 class BTextControl;
 class BOutlineListView;
 class BListItem;
@@ -134,7 +134,6 @@ namespace haiku
         BView *view = nullptr;
         BTabView *tabs = nullptr;
         std::vector<BView *> pages;
-        int visible_page = -1;
     };
     struct haiku_split_view
     {
@@ -146,7 +145,8 @@ namespace haiku
     struct haiku_combo_box
     {
         BView *view = nullptr;
-        BOptionPopUp *popup = nullptr;
+        BButton *choice = nullptr;
+        BButton *arrow = nullptr;
         BTextControl *text = nullptr;
         bool suppress = false;
     };
@@ -154,6 +154,8 @@ namespace haiku
     {
         BView *view = nullptr;
         BColumnListView *column_view = nullptr;
+        BScrollBar *vertical_scrollbar = nullptr;
+        BScrollBar *horizontal_scrollbar = nullptr;
         std::vector<BRow *> rows;
         std::vector<native::table_row_id> row_ids;
         std::vector<BRow *> group_rows;

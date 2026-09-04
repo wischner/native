@@ -41,12 +41,24 @@ namespace
                         "native_list",
                         B_SINGLE_SELECTION_LIST,
                         B_FOLLOW_LEFT | B_FOLLOW_TOP,
-                        B_WILL_DRAW | B_NAVIGABLE | B_FRAME_EVENTS)
+                        B_WILL_DRAW | B_NAVIGABLE | B_FRAME_EVENTS |
+                            B_FULL_UPDATE_ON_RESIZE)
             , _owner(o) {}
         void SelectionChanged() override {
             BListView::SelectionChanged();
             if (!_suppress && _owner)
                 _owner->on_native_selection(CurrentSelection());
+            Invalidate();
+        }
+
+        // BListView also draws items directly during selection. Route that
+        // work through Draw so native and portable row painting never mix.
+        void DrawItem(BListItem *item, BRect frame,
+                      bool complete = false) override {
+            if (!_owner || !_owner->get_created())
+                item->DrawItem(this, frame, complete);
+            else
+                Invalidate(frame);
         }
 
         void Draw(BRect update) override {
@@ -130,6 +142,7 @@ namespace native
                 v->Select(_selected_index);
                 v->_suppress = false;
             }
+            v->Hide();
             parent->AddChild(v);
         });
         if (!v)

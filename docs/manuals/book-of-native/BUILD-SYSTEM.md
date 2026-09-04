@@ -31,6 +31,11 @@ cmake --build build/cmake --target docker-haiku
 This is the current reproducible path used for Linux, Windows, and Haiku
 cross-builds.
 
+The library source list selects one implementation of checkbox painting:
+`check_drawing.cpp` retains the default stages for SDL2 and other backends;
+Haiku instead supplies all stages in `platforms/haiku/check.cpp`. The common
+`check.cpp` contains only the portable property/event model.
+
 ## Build directories
 
 The repository uses separate build directories per backend:
@@ -127,10 +132,10 @@ executables:
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
-| `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; native resources are simulated, so no display is needed | Every hosted build |
-| `native_table_model_tests` | `table_model`/`table_store` behavior | Every hosted build |
+| `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
+| `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
-| `native_collection_runtime_tests` | Live collection and source-editor lifecycle | Registered as a test on SDL2 |
+| `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered as a test on SDL2; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
 

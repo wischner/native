@@ -30,6 +30,7 @@ set(SRC_FILES
     icon_view.cpp
     tree_view.cpp
     table_view.cpp
+    table_scrollbars.cpp
     clipboard.cpp
     text_edit.cpp
     code_edit.cpp

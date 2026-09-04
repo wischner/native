@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-09-04.
+Audit date: 2026-09-05.
 
 ## Legend
 
@@ -45,7 +45,7 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | Windows, macOS, and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
-| Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` with native scrollbar hosting is the supported public-API composition. |
+| Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` uses portable scrolling with `BControlLook` scrollbar parts and the system thumb preference. |
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
 | X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
 | All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
@@ -218,22 +218,28 @@ in those backends.
 
 ## Haiku
 
+Rechecked 2026-09-05 in the Haiku VM: selection/resize repainting, collection
+disclosure, table headings/groups/grid gutters, native four-edge tabs, and
+the composed combo controls.
+Basic native button/check/radio/list hosts remain hidden until their peer
+registration is complete, preventing early custom-draw callbacks.
+
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `BWindow`; portable owner graph and result contract supplement native subset/modal behavior. |
 | `wnd` | **H** | `BView` child host with portable paint/input routing. |
 | `main_menu` | **N** | `BMenuBar`, `BMenu`, `BMenuItem`, and native separators/shortcuts. |
 | `button` | **H** | `BButton` subclass with a library theme-drawing override. |
-| `check` | **H** | `BCheckBox` subclass with a library theme-drawing override. |
+| `check` | **H** | `BCheckBox` subclass with Haiku-only drawing stages; indicator and label use the same `BControlLook` primitives as custom themed checks. No SDL2/default checkbox painter is linked into Haiku. |
 | `radio` | **H** | `BRadioButton` subclass with a library theme-drawing override. |
-| `list` | **N/H** | `BListView`/`BStringItem`; a subclass adjusts background and selection presentation. |
-| `combo_box` | **N/H** | Selection-only uses `BOptionPopUp`; editable mode composes `BTextControl` and `BOptionPopUp`. |
+| `list` | **N/H** | `BListView`/`BStringItem`; selection invalidates one shared paint path, and resizing repaints the entire list to erase old borders. |
+| `combo_box` | **H** | Native buttons and `BTextControl` with `BControlLook` frames; editable arrow is a child inside the shared text border. Both native `BPopUpMenu` lists match the field width and open below it. Child visibility uses local hide counts, independent of hidden ancestors. |
 | `text_edit` | **N/H** | `BTextView` and optional `BScrollView`; subclass supplies portable validation. |
-| `accordion` | **C** | Library-painted collection `BView`. |
-| `tab_view` | **N/H** | Native `BTabView`/`BTab` for top and bottom, using `B_NO_BORDER` plus one separator in strip-only mode; directional `BView` host for rotated side tabs. |
-| `icon_view` | **C** | Library-painted collection `BView` with native scrollbar objects in its host. |
-| `tree_view` | **N/H** | `BOutlineListView`, `BStringItem`, and `BScrollView`; custom item drawing adds portable icons. |
-| `table_view` | **N/H** | `BColumnListView`, `BTitledColumn`, and `BRow`; virtual mode retains a custom collection fallback. |
+| `accordion` | **C** | Library-painted collection `BView`, with background clearing on every invalid region; native-themed headers omit the generic blue focus frame. |
+| `tab_view` | **N/H** | Native `BTabView`/`BTab` on all four sides, including native rotated text and label-sized side tabs; `B_NO_BORDER` plus one separator in strip-only mode. |
+| `icon_view` | **C** | Library-painted collection `BView`; portable scrollbar geometry uses native `BControlLook` parts and system thumb style. |
+| `tree_view` | **N/H** | `BOutlineListView`, `BStringItem`, and native `BScrollView`; custom item drawing adds portable icons and always repaints native latches. |
+| `table_view` | **N/H** | `BColumnListView`, `BTitledColumn`, and `BRow`; group fields span all columns, grid lines extend through the latch gutter, and last-column fitting excludes native chrome. Virtual mode uses matching native headers and actual `BScrollBar` children. Both modes honor row-background settings and retain the same native row pitch. |
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
 | `panel` | **N** | Child `BView` with the panel background view color and no `B_WILL_DRAW`; the app_server fills it and it is a real parent view. |

@@ -547,7 +547,7 @@ namespace native
             std::size_t model_row) const;
         void select_known_row(std::size_t model_row, bool emit);
         void ensure_model_row_visible(std::size_t model_row);
-        std::size_t rows_per_page() const;
+        std::size_t rows_per_page(bool include_partial = false) const;
         void validate_columns(
             const std::vector<table_column> &columns) const;
         void validate_selection(

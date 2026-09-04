@@ -8,6 +8,7 @@
 //
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include <Alignment.h>
@@ -111,8 +112,9 @@ namespace
 
         metrics defaults() const override {
             metrics m;
+            m.table_fit_visible_rows = false;
             m.scrollbar_extent = std::max(
-                1, static_cast<int>(B_H_SCROLL_BAR_HEIGHT));
+                1, static_cast<int>(B_H_SCROLL_BAR_HEIGHT) + 1);
             // The titled-window resize marker reaches 18 pixels into the
             // client edge. Keep the status strip level with that marker;
             // it is intentionally taller than a Haiku scrollbar.
@@ -143,14 +145,16 @@ namespace
                                  height.leading));
             m.menu_bar_height = std::max(20, text_height + 8);
             m.menu_item_height = std::max(18, text_height + 4);
-            m.header_height = std::max(20, text_height + 8);
+            // ColumnListView's title strip includes its bottom pixel.
+            m.header_height = static_cast<int>(std::max(
+                16.0f, std::ceil(be_plain_font->Size() * 1.4f))) + 1;
             m.popup_width = static_cast<int>(be_plain_font->StringWidth(
                                 "MMMMMMMMMMMMMMMMMMMM")) +
                             16;
             m.text_padding_x = 8;
             m.list_item_height = text_height + 2;
-            m.table_row_height = m.list_item_height;
-            m.tab_height = m.header_height;
+            m.table_row_height = std::max(21, text_height + 5);
+            m.tab_height = std::max(20, text_height + 8);
             return m;
         }
 
@@ -396,6 +400,23 @@ namespace
             const native::rect &r,
             native::surface_kind kind,
             const state &s) override {
+            if (kind == native::surface_kind::table_header) {
+                const bool painted = with_view(_g, [&](BView *view) {
+                    const rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+                    const BRect update(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
+                    BRect body(update);
+                    body.bottom--;
+                    body.right--;
+                    be_control_look->DrawButtonBackground(view, body, update,
+                        base, flags_from(s), BPrivate::BControlLook::B_TOP_BORDER |
+                            BPrivate::BControlLook::B_BOTTOM_BORDER);
+                    view->SetHighColor(tint_color(base, B_DARKEN_2_TINT));
+                    view->StrokeLine(update.LeftBottom(), update.RightBottom());
+                    view->StrokeLine(update.RightTop(), update.RightBottom());
+                });
+                if (painted)
+                    return *this;
+            }
             if (kind != native::surface_kind::status &&
                 kind != native::surface_kind::status_part) {
                 return theme::draw_surface(r, kind, s);
@@ -424,6 +445,52 @@ namespace
                     BPoint(update.left, update.bottom - 3.0f));
             });
             return painted ? *this : theme::draw_surface(r, kind, s);
+        }
+
+        theme &draw_focus(const native::rect &r, const state &s) override {
+            const auto *graphics = dynamic_cast<native::gpx_wnd *>(&_g);
+            if (graphics && dynamic_cast<native::accordion *>(graphics->window()))
+                return *this;
+            return draw_focus_fallback(r, s);
+        }
+
+        theme &draw_scrollbar_part(const native::rect &r,
+                                  native::scrollbar_orientation axis,
+                                  native::scrollbar_part part,
+                                  const state &s) override {
+            const bool painted = with_view(_g, [&](BView *view) {
+                const orientation direction = axis ==
+                    native::scrollbar_orientation::horizontal
+                        ? B_HORIZONTAL : B_VERTICAL;
+                const rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+                const rgb_color text = ui_color(B_PANEL_TEXT_COLOR);
+                const BRect update(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
+                BRect body(update);
+                const uint32 flags = flags_from(s) |
+                    (s.disabled ? 0 : BPrivate::BControlLook::B_PARTIALLY_ACTIVATED);
+                if (part == native::scrollbar_part::track) {
+                    be_control_look->DrawScrollBarBackground(view, body,
+                        update, base, flags, direction);
+                } else if (part == native::scrollbar_part::thumb) {
+                    scroll_bar_info info{};
+                    get_scroll_bar_info(&info);
+                    be_control_look->DrawScrollBarThumb(view, body,
+                        update, ui_color(B_SCROLL_BAR_THUMB_COLOR),
+                        flags, direction, info.knob);
+                } else {
+                    const bool decrement = part ==
+                        native::scrollbar_part::decrement;
+                    const int32 arrow = direction == B_HORIZONTAL
+                        ? (decrement ? BPrivate::BControlLook::B_LEFT_ARROW
+                                     : BPrivate::BControlLook::B_RIGHT_ARROW)
+                        : (decrement ? BPrivate::BControlLook::B_UP_ARROW
+                                     : BPrivate::BControlLook::B_DOWN_ARROW);
+                    be_control_look->DrawScrollBarButton(view, body, update,
+                        base, text, flags, arrow, direction, s.pressed);
+                }
+            });
+            return painted ? *this
+                : draw_scrollbar_part_fallback(r, axis, part, s);
         }
 
         theme &draw_disclosure(

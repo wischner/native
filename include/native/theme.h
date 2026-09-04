@@ -117,6 +117,8 @@ namespace native
             // breathing room. An explicit table_view row height overrides
             // this value.
             int table_row_height = 20;
+            // Fit complete rows to the page, or preserve native row pitch.
+            bool table_fit_visible_rows = true;
             // Width of a final inset table-viewport relief drawn after all
             // table parts. Zero leaves the frame to a native peer or theme.
             int table_outer_border_extent = 1;

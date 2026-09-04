@@ -118,6 +118,7 @@ namespace native
             message->AddPointer(haiku::control_owner_field, self);
             btn = new native_button_view(
                 frame, _text.c_str(), message, self);
+            btn->Hide();
             parent->AddChild(btn);
         });
 

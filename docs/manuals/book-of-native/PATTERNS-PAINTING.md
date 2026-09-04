@@ -185,6 +185,17 @@ state should restore it before returning when a caller is expected to continue
 using the same context. Theme primitives have a stronger guarantee: they must
 preserve all caller-visible `gpx` state.
 
+Native view state also belongs to the caller. Haiku saves and restores the
+`BView` state for each window-graphics primitive, including clipping, color,
+pen, font, and drawing mode. Foreground and pen state are established on each
+call because native widgets and `BControlLook` can change them outside the
+graphics cache. Text draws over the actual destination rather than using an
+unrelated low-color background for antialiasing.
+Haiku controls stay locally hidden while their peer bindings are registered;
+the later `show()` exposes them, so a window thread cannot enter their custom
+paint path before a graphics target exists. Lists also defer direct native
+selection painting to the full-control invalidation path.
+
 ## Repainting persistent content
 
 A window is not a durable bitmap. Native systems can ask it to repaint after

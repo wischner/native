@@ -1,6 +1,7 @@
 //
 // Tests backend-neutral window properties and hierarchy behavior.
-// Native resources are not created, so the test requires no display.
+// Controls are not created. Haiku still needs an app_server connection
+// for native font and theme queries.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -22,6 +23,7 @@
 #include <vector>
 
 #if defined(__HAIKU__)
+#include <Application.h>
 #include <ScrollBar.h>
 #endif
 
@@ -1679,7 +1681,7 @@ namespace
                "theme reports usable control metrics");
 #if defined(__HAIKU__)
         expect(metrics.scrollbar_extent ==
-                       static_cast<int>(B_H_SCROLL_BAR_HEIGHT) &&
+                       static_cast<int>(B_H_SCROLL_BAR_HEIGHT) + 1 &&
                    metrics.status_bar_height == 18,
                "Haiku status bars align with the system resize handle");
 #endif
@@ -2921,6 +2923,9 @@ namespace
 } // namespace
 
 int main() {
+#if defined(__HAIKU__)
+    BApplication application("application/x-vnd.native-window-api-tests");
+#endif
     test_cached_properties();
     test_cursor_property();
     test_menu_label_metadata();

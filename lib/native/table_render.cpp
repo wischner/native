@@ -104,6 +104,7 @@ namespace native::detail
         {
             int header = 0;
             int row = 20;
+            bool fit_rows = true;
             int scrollbar = 16;
             int content_width = 0;
             table_column_id fill_column = 0;
@@ -113,9 +114,10 @@ namespace native::detail
             rect body;
         };
 
-        geometry table_geometry(table_view &control,
+        geometry table_geometry(const table_view &control,
                                 const theme::metrics &metrics) {
             geometry result;
+            result.fit_rows = metrics.table_fit_visible_rows;
             result.header = control.get_header_visible()
                                 ? metrics.header_height
                                 : 0;
@@ -252,7 +254,7 @@ namespace native::detail
             const std::uint64_t nominal_height =
                 static_cast<std::uint64_t>(count) *
                 static_cast<std::uint64_t>(layout.row);
-            if (count == 0 || nominal_height <= layout.body.d.h) {
+            if (!layout.fit_rows || count == 0 || nominal_height <= layout.body.d.h) {
                 return rect(
                     layout.body.p.x,
                     static_cast<coord>(
@@ -286,6 +288,11 @@ namespace native::detail
         }
 
     } // namespace
+
+    rect table_body_bounds(const table_view &control,
+                           const theme::metrics &metrics) {
+        return table_geometry(control, metrics).body;
+    }
 
     void draw_table_view(table_view &control, gpx &graphics) {
         auto saved = graphics.save_state();
@@ -446,7 +453,7 @@ namespace native::detail
                                     point position,
                                     bool &horizontal,
                                     int &grab_offset) {
-        theme::metrics metrics;
+        theme::metrics metrics = control._theme_metrics;
         metrics.header_height = control._native_header_height;
         metrics.table_row_height = control._native_row_height;
         const geometry layout = table_geometry(control, metrics);
@@ -475,7 +482,7 @@ namespace native::detail
                               point position,
                               bool horizontal,
                               int grab_offset) {
-        theme::metrics metrics;
+        theme::metrics metrics = control._theme_metrics;
         metrics.header_height = control._native_header_height;
         metrics.table_row_height = control._native_row_height;
         const geometry layout = table_geometry(control, metrics);
@@ -525,7 +532,7 @@ namespace native::detail
         // and deliberately have no graphics binding of their own. Hit-test
         // with the metrics synchronized during native creation instead of
         // trying to manufacture a child graphics context.
-        theme::metrics metrics;
+        theme::metrics metrics = control._theme_metrics;
         metrics.header_height = control._native_header_height;
         metrics.table_row_height = control._native_row_height;
         const geometry layout = table_geometry(control, metrics);
@@ -592,7 +599,7 @@ namespace native::detail
             static_cast<std::uint64_t>(visible.count) *
             static_cast<std::uint64_t>(layout.row);
         const std::size_t offset =
-            visible.count > 0 && nominal_height > layout.body.d.h
+            layout.fit_rows && visible.count > 0 && nominal_height > layout.body.d.h
                 ? std::min<std::size_t>(
                       visible.count - 1,
                       static_cast<std::size_t>(

@@ -55,13 +55,13 @@ Legend:
 | Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | `list_box` compatibility name | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
-| Selection-only/editable `combo_box` | Athena (build tested) | Themed (tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs centered inset-arrow composite (tested) | Themed (build tested) | COMBOBOX (build tested) | BOptionPopUp composite (tested) | NSComboBox (untested) | WIP |
+| Selection-only/editable `combo_box` | Athena (build tested) | Themed (tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs centered inset-arrow composite (tested) | Themed (build tested) | COMBOBOX (build tested) | Native-control composite, below-field popup (tested) | NSComboBox (untested) | WIP |
 | Non-client rulers and status bars | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Structural `panel` container | Xaw `Form` child (build tested) | Emulated nested region (tested) | `XmForm` child (build tested) | XView Panel (build tested) | WINGs flat frame (build tested) | GEM themed region (build tested) | Child HWND, control-host brush (build tested) | Child `BView` container (build tested) | Child `NSView` container (build tested) | WIP |
 | Paintable `canvas` surface | Athena drawable host (build tested) | Emulated nested region (tested) | Motif `XmDrawingArea` (build tested) | XView Panel with paint window (build tested) | WINGs flat frame (build tested) | GEM offset region (build tested) | Child HWND (build tested) | Child `BView` (build tested) | Child `NSView` (build tested) | WIP |
 | Canvas 32-bit content bounds, clamping, and themed scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
-| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (build tested) | Win32 tab control and separator (build tested) | `BTabView` top/bottom, directional side host (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
+| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (build tested) | Win32 tab control and separator (build tested) | `BTabView` on all four sides with native rotated labels (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
 | Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline for both presentations (tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
 | Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (build tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
@@ -168,7 +168,7 @@ Legend:
   Other toolkit ports request only viewport rows through their native-look
   table hosts. Every adapter fills unused width with the final visible column
   by default; library-painted hosts also fill the header corner above the
-  vertical scrollbar, keep every final-page row complete, and give arrow
+  vertical scrollbar, normally fit complete final-page rows, and give arrow
   buttons and gripped thumbs matching raised relief.
 - `code_edit` keeps UTF-8 source, line indexes, undo records, style runs,
   diagnostics, and markers in the portable document. Every backend hosts the
@@ -220,6 +220,18 @@ Legend:
   graphics target.
 - Haiku runtime checks in this workflow use Docker for the build, then copy the
   binaries to a Haiku machine and launch them there over SSH.
+- The 2026-09-04 Haiku VM walkthrough checked repeated Gallery selection,
+  accordion cycling, always-visible tree disclosure, splitter resizing,
+  materialized table Size headings and values while scrolling, full-width
+  group backgrounds and grid gutters, matching native header/scrollbar parts,
+  all four native tab orientations, and combo typing and popup selection.
+  Haiku graphics isolate native view state around each primitive; painted
+  scrollbars use the system thumb preference rather than a fixed grip.
+- The 2026-09-05 Haiku follow-up corrected checkbox release repainting,
+  alternating rows in both table modes, accordion focus outlines, and combo
+  composition. Both tables now own real native scrollbars and preserve the
+  same row pitch. Combo popups match the field width and open below it;
+  the editable arrow shares the text field's outer frame.
 - A tested drawing row means the implementation is covered by the current
   build/runtime workflow. It does not imply pixel-perfect visual comparison of
   every state on every desktop theme.

@@ -18,6 +18,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "table_scrollbars.h"
 
 namespace
 {
@@ -28,7 +29,8 @@ namespace
             : BView(frame,
                     "native_collection",
                     B_FOLLOW_NONE,
-                    B_WILL_DRAW | B_FRAME_EVENTS | B_NAVIGABLE)
+                    B_WILL_DRAW | B_FRAME_EVENTS | B_NAVIGABLE |
+                        B_FULL_UPDATE_ON_RESIZE)
             , _owner(owner) {
             SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
             SetLowColor(ViewColor());
@@ -36,15 +38,18 @@ namespace
         }
 
         void Draw(BRect update) override {
+            if (auto *table = dynamic_cast<native::table_view *>(&_owner))
+                haiku::refresh_table_scrollbars(*table);
+            PushState();
+            SetDrawingMode(B_OP_COPY);
+            SetHighColor(ViewColor());
+            FillRect(update);
+            PopState();
             // AddChild may schedule the first draw before the portable
             // create path has registered its backend binding. The next
             // invalidation after creation paints through the complete
             // lifecycle state.
             if (!_owner.get_created()) {
-                PushState();
-                SetHighColor(ViewColor());
-                FillRect(update);
-                PopState();
                 return;
             }
             native::rect invalid(

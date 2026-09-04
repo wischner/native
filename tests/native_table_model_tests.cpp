@@ -275,6 +275,33 @@ namespace
                "virtual scrolling exposes the million-row range");
     }
 
+    // Exercise native-pitch paging without depending on a running desktop.
+    void test_native_pitch_scroll_endpoints() {
+        class native_pitch_table : public native::table_view
+        {
+        public:
+            native_pitch_table() : table_view(0, 0, 200, 108) {
+                _theme_metrics.table_fit_visible_rows = false;
+                _theme_metrics.scrollbar_extent = 16;
+            }
+        };
+        million_row_model model;
+        native_pitch_table view;
+        view.set_header_visible(false)
+            .set_row_height(21)
+            .set_columns({native::table_column{1, "Name", 220}})
+            .set_data_mode(native::table_data_mode::virtualized)
+            .set_model(&model);
+        expect(view.get_visible_row_range().count == 5,
+               "native-pitch viewport includes its partial fifth row");
+        view.on_native_scroll(1000000, 1000);
+        expect(view.get_vertical_scroll_row() == 999996 &&
+                   view.get_visible_row_range().count == 4,
+               "the last native-pitch page exposes every final row fully");
+        expect(view.get_horizontal_scroll_offset() == 36,
+               "horizontal scrolling includes the native vertical reservation");
+    }
+
     void test_columns_and_sort_signals() {
         native::table_store store = sample_store();
         native::table_view view;
@@ -350,6 +377,7 @@ int main() {
     test_search();
     test_groups_selection_and_reveal();
     test_virtual_scale();
+    test_native_pitch_scroll_endpoints();
     test_columns_and_sort_signals();
     test_model_reset_after_scroll();
     return failures == 0 ? 0 : 1;

@@ -56,6 +56,11 @@ share one visual contract: the panel background, indicator geometry, stock
 control font, semantic colors, and focus treatment must agree. SDL's emulated
 controls follow this rule directly so theme samples compare pixel-for-pixel
 with ordinary controls.
+Haiku supplies its own checkbox drawing stages entirely within its platform
+backend. Its indicator and label use `BControlLook` through the Haiku theme,
+with separate clips preserving the owner-draw stage boundaries. The default
+checkbox renderer used by SDL2 and other backends is not compiled into Haiku;
+only the public C++ property/event model is shared.
 
 Interaction is also expressed semantically:
 
@@ -163,6 +168,16 @@ collection and table scrollbars share one classic composition: matching raised
 decrement/increment buttons, a page trough, and a gripped thumb. Disclosure
 size remains a backend metric so SDL2 and other compact themes can avoid bulky
 hierarchy marks.
+Haiku icon grids replace fallback scrollbar parts with `BControlLook` drawing
+and read the system knob preference. Both table modes instead own actual
+`BScrollBar` widgets. Their extent includes the final pixel of Haiku's
+inclusive native rectangle. The virtual-table header uses the same native
+button-background recipe as `BColumnListView`. Haiku sets
+`table_fit_visible_rows` to false so table rows keep their native pitch,
+rather than compressing a partially visible page. Its accordion headers omit
+the generic blue focus rectangle; the disclosure mark indicates expansion.
+Native checkboxes invalidate again after mouse tracking ends, so a repaint
+during a change callback cannot leave an unchecked indicator depressed.
 
 ```cpp
 event.g.clear(appearance->get_content_background_color())

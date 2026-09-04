@@ -9,6 +9,7 @@
 #pragma once
 
 #include <native/geometry.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -18,6 +19,10 @@ namespace native
 
 namespace native::detail
 {
+    // Return the body shared by painting, paging, and native scroller hosts.
+    rect table_body_bounds(const table_view &control,
+                           const theme::metrics &metrics);
+
     // Draw a complete table in its own client coordinate space.
     void draw_table_view(table_view &control, gpx &graphics);
 

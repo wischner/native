@@ -46,6 +46,21 @@ rather than becoming a million-widget allocation.
   mode and the Motif-themed compact host for virtual mode.
 - Haiku links its Open Tracker-licensed `BColumnListView` implementation for
   materialized data and uses a `BControlLook` viewport host for virtual data.
+  Materialized group fields paint clipped portions of one full-width row;
+  native latches own disclosure and their gutter continues horizontal grid
+  lines. Last-column fitting subtracts the outline margin, dividers, and native
+  scrollbar from the viewport, including after resize. Heading alignment is
+  independent of right-aligned cell values. Both modes use the compact native
+  title-strip height, native header background, and real `BScrollBar`
+  controls. Virtual scrollbars map logical row positions without constructing
+  native rows and preserve both range endpoints. Both modes honor the same
+  row-background hook, including alternating-row changes in the latch gutter.
+  Their nominal row pitch is identical: the native inclusive `BRow` height is
+  one less than the portable pixel count. Haiku disables page compression so
+  the virtual table retains that pitch even with a partially visible last row.
+  Scroll limits count fully visible rows, allowing the final model row to be
+  revealed completely. Paging, painting, and native scrollbar placement use
+  the same body geometry, including both scrollbar reservations.
 - Athena, XView/OLGX, WINGs, SDL2, and GEM use backend-owned hosts and theme
   resources when their toolkit has no complete table widget. The XView host
   attaches genuine east-side and bottom `Scrollbar` objects to the exact
@@ -68,8 +83,9 @@ unbound child for its own graphics context.
 
 Those hosts paint the complete outer border after headers, rows, and portable
 scrollbars, use a subtle theme-supplied alternate row color, and distribute the
-last visible page across the complete viewport so no row is clipped and no
-empty bottom strip remains. The fitted final header occupies the top-right area
+last visible page across the complete viewport when the theme's
+`table_fit_visible_rows` metric is enabled (the default). Haiku instead clips
+the final row to preserve native row spacing. The fitted final header occupies the top-right area
 above a vertical scrollbar. Portable step arrows and the gripped thumb share
 the same raised relief. Native-widget adapters keep their system scrollbars
 while applying the same final-column fitting policy.

@@ -4,6 +4,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include <algorithm>
 #include <stdexcept>
 #include <CheckBox.h>
 #include <Window.h>
@@ -44,6 +45,13 @@ namespace
             return BCheckBox::Invoke(m);
         }
 
+        void MouseUp(BPoint where) override {
+            BCheckBox::MouseUp(where);
+            // A synchronous change handler can repaint while MouseUp is
+            // still tracking. Repaint once more after tracking ends.
+            Invalidate();
+        }
+
         void Draw(BRect update) override {
             if (!_owner || !_owner->get_created()) {
                 BCheckBox::Draw(update);
@@ -65,7 +73,7 @@ namespace
             native::theme::state state;
             state.disabled = !IsEnabled();
             state.focused = IsFocus();
-            state.pressed = Value() == B_CONTROL_ON;
+            state.pressed = IsTracking();
             native::detail::control_render_access::draw(
                 *_owner, graphics, *appearance, bounds, state);
         }
@@ -76,6 +84,50 @@ namespace
 } // namespace
 namespace native
 {
+    void check::draw_control(gpx &graphics, theme &appearance,
+                             const rect &bounds, const theme::state &state) {
+        if (!bounds.d.w || !bounds.d.h) return;
+        theme::state effective = state;
+        effective.selected = _checked;
+        draw_background(graphics, appearance, bounds, effective);
+        draw_indicator(graphics, appearance, bounds, effective);
+        draw_text(graphics, appearance, bounds, effective);
+        draw_focus(graphics, appearance, bounds, effective);
+    }
+
+    void check::draw_background(gpx &, theme &appearance,
+                                const rect &bounds, const theme::state &) {
+        appearance.draw_surface(bounds, surface_kind::panel, {});
+    }
+
+    void check::draw_indicator(gpx &graphics, theme &appearance,
+                               const rect &bounds, const theme::state &state) {
+        const gpx_state restore(graphics);
+        const int side = std::max(7, std::min(
+            16, static_cast<int>(bounds.d.h) - 2));
+        graphics.set_clip(graphics.get_clip().intersect(rect(
+            bounds.p.x, bounds.p.y,
+            static_cast<dim>(std::min<int>(bounds.d.w, side + 2)), bounds.d.h)));
+        appearance.draw_check(bounds, {}, state);
+    }
+
+    void check::draw_text(gpx &graphics, theme &appearance,
+                          const rect &bounds, const theme::state &state) {
+        const gpx_state restore(graphics);
+        const int side = std::max(7, std::min(
+            16, static_cast<int>(bounds.d.h) - 2));
+        const int left = bounds.p.x + side + 7;
+        graphics.set_clip(graphics.get_clip().intersect(rect(
+            static_cast<coord>(left), bounds.p.y,
+            static_cast<dim>(std::max(0, bounds.x2() - left)), bounds.d.h)));
+        appearance.draw_check(bounds, _text, state);
+    }
+
+    void check::draw_focus(gpx &, theme &appearance,
+                           const rect &bounds, const theme::state &state) {
+        appearance.draw_focus(bounds, state);
+    }
+
     void check::apply_text() {
         auto *b = haiku::check_bindings.object_from_handle(this);
         if (!b || !b->view)
@@ -105,6 +157,7 @@ namespace native
                                       _text.c_str(),
                                       self);
             v->SetValue(_checked ? B_CONTROL_ON : B_CONTROL_OFF);
+            v->Hide();
             parent->AddChild(v);
         });
         if (!v)

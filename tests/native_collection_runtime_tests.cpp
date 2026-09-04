@@ -16,6 +16,16 @@
 
 #include <native.h>
 
+#if defined(__HAIKU__)
+#include <Application.h>
+#include <Region.h>
+#include <ScrollBar.h>
+#include <TabView.h>
+#include <TextControl.h>
+#include <TextView.h>
+#include <Window.h>
+#endif
+
 namespace
 {
     int failure_count = 0;
@@ -85,7 +95,18 @@ namespace
             , _table(16, 280, 520, 210)
             , _code("int main() {\n    return 0;\n}\n",
                     16, 500, 520, 120)
-            , _virtual_table(16, 630, 520, 34) {
+            , _virtual_table(16, 630, 520, 34)
+            , _choice({"One", "Two"}, native::combo_box_style::drop_down_list,
+                      360, 120, 176, 24)
+            , _editable({"10 mm", "50 mm"}, native::combo_box_style::editable,
+                        360, 148, 176, 24)
+            , _tab_first({"First"}, 0, 0, 100, 60)
+            , _tab_second({"Second"}, 0, 0, 100, 60)
+            , _tabs(360, 180, 176, 80) {
+            _choice.set_selected_index(0);
+            _editable.set_text("25 mm");
+            _tabs.add_item("One", _tab_first);
+            _tabs.add_item("Two", _tab_second);
             _first.set_selected_index(1);
             _sections.add_item("Shapes", _first);
             _sections.add_item("Colors", _second);
@@ -194,6 +215,11 @@ namespace
         native::table_view _table;
         native::code_edit _code;
         native::table_view _virtual_table;
+        native::combo_box _choice;
+        native::combo_box _editable;
+        native::list _tab_first;
+        native::list _tab_second;
+        native::tab_view _tabs;
         int _expansion_events = 0;
         int _selection_events = 0;
         int _activation_events = 0;
@@ -275,12 +301,33 @@ namespace
             _virtual_table.set_parent(this);
             _virtual_table.create();
             _virtual_table.show();
+            for (native::wnd *control : {
+                     static_cast<native::wnd *>(&_choice),
+                     static_cast<native::wnd *>(&_editable),
+                     static_cast<native::wnd *>(&_tabs)}) {
+                control->set_parent(this);
+                control->create();
+                control->show();
+            }
             native::app::post([this] { run_checks(); });
             return true;
         }
 
         void run_checks() {
             try {
+#if defined(__HAIKU__)
+                check_haiku_views();
+#endif
+                for (auto side : {native::tab_placement::top,
+                                  native::tab_placement::bottom,
+                                  native::tab_placement::left,
+                                  native::tab_placement::right}) {
+                    _tabs.set_tab_placement(side);
+                    _tabs.set_selected_index(1);
+                    expect(_tab_second.get_created(),
+                           "every tab edge retains a live selected page");
+                    _tabs.set_selected_index(0);
+                }
                 expect(_sections.get_created() && _first.get_created() &&
                            !_second.get_created(),
                        "accordion creates only its expanded body");
@@ -427,6 +474,81 @@ namespace
             }
             destroy();
         }
+
+#if defined(__HAIKU__)
+        // Inspect native state as well as portable caches: ancestor-hidden
+        // creation previously left both combo presentations receiving hits.
+        void check_haiku_views() {
+            BWindow *window = be_app->WindowAt(0);
+            const bool locked = window && window->Lock();
+            expect(locked, "Haiku test window is lockable");
+            if (!locked) return;
+            BView *root = window->FindView("native_combo");
+            expect(root != nullptr, "Haiku combo has a native host");
+            if (root) {
+                auto *menu = root->FindView("native_combo_choice");
+                auto *text = root->FindView("native_combo_text");
+                expect(menu && text && !menu->IsHidden(menu) && text->IsHidden(text),
+                       "selection-only combo hides its editor during creation");
+                BView *editable = root->NextSibling();
+                auto *editor = editable ? editable->FindView("native_combo_text") : nullptr;
+                auto *choice = editable ? editable->FindView("native_combo_choice") : nullptr;
+                expect(editor && choice && !editor->IsHidden(editor) &&
+                           choice->IsHidden(choice),
+                       "pre-created editable combo does not overlap a menu field");
+            }
+            _choice.set_style(native::combo_box_style::editable);
+            if (root) {
+                auto *menu = root->FindView("native_combo_choice");
+                auto *text = dynamic_cast<BTextControl *>(
+                    root->FindView("native_combo_text"));
+                expect(menu && text && menu->IsHidden(menu) && !text->IsHidden(text),
+                       "editable combo exposes only its native editor and button");
+                expect(text && text->Target() == root,
+                       "native editing messages target the combo host");
+                BView *arrow = root->FindView("native_combo_arrow");
+                expect(text && arrow && arrow->Parent() == text &&
+                           text->Bounds().Contains(arrow->Frame()) &&
+                           text->TextView()->Frame().right < arrow->Frame().left,
+                       "editable arrow stays inside the common text frame");
+            }
+            _choice.set_style(native::combo_box_style::drop_down_list);
+
+            auto *vertical = dynamic_cast<BScrollBar *>(
+                window->FindView("native_table_vertical"));
+            expect(vertical != nullptr,
+                   "virtual tables own a real Haiku scrollbar");
+            if (vertical) {
+                float minimum = 0, maximum = 0;
+                vertical->GetRange(&minimum, &maximum);
+                vertical->SetValue(maximum);
+                expect(_virtual_table.get_vertical_scroll_row() ==
+                           _virtual_table.get_display_row_count() -
+                               _virtual_table.get_visible_row_range().count,
+                       "native scrollbar reaches the last virtual page");
+                vertical->SetValue(minimum);
+                expect(_virtual_table.get_vertical_scroll_row() == 0,
+                       "native scrollbar returns to the first virtual page");
+            }
+
+            BView *list = window->FindView("native_list");
+            if (list) {
+                const rgb_color color = {17, 29, 43, 255};
+                list->SetHighColor(color);
+                BRegion before, after;
+                list->GetClippingRegion(&before);
+                _list.get_gpx().set_clip(native::rect(0, 0, 4, 4))
+                    .set_ink(native::rgba(200, 10, 30, 255))
+                    .draw_rect(native::rect(0, 0, 4, 4), true);
+                list->GetClippingRegion(&after);
+                expect(list->HighColor() == color && before.Frame() == after.Frame(),
+                       "window graphics preserve native color and clipping");
+                expect((list->Flags() & B_FULL_UPDATE_ON_RESIZE) != 0,
+                       "resized lists repaint their old trailing borders");
+            }
+            window->Unlock();
+        }
+#endif
     };
 } // namespace
 
