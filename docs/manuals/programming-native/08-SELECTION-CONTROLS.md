@@ -15,6 +15,8 @@ the portable C++ object and synchronized with the active backend control.
 A list index of `-1` means that no item is selected. `add_item()`,
 `remove_item()`, `clear_items()`, and `set_items()` update the item model and
 an already-created native control.
+`items << "Compact" << "Detailed"` is append-only sugar for repeated
+`add_item()` calls; the named operation remains available.
 
 Radio controls with the same parent form one exclusive group. Selecting one
 clears its radio siblings. Use a separate parent window when an interface
@@ -155,6 +157,9 @@ roles for custom surfaces.
 
 SDL2 and GEMix own their hit testing, focus, state, and event integration;
 they are not application-side painted substitutes. Custom surfaces can draw
-the same visual parts through `native::theme`, which Chapter 10 covers.
+the same visual parts through `native::theme`, which Chapter 10 covers. The
+complete themed check/radio primitives use the same indicator geometry,
+control font, panel background, and state colors as the live emulated
+controls.
 
 Next: [Owned windows and file dialogs](09-OWNED-WINDOWS-AND-DIALOGS.md).

@@ -17,28 +17,23 @@ namespace native
     void radio::apply_selected() {
         invalidate();
     }
-    void radio::create() const {
-        if (_created)
-            return;
+    void radio::create_native() {
         auto *p = get_parent();
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "GEMix: radio requires a created parent.");
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         linux::gemix::radios.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: radio is not created.");
         invalidate();
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::radios.erase(
             std::remove(linux::gemix::radios.begin(),
                         linux::gemix::radios.end(),

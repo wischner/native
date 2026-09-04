@@ -92,9 +92,8 @@ namespace native
                 get_style() == combo_box_style::editable ? YES : NO];
     }
 
-    void combo_box::create() const {
-        if (_created) return;
-        auto *self = const_cast<combo_box *>(this);
+    void combo_box::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -120,23 +119,20 @@ namespace native
         state->combo = combo;
         state->delegate = delegate;
         mac::combo_box_bindings.register_pair(self, state);
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
+    void combo_box::show_native() {
         auto *state = mac::combo_box_bindings.object_from_handle(
-            const_cast<combo_box *>(this));
+            this);
         if (!_created || !state || !state->combo)
             throw std::runtime_error("macOS: combo box is not created.");
         [state->combo setHidden:NO];
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *state = mac::combo_box_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (state) {
             [state->combo setDelegate:nil];
             [state->combo removeFromSuperview];

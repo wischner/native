@@ -16,14 +16,14 @@ namespace linux::openlook
 
 namespace native
 {
-    void directory_dialog::show() const {
+    void directory_dialog::show_native() {
         if (!begin_dialog())
             return;
         try {
             linux::openlook::show_file_dialog(
-                *const_cast<directory_dialog *>(this), false, true);
+                *this, false, true);
         } catch (...) {
-            const_cast<directory_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

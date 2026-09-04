@@ -67,7 +67,10 @@ widgets. WINGs selects `WMTextField` or `WMText` according to mode. SDL2 and
 GEMix emulate editing inside their existing backend event and paint paths,
 including focus, selection, cursor movement, clipping, and scrolling.
 Those details remain backend state; `get_text()` always returns the same
-portable complete-value model.
+portable complete-value model. Emulated text selection uses the same themed
+active/inactive selection background and text colors as lists and tables. SDL2
+also reclamps horizontal scrolling after bounds changes, including controls
+temporarily collapsed by a composite view.
 
 ## Live complete-value validation
 

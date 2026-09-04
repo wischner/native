@@ -11,6 +11,8 @@
 
 #include <X11/Intrinsic.h>
 #include <Xm/ComboBox.h>
+#include <Xm/List.h>
+#include <Xm/TextF.h>
 #include <Xm/Xm.h>
 
 #include <native/combo_box.h>
@@ -74,18 +76,36 @@ namespace native
         Widget widget = widget_for(this);
         if (!widget)
             throw std::runtime_error("Motif: Missing combo box widget.");
-        XtVaSetValues(widget, XmNselectedPosition,
-                      get_selected_index(), nullptr);
+        const int selected = get_selected_index();
+        if (selected >= 0) {
+            XmString item = XmStringCreateLocalized(const_cast<char *>(
+                get_items()[static_cast<std::size_t>(selected)].c_str()));
+            XtVaSetValues(widget,
+                          XmNselectedPosition, selected,
+                          XmNselectedItem, item,
+                          nullptr);
+            Widget list = nullptr;
+            XtVaGetValues(widget, XmNlist, &list, nullptr);
+            if (list)
+                XmListSelectPos(list, selected+1, False);
+            XmStringFree(item);
+        } else {
+            Widget list = nullptr;
+            XtVaGetValues(widget, XmNlist, &list, nullptr);
+            if (list)
+                XmListDeselectAllItems(list);
+        }
     }
 
     void combo_box::apply_text() {
         Widget widget = widget_for(this);
         if (!widget)
             throw std::runtime_error("Motif: Missing combo box widget.");
-        XmString value = XmStringCreateLocalized(
-            const_cast<char *>(get_text().c_str()));
-        XmComboBoxSetItem(widget, value);
-        XmStringFree(value);
+        Widget text = nullptr;
+        XtVaGetValues(widget, XmNtextField, &text, nullptr);
+        if (text)
+            XmTextFieldSetString(
+                text, const_cast<char *>(get_text().c_str()));
     }
 
     void combo_box::apply_style() {
@@ -97,21 +117,24 @@ namespace native
                 nullptr);
     }
 
-    void combo_box::create() const {
-        if (_created) return;
+    void combo_box::create_native() {
         auto *parent = get_parent();
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         Widget parent_widget = linux::openmotif::parent_widget(self);
         if (!parent || !parent->get_created() || !parent_widget)
             throw std::runtime_error(
                 "Motif: combo box requires a created parent.");
-        Arg arguments[9];
+        Arg arguments[16];
         Cardinal count = 0;
         XtSetArg(arguments[count], XmNx, _bounds.p.x); ++count;
         XtSetArg(arguments[count], XmNy, _bounds.p.y); ++count;
         XtSetArg(arguments[count], XmNwidth, _bounds.d.w); ++count;
         XtSetArg(arguments[count], XmNheight, _bounds.d.h); ++count;
         XtSetArg(arguments[count], XmNpositionMode, XmZERO_BASED); ++count;
+        XtSetArg(arguments[count], XmNmarginHeight, 0); ++count;
+        XtSetArg(arguments[count], XmNmarginWidth, 1); ++count;
+        XtSetArg(arguments[count], XmNhighlightThickness, 0); ++count;
+        XtSetArg(arguments[count], XmNarrowSpacing, 1); ++count;
         Widget widget = get_style() == combo_box_style::editable
             ? XmCreateDropDownComboBox(parent_widget,
                 const_cast<char *>("comboBox"), arguments, count)
@@ -124,24 +147,21 @@ namespace native
         linux::openmotif::combo_box_bindings.register_pair(self, widget);
         XtAddCallback(widget, XmNselectionCallback, changed, self);
         replace_items(widget, get_items());
-        _created = true;
         self->apply_selected_index();
         self->apply_text();
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
-        Widget widget = widget_for(const_cast<combo_box *>(this));
+    void combo_box::show_native() {
+        Widget widget = widget_for(this);
         if (!_created || !widget)
             throw std::runtime_error("Motif: combo box is not created.");
         XtManageChild(widget);
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         Widget widget = widget_for(self);
-        self->on_native_destroy();
         linux::openmotif::combo_box_bindings.unregister_by_handle(self);
         if (widget) {
             linux::openmotif::wnd_bindings.unregister_by_handle(widget);

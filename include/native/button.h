@@ -51,21 +51,52 @@ namespace native
         // Accept a native user activation and emit on_click.
         virtual void on_native_click();
 
+    protected:
         // Create the backend button resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend button resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend button resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits when the user activates the button.
         signal<> on_click;
 
     protected:
-        // Draw the complete button using the active native theme.
+        // Dispatch the complete staged button drawing contract.
         virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the button face without its border or content.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the button edge after its background.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the centered button label.
+        virtual void draw_text(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,

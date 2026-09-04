@@ -22,12 +22,12 @@ namespace native
         destroy();
     }
 
-    const std::string &file_dialog::get_initial_path() const {
+    const std::filesystem::path &file_dialog::get_initial_path() const {
         return _initial_path;
     }
 
     file_dialog &file_dialog::set_initial_path(
-        const std::string &path) {
+        const std::filesystem::path &path) {
         _initial_path = path;
         return *this;
     }
@@ -52,16 +52,17 @@ namespace native
         return *this;
     }
 
-    const std::string &file_dialog::get_path() const {
+    const std::filesystem::path &file_dialog::get_path() const {
         return _paths.empty() ? _empty_path : _paths.front();
     }
 
-    const std::vector<std::string> &file_dialog::get_paths() const {
+    const std::vector<std::filesystem::path> &
+    file_dialog::get_paths() const {
         return _paths;
     }
 
     void file_dialog::on_native_accept(
-        const std::vector<std::string> &paths) {
+        const std::vector<std::filesystem::path> &paths) {
         if (!get_modal_active())
             return;
 
@@ -69,7 +70,7 @@ namespace native
         std::copy_if(paths.begin(),
                      paths.end(),
                      std::back_inserter(_paths),
-                     [](const std::string &path) {
+                     [](const std::filesystem::path &path) {
                          return !path.empty();
                      });
 
@@ -86,26 +87,21 @@ namespace native
             close(dialog_result::cancelled);
     }
 
-    void file_dialog::create() const {
-        if (_created)
-            return;
+    void file_dialog::create_native() {
         if (!get_owner() || !get_owner()->get_created())
             throw std::logic_error(
                 "A file dialog requires a created owner.");
 
-        _created = true;
-        const_cast<file_dialog *>(this)->on_native_create();
     }
 
-    void file_dialog::destroy() const {
+    void file_dialog::destroy_native() {
         if (!_created && !get_modal_active())
             return;
 
         cancel_native_dialog();
-        const_cast<file_dialog *>(this)->modal_wnd::on_native_destroy();
     }
 
-    bool file_dialog::begin_dialog() const {
+    bool file_dialog::begin_dialog() {
         if (!_created)
             throw std::logic_error(
                 "A file dialog must be created before show().");
@@ -115,8 +111,7 @@ namespace native
         if (get_modal_active())
             return false;
 
-        auto *dialog = const_cast<file_dialog *>(this);
-        dialog->_paths.clear();
+        _paths.clear();
         begin_modal_session();
         return true;
     }

@@ -17,6 +17,8 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
 namespace linux::x11
 {
     // Convert a portable dimension to the non-zero size required by X11.
@@ -55,8 +57,8 @@ namespace linux::x11
         native::rgba current_fg = 0xFFFFFFFF;
         int current_thickness = -1;
     };
-
-    extern native::bindings<native::wnd *, x11_gpx *> wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, x11_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, x11_font *> font_bindings;
 
     // Carries a portable menu command into an Athena callback.
@@ -81,9 +83,8 @@ namespace linux::x11
         Widget widget = nullptr;
         native::button *owner = nullptr;
     };
-
-    extern native::bindings<native::button *, xaw_button *>
-        button_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::button *, xaw_button *> button_bindings;
 
     struct xaw_list
     {
@@ -102,13 +103,14 @@ namespace linux::x11
         Widget text = nullptr;
         Widget button = nullptr;
         Widget menu = nullptr;
+        Pixmap arrow = None;
         std::vector<xaw_combo_callback *> callbacks;
         bool suppress = false;
     };
-
-    extern native::bindings<native::list *, xaw_list *> list_bindings;
-    extern native::bindings<native::combo_box *, xaw_combo_box *>
-        combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::list *, xaw_list *> list_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, xaw_combo_box *> combo_box_bindings;
 
     struct xaw_collection
     {
@@ -120,11 +122,10 @@ namespace linux::x11
         native::tree_item_id last_tree_item =
             native::invalid_tree_item_id;
     };
-
-    extern native::bindings<native::accordion *, xaw_collection *>
-        accordion_bindings;
-    extern native::bindings<native::tab_view *, xaw_collection *>
-        tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, xaw_collection *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, xaw_collection *> tab_view_bindings;
 
     struct xaw_split_view
     {
@@ -133,17 +134,16 @@ namespace linux::x11
         Widget second = nullptr;
         bool suppress = false;
     };
-
-    extern native::bindings<native::split_view *, xaw_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::icon_view *, xaw_collection *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, xaw_collection *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, xaw_collection *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, xaw_collection *>
-        code_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, xaw_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, xaw_collection *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, xaw_collection *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, xaw_collection *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, xaw_collection *> code_edit_bindings;
 
     struct xaw_text_edit
     {
@@ -151,9 +151,8 @@ namespace linux::x11
         Widget source = nullptr;
         bool suppress = false;
     };
-
-    extern native::bindings<native::text_edit *, xaw_text_edit *>
-        text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, xaw_text_edit *> text_edit_bindings;
 
     // Owns one asynchronous Athena file-browser widget hierarchy.
     struct xaw_file_dialog
@@ -176,6 +175,7 @@ namespace linux::x11
         std::string default_extension;
         std::string pending_overwrite;
         bool save = false;
+        bool directory_only = false;
         bool confirm_overwrite = true;
     };
 

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -24,8 +25,8 @@ namespace native::detail
         const std::string &text() const;
         void set_text(const std::string &text);
 
-        void load(const std::string &path);
-        void save(const std::string &path) const;
+        void load(const std::filesystem::path &path);
+        void save(const std::filesystem::path &path) const;
 
         line_ending ending() const;
         void set_ending(line_ending value);

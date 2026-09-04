@@ -74,7 +74,16 @@ native expose/paint event arrives
 backend prepares context and clip
        |
        v
+window/control background draw stage, where defined
+       |
+       v
 one synchronous on_wnd_paint emission
+       |
+       v
+attached non-client strips paint
+       |
+       v
+control-owned edge chrome paints
        |
        v
 backend presents output and ends painting
@@ -82,12 +91,43 @@ backend presents output and ends painting
 
 `invalidate()` must not emit `on_wnd_paint` directly. Toolkits need the freedom
 to merge invalid regions and choose when the native drawing surface is valid.
+Changing a window's mouse cursor is likewise independent of invalidation:
+`wnd::apply_cursor()` updates the native pointer resource without initiating a
+paint pass.
 
 For each native paint event, the backend emits one `wnd_paint_event` on the UI
 thread. Its two fields are:
 
 - `r`: the invalid client-area rectangle.
 - `g`: a borrowed `gpx &` whose concrete window context is `gpx_wnd`.
+
+The last two stages run after the subscriber, in that order.
+`wnd::on_native_paint()` emits the signal and then calls the protected
+`draw_non_client()`, which paints every visible attached strip over the bounds
+`non_client_bounds()` resolved for it. A control that owns edge chrome of its
+own overrides `on_native_paint()`, clips the client stage to its viewport,
+calls `draw_non_client()`, and paints its chrome last — this is how `canvas`
+draws its scrollbars and their corner filler without ever handing them to the
+application's paint subscriber.
+
+`app_wnd` and `panel` draw their overridable themed background before calling
+the base paint entry point. Their normal empty surface uses the theme's panel
+role; editors and item-bearing controls deliberately keep the contrasting
+content role. Simple owner-drawn controls dispatch separate
+background, border or indicator, text/content, and focus hooks from
+`draw_control()`. `split_view` likewise separates its divider background from
+its grip. Each base hook draws the complete default for only its stage, and no
+later pass repaints that stage after an override returns.
+
+SDL presents a complete invalidated frame while a newly created top-level
+window is still hidden, then shows it. This prevents the renderer's initial
+black backbuffer from becoming a transient first frame. On destruction it
+releases the renderer before its target window.
+
+The ordering matters in one direction only: the subscriber must never be able
+to reach the chrome. Clipping the client stage is what enforces that, so a
+handler that ignores `r` and paints its whole surface still cannot overwrite a
+ruler or a scrollbar track.
 
 ## Context lifetime
 
@@ -128,7 +168,8 @@ std::vector<std::uint8_t> png =
 ```
 
 PNG retains alpha. JPEG output uses the requested quality from 1 through 100
-and has no alpha channel.
+and has no alpha channel. File-backed image operations accept
+`std::filesystem::path`.
 
 ## Invalid rectangles and clipping
 

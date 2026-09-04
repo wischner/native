@@ -21,35 +21,30 @@ namespace native
     void tree_view::apply_expansion(tree_item_id, bool) { invalidate(); }
     void tree_view::apply_scroll_offset() { invalidate(); }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tree_view *>(this);
+    void tree_view::create_native() {
+        auto *self = this;
         Widget widget = linux::x11::create_collection_host(*self);
         auto *binding = new linux::x11::xaw_collection();
         binding->widget = widget;
         linux::x11::tree_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *binding = linux::x11::tree_view_bindings.object_from_handle(
-            const_cast<tree_view *>(this));
+            this);
         if (!_created || !binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: tree_view is not created.");
         XtManageChild(binding->widget);
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::tree_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(

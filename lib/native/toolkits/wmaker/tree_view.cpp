@@ -22,21 +22,17 @@ namespace native
     void tree_view::apply_expansion(tree_item_id, bool) { invalidate(); }
     void tree_view::apply_scroll_offset() { invalidate(); }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tree_view *>(this);
+    void tree_view::create_native() {
+        auto *self = this;
         auto *state = linux::wmaker::create_collection_frame(*self);
         linux::wmaker::tree_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *state = linux::wmaker::tree_view_bindings
                           .object_from_handle(
-                              const_cast<tree_view *>(this));
+                              this);
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: tree_view is not created.");
@@ -44,10 +40,10 @@ namespace native
         WMMapWidget(state->frame);
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *state = linux::wmaker::tree_view_bindings
                           .object_from_handle(self);
         linux::wmaker::destroy_collection_frame(*self, state);

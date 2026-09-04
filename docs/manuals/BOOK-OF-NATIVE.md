@@ -91,9 +91,9 @@ the same commit.
     Section 16.
 
 17. [Patterns: input, standard dialogs, and window chrome](book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
-    Combo and list boxes, directory and message dialogs, non-client rulers,
-    status bars, native adaptation, and extensibility. Expands Architecture
-    Section 17.
+    File icons, special directories, combo and list boxes, directory and
+    message dialogs, non-client rulers, status bars, native adaptation, and
+    extensibility. Expands Architecture Section 17.
 
 18. [Patterns: structural panels and paintable canvases](book-of-native/PATTERNS-PANELS-AND-CANVASES.md)
     Container and drawing-surface roles, explicit child lifecycle, chrome

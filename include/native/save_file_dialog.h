@@ -44,7 +44,8 @@ namespace native
 
         // Present the chooser after create(); completion emits the
         // inherited on_modal_close signal.
-        void show() const override;
+    protected:
+        void show_native() override;
 
     private:
         std::string _suggested_name;

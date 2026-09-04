@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <AppDefs.h>
 #include <Button.h>
+#include <Cursor.h>
 #include <Window.h>
 #include <View.h>
 
@@ -131,44 +133,83 @@ namespace native
         }
     }
 
-    wnd &wnd::invalidate() const {
+    void wnd::apply_cursor() {
+        BView *view = haiku::view_from_control(this);
+        BWindow *window = view
+                              ? view->Window()
+                              : haiku::wnd_bindings
+                                    .handle_from_object(this);
+        if (!view && window)
+            view = window->ChildAt(0);
+        if (!view)
+            return;
+
+        static const BCursor crosshair(B_CURSOR_ID_CROSS_HAIR);
+        static const BCursor horizontal_resize(
+            B_CURSOR_ID_RESIZE_EAST_WEST);
+        static const BCursor vertical_resize(
+            B_CURSOR_ID_RESIZE_NORTH_SOUTH);
+        static const BCursor northwest_southeast_resize(
+            B_CURSOR_ID_RESIZE_NORTH_WEST_SOUTH_EAST);
+        static const BCursor northeast_southwest_resize(
+            B_CURSOR_ID_RESIZE_NORTH_EAST_SOUTH_WEST);
+        const BCursor *cursor = B_CURSOR_SYSTEM_DEFAULT;
+        if (_cursor == mouse_cursor::ibeam)
+            cursor = B_CURSOR_I_BEAM;
+        else if (_cursor == mouse_cursor::crosshair)
+            cursor = &crosshair;
+        else if (_cursor == mouse_cursor::resize_horizontal)
+            cursor = &horizontal_resize;
+        else if (_cursor == mouse_cursor::resize_vertical)
+            cursor = &vertical_resize;
+        else if (_cursor == mouse_cursor::resize_northwest_southeast)
+            cursor = &northwest_southeast_resize;
+        else if (_cursor == mouse_cursor::resize_northeast_southwest)
+            cursor = &northeast_southwest_resize;
+
+        with_locked_window(window, [&](BWindow *) {
+            view->SetViewCursor(cursor);
+        });
+    }
+
+    wnd &wnd::invalidate_native() {
         if (!_created)
-            return const_cast<wnd &>(*this);
+            return *this;
 
         if (BView *control =
-                haiku::view_from_control(const_cast<wnd *>(this))) {
+                haiku::view_from_control(this)) {
             with_locked_window(control->Window(), [&](BWindow *) {
                 control->Invalidate();
             });
-            return const_cast<wnd &>(*this);
+            return *this;
         }
 
         BWindow *bwin = haiku::wnd_bindings.handle_from_object(
-            const_cast<wnd *>(this));
+            this);
         with_locked_window(bwin, [](BWindow *window) {
             BView *view = window->ChildAt(0);
             if (view)
                 view->Invalidate();
         });
 
-        return const_cast<wnd &>(*this);
+        return *this;
     }
 
-    wnd &wnd::invalidate(const rect &r) const {
+    wnd &wnd::invalidate_native(const rect &r) {
         if (!_created)
-            return const_cast<wnd &>(*this);
+            return *this;
 
         if (BView *control =
-                haiku::view_from_control(const_cast<wnd *>(this))) {
+                haiku::view_from_control(this)) {
             with_locked_window(control->Window(), [&](BWindow *) {
                 control->Invalidate(
                     BRect(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1));
             });
-            return const_cast<wnd &>(*this);
+            return *this;
         }
 
         BWindow *bwin = haiku::wnd_bindings.handle_from_object(
-            const_cast<wnd *>(this));
+            this);
         with_locked_window(bwin, [&](BWindow *window) {
             BView *view = window->ChildAt(0);
             if (!view)
@@ -178,10 +219,10 @@ namespace native
             view->Invalidate(rect);
         });
 
-        return const_cast<wnd &>(*this);
+        return *this;
     }
 
-    gpx &wnd::get_gpx() const {
+    gpx &wnd::get_gpx() {
         if (!_created)
             throw std::runtime_error(
                 "Cannot obtain gpx before window is created.");

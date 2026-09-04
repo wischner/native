@@ -34,6 +34,9 @@ namespace native
                 "split view panes must be uncreated when attached");
         first.set_parent(this);
         second.set_parent(this);
+        set_cursor(orientation == split_orientation::horizontal
+                       ? mouse_cursor::resize_horizontal
+                       : mouse_cursor::resize_vertical);
         on_wnd_paint.connect([this](wnd_paint_event event) {
             draw(event.g);
             return true;
@@ -74,6 +77,9 @@ namespace native
         if (_orientation == orientation)
             return *this;
         _orientation = orientation;
+        set_cursor(orientation == split_orientation::horizontal
+                       ? mouse_cursor::resize_horizontal
+                       : mouse_cursor::resize_vertical);
         if (_created)
             apply_orientation();
         refresh_contents();
@@ -237,8 +243,45 @@ namespace native
 
     void split_view::draw(gpx &graphics) {
         auto appearance = theme::create(graphics);
-        appearance->draw_surface(
-            get_splitter_bounds(), surface_kind::inset,
-            theme::state{false, _dragging});
+        const rect bounds = get_splitter_bounds();
+        const theme::state state{false, _dragging};
+        draw_splitter_background(
+            graphics, *appearance, bounds, state);
+        draw_splitter_grip(
+            graphics, *appearance, bounds, state);
+    }
+
+    void split_view::draw_splitter_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::panel, state);
+    }
+
+    void split_view::draw_splitter_grip(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        if (!bounds.d.w || !bounds.d.h)
+            return;
+        const rgba ink = appearance.get_separator_color();
+        graphics.set_ink(ink);
+        if (_orientation == split_orientation::horizontal) {
+            const coord x = static_cast<coord>(
+                bounds.p.x + static_cast<int>(bounds.d.w) / 2);
+            const coord y = static_cast<coord>(
+                bounds.p.y + static_cast<int>(bounds.d.h) / 2);
+            graphics.draw_line(point(x, static_cast<coord>(y - 6)),
+                               point(x, static_cast<coord>(y + 6)));
+        } else {
+            const coord x = static_cast<coord>(
+                bounds.p.x + static_cast<int>(bounds.d.w) / 2);
+            const coord y = static_cast<coord>(
+                bounds.p.y + static_cast<int>(bounds.d.h) / 2);
+            graphics.draw_line(point(static_cast<coord>(x - 6), y),
+                               point(static_cast<coord>(x + 6), y));
+        }
     }
 } // namespace native

@@ -9,7 +9,7 @@
 #include "../../clipboard_backend.h"
 
 #include <algorithm>
-#include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -23,6 +23,8 @@
 
 namespace
 {
+    namespace fs = std::filesystem;
+
     constexpr std::size_t maximum_scrap_size = 512 * 1024 * 1024;
     constexpr std::size_t maximum_image_pixels =
         maximum_scrap_size / sizeof(native::rgba);
@@ -33,7 +35,14 @@ namespace
             return value;
         if (!create)
             return {};
-        std::string directory = "/tmp/";
+        std::error_code error;
+        std::string directory = fs::temp_directory_path(error).string();
+        if (error || directory.empty()) {
+            throw std::runtime_error(
+                "GEMix: Unable to find temporary storage.");
+        }
+        if (directory.back() != fs::path::preferred_separator)
+            directory.push_back(fs::path::preferred_separator);
         if (scrp_write(const_cast<char *>(directory.c_str())) == 0) {
             throw std::runtime_error(
                 "GEMix: Unable to configure the AES scrap directory.");
@@ -45,9 +54,7 @@ namespace
                            const char *name) {
         if (directory.empty())
             return {};
-        const char last = directory.back();
-        return directory +
-               (last == '/' || last == '\\' ? "" : "/") + name;
+        return (fs::path(directory) / name).string();
     }
 
     std::vector<std::uint8_t> read_file(const std::string &path) {
@@ -303,8 +310,8 @@ namespace
     }
 
     bool file_exists(const std::string &path) {
-        std::ifstream stream(path, std::ios::binary);
-        return stream.good();
+        std::error_code error;
+        return fs::is_regular_file(fs::path(path), error);
     }
 
     struct scrap_file
@@ -320,10 +327,14 @@ namespace
     void publish_files(std::vector<scrap_file> &files) {
         try {
             for (scrap_file &file : files) {
-                std::remove(file.backup.c_str());
+                std::error_code error;
+                fs::remove(fs::path(file.backup), error);
                 if (file_exists(file.target)) {
-                    if (std::rename(file.target.c_str(),
-                                    file.backup.c_str()) != 0) {
+                    error.clear();
+                    fs::rename(fs::path(file.target),
+                               fs::path(file.backup),
+                               error);
+                    if (error) {
                         throw std::runtime_error(
                             "GEMix: Unable to back up AES scrap data.");
                     }
@@ -332,8 +343,11 @@ namespace
             }
             for (scrap_file &file : files) {
                 if (file.publish) {
-                    if (std::rename(file.stage.c_str(),
-                                    file.target.c_str()) != 0) {
+                    std::error_code error;
+                    fs::rename(fs::path(file.stage),
+                               fs::path(file.target),
+                               error);
+                    if (error) {
                         throw std::runtime_error(
                             "GEMix: Unable to publish AES scrap data.");
                     }
@@ -341,19 +355,27 @@ namespace
                 }
             }
             for (scrap_file &file : files) {
-                if (file.backed_up)
-                    std::remove(file.backup.c_str());
+                if (file.backed_up) {
+                    std::error_code error;
+                    fs::remove(fs::path(file.backup), error);
+                }
             }
         } catch (...) {
             for (scrap_file &file : files) {
-                if (file.published)
-                    std::remove(file.target.c_str());
+                if (file.published) {
+                    std::error_code error;
+                    fs::remove(fs::path(file.target), error);
+                }
             }
             for (scrap_file &file : files) {
-                if (file.backed_up)
-                    std::rename(file.backup.c_str(),
-                                file.target.c_str());
-                std::remove(file.stage.c_str());
+                std::error_code error;
+                if (file.backed_up) {
+                    fs::rename(fs::path(file.backup),
+                               fs::path(file.target),
+                               error);
+                }
+                error.clear();
+                fs::remove(fs::path(file.stage), error);
             }
             throw;
         }
@@ -426,8 +448,10 @@ namespace native::detail
             }
             publish_files(files);
         } catch (...) {
-            for (const scrap_file &file : files)
-                std::remove(file.stage.c_str());
+            for (const scrap_file &file : files) {
+                std::error_code error;
+                fs::remove(fs::path(file.stage), error);
+            }
             throw;
         }
     }

@@ -113,7 +113,7 @@ native::img received = native::img::decode(
 
 Decoded pixels are always RGBA. PNG retains alpha; JPEG produces opaque
 pixels. Empty or malformed input and unsupported data produce a standard
-exception.
+exception. File-loading and saving paths use `std::filesystem::path`.
 
 Encoding can return a memory vector or write a file:
 
@@ -166,7 +166,8 @@ if (!installed.empty()) {
 }
 ```
 
-Each description reports the family, style, face name, file path, weight,
+Each description reports the family, style, face name,
+`std::filesystem::path`, weight,
 italic and fixed-pitch flags, and face index. Enumeration describes the
 current system; do not assume the same faces exist on another machine.
 
@@ -221,6 +222,14 @@ interactive interface. They supply lifecycle, focus, keyboard behavior, and
 native accessibility. Use `theme` only when a custom-drawn surface needs a
 familiar control visual.
 
+When deriving one of those controls, override only the protected visual stage
+you own. Simple controls dispatch background, border or indicator,
+text/content, and focus in that order. `app_wnd` and `panel` expose a
+background stage; `split_view` exposes splitter-background and grip stages.
+Calling a stage's base implementation retains the complete default for that
+stage. Native-widget backends honour the request where their toolkit provides
+owner/custom drawing; otherwise they retain native rendering and behavior.
+
 Create a short-lived theme around a borrowed context:
 
 ```cpp
@@ -252,6 +261,11 @@ disclosure indicators, separators, and scrollbar parts. `state` describes
 hot, pressed, selected, disabled, focused, and active visuals. `defaults()`
 supplies backend metrics; `native_palette()` supplies colors for custom
 compositions.
+
+Use the panel surface/color for ordinary window and container background.
+Reserve the content surface/color for white editing and item areas such as
+text editors, lists, icon views, trees, and tables. This distinction lets
+standard controls sit naturally on the surrounding window chrome.
 
 Prefer the named metric and color getters in new code. There is a getter for
 every field in `theme::metrics` and `theme::palette`, including button,

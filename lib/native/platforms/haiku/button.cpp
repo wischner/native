@@ -89,10 +89,7 @@ namespace native
         });
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *p = get_parent();
         if (!p)
             throw std::runtime_error(
@@ -101,7 +98,7 @@ namespace native
             throw std::runtime_error(
                 "Haiku: button parent is not created.");
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         BView *parent = haiku::parent_view(p, self);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
@@ -132,17 +129,15 @@ namespace native
         h->owner = self;
         haiku::button_bindings.register_pair(self, h);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "Haiku: Cannot show button before it is created.");
 
         auto *h = haiku::button_bindings.object_from_handle(
-            const_cast<button *>(this));
+            this);
         if (!h || !h->button)
             throw std::runtime_error("Haiku: Missing BButton binding.");
 
@@ -152,13 +147,12 @@ namespace native
         });
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *h = haiku::button_bindings.object_from_handle(self);
-        self->on_native_destroy();
 
         if (h) {
             if (h->button) {

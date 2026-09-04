@@ -47,15 +47,13 @@ namespace native
             throw std::runtime_error("Motif: Missing radio widget.");
         XmToggleButtonSetState(w, _selected ? True : False, False);
     }
-    void radio::create() const {
-        if (_created)
-            return;
+    void radio::create_native() {
         XmString s =
             XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
         Widget w =
             XtVaCreateWidget("radio",
                              xmToggleButtonWidgetClass,
-                             parent_of(const_cast<radio *>(this)),
+                             parent_of(this),
                              XmNx,
                              _bounds.p.x,
                              XmNy,
@@ -74,26 +72,23 @@ namespace native
         XmStringFree(s);
         if (!w)
             throw std::runtime_error("Motif: Failed to create radio.");
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         XtAddCallback(w, XmNvalueChangedCallback, changed, self);
         linux::openmotif::wnd_bindings.register_pair(w, self);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         Widget w = linux::openmotif::wnd_bindings.handle_from_object(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !w)
             throw std::runtime_error("Motif: radio is not created.");
         XtManageChild(w);
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         Widget w =
             linux::openmotif::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (w) {
             linux::openmotif::wnd_bindings.unregister_by_handle(w);
             XtDestroyWidget(w);

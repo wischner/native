@@ -11,7 +11,7 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -19,14 +19,14 @@ namespace native
             const linux::gemix::file_dialog_response response =
                 linux::gemix::show_file_dialog(*this, std::string());
             if (response.accepted) {
-                const_cast<open_file_dialog *>(this)->on_native_accept(
+                this->on_native_accept(
                     {response.path});
             } else {
-                const_cast<open_file_dialog *>(this)
+                this
                     ->on_native_cancel();
             }
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

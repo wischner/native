@@ -26,7 +26,8 @@ namespace linux::sdl2
             if (index >= 0 &&
                 index < static_cast<int>(c->get_items().size()))
                 c->on_native_selection(index);
-            owner->invalidate();
+            // Selection callbacks may close the owner or mutate the list
+            // registry. The event loop invalidates the owner if it survives.
             return true;
         }
         return false;
@@ -63,14 +64,12 @@ namespace native
         if (b->parent)
             b->parent->invalidate();
     }
-    void list::create() const {
-        if (_created)
-            return;
+    void list::create_native() {
         auto *p = get_parent();
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "SDL2: list requires a created parent.");
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *b = new linux::sdl2::sdl2_list();
         b->parent = p;
         b->bounds = _bounds;
@@ -78,24 +77,21 @@ namespace native
         b->selected_index = _selected_index;
         linux::sdl2::list_bindings.register_pair(self, b);
         linux::sdl2::lists.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
-    void list::show() const {
+    void list::show_native() {
         auto *b = linux::sdl2::list_bindings.object_from_handle(
-            const_cast<list *>(this));
+            this);
         if (!_created || !b)
             throw std::runtime_error("SDL2: list is not created.");
         b->visible = true;
         if (b->parent)
             b->parent->invalidate();
     }
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *b = linux::sdl2::list_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &lists = linux::sdl2::lists;
         lists.erase(std::remove(lists.begin(), lists.end(), self),
                     lists.end());

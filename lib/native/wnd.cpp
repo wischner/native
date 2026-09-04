@@ -14,6 +14,8 @@
 #include <native/non_client.h>
 #include <native/wnd.h>
 
+#include "wnd_peer.h"
+
 namespace
 {
     // Holds a flag true for the lifetime of a scope and restores the
@@ -173,8 +175,8 @@ namespace native
         {
             const scoped_flag pass(_layout_suspended);
             _bounds = bounds;
-            if (_created)
-                apply_bounds();
+            if (_created && _peer)
+                _peer->apply_bounds(_bounds);
         }
 
         relayout_children();
@@ -248,6 +250,24 @@ namespace native
         return _created;
     }
 
+    bool wnd::get_visible() const {
+        return _visible;
+    }
+
+    mouse_cursor wnd::get_cursor() const {
+        return _cursor;
+    }
+
+    wnd &wnd::set_cursor(mouse_cursor cursor) {
+        if (_cursor == cursor)
+            return *this;
+
+        _cursor = cursor;
+        if (_created)
+            apply_cursor();
+        return *this;
+    }
+
     bool wnd::get_input_enabled() const {
         const wnd *root = this;
         while (root->_parent)
@@ -255,6 +275,66 @@ namespace native
 
         const auto *window = dynamic_cast<const app_wnd *>(root);
         return !window || window->get_input_enabled();
+    }
+
+    void wnd::create() {
+        if (_created)
+            return;
+
+        if (!dynamic_cast<app_wnd *>(this)) {
+            if (!_parent)
+                throw std::logic_error(
+                    "A child window requires a parent before create().");
+            if (!_parent->get_created())
+                throw std::logic_error(
+                    "A child window requires a created parent.");
+        }
+
+        _created = true;
+        _peer = detail::create_wnd_peer(*this);
+        try {
+            create_native();
+            apply_cursor();
+        } catch (...) {
+            _peer.reset();
+            _created = false;
+            throw;
+        }
+        on_native_create();
+    }
+
+    void wnd::show() {
+        if (!_created)
+            throw std::logic_error(
+                "A window must be created before show().");
+        _peer->apply_visible(true);
+        // Synchronous system panels (file, directory, and similar dialogs)
+        // can complete and destroy their logical resource inside show_native.
+        // Their visibility transition has already finished in that case.
+        if (!_created || !_peer)
+            return;
+        apply_cursor();
+        _visible = true;
+    }
+
+    void wnd::destroy() {
+        if (!_created)
+            return;
+
+        _destroying = true;
+        try {
+            destroy_native();
+        } catch (...) {
+            _destroying = false;
+            if (!_created)
+                _peer.reset();
+            throw;
+        }
+        _destroying = false;
+        if (_created)
+            on_native_destroy();
+        else
+            _peer.reset();
     }
 
     void wnd::on_native_create() {
@@ -273,6 +353,9 @@ namespace native
         destroy_children();
         delete _gpx;
         _gpx = nullptr;
+        if (!_destroying)
+            _peer.reset();
+        _visible = false;
         _created = false;
     }
 
@@ -333,6 +416,19 @@ namespace native
 
     point wnd::get_mouse_screen_position() const {
         return _mouse_screen_position;
+    }
+
+    void wnd::on_native_focus(bool) {}
+
+    wnd &wnd::invalidate() {
+        return invalidate(
+            rect(point(0, 0), get_dimensions()));
+    }
+
+    wnd &wnd::invalidate(const rect &invalid) {
+        if (_created && _peer)
+            _peer->invalidate(invalid);
+        return *this;
     }
 
     void wnd::on_native_mouse_click(mouse_event event) {
@@ -450,7 +546,7 @@ namespace native
 
     void wnd::on_bounds_changed() {}
 
-    void wnd::destroy_children() const {
+    void wnd::destroy_children() {
         for (wnd *child : _children) {
             if (child && child->_created)
                 child->destroy();

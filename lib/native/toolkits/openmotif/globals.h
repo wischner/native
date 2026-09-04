@@ -16,6 +16,8 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
 namespace linux::openmotif
 {
     // Xt callbacks carry widgets, so process-wide registries recover
@@ -108,6 +110,7 @@ namespace linux::openmotif
     struct motif_split_view
     {
         Widget paned = nullptr;
+        bool dragging = false;
         bool suppress = false;
     };
 
@@ -125,34 +128,34 @@ namespace linux::openmotif
     extern native::bindings<Widget, native::wnd *> wnd_bindings;
     extern native::bindings<Widget, native::wnd *> shell_bindings;
     extern native::bindings<Widget, native::wnd *> main_wnd_bindings;
-    extern native::bindings<native::wnd *, motif_gpx *>
-        wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, motif_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, motif_font *> font_bindings;
     extern native::bindings<uint32_t, motif_menu *> menu_bindings;
-    extern native::bindings<native::button *, motif_button *>
-        button_bindings;
-    extern native::bindings<native::text_edit *, motif_text_edit *>
-        text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::button *, motif_button *> button_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, motif_text_edit *> text_edit_bindings;
     extern native::bindings<native::list *, Widget>
         list_content_bindings;
     extern native::bindings<native::combo_box *, Widget>
         combo_box_bindings;
-    extern native::bindings<native::accordion *, motif_collection *>
-        accordion_bindings;
-    extern native::bindings<native::tab_view *, motif_tab_view *>
-        tab_view_bindings;
-    extern native::bindings<native::split_view *, motif_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::icon_view *, motif_collection *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, motif_collection *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, motif_collection *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, motif_collection *>
-        code_edit_bindings;
-    extern native::bindings<native::canvas *, motif_collection *>
-        canvas_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, motif_collection *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, motif_tab_view *> tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, motif_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, motif_collection *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, motif_collection *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, motif_collection *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, motif_collection *> code_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::canvas *, motif_collection *> canvas_bindings;
     extern native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     extern Display *cached_display;

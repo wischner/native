@@ -416,8 +416,10 @@ namespace
                 _sections.set_dimensions({300, 220});
                 const native::rect body =
                     _sections.get_content_bounds(1);
-                expect(body.d.w == 300 && body.y2() <= 220,
-                       "live accordion resize keeps valid body geometry");
+                expect(body.p.x == 1 && body.d.w == 298 &&
+                           body.y2() <= 219,
+                       "live accordion resize keeps body content inside "
+                       "its outer border");
             } catch (const std::exception &error) {
                 std::cerr << "FAILED: unexpected exception: "
                           << error.what() << '\n';

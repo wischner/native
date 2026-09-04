@@ -19,23 +19,19 @@ namespace native
     void tab_view::apply_items() { invalidate(); }
     void tab_view::apply_selected_index() { invalidate(); }
 
-    void tab_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         Widget widget = linux::x11::create_collection_host(*self);
         auto *state = new linux::x11::xaw_collection();
         state->widget = widget;
         linux::x11::tab_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
+    void tab_view::show_native() {
         auto *state = linux::x11::tab_view_bindings.object_from_handle(
-            const_cast<tab_view *>(this));
+            this);
         if (!_created || !state || !state->widget)
             throw std::runtime_error("X11/Athena: tab_view is not created.");
         XtManageChild(state->widget);
@@ -50,12 +46,11 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *state = linux::x11::tab_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (state) {
             if (state->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(state->widget);

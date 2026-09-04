@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <native/combo_box.h>
+#include <native/font.h>
 #include <native/graphics.h>
 
 namespace native
@@ -63,6 +64,10 @@ namespace native
         _items.push_back(item);
         if (_created) apply_items();
         return *this;
+    }
+
+    combo_box &combo_box::operator<<(std::string item) {
+        return add_item(item);
     }
 
     combo_box &combo_box::remove_item(std::size_t index) {
@@ -183,28 +188,98 @@ namespace native
                                  theme &appearance,
                                  const rect &bounds,
                                  const theme::state &state) {
-        appearance.draw_text_edit_frame(bounds, state);
+        if (!bounds.d.w || !bounds.d.h)
+            return;
+        draw_background(graphics, appearance, bounds, state);
+        draw_border(graphics, appearance, bounds, state);
+        draw_text(graphics, appearance, bounds, state);
+        draw_indicator(graphics, appearance, bounds, state);
+        draw_focus(graphics, appearance, bounds, state);
+    }
+
+    void combo_box::draw_background(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_ink(appearance.get_content_background_color())
+            .draw_rect(bounds, true);
+    }
+
+    void combo_box::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_pen(1)
+            .set_ink(appearance.get_button_border_color())
+            .draw_rect(bounds, false);
+    }
+
+    void combo_box::draw_text(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        const int button_width = std::min<int>(bounds.w(), bounds.h());
+        const rect text_bounds(
+            static_cast<coord>(bounds.x1() + 4), bounds.y1(),
+            static_cast<dim>(std::max(
+                0, static_cast<int>(bounds.w()) - button_width - 8)),
+            bounds.h());
+        graphics.set_font(font_t::stock(font_role::control))
+            .set_ink(state.disabled
+                ? appearance.get_button_disabled_foreground_color()
+                : appearance.get_content_foreground_color());
+        graphics.draw_text(
+            _text,
+            text_bounds,
+            {text_align::start,
+             text_valign::center,
+             text_overflow::ellipsis,
+             true});
+    }
+
+    void combo_box::draw_indicator(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
         const int button_width = std::min<int>(bounds.w(), bounds.h());
         const rect button_bounds(
-            static_cast<coord>(bounds.x2()-button_width), bounds.y1(),
-            static_cast<dim>(button_width), bounds.h());
-        appearance.draw_surface(button_bounds, surface_kind::panel, state);
-        const int indicator = std::max(5, button_width/2);
-        appearance.draw_disclosure(
-            rect(static_cast<coord>(button_bounds.x1()+
-                                    (button_width-indicator)/2),
-                 static_cast<coord>(button_bounds.y1()+
-                                    (bounds.h()-indicator)/2),
-                 static_cast<dim>(indicator), static_cast<dim>(indicator)),
-            disclosure_state::collapsed, state);
+            static_cast<coord>(bounds.x2()-button_width+1),
+            static_cast<coord>(bounds.y1()+1),
+            static_cast<dim>(std::max(0, button_width-2)),
+            static_cast<dim>(std::max(0, static_cast<int>(bounds.h())-2)));
+        if (!button_bounds.w() || !button_bounds.h())
+            return;
+        // A combo uses a quiet white button and a compact filled arrow.
+        // Reusing the tree disclosure glyph made the control look like an
+        // expander and produced an unusually heavy arrow on SDL.
+        appearance.draw_surface(
+            button_bounds, surface_kind::content, state);
+        const int half = std::max(
+            4, std::min<int>(button_bounds.w(), button_bounds.h()) / 6);
+        const int center_x = button_bounds.x1() + button_bounds.w() / 2;
+        const int center_y = button_bounds.y1() + button_bounds.h() / 2;
         const theme::palette colors = appearance.native_palette();
-        graphics.set_ink(colors.content_text);
-        const rect text_bounds(
-            static_cast<coord>(bounds.x1()+4), bounds.y1(),
-            static_cast<dim>(std::max(0,
-                static_cast<int>(bounds.w())-button_width-8)), bounds.h());
-        graphics.draw_text(_text, text_bounds,
-            {text_align::start, text_valign::center,
-             text_overflow::ellipsis, true});
+        graphics.set_ink(state.disabled ? colors.button_disabled_text
+                                        : colors.button_text)
+            .draw_polygon(
+                {{static_cast<coord>(center_x - half),
+                  static_cast<coord>(center_y - 2)},
+                 {static_cast<coord>(center_x + half),
+                  static_cast<coord>(center_y - 2)},
+                 {static_cast<coord>(center_x),
+                  static_cast<coord>(center_y + 3)}},
+                true);
+    }
+
+    void combo_box::draw_focus(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_focus(bounds, state);
     }
 } // namespace native

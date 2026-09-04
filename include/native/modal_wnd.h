@@ -58,16 +58,22 @@ namespace native
         dialog_result get_result() const;
 
         // Show the dialog and begin its owner-modal session.
-        void show() const override;
+    protected:
+        void show_native() override;
+
+    public:
 
         // Destroy the dialog and cancel an unfinished modal session.
-        void destroy() const override;
+    protected:
+        void destroy_native() override;
+
+    public:
 
         // End modality when the toolkit destroys the native dialog.
         void on_native_destroy() override;
 
         // End the dialog with an explicit accepted or cancelled result.
-        void close(dialog_result result) const;
+        void close(dialog_result result);
 
         // Notify completion of one native modal session.
         virtual void on_native_modal_close(dialog_result result);
@@ -77,13 +83,13 @@ namespace native
 
     protected:
         // Start modality for a derived native system-panel adapter.
-        void begin_modal_session() const;
+        void begin_modal_session();
 
     private:
-        mutable bool _modal_active;
-        mutable dialog_result _result;
+        bool _modal_active;
+        dialog_result _result;
 
         // Unregister this dialog and optionally emit its result.
-        bool end_modal_session() const;
+        bool end_modal_session();
     };
 } // namespace native

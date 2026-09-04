@@ -12,6 +12,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/gpx_img.cpp
     ${CMAKE_CURRENT_LIST_DIR}/img.cpp
     ${CMAKE_CURRENT_LIST_DIR}/image_codec.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/filesystem.cpp
     ${CMAKE_CURRENT_LIST_DIR}/globals.cpp
     ${CMAKE_CURRENT_LIST_DIR}/menu.cpp
     ${CMAKE_CURRENT_LIST_DIR}/message_box.cpp
@@ -36,6 +37,12 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/save_file_dialog.cpp
 )
+
+# Every Windows peer uses the wide Win32 API.  Keep generic common-control
+# helper macros (TabCtrl_*, ListView_*, and related notifications) on their
+# Unicode variants as well; mixing LVITEMW/TCITEMW structures with the ANSI
+# macros truncates labels to their first character.
+target_compile_definitions(native PRIVATE UNICODE _UNICODE)
 
 # Windows windowing, graphics, registry, shell, COM, and codec libraries.
 target_link_libraries(native PRIVATE

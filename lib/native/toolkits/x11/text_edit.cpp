@@ -214,10 +214,8 @@ namespace native
                       nullptr);
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<text_edit *>(this);
+    void text_edit::create_native() {
+        auto *self = this;
         Widget widget = XtVaCreateWidget(
             "textEdit",
             asciiTextWidgetClass,
@@ -268,11 +266,9 @@ namespace native
                           False,
                           key_pressed,
                           self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
             const_cast<text_edit *>(this));
         if (!_created || !widget)
@@ -281,13 +277,12 @@ namespace native
         XtManageChild(widget);
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             linux::x11::wnd_bindings.unregister_by_handle(
                 binding->widget);
@@ -341,7 +336,8 @@ namespace native
         block.ptr = const_cast<char *>(text.data());
         block.format = FMT8BIT;
         auto *binding =
-            linux::x11::text_edit_bindings.object_from_handle(this);
+            linux::x11::text_edit_bindings.object_from_handle(
+                const_cast<text_edit *>(this));
         binding->suppress = true;
         const int result = XawTextReplace(widget, begin, end, &block);
         binding->suppress = false;
@@ -351,9 +347,9 @@ namespace native
         return on_native_text(candidate);
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
-            const_cast<text_edit *>(this));
+            this);
         if (widget) {
             XawTextSetSelection(widget,
                                 0,

@@ -202,10 +202,8 @@ namespace native
         state->suppress = false;
     }
 
-    void tab_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -234,7 +232,6 @@ namespace native
         state->delegate = delegate;
         mac::tab_view_bindings.register_pair(self, state);
         apply_placement(*self, *state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->configure_page_host(true, false);
         const NSRect content = [view contentRect];
@@ -246,11 +243,10 @@ namespace native
                     ? _bounds.d.w - content.size.width
                     : _bounds.d.h - content.size.height));
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
-        auto *state = binding(*const_cast<tab_view *>(this));
+    void tab_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->view)
             throw std::runtime_error("macOS: tab_view is not created.");
         [state->view setHidden:NO];
@@ -263,12 +259,11 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state) {
             [state->view setDelegate:nil];
             [state->view removeFromSuperview];

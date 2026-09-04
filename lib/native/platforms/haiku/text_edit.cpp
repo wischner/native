@@ -191,10 +191,8 @@ namespace native
         });
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<text_edit *>(this);
+    void text_edit::create_native() {
+        auto *self = this;
         BView *parent = parent_view(self);
         BWindow *window = parent->Window();
         const BRect frame(_bounds.p.x,
@@ -241,13 +239,11 @@ namespace native
         binding->view = view;
         binding->scroll = scroll;
         haiku::text_edit_bindings.register_pair(self, binding);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         auto *binding = haiku::text_edit_bindings.object_from_handle(
-            const_cast<text_edit *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error(
                 "Haiku: text_edit is not created.");
@@ -259,13 +255,12 @@ namespace native
         });
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding =
             haiku::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             BView *outer = binding->scroll
                                ? static_cast<BView *>(binding->scroll)
@@ -303,9 +298,9 @@ namespace native
         return view && !_read_only && view->replace_selection(text);
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         auto *binding = haiku::text_edit_bindings.object_from_handle(
-            const_cast<text_edit *>(this));
+            this);
         if (binding && binding->view)
             binding->view->SelectAll();
     }

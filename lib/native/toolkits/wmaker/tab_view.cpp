@@ -138,6 +138,14 @@ namespace native
             }
             state->pages.push_back(page);
         }
+        // refresh_contents() creates and shows the selected page's
+        // borrowed control immediately after apply_items().  WINGs cannot
+        // realize that control until both the tab host and its page frame
+        // have been realized, even though the top-level window already is.
+        WMWidget *host = state->tabs
+            ? reinterpret_cast<WMWidget *>(state->tabs)
+            : reinterpret_cast<WMWidget *>(state->portable->frame);
+        WMRealizeWidget(host);
         state->suppress = false;
     }
 
@@ -164,20 +172,17 @@ namespace native
         state->suppress = false;
     }
 
-    void tab_view::create() const {
-        if (_created) return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         auto *state = new linux::wmaker::native_tab_view();
         linux::wmaker::tab_view_bindings.register_pair(self, state);
-        _created = true;
         self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
-        auto *state = binding(*const_cast<tab_view *>(this));
+    void tab_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || (!state->tabs && !state->portable))
             throw std::runtime_error("Window Maker/WINGs: tab_view is not created.");
         WMWidget *host = state->tabs
@@ -192,11 +197,10 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state) {
             destroy_host(*self, *state);
             linux::wmaker::tab_view_bindings.unregister_by_handle(self);

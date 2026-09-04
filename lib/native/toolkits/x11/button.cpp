@@ -41,10 +41,7 @@ namespace native
             binding->widget, XtNlabel, _text.c_str(), nullptr);
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *parent = get_parent();
         if (!parent)
             throw std::runtime_error(
@@ -89,7 +86,7 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: Failed to create Command widget.");
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         XtAddCallback(widget, XtNcallback, button_activate, self);
 
         linux::x11::wnd_bindings.register_pair(widget, self);
@@ -99,17 +96,15 @@ namespace native
         binding->owner = self;
         linux::x11::button_bindings.register_pair(self, binding);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "X11/Athena: Cannot show button before creation.");
 
         auto *binding = linux::x11::button_bindings.object_from_handle(
-            const_cast<button *>(this));
+            this);
         if (!binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: Missing button widget binding.");
@@ -117,14 +112,13 @@ namespace native
         XtManageChild(binding->widget);
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::button_bindings.object_from_handle(self);
-        self->on_native_destroy();
 
         if (binding) {
             if (binding->widget) {

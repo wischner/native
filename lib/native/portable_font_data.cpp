@@ -262,7 +262,7 @@ namespace
     native::font_description describe(
         const std::vector<std::uint8_t> &bytes,
         std::size_t face_offset,
-        const std::string &path,
+        const std::filesystem::path &path,
         std::uint32_t face_index) {
         native::font_description result;
         result.path = path;
@@ -322,7 +322,7 @@ namespace native::detail
     bool inspect_font_face_data(
         const std::vector<std::uint8_t> &bytes,
         std::uint32_t face_index,
-        const std::string &path,
+        const std::filesystem::path &path,
         font_description &description,
         std::size_t &face_offset) {
         if (!find_face_offset(bytes, face_index, face_offset) ||
@@ -335,7 +335,7 @@ namespace native::detail
 
     std::vector<font_description> describe_font_data(
         const std::vector<std::uint8_t> &bytes,
-        const std::string &path) {
+        const std::filesystem::path &path) {
         std::vector<font_description> result;
         std::uint32_t signature = 0;
         if (!read_u32(bytes, 0, signature))

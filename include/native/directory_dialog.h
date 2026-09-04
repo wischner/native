@@ -27,7 +27,8 @@ namespace native
         directory_dialog &set_allow_multiple(bool allow_multiple);
 
         // Present the platform's standard directory chooser.
-        void show() const override;
+    protected:
+        void show_native() override;
 
     private:
         bool _allow_multiple = false;

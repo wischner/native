@@ -123,6 +123,10 @@ namespace
 
 namespace native
 {
+    tab_page::tab_page(std::string title_value, wnd &content_value)
+        : title(std::move(title_value))
+        , content(&content_value) {}
+
     tab_item::tab_item(tab_view &owner,
                        std::string title,
                        wnd &content)
@@ -221,6 +225,11 @@ namespace native
         return *_items.back();
     }
 
+    tab_view &tab_view::operator<<(tab_page page) {
+        add_item(page.title, *page.content);
+        return *this;
+    }
+
     tab_view &tab_view::remove_item(std::size_t index) {
         tab_item &item = get_item(index);
         detach_item(item);
@@ -302,7 +311,7 @@ namespace native
     rect tab_view::get_tab_bounds(std::size_t index) const {
         const tab_item &item = get_item(index);
         const font_t &font = font_t::stock(font_role::control);
-        int offset = _tab_inset;
+        int offset = _page_frame_visible ? _page_inset : _tab_inset;
         for (std::size_t current = 0; current < index; ++current) {
             const int extent = std::max(
                 36,
@@ -313,6 +322,8 @@ namespace native
         const int natural_extent = std::max(
             36,
             font.measure_text(item._title).width + _tab_padding);
+        const int selected_overlap =
+            static_cast<int>(index) == _selected_index ? 1 : 0;
         if (!horizontal_tabs(_tab_placement)) {
             const int available = std::max(
                 0, static_cast<int>(_bounds.d.h) - offset);
@@ -321,14 +332,16 @@ namespace native
                                   : std::max(
                                         0,
                                         static_cast<int>(_bounds.d.w) -
-                                            _tab_height);
+                                            _tab_height -
+                                            selected_overlap);
             return rect(
                 static_cast<coord>(tab_x),
                 static_cast<coord>(std::min(
                     offset,
                     static_cast<int>(
                         std::numeric_limits<coord>::max()))),
-                non_negative_dimension(_tab_height),
+                non_negative_dimension(
+                    _tab_height + selected_overlap),
                 non_negative_dimension(
                     std::min(natural_extent, available)));
         }
@@ -339,7 +352,8 @@ namespace native
                               : std::max(
                                     0,
                                     static_cast<int>(_bounds.d.h) -
-                                        _tab_height);
+                                        _tab_height -
+                                        selected_overlap);
         return rect(
             static_cast<coord>(std::min(
                 offset,
@@ -348,7 +362,7 @@ namespace native
             static_cast<coord>(tab_y),
             non_negative_dimension(
                 std::min(natural_extent, available)),
-            non_negative_dimension(_tab_height));
+            non_negative_dimension(_tab_height + selected_overlap));
     }
 
     rect tab_view::get_content_bounds() const {
@@ -501,6 +515,9 @@ namespace native
         const rect bounds(point(0, 0), get_dimensions());
         draw_background(
             graphics, *appearance, bounds, theme::state{});
+        // Strip-only separators and framed page edges paint first so the
+        // selected tab can overlap them by one pixel without a visible gap.
+        draw_page_separator(*appearance, bounds);
         if (_sloped_tabs) {
             const auto draw_shape = [&](std::size_t index) {
                 const rect tab_bounds = get_tab_bounds(index);
@@ -546,7 +563,6 @@ namespace native
                               tab_bounds,
                               state);
             }
-            draw_page_separator(*appearance, bounds);
             return;
         }
         for (std::size_t index = 0; index < _items.size(); ++index) {
@@ -576,7 +592,6 @@ namespace native
                             tab_bounds,
                             state);
         }
-        draw_page_separator(*appearance, bounds);
     }
 
     void tab_view::draw_page_separator(theme &appearance,

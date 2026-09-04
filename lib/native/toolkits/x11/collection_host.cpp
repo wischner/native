@@ -370,30 +370,10 @@ namespace
                 static_cast<native::dim>(event->xconfigure.height)));
             break;
         case FocusIn:
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(true);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(true);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(true);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(true);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(true);
+            owner->on_native_focus(true);
             break;
         case FocusOut:
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(false);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(false);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(false);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(false);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(false);
+            owner->on_native_focus(false);
             break;
         case KeyPress:
             key(*owner, event->xkey);
@@ -525,8 +505,20 @@ namespace linux::x11
             linux::x11::widget_dimension(bounds.d.w),
             XtNheight,
             linux::x11::widget_dimension(bounds.d.h),
+            XtNborderWidth,
+            0,
+            XtNdefaultDistance,
+            0,
+            XtNleft,
+            XtChainLeft,
+            XtNright,
+            XtChainLeft,
+            XtNtop,
+            XtChainTop,
+            XtNbottom,
+            XtChainTop,
             XtNresizable,
-            True,
+            False,
             nullptr);
         if (!widget)
             throw std::runtime_error(

@@ -34,27 +34,13 @@ namespace
     };
 
     linux::wmaker::native_collection *state_for(native::wnd &owner) {
-        if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
-            return linux::wmaker::accordion_bindings.object_from_handle(
-                accordion);
-        if (auto *tabs = dynamic_cast<native::tab_view *>(&owner)) {
-            auto *binding = linux::wmaker::tab_view_bindings
-                .object_from_handle(tabs);
-            return binding ? binding->portable : nullptr;
+        if (auto *state = native::detail::peer_state<
+                linux::wmaker::native_collection>(owner)) {
+            return state;
         }
-        if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
-            return linux::wmaker::icon_view_bindings.object_from_handle(
-                icons);
-        if (auto *tree = dynamic_cast<native::tree_view *>(&owner))
-            return linux::wmaker::tree_view_bindings.object_from_handle(
-                tree);
-        if (auto *table = dynamic_cast<native::table_view *>(&owner))
-            return linux::wmaker::table_view_bindings
-                .object_from_handle(table);
-        if (auto *editor = dynamic_cast<native::code_edit *>(&owner))
-            return linux::wmaker::code_edit_bindings
-                .object_from_handle(editor);
-        return nullptr;
+        auto *tabs = native::detail::peer_state<
+            linux::wmaker::native_tab_view>(owner);
+        return tabs ? tabs->portable : nullptr;
     }
 
     std::uint64_t sum_column_widths(const native::table_view &table) {
@@ -572,17 +558,7 @@ namespace
         case FocusIn:
         case FocusOut: {
             const bool focused = event->type == FocusIn;
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(focused);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(focused);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(focused);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(focused);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(focused);
+            owner->on_native_focus(focused);
             break;
         }
         case KeyPress:
@@ -847,21 +823,17 @@ namespace linux::wmaker
 namespace native
 {
     void accordion::apply_items() { invalidate(); }
-    void accordion::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<accordion *>(this);
+    void accordion::create_native() {
+        auto *self = this;
         auto *state = create_frame(*self);
         linux::wmaker::accordion_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
-    void accordion::show() const {
+    void accordion::show_native() {
         auto *state = linux::wmaker::accordion_bindings
                           .object_from_handle(
-                              const_cast<accordion *>(this));
+                              this);
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: accordion is not created.");
@@ -872,10 +844,10 @@ namespace native
         WMMapWidget(state->frame);
         WMRaiseWidget(state->frame);
     }
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         auto *state = linux::wmaker::accordion_bindings
                           .object_from_handle(self);
         destroy_frame(*self, state);
@@ -887,30 +859,26 @@ namespace native
     void icon_view::apply_label_mode() { invalidate(); }
     void icon_view::apply_selected_index() { invalidate(); }
     void icon_view::apply_scroll_offset() { invalidate(); }
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
+    void icon_view::create_native() {
+        auto *self = this;
         auto *state = create_frame(*self);
         linux::wmaker::icon_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *state = linux::wmaker::icon_view_bindings
                           .object_from_handle(
-                              const_cast<icon_view *>(this));
+                              this);
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: icon_view is not created.");
         WMRealizeWidget(state->frame);
         WMMapWidget(state->frame);
     }
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *state = linux::wmaker::icon_view_bindings
                           .object_from_handle(self);
         destroy_frame(*self, state);

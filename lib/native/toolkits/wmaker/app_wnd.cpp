@@ -231,13 +231,11 @@ namespace native
         WMSetWindowTitle(window_state->window, _title.c_str());
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
+    void app_wnd::create_native() {
         validate_owner_created();
         linux::wmaker::initialize();
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         WMWindow *window = nullptr;
         if (app_wnd *owner = get_owner(); owner && get_modal()) {
             auto *owner_state = linux::wmaker::state(owner);
@@ -305,17 +303,15 @@ namespace native
         WMRealizeWidget(window);
         self->menu.attach(*self);
 
-        _created = true;
         self->on_native_move(position);
-        self->on_native_create();
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created) {
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated window.");
         }
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         auto *window_state = linux::wmaker::state(self);
         if (!window_state || !window_state->window) {
             throw std::runtime_error(
@@ -334,13 +330,12 @@ namespace native
             self, native::rect({0, 0}, get_dimensions()));
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         auto *window_state = linux::wmaker::state(self);
         app_wnd *owner = get_owner();
-        self->on_native_destroy();
 
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         linux::wmaker::window_bindings.unregister_by_handle(self);

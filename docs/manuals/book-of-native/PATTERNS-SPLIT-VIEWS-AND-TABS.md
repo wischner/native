@@ -11,6 +11,11 @@ borrowed pages, labels, enabled state, four-edge placement, selection,
 an optional page frame, and one selection signal.
 Neither control changes top-level ownership or creates floating windows.
 
+Tabs may be appended through either `add_item(title, page)` or the common
+builder syntax `tabs << native::tab_page(title, page)`. Both paths borrow the
+same uncreated page object; `operator<<` is append-only sugar and never changes
+placement or selection.
+
 Top placement is the compatibility default. Bottom placement keeps the page
 above the labels and gives the tabs a genuinely downward-facing free edge.
 Left and right placement reserve a vertical edge and rotate labels in the
@@ -21,6 +26,11 @@ The framed page is the compatibility default. Strip-only mode removes that
 box, makes the page flush with the cross-axis edges, and retains one
 full-span separator between the page and tabs. Switching the frame at run
 time is silent and retains the item model and selected borrowed page.
+The page edge or strip-only separator paints before the tabs, and the selected
+tab overlaps it by one device pixel. Top, bottom, left, and right placements
+therefore join the page without a one-pixel gap. A framed strip starts on the
+page frame's leading cross-axis edge, while a strip-only strip starts flush
+with the control edge.
 
 Native adapters retain toolkit behavior and accessibility wherever the
 toolkit provides the widget: Haiku `BSplitView`/`BTabView`, Motif
@@ -32,3 +42,17 @@ meets Native's directional-label contract. Themed hosts use the shared
 portable geometry and renderer. WINGs exposes only top tabs, so Window Maker
 keeps `WMTabView` for framed top placement and uses a WINGs-matched Native
 renderer for bottom, left, right, and strip-only placement.
+
+The portable split renderer dispatches `draw_splitter_background()` and then
+`draw_splitter_grip()`. Each protected virtual has a complete default for only
+its stage, so an application can replace the divider face or grip without
+reimplementing the other.
+The default background is the borderless panel/window surface, so exposed
+divider space belongs visually to the host; only the compact center grip marks
+the draggable axis.
+
+On an emulated backend such as SDL, the split host is painted before its pane
+children. Divider input is translated from root coordinates, captures the
+active split until button release, and updates the panes continuously during
+motion. Horizontal and vertical orientations select their matching system
+resize cursor automatically.

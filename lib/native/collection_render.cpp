@@ -13,9 +13,12 @@
 
 #include <native/accordion.h>
 #include <native/icon_view.h>
+#include <native/split_view.h>
 #include <native/tab_view.h>
 #include <native/theme.h>
 #include <native/tree_view.h>
+
+#include "classic_scrollbar.h"
 
 namespace native::detail
 {
@@ -194,6 +197,13 @@ namespace native::detail
             control.draw_header_border(
                 graphics, *painter, index, item, header, state);
         }
+        control.draw_border(
+            graphics,
+            *painter,
+            rect(0, 0,
+                 control.get_dimensions().w,
+                 control.get_dimensions().h),
+            panel_state);
     }
 
     void draw_accordion_at(accordion &control,
@@ -221,6 +231,18 @@ namespace native::detail
     void draw_tab_view_at(tab_view &control,
                           gpx &graphics,
                           point origin) {
+        auto saved = graphics.save_state();
+        offset_graphics translated(
+            graphics, origin, control.get_dimensions());
+        const rect bounds(0, 0,
+                          control.get_dimensions().w,
+                          control.get_dimensions().h);
+        control.on_native_paint(wnd_paint_event(bounds, translated));
+    }
+
+    void draw_split_view_at(split_view &control,
+                            gpx &graphics,
+                            point origin) {
         auto saved = graphics.save_state();
         offset_graphics translated(
             graphics, origin, control.get_dimensions());
@@ -325,26 +347,21 @@ namespace native::detail
                 0,
                 static_cast<dim>(extent),
                 viewport.d.h);
-            const int thumb_height = std::max(
-                values.scrollbar_min_thumb,
-                static_cast<int>(viewport.d.h) * viewport.d.h /
-                    std::max(1, static_cast<int>(content.h)));
-            const int maximum_scroll =
-                static_cast<int>(content.h) - viewport.d.h;
-            const int thumb_y = maximum_scroll > 0
-                                    ? control.get_scroll_offset() *
-                                          (viewport.d.h - thumb_height) /
-                                          maximum_scroll
-                                    : 0;
+            const classic_scrollbar_geometry scrollbar =
+                make_classic_scrollbar(
+                    track,
+                    scrollbar_orientation::vertical,
+                    content.h,
+                    viewport.d.h,
+                    static_cast<std::uint64_t>(
+                        control.get_scroll_offset()),
+                    values.scrollbar_min_thumb);
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::vertical,
                 track,
-                rect(track.p.x,
-                     static_cast<coord>(thumb_y),
-                     track.d.w,
-                     static_cast<dim>(thumb_height)),
+                scrollbar.thumb,
                 control_state);
         }
     }
@@ -482,28 +499,25 @@ namespace native::detail
                 0,
                 static_cast<dim>(extent),
                 viewport.d.h);
-            const int thumb_height = std::max(
-                values.scrollbar_min_thumb,
-                static_cast<int>(viewport.d.h) * viewport.d.h /
-                    std::max(1, content_height));
-            const int maximum_scroll =
-                content_height - viewport.d.h;
-            const int thumb_y = maximum_scroll > 0
-                                    ? control.get_scroll_offset() *
-                                          (viewport.d.h - thumb_height) /
-                                          maximum_scroll
-                                    : 0;
+            const classic_scrollbar_geometry scrollbar =
+                make_classic_scrollbar(
+                    track,
+                    scrollbar_orientation::vertical,
+                    static_cast<std::uint64_t>(content_height),
+                    viewport.d.h,
+                    static_cast<std::uint64_t>(
+                        control.get_scroll_offset()),
+                    values.scrollbar_min_thumb);
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::vertical,
                 track,
-                rect(track.p.x,
-                     static_cast<coord>(thumb_y),
-                     track.d.w,
-                     static_cast<dim>(thumb_height)),
+                scrollbar.thumb,
                 control_state);
         }
+        control.draw_border(
+            graphics, *painter, viewport, control_state);
     }
 
     void draw_tree_view_at(tree_view &control,

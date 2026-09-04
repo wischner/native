@@ -163,17 +163,15 @@ namespace native
             [binding->field setEditable:_read_only ? NO : YES];
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
+    void text_edit::create_native() {
         wnd *parent = get_parent();
         NSView *parent_content = mac::parent_view(
-            parent, const_cast<text_edit *>(this));
+            parent, this);
         if (!parent_content)
             throw std::runtime_error(
                 "macOS: text_edit requires a created parent.");
 
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = new mac::mac_text_edit;
         native_text_edit_delegate *delegate =
             [[native_text_edit_delegate alloc] init];
@@ -207,13 +205,11 @@ namespace native
         }
 
         mac::text_edit_bindings.register_pair(self, binding);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         auto *binding = mac::text_edit_bindings.object_from_handle(
-            const_cast<text_edit *>(this));
+            this);
         if (!_created || !binding)
             throw std::runtime_error(
                 "macOS: text_edit is not created.");
@@ -223,13 +219,12 @@ namespace native
         [view setHidden:NO];
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding =
             mac::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             NSView *view = binding->scroll
                                ? static_cast<NSView *>(binding->scroll)
@@ -290,9 +285,9 @@ namespace native
         return true;
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         auto *binding = mac::text_edit_bindings.object_from_handle(
-            const_cast<text_edit *>(this));
+            this);
         if (!binding)
             return;
         if (binding->text_view)

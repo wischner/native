@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -19,7 +20,7 @@ namespace windows
     struct file_dialog_response
     {
         bool accepted = false;
-        std::vector<std::string> paths;
+        std::vector<std::filesystem::path> paths;
     };
 
     // Show the Windows standard open-file dialog.

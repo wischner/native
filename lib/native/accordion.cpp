@@ -31,6 +31,19 @@ namespace
 
 namespace native
 {
+    accordion_section::accordion_section(std::string title_value,
+                                         wnd &content_value)
+        : title(std::move(title_value))
+        , icon(nullptr)
+        , content(&content_value) {}
+
+    accordion_section::accordion_section(std::string title_value,
+                                         const img &icon_value,
+                                         wnd &content_value)
+        : title(std::move(title_value))
+        , icon(&icon_value)
+        , content(&content_value) {}
+
     accordion_item::accordion_item(accordion &owner,
                                    std::string title,
                                    const img *icon,
@@ -95,7 +108,7 @@ namespace native
                          coord y,
                          dim width,
                          dim height)
-        : wnd(x, y, width, height) {
+        : collection_view(x, y, width, height) {
         on_wnd_paint.connect([this](wnd_paint_event event) {
             detail::draw_accordion(*this, event.g);
             return true;
@@ -144,6 +157,18 @@ namespace native
         return _mode;
     }
 
+    accordion &accordion::set_border_visible(bool visible) {
+        if (_border_visible == visible)
+            return *this;
+        _border_visible = visible;
+        refresh();
+        return *this;
+    }
+
+    bool accordion::get_border_visible() const {
+        return _border_visible;
+    }
+
     std::size_t accordion::get_item_count() const {
         return _items.size();
     }
@@ -184,6 +209,14 @@ namespace native
         item._icon = &icon;
         refresh();
         return item;
+    }
+
+    accordion &accordion::operator<<(accordion_section section) {
+        if (section.icon)
+            add_item(section.title, *section.icon, *section.content);
+        else
+            add_item(section.title, *section.content);
+        return *this;
     }
 
     accordion &accordion::remove_item(std::size_t index) {
@@ -303,10 +336,13 @@ namespace native
     rect accordion::get_content_bounds(std::size_t index) const {
         accordion_item &item = get_item(index);
         const rect header = get_header_bounds(index);
+        const int inset = _border_visible ? 1 : 0;
+        const dim width = non_negative_dimension(
+            static_cast<int>(_bounds.d.w) - inset * 2);
         if (!item._expanded) {
-            return rect(0,
+            return rect(static_cast<coord>(inset),
                         static_cast<coord>(header.y2()),
-                        _bounds.d.w,
+                        width,
                         0);
         }
 
@@ -317,9 +353,14 @@ namespace native
                 static_cast<int>(_bounds.d.h) -
                     static_cast<int>(_items.size()) * _header_height);
         }
-        return rect(0,
+        height = std::min(
+            height,
+            std::max(0,
+                     static_cast<int>(_bounds.d.h) - inset -
+                         header.y2()));
+        return rect(static_cast<coord>(inset),
                     static_cast<coord>(header.y2()),
-                    _bounds.d.w,
+                    width,
                     non_negative_dimension(height));
     }
 
@@ -339,6 +380,9 @@ namespace native
     }
 
     void accordion::on_native_focus(bool focused) {
+        const bool focus_changed = get_focused() != focused;
+        custom_control::on_native_focus(focused);
+
         int next = -1;
         if (focused && !_items.empty()) {
             const int candidate = std::clamp(
@@ -361,7 +405,8 @@ namespace native
         if (_focused_index == next)
             return;
         _focused_index = next;
-        invalidate();
+        if (!focus_changed)
+            invalidate();
     }
 
     void accordion::on_native_navigation(
@@ -439,21 +484,8 @@ namespace native
     }
 
     void accordion::synchronize_theme_metrics() {
-        const font_metrics font =
-            font_t::stock(font_role::control).get_metrics();
-        _header_height = std::max(20, font.height + 8);
-        wnd *root = this;
-        while (root->get_parent())
-            root = root->get_parent();
-        try {
-            auto painter = theme::create(root->get_gpx());
-            _header_height = std::max(
-                1, painter->defaults().header_height);
-        } catch (const std::runtime_error &) {
-            // Xt and WINGs hosts have no drawable until their parent
-            // is mapped. Stock-font metrics are the native value
-            // available during the parent's create callback.
-        }
+        custom_control::synchronize_theme_metrics();
+        _header_height = std::max(1, _theme_metrics.header_height);
     }
 
     void accordion::draw_background(
@@ -535,5 +567,17 @@ namespace native
                  bounds.d.w,
                  static_cast<dim>(extent)),
             separator_orientation::horizontal);
+    }
+
+    void accordion::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        if (!_border_visible)
+            return;
+        graphics.set_pen(1)
+            .set_ink(appearance.get_button_border_color())
+            .draw_rect(bounds, false);
     }
 } // namespace native

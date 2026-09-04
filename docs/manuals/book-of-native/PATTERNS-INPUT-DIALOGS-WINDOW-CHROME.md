@@ -26,6 +26,23 @@ text controls, and XView choice and text controls. Athena composes its standard
 text, menu-button, and menu widgets. SDL2 and GEMix route the control through
 their existing backend-owned theme and input systems.
 
+The emulated interaction follows desktop combo conventions. The indicator is
+a compact filled downward arrow on a content-colored button which remains
+inset within the continuous outer frame. A selection-only field toggles from
+the whole field; an editable field focuses text from its content and toggles
+from the arrow.
+Popups prefer the space below, fall back above, paint after ordinary sibling
+controls, receive pointer input before any sibling they cover, retain a
+complete one-pixel frame above their rows, and consume the outside click that
+dismisses them. Both the closed value and popup rows select the stock control
+font explicitly, so a prior sibling paint or a selection change cannot alter
+their text size.
+
+SDL2's fully painted editable field combines those actions: either the text
+area or arrow toggles the popup, and the text area retains keyboard input.
+Pointer motion through the popup moves one hot-row highlight without changing
+the committed selection.
+
 `list_box` is a descriptive alias of `list`, so existing list code and derived
 classes remain source compatible:
 
@@ -40,6 +57,31 @@ native::list_box files({"README.md", "LICENSE"}, 20, 60, 240, 140);
 The fallback `draw_control()` virtual paints the complete combo box. As with
 the other controls, overriding it replaces that stage; the library does not
 paint a second default pass afterward.
+
+## Filesystem resources
+
+`file_icon` turns a `std::filesystem::path` into an exact-size square PNG.
+`from_path()` uses `std::filesystem::is_directory()` to select the entry type.
+For a destination that does not exist yet, `for_file()` and
+`for_directory()` state the intended type explicitly. The returned
+`file_icon_source` distinguishes an operating-system image from the shared
+attributed generic file and folder PNG fallbacks.
+
+Linux resolves PNGs through the current Freedesktop icon theme and its
+inherited, Adwaita, and hicolor fallbacks. Windows renders the Shell icon,
+Haiku renders the Tracker icon, and macOS renders the `NSWorkspace` file icon.
+Each adapter transfers only RGBA pixels into shared code; the public class
+contains no native handle.
+
+`special_directory::detect()` refreshes the process snapshot of conventional
+locations. Its values use `std::filesystem::path` and cover home, desktop,
+documents, downloads, music, pictures, videos, public and template folders,
+applications, fonts, configuration, application data, cache, and temporary
+storage when the platform supplies them. Linux reads the XDG base and user
+directory configuration through standard streams, Windows uses Known Folders,
+Haiku uses `find_directory`, and macOS uses Foundation search paths. Detection
+does not create or require the returned directories. A second `detect()` may
+invalidate pointers returned by `at()` or `find()`.
 
 ## Standard dialogs
 
@@ -65,10 +107,38 @@ The existing `open_file_dialog` and `save_file_dialog` remain the standard
 file-open and file-save APIs. All three chooser objects must outlive an active
 native session because some platforms complete asynchronously.
 
+SDL2 consistently uses one library-owned themed browser for file open, file
+save, and folder selection. Its path handling, traversal, metadata, and
+wildcard matching use the C++ standard library. The window has a Places
+table populated from `special_directory`, icon-only back/forward/up
+navigation, and a clickable, horizontally eliding breadcrumb. The address
+editor occupies the same bounds: a double click toggles between breadcrumb
+and direct path modes, while Ctrl+L also opens direct editing. Entering direct
+mode places a normal caret without implicitly selecting the complete path, and
+switching views preserves uncommitted path text. The main
+Name/Type/Size `table_view` and Places rows use decoded
+`file_icon` PNGs; file icon lookup is cached by type so large folders remain
+responsive. Its classic scrollbar moves through one continuous directory
+listing and supports arrows, trough steps, wheel input, and thumb dragging;
+the browser never paginates the directory. A single click selects an entry, a
+double click enters a folder or accepts a file, and Enter works in the focused
+location, filename, or table. File modes keep location and filename in
+separate fields; Ctrl+H toggles dot-prefixed hidden entries. The browser also
+provides filtering, validation, default save extensions, and overwrite
+confirmation. Completion releases capture and returns keyboard focus to the
+owner.
+
 `message_box::show()` is synchronous and owner-modal. The button sets are
 `ok`, `ok_cancel`, `yes_no`, and `yes_no_cancel`; the result is one of `ok`,
 `cancel`, `yes`, `no`, or `none`. Information, warning, error, and question
 icons are semantic requests that the backend maps to its standard alert.
+SDL2 uses a library-owned modal alert with the same stock control font, panel
+surface, semantic icon, and `button` implementation as the rest of its UI. Its
+information, warning, error, and question badges come from an attributed,
+embedded PNG set shared with Window Maker, so they do not depend on SDL_ttf
+glyph coverage or procedurally approximated marks. Its synchronous wait
+continues to process paint, pointer, keyboard, resize, and close events before
+restoring the owner.
 
 ```cpp
 const auto answer = native::message_box::show(
@@ -84,6 +154,12 @@ edge instead of participating in child layout. Visible elements reserve their
 extent from `wnd::get_client_bounds()`. Layout managers receive that reduced,
 host-relative rectangle. Hiding a strip or changing its extent immediately
 relayouts children and invalidates the host.
+
+Strips stack inside the host's chrome area rather than its raw bounds, so a
+host that owns permanent edge furniture of its own keeps them inside it. On a
+`canvas`, whose scrollbars take the outermost edges, a horizontal ruler
+therefore stops before a visible vertical scrollbar instead of running under
+it. See [Structural Panels and Paintable Canvases](PATTERNS-PANELS-AND-CANVASES.md).
 
 The strips are ordinary C++ members owned by the application. They attach in
 their constructor and detach in their destructor; the host never deletes
@@ -137,7 +213,9 @@ status.set_parts({{"Ready", 0}, {"Line 12, Column 4", 150}});
 `draw_background()` and `draw_part()` are protected virtual stages and contain
 the default themed painting. Status bars and rulers use semantic theme
 surfaces and the active backend palette, rather than hard-coded visuals from
-another desktop.
+another desktop. Painted status parts use the gray panel/chrome role with
+theme highlight and shadow edges, leaving white content surfaces for editors
+and item views.
 
 Windows hosts `STATUSCLASSNAME` for the exact base `status_bar`, maps portable
 parts through `SB_SETPARTS` and `SB_SETTEXT`, and lets the common control own

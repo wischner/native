@@ -160,7 +160,9 @@ native::img from_memory = native::img::decode(
 ```
 
 Decoding detects the format from the data, not the filename. Decoded pixels
-are RGBA. PNG alpha is retained; JPEG pixels are opaque.
+are RGBA. PNG alpha is retained; JPEG pixels are opaque. File paths use
+`std::filesystem::path`; string literals remain convenient because they
+construct paths directly.
 
 ### Encode and save
 
@@ -205,7 +207,7 @@ face when a toolkit does not provide distinct choices.
 
 Use `enumerate_installed()` to populate a font picker. Each
 `font_description` contains portable family, style, face name, weight,
-italic/fixed-pitch flags, file path, and collection face index:
+italic/fixed-pitch flags, `std::filesystem::path`, and collection face index:
 
 ```cpp
 std::vector<native::font_description> installed =

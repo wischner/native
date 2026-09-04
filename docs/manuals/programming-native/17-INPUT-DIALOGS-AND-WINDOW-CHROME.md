@@ -28,6 +28,48 @@ complete displayed value. Setters update the control without emitting these
 user-action signals. `list_box` is an alias of the existing `list` control and
 uses the same item and selection API.
 
+Selection-only combos open from either the field or their downward arrow. In
+an editable combo, clicking the text area focuses editing while the arrow
+opens the list. The popup chooses the available side of the control and stays
+above normal sibling content for both painting and pointer input. The arrow is
+a compact filled mark on a white content button, the complete border remains
+visible, and both the selected value and list rows use the ordinary control
+font after every selection.
+
+On SDL2, clicking either part of an editable combo opens it while preserving
+keyboard editing. Moving through the open popup highlights the row under the
+pointer without committing it until clicked.
+
+## File icons and special directories
+
+Filesystem-facing APIs use `std::filesystem::path`. Refresh the system
+directory snapshot, find a semantic location, and request its icon without
+including a platform header:
+
+```cpp
+native::special_directory::detect();
+const native::special_directory *documents =
+    native::special_directory::find(
+        native::special_directory_kind::documents);
+
+if (documents) {
+    const std::filesystem::path path = documents->get_path();
+    const native::file_icon icon = documents->get_icon(32);
+    const native::img image = native::img::decode(
+        icon.get_png().data(), icon.get_png().size());
+}
+```
+
+`file_icon::from_path(path, size)` detects whether an existing entry is a file
+or directory. Use `for_file()` or `for_directory()` when the path may not yet
+exist. `get_png()` always returns a complete PNG with exactly the requested
+width and height. `get_source()` and `is_generic()` report whether the image
+came from the operating system or the portable fallback.
+
+The snapshot also supports `count()`, `at(index)`, and `find(kind)`. Its paths
+are discovered, not created, and a later `detect()` invalidates earlier
+pointers into the snapshot.
+
 ## Tabs and borrowed pages
 
 `tab_view` owns its ordered `tab_item` model and borrows one uncreated `wnd`
@@ -70,7 +112,7 @@ native::directory_dialog choose_folder(window, "Choose output folder");
 choose_folder.on_modal_close.connect(
     [&](native::dialog_result result) {
         if (result == native::dialog_result::accepted)
-            status.set_text(choose_folder.get_path());
+            status.set_text(choose_folder.get_path().string());
         return true;
     });
 
@@ -81,6 +123,16 @@ choose_folder.show();
 Keep the object alive until completion. Use `open_file_dialog` for existing
 files and `save_file_dialog` for a destination filename, including filters,
 suggested names, default extensions, and native overwrite confirmation.
+On SDL2, the same API consistently opens Native's themed C++ file/folder
+browser, so the three modes have one design on every desktop. The browser
+uses detected special folders in a compact Places table, native-or-generic PNG
+icons, icon-only history navigation, and a clickable horizontal breadcrumb.
+Double-clicking that area toggles between breadcrumb and direct path editing;
+the editor keeps uncommitted text across those view changes, and Ctrl+L also
+enters direct editing. The
+Name/Type/Size file table uses one continuous draggable scrollbar rather than
+pagination. Open and save modes keep the filename separate from the current
+location.
 
 For a short blocking question, use the standard message box:
 
@@ -95,6 +147,12 @@ const native::message_box_result result = native::message_box::show(
 
 Button sets contain one, two, or three buttons and return a typed result. The
 dialog remains owner-modal and uses the active platform's alert presentation.
+SDL's alert uses the same font, gray panel, semantic icon, and button drawing
+as its other windows. Its semantic badges come from the same attributed,
+embedded PNG set used by Window Maker, with consistent colored silhouettes and
+white marks. The owner is ready for a normal first click as soon as the call
+returns, and a click that first activates an SDL window is delivered to the
+control under it.
 
 ## Rulers and status bar
 
@@ -146,6 +204,10 @@ both lower corners; side rulers and other side strips stop above it. Both
 controls provide protected virtual drawing stages, so an application-specific
 derived control can call the base implementation and add detail without a
 duplicate default-paint pass.
+
+Painted status bars use the platform's panel/chrome background and subtle
+part edges. White content backgrounds remain available for text editors,
+lists, icon views, trees, and tables.
 
 Windows uses the native common-controls status bar for the exact base
 `status_bar` type and maps these widths and strings with `SB_SETPARTS` and

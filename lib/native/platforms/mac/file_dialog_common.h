@@ -10,6 +10,7 @@
 
 #import <AppKit/AppKit.h>
 
+#include <filesystem>
 #include <string>
 
 #include <native/file_dialog.h>
@@ -21,9 +22,10 @@ namespace mac
         NSSavePanel *panel, const native::file_dialog &dialog);
 
     // Return a selected URL as a UTF-8 filesystem path.
-    std::string path_from_url(NSURL *url);
+    std::filesystem::path path_from_url(NSURL *url);
 
     // Append an extension when a selected filename has no suffix.
-    std::string add_default_extension(
-        const std::string &path, const std::string &extension);
+    std::filesystem::path add_default_extension(
+        const std::filesystem::path &path,
+        const std::string &extension);
 } // namespace mac

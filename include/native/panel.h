@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
@@ -31,13 +32,24 @@ namespace native
         // Destroy the panel and its native resource if it exists.
         ~panel() override;
 
+        // Paint the themed container background before child content.
+        void on_native_paint(wnd_paint_event event) override;
+
+    protected:
         // Create the backend child-container resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend child-container resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show an already-created panel.
-        void show() const override;
+        void show_native() override;
+
+        // Draw the complete structural-container background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
     };
 } // namespace native

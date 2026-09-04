@@ -49,8 +49,11 @@ namespace linux::sdl2
             if (released && b->pressed) {
                 b->pressed = false;
                 used = true;
-                if (h)
+                if (h) {
                     c->on_native_checked(!c->get_checked());
+                    // User code may mutate the global check registry.
+                    return true;
+                }
             }
         }
         if (used)
@@ -89,14 +92,12 @@ namespace native
         if (b->parent)
             b->parent->invalidate();
     }
-    void check::create() const {
-        if (_created)
-            return;
+    void check::create_native() {
         auto *p = get_parent();
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "SDL2: check requires a created parent.");
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         auto *b = new linux::sdl2::sdl2_check();
         b->parent = p;
         b->bounds = _bounds;
@@ -104,24 +105,21 @@ namespace native
         b->checked = _checked;
         linux::sdl2::check_bindings.register_pair(self, b);
         linux::sdl2::checks.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         auto *b = linux::sdl2::check_bindings.object_from_handle(
-            const_cast<check *>(this));
+            this);
         if (!_created || !b)
             throw std::runtime_error("SDL2: check is not created.");
         b->visible = true;
         if (b->parent)
             b->parent->invalidate();
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         auto *b = linux::sdl2::check_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &checks = linux::sdl2::checks;
         checks.erase(std::remove(checks.begin(), checks.end(), self),
                      checks.end());

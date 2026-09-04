@@ -1,5 +1,5 @@
 //
-// Presents the Linux desktop file-open chooser for the SDL2 backend.
+// Presents the library-owned modern file-open chooser for SDL2.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -7,28 +7,34 @@
 
 #include <native/open_file_dialog.h>
 
-#include "../../platforms/linux/file_dialog_process.h"
+#include "globals.h"
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
+        app_wnd *owner = get_owner();
+
         try {
-            const linux::file_dialog_response response =
-                linux::show_open_file_dialog(*this,
-                                             get_allow_multiple());
-            if (response.outcome ==
-                linux::file_dialog_outcome::accepted) {
-                const_cast<open_file_dialog *>(this)->on_native_accept(
-                    response.paths);
+            std::vector<std::filesystem::path> paths;
+            if (linux::sdl2::show_file_dialog(
+                    *this,
+                    false,
+                    false,
+                    std::string(),
+                    std::string(),
+                    false,
+                    paths)) {
+                this->on_native_accept(paths);
             } else {
-                const_cast<open_file_dialog *>(this)
-                    ->on_native_cancel();
+                this->on_native_cancel();
             }
+            linux::sdl2::restore_window_focus(owner);
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
+            linux::sdl2::restore_window_focus(owner);
             throw;
         }
     }

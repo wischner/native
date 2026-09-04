@@ -364,8 +364,24 @@ namespace windows
 namespace native
 {
     void tree_view::apply_items() {
+        auto &binding = binding_for(*this);
+        LONG_PTR extended = GetWindowLongPtrW(
+            binding.hwnd, GWL_EXSTYLE);
+        if (get_border_visible())
+            extended |= WS_EX_CLIENTEDGE;
+        else
+            extended &= ~static_cast<LONG_PTR>(WS_EX_CLIENTEDGE);
+        SetWindowLongPtrW(binding.hwnd, GWL_EXSTYLE, extended);
+        SetWindowPos(binding.hwnd,
+                     nullptr,
+                     0,
+                     0,
+                     0,
+                     0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                         SWP_NOACTIVATE | SWP_FRAMECHANGED);
         rebuild(*this);
-        TreeView_SetIndent(binding_for(*this).hwnd,
+        TreeView_SetIndent(binding.hwnd,
                            std::max<int>(
                                get_icon_size().w + 3, 16));
     }
@@ -411,9 +427,7 @@ namespace native
                 binding.hwnd, found->second, TVGN_FIRSTVISIBLE);
     }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
+    void tree_view::create_native() {
         wnd *parent = get_parent();
         HWND parent_hwnd = parent
                                ? windows::wnd_bindings.handle_from_object(
@@ -425,12 +439,14 @@ namespace native
         INITCOMMONCONTROLSEX controls{
             sizeof(controls), ICC_TREEVIEW_CLASSES};
         InitCommonControlsEx(&controls);
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         DWORD style = WS_CHILD | WS_TABSTOP | WS_VSCROLL |
                       TVS_SHOWSELALWAYS | TVS_HASBUTTONS;
         if (_lines_visible)
             style |= TVS_HASLINES | TVS_LINESATROOT;
-        HWND hwnd = CreateWindowExW(WS_EX_CLIENTEDGE,
+        HWND hwnd = CreateWindowExW(get_border_visible()
+                                        ? WS_EX_CLIENTEDGE
+                                        : 0,
                                     WC_TREEVIEWW,
                                     L"",
                                     style,
@@ -458,16 +474,14 @@ namespace native
                      WM_SETFONT,
                      reinterpret_cast<WPARAM>(windows::control_font()),
                      TRUE);
-        _created = true;
         self->synchronize_theme_metrics();
         self->apply_items();
         self->apply_selection();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *binding = windows::tree_view_bindings.object_from_handle(
-            const_cast<tree_view *>(this));
+            this);
         if (!_created || !binding || !binding->hwnd)
             throw std::runtime_error(
                 "Windows: tree_view is not created.");
@@ -475,13 +489,12 @@ namespace native
         UpdateWindow(binding->hwnd);
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *binding =
             windows::tree_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->images)
                 ImageList_Destroy(binding->images);

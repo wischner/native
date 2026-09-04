@@ -45,7 +45,7 @@ controls.
 14. [Advanced table views](programming-native/14-ADVANCED-TABLE-VIEWS.md)
 15. [Source editing](programming-native/15-SOURCE-EDITING.md)
 16. [Split views and tabs](programming-native/16-SPLIT-VIEWS-AND-TABS.md)
-17. [Input, dialogs, and window chrome](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
+17. [Filesystem resources, input, dialogs, and window chrome](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
 18. [Panels and canvases](programming-native/18-PANELS-AND-CANVASES.md)
 
 ## Building the repository program

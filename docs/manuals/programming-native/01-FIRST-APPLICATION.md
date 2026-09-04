@@ -23,9 +23,10 @@ arguments:
 
 #include <native.h>
 
-// Start the application with a temporary main window.
+// Start the application with a mutable main window.
 int program(int, char **) {
-    return native::app::run(native::app_wnd("Hello World!"));
+    native::app_wnd window("Hello World!");
+    return native::app::run(window);
 }
 ```
 
@@ -36,9 +37,10 @@ int program(int, char **) {
 3. Shows the window.
 4. Enters the backend event loop.
 
-The temporary `app_wnd` remains alive for the complete call to `app::run()`.
-For applications with controls or state, create a named window class as shown
-in later chapters.
+The non-`const` reference makes the lifecycle mutation explicit, and the named
+`app_wnd` remains alive for the complete call to `app::run()`. For
+applications with controls or state, create a named window class as shown in
+later chapters.
 
 ## Window bounds
 

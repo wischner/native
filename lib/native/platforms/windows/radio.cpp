@@ -25,16 +25,14 @@ namespace native
         SendMessageW(
             h, BM_SETCHECK, _selected ? BST_CHECKED : BST_UNCHECKED, 0);
     }
-    void radio::create() const {
-        if (_created)
-            return;
+    void radio::create_native() {
         auto *p = get_parent();
         HWND parent =
             p ? windows::wnd_bindings.handle_from_object(p) : nullptr;
         if (!p || !p->get_created() || !parent)
             throw std::runtime_error(
                 "Windows: radio requires a created parent.");
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         auto s = windows::utf8_to_wide(_text);
         HWND h = CreateWindowExW(0,
                                  L"BUTTON",
@@ -59,23 +57,20 @@ namespace native
                      TRUE);
         SendMessageW(
             h, BM_SETCHECK, _selected ? BST_CHECKED : BST_UNCHECKED, 0);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         HWND h = windows::wnd_bindings.handle_from_object(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !h)
             throw std::runtime_error("Windows: radio is not created.");
         ShowWindow(h, SW_SHOW);
         UpdateWindow(h);
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         HWND h = windows::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (h) {
             DestroyWindow(h);
             windows::wnd_bindings.unregister_by_handle(h);

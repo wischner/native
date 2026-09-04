@@ -79,9 +79,14 @@ namespace linux::sdl2
                 h->hover = is_inside(h->bounds, x, y);
 
                 if (was_pressed) {
-                    consumed = true;
-                    if (is_inside(h->bounds, x, y))
+                    if (is_inside(h->bounds, x, y)) {
                         btn->on_native_click();
+                        // A click handler may add or destroy controls,
+                        // invalidating both this binding and the vector
+                        // iterator. Return before touching either again.
+                        return true;
+                    }
+                    consumed = true;
                 }
             }
         }
@@ -126,10 +131,7 @@ namespace native
             binding->parent->invalidate();
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *p = get_parent();
         if (!p)
             throw std::runtime_error(
@@ -138,7 +140,7 @@ namespace native
             throw std::runtime_error(
                 "SDL2: button parent is not created.");
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
 
         auto *h = new linux::sdl2::sdl2_button();
         h->owner = self;
@@ -152,17 +154,15 @@ namespace native
 
         linux::sdl2::buttons.push_back(self);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "SDL2: Cannot show button before it is created.");
 
         auto *h = linux::sdl2::button_bindings.object_from_handle(
-            const_cast<button *>(this));
+            this);
         if (!h)
             throw std::runtime_error("SDL2: Missing button binding.");
 
@@ -173,13 +173,12 @@ namespace native
             h->parent->invalidate();
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *h = linux::sdl2::button_bindings.object_from_handle(self);
-        self->on_native_destroy();
 
         if (h) {
             auto &buttons = linux::sdl2::buttons;

@@ -12,7 +12,7 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -22,23 +22,24 @@ namespace native
                                              get_allow_multiple());
             if (response.outcome ==
                 linux::file_dialog_outcome::accepted) {
-                const_cast<open_file_dialog *>(this)->on_native_accept(
+                this->on_native_accept(
                     response.paths);
             } else if (response.outcome ==
                        linux::file_dialog_outcome::cancelled) {
-                const_cast<open_file_dialog *>(this)
+                this
                     ->on_native_cancel();
             } else if (!linux::x11::show_file_dialog_fallback(
-                           *const_cast<open_file_dialog *>(this),
+                           *this,
+                           false,
                            false,
                            std::string(),
                            std::string(),
                            false)) {
-                const_cast<open_file_dialog *>(this)
+                this
                     ->on_native_cancel();
             }
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

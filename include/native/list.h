@@ -51,6 +51,9 @@ namespace native
         // Append one item and update a created native control.
         list &add_item(const std::string &item);
 
+        // Append one item with builder syntax.
+        list &operator<<(std::string item);
+
         // Remove the item at index or throw std::out_of_range.
         list &remove_item(std::size_t index);
 
@@ -66,21 +69,52 @@ namespace native
         // Cache a native user selection and emit on_selection_change.
         virtual void on_native_selection(int index);
 
+    protected:
         // Create the backend list resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend list resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend list resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the selected index after a user-originated change.
         signal<int> on_selection_change;
 
     protected:
-        // Draw the complete list using the active native theme.
+        // Dispatch the complete staged list-control contract.
         virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the list viewport background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the visible item rows.
+        virtual void draw_content(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the list viewport border.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,

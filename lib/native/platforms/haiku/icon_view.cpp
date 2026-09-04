@@ -23,23 +23,19 @@ namespace native
     void icon_view::apply_selected_index() { invalidate(); }
     void icon_view::apply_scroll_offset() { invalidate(); }
 
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
+    void icon_view::create_native() {
+        auto *self = this;
         BView *view = haiku::create_collection_view(*self);
         auto *binding = new haiku::haiku_collection();
         binding->view = view;
         haiku::icon_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         self->invalidate();
-        self->on_native_create();
     }
 
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *binding = haiku::icon_view_bindings.object_from_handle(
-            const_cast<icon_view *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("Haiku: icon_view is not created.");
         BWindow *window = binding->view->Window();
@@ -51,13 +47,12 @@ namespace native
         }
     }
 
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *binding =
             haiku::icon_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->view) {
                 BWindow *window = binding->view->Window();

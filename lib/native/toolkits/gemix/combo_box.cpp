@@ -47,31 +47,27 @@ namespace native
     void combo_box::apply_text() { invalidate(); }
     void combo_box::apply_style() { invalidate(); }
 
-    void combo_box::create() const {
-        if (_created) return;
+    void combo_box::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "GEMix: combo box requires a created parent.");
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *state = new linux::gemix::gem_combo_box;
         linux::gemix::combo_box_bindings.register_pair(self, state);
         linux::gemix::combo_boxes.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
+    void combo_box::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: combo box is not created.");
         invalidate();
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *state = linux::gemix::combo_box_bindings
                           .object_from_handle(self);
-        self->on_native_destroy();
         linux::gemix::combo_boxes.erase(std::remove(
             linux::gemix::combo_boxes.begin(),
             linux::gemix::combo_boxes.end(), self),

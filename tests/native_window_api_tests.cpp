@@ -7,9 +7,9 @@
 //
 
 #include <algorithm>
-#include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -29,6 +29,17 @@
 
 namespace
 {
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::file_dialog &>()
+                               .get_path()),
+                  const std::filesystem::path &>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::code_edit &>()
+                               .get_path()),
+                  const std::filesystem::path &>);
+    static_assert(std::is_same_v<
+                  decltype(native::font_description{}.path),
+                  std::filesystem::path>);
     static_assert(
         std::is_same_v<decltype(std::declval<const native::font_t &>()
                                     .get_metrics()),
@@ -67,6 +78,20 @@ namespace
     static_assert(std::is_base_of_v<native::wnd, native::split_view>);
     static_assert(std::is_base_of_v<native::wnd, native::panel>);
     static_assert(std::is_base_of_v<native::wnd, native::canvas>);
+    static_assert(std::is_same_v<
+                  decltype(std::declval<const native::wnd &>()
+                               .get_cursor()),
+                  native::mouse_cursor>);
+    static_assert(std::is_base_of_v<native::custom_control,
+                                    native::canvas>);
+    static_assert(std::is_base_of_v<native::collection_view,
+                                    native::accordion>);
+    static_assert(std::is_base_of_v<native::collection_view,
+                                    native::icon_view>);
+    static_assert(std::is_base_of_v<native::collection_view,
+                                    native::tree_view>);
+    static_assert(std::is_base_of_v<native::collection_view,
+                                    native::table_view>);
     static_assert(!std::is_abstract_v<native::panel>);
     static_assert(!std::is_abstract_v<native::canvas>);
     // A container and a drawing surface are unrelated siblings; neither
@@ -107,15 +132,37 @@ namespace
     public:
         using native::wnd::wnd;
 
-        void create() const override {
-            _created = true;
+        void create_native() override {}
+
+        void destroy_native() override {}
+
+        void show_native() override {}
+    };
+
+    class simulated_app_window final : public native::app_wnd
+    {
+    public:
+        simulated_app_window()
+            : app_wnd("simulated", 0, 0, 640, 480) {}
+
+        ~simulated_app_window() override {
+            destroy();
         }
 
-        void destroy() const override {
-            _created = false;
-        }
+        int cursor_applications = 0;
 
-        void show() const override {}
+    protected:
+        void create_native() override {}
+        void destroy_native() override {}
+        void show_native() override {}
+        void apply_title() override {}
+        void apply_position() override {}
+        void apply_dimensions() override {}
+        void apply_bounds() override {}
+        void apply_parent() override {}
+        void apply_cursor() override {
+            ++cursor_applications;
+        }
     };
 
     class simulated_tab_view final : public native::tab_view
@@ -127,22 +174,15 @@ namespace
             destroy();
         }
 
-        void create() const override {
-            if (_created)
-                return;
-            auto *self = const_cast<simulated_tab_view *>(this);
-            _created = true;
-            self->refresh();
+        void create_native() override {
+            refresh();
         }
 
-        void destroy() const override {
-            if (!_created)
-                return;
+        void destroy_native() override {
             destroy_children();
-            _created = false;
         }
 
-        void show() const override {}
+        void show_native() override {}
 
         simulated_tab_view &preserve_pages() {
             configure_page_host(true, true);
@@ -254,6 +294,10 @@ namespace
 
         int click_hooks = 0;
         int paint_hooks = 0;
+        int background_hooks = 0;
+        int border_hooks = 0;
+        int text_hooks = 0;
+        int focus_hooks = 0;
 
     protected:
         void draw_control(
@@ -263,6 +307,46 @@ namespace
             const native::theme::state &state) override {
             ++paint_hooks;
             native::button::draw_control(
+                graphics, appearance, bounds, state);
+        }
+
+        void draw_background(
+            native::gpx &graphics,
+            native::theme &appearance,
+            const native::rect &bounds,
+            const native::theme::state &state) override {
+            ++background_hooks;
+            native::button::draw_background(
+                graphics, appearance, bounds, state);
+        }
+
+        void draw_border(
+            native::gpx &graphics,
+            native::theme &appearance,
+            const native::rect &bounds,
+            const native::theme::state &state) override {
+            ++border_hooks;
+            native::button::draw_border(
+                graphics, appearance, bounds, state);
+        }
+
+        void draw_text(
+            native::gpx &graphics,
+            native::theme &appearance,
+            const native::rect &bounds,
+            const native::theme::state &state) override {
+            ++text_hooks;
+            native::button::draw_text(
+                graphics, appearance, bounds, state);
+        }
+
+        void draw_focus(
+            native::gpx &graphics,
+            native::theme &appearance,
+            const native::rect &bounds,
+            const native::theme::state &state) override {
+            ++focus_hooks;
+            native::button::draw_focus(
                 graphics, appearance, bounds, state);
         }
     };
@@ -383,6 +467,32 @@ namespace
                "window caches its dimensions");
         expect(window.get_title() == "Updated",
                "window caches its title");
+        expect(window.get_cursor() == native::mouse_cursor::arrow,
+               "windows default to the arrow cursor");
+        native::wnd *chained =
+            &window.set_cursor(native::mouse_cursor::crosshair);
+        expect(chained == &window &&
+                   window.get_cursor() ==
+                       native::mouse_cursor::crosshair,
+               "window cursor changes cache before creation and chain");
+        window.set_cursor(native::mouse_cursor::resize_horizontal);
+        expect(window.get_cursor() ==
+                   native::mouse_cursor::resize_horizontal,
+               "window caches the horizontal resize cursor");
+        window.set_cursor(native::mouse_cursor::resize_vertical);
+        expect(window.get_cursor() ==
+                   native::mouse_cursor::resize_vertical,
+               "window caches the vertical resize cursor");
+        window.set_cursor(
+            native::mouse_cursor::resize_northwest_southeast);
+        expect(window.get_cursor() ==
+                   native::mouse_cursor::resize_northwest_southeast,
+               "window caches the northwest-southeast resize cursor");
+        window.set_cursor(
+            native::mouse_cursor::resize_northeast_southwest);
+        expect(window.get_cursor() ==
+                   native::mouse_cursor::resize_northeast_southwest,
+               "window caches the northeast-southwest resize cursor");
         expect(window.get_native_title_visible(),
                "ordinary application windows retain native titles");
         expect(!window.get_created(),
@@ -407,6 +517,27 @@ namespace
             std::make_unique<native::absolute_layout_manager>());
         expect(window.get_layout() != nullptr,
                "window owns its layout");
+    }
+
+    // Verify cursor state is applied at native lifecycle boundaries.
+    void test_cursor_property() {
+        simulated_app_window window;
+        window.set_cursor(native::mouse_cursor::ibeam);
+        expect(window.cursor_applications == 0,
+               "an uncreated cursor change stays portable");
+
+        window.create();
+        expect(window.cursor_applications == 1,
+               "creation applies the cached cursor");
+        window.set_cursor(native::mouse_cursor::ibeam);
+        expect(window.cursor_applications == 1,
+               "an unchanged live cursor is not reapplied");
+        window.set_cursor(native::mouse_cursor::resize_horizontal);
+        expect(window.cursor_applications == 2,
+               "a live resize-cursor change reaches the backend");
+        window.show();
+        expect(window.cursor_applications == 3,
+               "show reapplies the cursor after realization");
     }
 
     // Verify that portable menu labels retain explicit presentation metadata
@@ -476,14 +607,18 @@ namespace
 
         const native::rect top_tabs = tabs.get_tab_bounds(0);
         const native::rect top_content = tabs.get_content_bounds();
+        expect(top_tabs.p.x == top_content.p.x,
+               "framed top tabs align with the page border");
         tabs.set_page_frame_visible(false);
+        const native::rect flush_top_tabs = tabs.get_tab_bounds(0);
         const native::rect flush_top_content =
             tabs.get_content_bounds();
         expect(!tabs.get_page_frame_visible() &&
                    tabs.get_selected_index() == 0 &&
+                   flush_top_tabs.p.x == 0 &&
                    flush_top_content.p.x == 0 &&
                    flush_top_content.d.w == tabs.get_dimensions().w &&
-                   flush_top_content.p.y == top_tabs.y2() + 1 &&
+                   flush_top_content.p.y == flush_top_tabs.y2() &&
                    flush_top_content.y2() ==
                        tabs.get_dimensions().h &&
                    changes == 0,
@@ -507,7 +642,8 @@ namespace
         const native::rect bottom_content = tabs.get_content_bounds();
         expect(bottom_tabs.p.y > top_tabs.p.y &&
                    bottom_content.p.y < top_content.p.y &&
-                   bottom_content.y2() <= bottom_tabs.p.y,
+                   bottom_content.y2() <= bottom_tabs.p.y + 1 &&
+                   bottom_tabs.p.x == bottom_content.p.x,
                "bottom tab labels occupy the edge below their content");
         expect(tabs.get_item_count() == 2 &&
                    tabs.get_selected_index() == 0 &&
@@ -518,15 +654,17 @@ namespace
         const native::rect left_tabs = tabs.get_tab_bounds(0);
         const native::rect left_content = tabs.get_content_bounds();
         expect(left_tabs.p.x == 0 &&
-                   left_content.p.x >= left_tabs.x2() &&
+                   left_content.p.x + 1 >= left_tabs.x2() &&
+                   left_tabs.p.y == left_content.p.y &&
                    left_tabs.d.h > left_tabs.d.w,
-               "left tabs reserve a vertical strip before their content");
+            "left tabs overlap the page edge without a gap");
         tabs.set_tab_placement(native::tab_placement::right);
         const native::rect right_tabs = tabs.get_tab_bounds(0);
         const native::rect right_content = tabs.get_content_bounds();
-        expect(right_tabs.p.x >= right_content.x2() &&
+        expect(right_tabs.p.x + 1 >= right_content.x2() &&
+                   right_tabs.p.y == right_content.p.y &&
                    right_tabs.d.h > right_tabs.d.w,
-               "right tabs reserve a vertical strip after their content");
+            "right tabs overlap the page edge without a gap");
         recording_gpx side_graphics;
         side_graphics.set_clip(native::rect(0, 0, 300, 180));
         tabs.on_native_paint(native::wnd_paint_event(
@@ -557,9 +695,12 @@ namespace
                    first.get_parent() == nullptr,
                "clearing tabs detaches all pages and clears selection");
 
+        simulated_app_window lifecycle_root;
+        lifecycle_root.create();
         simulated_page live_first(0, 0, 10, 10);
         simulated_page live_second(0, 0, 10, 10);
         simulated_tab_view live_tabs(0, 0, 320, 200);
+        live_tabs.set_parent(&lifecycle_root);
         live_tabs.add_item("Top", live_first);
         live_tabs.add_item("Other", live_second);
         live_tabs.set_selected_index(1);
@@ -618,7 +759,7 @@ namespace
         live_tabs.set_dimensions({420, 260});
         expect(same_rect(live_second.get_bounds(),
                          live_tabs.get_content_bounds()) &&
-                   live_tabs.get_tab_bounds(0).p.x >=
+                   live_tabs.get_tab_bounds(0).p.x + 1 >=
                        live_tabs.get_content_bounds().x2(),
                "resizing preserves side placement and selected page layout");
         live_tabs.set_tab_placement(native::tab_placement::top);
@@ -641,6 +782,7 @@ namespace
         simulated_page retained_first(0, 0, 10, 10);
         simulated_page retained_second(0, 0, 10, 10);
         simulated_tab_view retained_tabs(0, 0, 240, 140);
+        retained_tabs.set_parent(&lifecycle_root);
         retained_tabs.preserve_pages()
             .add_item("First", retained_first);
         retained_tabs.add_item("Second", retained_second);
@@ -691,7 +833,11 @@ namespace
         recording_gpx graphics;
         button.paint(graphics);
         expect(button.click_hooks == 1 && click_signals == 1 &&
-                   button.paint_hooks == 1 && graphics.painted,
+                   button.paint_hooks == 1 &&
+                   button.background_hooks == 1 &&
+                   button.border_hooks == 1 &&
+                   button.text_hooks == 1 &&
+                   button.focus_hooks == 1 && graphics.painted,
                "button behavior and default painting are virtual stages");
 
         extensible_table table;
@@ -1034,8 +1180,13 @@ namespace
 
         expect(sections.get_item_count() == 3 &&
                    sections.get_expanded_index() == 0 &&
-                   first_content.get_parent() == &sections,
+                   first_content.get_parent() == &sections &&
+                   sections.get_border_visible(),
                "accordion expands its first borrowed section");
+        sections.set_border_visible(false);
+        expect(!sections.get_border_visible(),
+               "accordion outer border can be hidden");
+        sections.set_border_visible(true);
         sections.set_expanded_index(2);
         expect(!sections.get_item(0).get_expanded() &&
                    sections.get_item(2).get_expanded(),
@@ -1234,6 +1385,12 @@ namespace
              true},
             {"Disabled", icon, 200, {}, false, false}};
         native::tree_view tree(items, native::rect(0, 0, 180, 65));
+        expect(tree.get_border_visible(),
+               "tree outer border is visible by default");
+        tree.set_border_visible(false);
+        expect(!tree.get_border_visible(),
+               "tree outer border can be hidden");
+        tree.set_border_visible(true);
         tree.set_presentation(
             native::tree_view_presentation::three_dimensional);
         expect(tree.get_presentation() ==
@@ -1361,6 +1518,8 @@ namespace
     // without creating a backend widget.
     void test_text_edit_properties() {
         native::text_edit single("123");
+        expect(single.get_cursor() == native::mouse_cursor::ibeam,
+               "text editors select the I-beam cursor by default");
         int changes = 0;
         single.on_change.connect([&](const std::string &) {
             ++changes;
@@ -1942,10 +2101,11 @@ namespace
                 jpeg_pixel.a == 255,
             "JPEG memory round trip preserves an opaque solid color");
 
-        const std::string path = "native-image-codec-test.png";
+        const std::filesystem::path path =
+            "native-image-codec-test.png";
         source.save(path);
         native::img file_copy = native::img::load(path);
-        std::remove(path.c_str());
+        std::filesystem::remove(path);
         expect(file_copy.w() == source.w() &&
                    file_copy.h() == source.h(),
                "PNG file round trip preserves dimensions");
@@ -2257,17 +2417,11 @@ namespace
             destroy();
         }
 
-        void create() const override {
-            _created = true;
-        }
+        void create_native() override {}
 
-        void destroy() const override {
-            if (!_created)
-                return;
-            const_cast<simulated_panel *>(this)->on_native_destroy();
-        }
+        void destroy_native() override {}
 
-        void show() const override {}
+        void show_native() override {}
     };
 
     // Simulate a drawing surface without a backend resource.
@@ -2280,17 +2434,11 @@ namespace
             destroy();
         }
 
-        void create() const override {
-            _created = true;
-        }
+        void create_native() override {}
 
-        void destroy() const override {
-            if (!_created)
-                return;
-            const_cast<simulated_canvas *>(this)->on_native_destroy();
-        }
+        void destroy_native() override {}
 
-        void show() const override {}
+        void show_native() override {}
     };
 
     // Counts its own backend lifecycle without owning a real resource.
@@ -2299,22 +2447,35 @@ namespace
     public:
         using native::wnd::wnd;
 
-        void create() const override {
-            _created = true;
+        void create_native() override {
             ++creates;
         }
 
-        void destroy() const override {
-            if (!_created)
-                return;
-            _created = false;
+        void destroy_native() override {
             ++destroys;
         }
 
-        void show() const override {}
+        void show_native() override {}
 
-        mutable int creates = 0;
-        mutable int destroys = 0;
+        int creates = 0;
+        int destroys = 0;
+    };
+
+    // Reject creation after simulating a backend allocation failure.
+    class failing_child final : public native::wnd
+    {
+    public:
+        using native::wnd::wnd;
+
+        void create_native() override {
+            ++attempts;
+            throw std::runtime_error("simulated creation failure");
+        }
+
+        void destroy_native() override {}
+        void show_native() override {}
+
+        int attempts = 0;
     };
 
     // Verify panel construction, hierarchy, layout, and destruction.
@@ -2336,6 +2497,44 @@ namespace
         // A child assigned before the layout and one assigned after it
         // must each be registered exactly once.
         simulated_panel host(native::rect(0, 0, 200, 100));
+        int host_create_events = 0;
+        host.on_wnd_create.connect([&host_create_events]() {
+            ++host_create_events;
+            return false;
+        });
+        simulated_app_window lifecycle_root;
+        lifecycle_root.create();
+        counted_child orphan;
+        bool unparented_rejected = false;
+        try {
+            orphan.create();
+        } catch (const std::logic_error &) {
+            unparented_rejected = true;
+        }
+        expect(unparented_rejected && orphan.creates == 0,
+               "the common lifecycle rejects an unparented child");
+
+        bool uncreated_show_rejected = false;
+        try {
+            orphan.show();
+        } catch (const std::logic_error &) {
+            uncreated_show_rejected = true;
+        }
+        expect(uncreated_show_rejected,
+               "the common lifecycle rejects showing an uncreated window");
+
+        failing_child failing;
+        failing.set_parent(&lifecycle_root);
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            try {
+                failing.create();
+            } catch (const std::runtime_error &) {
+            }
+        }
+        expect(!failing.get_created() && failing.attempts == 2,
+               "failed creation rolls back and permits a later attempt");
+
+        host.set_parent(&lifecycle_root);
         counted_child early(native::rect(0, 0, 10, 10));
         counted_child late(native::rect(0, 0, 10, 10));
 
@@ -2379,15 +2578,20 @@ namespace
         // Destroying the panel releases created child resources without
         // deleting the borrowed child objects.
         host.create();
+        host.create();
+        host.show();
+        early.create();
         early.create();
         inner.create();
-        expect(early.creates == 1 && inner.get_created(),
-               "panel children create their own backend resources");
+        expect(host.get_visible() && early.creates == 1 &&
+                   inner.get_created() && host_create_events == 1,
+               "central creation is idempotent and emits once");
+        host.destroy();
         host.destroy();
         expect(early.destroys == 1,
                "destroying a panel destroys created child resources");
         expect(!host.get_created() && !early.get_created() &&
-                   !inner.get_created(),
+                   !inner.get_created() && !host.get_visible(),
                "a destroyed panel and its children report no resource");
         expect(early.get_parent() == &host &&
                    inner.get_parent() == &host,
@@ -2610,10 +2814,115 @@ namespace
                    second.get_parent() == nullptr,
                "destroying a split view detaches both borrowed panes");
     }
+
+    // Verify every item collection offers the same append-only builder idiom.
+    void test_collection_builders() {
+        simulated_page first_page;
+        simulated_page second_page;
+        native::tab_view tabs;
+        tabs << native::tab_page("First", first_page)
+             << native::tab_page("Second", second_page);
+
+        simulated_page section_body;
+        native::accordion sections;
+        sections << native::accordion_section("Section", section_body);
+
+        native::icon_view icons;
+        icons << native::icon_view_item{"Icon", nullptr, 7, true};
+
+        native::list items;
+        items << "One" << "Two";
+
+        native::combo_box choices;
+        choices << "Red" << "Blue";
+
+        native::table_view table;
+        table << native::table_column{1, "Name", 120}
+              << native::table_column{2, "Value", 80};
+
+        native::tree_view tree;
+        tree << native::tree_node("Root", 1, {
+            native::tree_node("Child", 2)});
+
+        expect(tabs.get_item_count() == 2 &&
+                   sections.get_item_count() == 1 &&
+                   icons.get_items().size() == 1 &&
+                   items.get_items().size() == 2 &&
+                   choices.get_items().size() == 2 &&
+                   table.get_columns().size() == 2 &&
+                   tree.get_items().size() == 1 &&
+                   tree.get_items().front().children.size() == 1,
+               "collection builders append through their named APIs");
+    }
+
+    // Verify exact-size PNG fallbacks and special-directory snapshots.
+    void test_filesystem_resources() {
+        const native::file_icon file = native::file_icon::for_file({}, 24);
+        expect(file.get_size() == 24, "file icon preserves requested size");
+        expect(file.get_source() == native::file_icon_source::generic_file,
+               "empty file path selects the generic file icon");
+        expect(file.get_png().size() >= 8 &&
+                   file.get_png()[0] == 0x89 &&
+                   file.get_png()[1] == 0x50 &&
+                   file.get_png()[2] == 0x4e &&
+                   file.get_png()[3] == 0x47,
+               "file icon is encoded as PNG");
+        const native::img decoded = native::img::decode(
+            file.get_png().data(), file.get_png().size());
+        expect(decoded.w() == 24 && decoded.h() == 24,
+               "file icon PNG has exact requested dimensions");
+
+        const native::file_icon directory =
+            native::file_icon::for_directory({}, 32);
+        expect(directory.get_source() ==
+                   native::file_icon_source::generic_directory,
+               "empty directory path selects the generic folder icon");
+
+        const native::file_icon system_directory =
+            native::file_icon::from_path(
+                std::filesystem::temp_directory_path(), 20);
+        const native::img system_directory_image = native::img::decode(
+            system_directory.get_png().data(),
+            system_directory.get_png().size());
+        expect(system_directory_image.w() == 20 &&
+                   system_directory_image.h() == 20 &&
+                   system_directory.get_source() !=
+                       native::file_icon_source::generic_file,
+               "existing directory icon uses directory semantics");
+
+        const auto &special = native::special_directory::detect();
+        expect(!special.empty(), "special-directory detection returns data");
+        expect(std::all_of(
+                   special.begin(),
+                   special.end(),
+                   [](const native::special_directory &entry) {
+                       return entry.get_path().is_absolute();
+                   }),
+               "special-directory paths are absolute filesystem paths");
+        expect(native::special_directory::count() ==
+                   static_cast<int>(special.size()),
+               "special-directory count matches the snapshot");
+        expect(native::special_directory::find(
+                   native::special_directory_kind::temporary) != nullptr,
+               "special-directory detection includes temporary storage");
+        expect(native::special_directory::at(-1) == nullptr &&
+                   native::special_directory::at(
+                       native::special_directory::count()) == nullptr,
+               "special-directory indexing rejects invalid positions");
+
+        bool rejected_size = false;
+        try {
+            (void)native::file_icon::for_file({}, 0);
+        } catch (const std::invalid_argument &) {
+            rejected_size = true;
+        }
+        expect(rejected_size, "file icons reject a zero size");
+    }
 } // namespace
 
 int main() {
     test_cached_properties();
+    test_cursor_property();
     test_menu_label_metadata();
     test_tab_view_model();
     test_control_extension_hooks();
@@ -2640,6 +2949,8 @@ int main() {
     test_layout_pass_scheduling();
     test_layout_child_removal();
     test_split_view_model();
+    test_collection_builders();
+    test_filesystem_resources();
     test_panel_container();
     test_canvas_content_and_clamping();
     test_canvas_scrollbars();

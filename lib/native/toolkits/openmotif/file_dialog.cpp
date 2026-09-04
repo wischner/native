@@ -8,7 +8,7 @@
 
 #include "file_dialog_common.h"
 
-#include <fstream>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -25,29 +25,25 @@
 
 namespace
 {
+    namespace fs = std::filesystem;
+
     // Append the configured suffix only to an extensionless path.
     std::string add_default_extension(
         const std::string &path, const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1))
+        fs::path result(path);
+        if (result.has_extension())
             return path;
-
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
-        return result;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
+        return result.string();
     }
 
     // Return whether the selected path names an existing file.
     bool file_exists(const std::string &path) {
-        std::ifstream input(path, std::ios::binary);
-        return input.good();
+        std::error_code error;
+        return fs::is_regular_file(fs::path(path), error);
     }
 
     // Release every native widget before portable completion runs.
@@ -286,11 +282,9 @@ namespace
     // selector opens; starting with only the first portable pattern
     // incorrectly hid every other filter group.
     std::string directory_mask(const native::file_dialog &dialog) {
-        std::string mask = dialog.get_initial_path();
-        if (!mask.empty() && mask.back() != '/')
-            mask.push_back('/');
-        mask += "*";
-        return mask;
+        const fs::path initial(dialog.get_initial_path());
+        return initial.empty() ? std::string("*")
+                               : (initial / "*").string();
     }
 } // namespace
 
@@ -390,8 +384,8 @@ namespace linux::openmotif
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
-        auto *self = const_cast<file_dialog *>(this);
+    void file_dialog::cancel_native_dialog() {
+        auto *self = this;
         release_dialog(self);
     }
 } // namespace native

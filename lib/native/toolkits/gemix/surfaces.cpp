@@ -30,27 +30,18 @@ namespace
 
     bool created_in(native::wnd *control, native::app_wnd *owner) {
         return control && control->get_created() &&
+               control->get_visible() &&
                linux::gemix::root_of(control) == owner;
     }
 
-    // Return the deepest created region under a window-local point.
+    // Return the deepest visible region of the requested type.
     template <typename control_type>
-    control_type *region_at(const std::vector<control_type *> &registry,
-                            native::app_wnd *owner,
+    control_type *region_at(native::app_wnd *owner,
                             native::point position) {
-        control_type *found = nullptr;
-        int best = -1;
-        for (auto *control : registry) {
-            if (!created_in(control, owner) ||
-                !linux::gemix::root_bounds(*control).contains(position))
-                continue;
-            const int depth = depth_of(*control);
-            if (depth > best) {
-                best = depth;
-                found = control;
-            }
-        }
-        return found;
+        if (!owner)
+            return nullptr;
+        return dynamic_cast<control_type *>(
+            native::detail::deepest_at(*owner, position));
     }
 
     native::point local_point(native::wnd &control,
@@ -65,31 +56,7 @@ namespace
 
 namespace linux::gemix
 {
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
-
-    native::point origin_in_root(const native::wnd &control) {
-        int x = control.get_position().x;
-        int y = control.get_position().y;
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            x += parent->get_position().x;
-            y += parent->get_position().y;
-        }
-        return native::point(static_cast<native::coord>(x),
-                             static_cast<native::coord>(y));
-    }
-
-    native::rect root_bounds(const native::wnd &control) {
-        return native::rect(origin_in_root(control),
-                            control.get_dimensions());
-    }
-
-    void render_surfaces(native::app_wnd *parent, native::gpx &g) {
+    void render_surfaces(native::app_wnd *parent, native::gpx &) {
         // Regions are painted parent first so a container never erases
         // the descendants drawn inside it.
         std::vector<native::wnd *> regions;
@@ -107,21 +74,18 @@ namespace linux::gemix
                              return depth_of(*left) < depth_of(*right);
                          });
 
-        auto painter = native::theme::create(g);
         for (native::wnd *region : regions) {
             const native::rect bounds = root_bounds(*region);
             if (!bounds.d.w || !bounds.d.h)
                 continue;
 
-            if (dynamic_cast<native::panel *>(region)) {
-                // A panel is visually empty. Repainting the themed
-                // container surface is what stops stale pixels from
-                // showing where no child covers it.
-                auto saved = g.save_state();
-                g.set_clip(bounds);
-                painter->draw_surface(bounds,
-                                      native::surface_kind::panel,
-                                      native::theme::state{});
+            if (auto *host = dynamic_cast<native::panel *>(region)) {
+                native::gpx_wnd region_gpx(parent, bounds.p);
+                const native::rect invalid(
+                    0, 0, bounds.d.w, bounds.d.h);
+                region_gpx.set_clip(invalid);
+                host->on_native_paint(
+                    native::wnd_paint_event(invalid, region_gpx));
                 continue;
             }
 
@@ -147,7 +111,8 @@ namespace linux::gemix
     bool dispatch_surface_click(native::app_wnd *parent,
                                 native::point position,
                                 bool pressed) {
-        if (auto *surface = region_at(canvases, parent, position)) {
+        if (auto *surface =
+                region_at<native::canvas>(parent, position)) {
             surface->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
@@ -157,7 +122,7 @@ namespace linux::gemix
         }
         // Nothing else claimed the position, so this is empty panel
         // space. The panel reports it and adds no action of its own.
-        if (auto *host = region_at(panels, parent, position)) {
+        if (auto *host = region_at<native::panel>(parent, position)) {
             host->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 pressed ? native::mouse_action::press
@@ -170,12 +135,13 @@ namespace linux::gemix
 
     bool dispatch_surface_move(native::app_wnd *parent,
                                native::point position) {
-        if (auto *surface = region_at(canvases, parent, position)) {
+        if (auto *surface =
+                region_at<native::canvas>(parent, position)) {
             surface->on_native_mouse_move(
                 local_point(*surface, position));
             return true;
         }
-        if (auto *host = region_at(panels, parent, position)) {
+        if (auto *host = region_at<native::panel>(parent, position)) {
             host->on_native_mouse_move(local_point(*host, position));
             return true;
         }
@@ -185,68 +151,56 @@ namespace linux::gemix
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
+    void panel::create_native() {
         wnd *parent = get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "GEM: panel requires a created parent.");
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         linux::gemix::panels.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         if (!_created)
             throw std::runtime_error("GEM: panel is not created.");
         invalidate();
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         auto &registry = linux::gemix::panels;
         registry.erase(
             std::remove(registry.begin(), registry.end(), self),
             registry.end());
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
+    void canvas::create_native() {
         wnd *parent = get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "GEM: canvas requires a created parent.");
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         linux::gemix::canvases.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         if (!_created)
             throw std::runtime_error("GEM: canvas is not created.");
         invalidate();
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         auto &registry = linux::gemix::canvases;
         registry.erase(
             std::remove(registry.begin(), registry.end(), self),

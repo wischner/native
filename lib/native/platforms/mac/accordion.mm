@@ -170,10 +170,8 @@ namespace native
 {
     void accordion::apply_items() { rebuild(*this); }
 
-    void accordion::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<accordion *>(this);
+    void accordion::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -196,15 +194,13 @@ namespace native
         binding->stack = stack;
         binding->target = target;
         mac::accordion_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void accordion::show() const {
+    void accordion::show_native() {
         auto *binding = mac::accordion_bindings.object_from_handle(
-            const_cast<accordion *>(this));
+            this);
         if (!_created || !binding || !binding->stack)
             throw std::runtime_error(
                 "macOS: accordion is not created.");
@@ -217,13 +213,12 @@ namespace native
         [binding->stack setHidden:NO];
     }
 
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         auto *binding =
             mac::accordion_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             for (NSButton *header : binding->headers)
                 [header release];

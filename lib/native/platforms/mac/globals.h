@@ -13,6 +13,8 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
 namespace mac
 {
     // AppKit delegates carry objects, so process-wide registries
@@ -64,13 +66,14 @@ namespace mac
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     extern native::bindings<native::wnd *, id> delegate_bindings;
-    extern native::bindings<native::wnd *, mac_gpx *> wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, mac_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, mac_font *> font_bindings;
     extern native::bindings<uint32_t, mac_menu *> menu_bindings;
-    extern native::bindings<native::button *, mac_button *>
-        button_bindings;
-    extern native::bindings<native::text_edit *, mac_text_edit *>
-        text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::button *, mac_button *> button_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, mac_text_edit *> text_edit_bindings;
 
     struct mac_check
     {
@@ -154,31 +157,94 @@ namespace mac
         NSView *view = nil;
     };
 
-    extern native::bindings<native::panel *, mac_surface *>
-        panel_bindings;
-    extern native::bindings<native::canvas *, mac_surface *>
-        canvas_bindings;
-    extern native::bindings<native::check *, mac_check *>
-        check_bindings;
-    extern native::bindings<native::radio *, mac_radio *>
-        radio_bindings;
-    extern native::bindings<native::list *, mac_list *> list_bindings;
-    extern native::bindings<native::combo_box *, mac_combo_box *>
-        combo_box_bindings;
-    extern native::bindings<native::accordion *, mac_accordion *>
-        accordion_bindings;
-    extern native::bindings<native::tab_view *, mac_tab_view *>
-        tab_view_bindings;
-    extern native::bindings<native::split_view *, mac_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::icon_view *, mac_icon_view *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, mac_tree_view *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, mac_table_view *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, mac_code_edit *>
-        code_edit_bindings;
+    // Return the child-host resource carried by each control state.
+    inline void *peer_content(mac_button *state) {
+        return state ? reinterpret_cast<void *>(state->ns_button) : nullptr;
+    }
+
+    inline void *peer_content(mac_text_edit *state) {
+        if (!state)
+            return nullptr;
+        NSView *view = state->scroll
+                           ? static_cast<NSView *>(state->scroll)
+                           : static_cast<NSView *>(state->field);
+        return reinterpret_cast<void *>(view);
+    }
+
+    inline void *peer_content(mac_check *state) {
+        return state ? reinterpret_cast<void *>(state->button) : nullptr;
+    }
+
+    inline void *peer_content(mac_radio *state) {
+        return state ? reinterpret_cast<void *>(state->button) : nullptr;
+    }
+
+    inline void *peer_content(mac_list *state) {
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
+    }
+
+    inline void *peer_content(mac_combo_box *state) {
+        return state ? reinterpret_cast<void *>(state->combo) : nullptr;
+    }
+
+    inline void *peer_content(mac_accordion *state) {
+        return state ? reinterpret_cast<void *>(state->stack) : nullptr;
+    }
+
+    inline void *peer_content(mac_tab_view *state) {
+        return state ? reinterpret_cast<void *>(state->view) : nullptr;
+    }
+
+    inline void *peer_content(mac_split_view *state) {
+        return state ? reinterpret_cast<void *>(state->view) : nullptr;
+    }
+
+    inline void *peer_content(mac_icon_view *state) {
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
+    }
+
+    inline void *peer_content(mac_tree_view *state) {
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
+    }
+
+    inline void *peer_content(mac_table_view *state) {
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
+    }
+
+    inline void *peer_content(mac_code_edit *state) {
+        return state ? reinterpret_cast<void *>(state->view) : nullptr;
+    }
+
+    inline void *peer_content(mac_surface *state) {
+        return state ? reinterpret_cast<void *>(state->view) : nullptr;
+    }
+
+    inline constexpr native::detail::peer_bindings<
+        native::panel *, mac_surface *> panel_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::canvas *, mac_surface *> canvas_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::check *, mac_check *> check_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::radio *, mac_radio *> radio_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::list *, mac_list *> list_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, mac_combo_box *> combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, mac_accordion *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, mac_tab_view *> tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, mac_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, mac_icon_view *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, mac_tree_view *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, mac_table_view *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, mac_code_edit *> code_edit_bindings;
     extern native::bindings<native::file_dialog *, NSSavePanel *>
         file_dialog_bindings;
 

@@ -62,6 +62,8 @@ namespace
                         .height +
                     8);
             m.tab_height = m.header_height;
+            m.disclosure_size = 9;
+            m.tree_lines_visible = false;
             return m;
         }
 
@@ -87,6 +89,7 @@ namespace
             p.menu_popup_bg = native::rgba(255, 255, 255, 255);
             p.menu_popup_border = p.button_border;
             p.content_bg = native::rgba(255, 255, 255, 255);
+            p.content_alt_bg = native::rgba(246, 246, 246, 255);
             p.content_text = p.button_text;
             p.selection_bg = p.menu_hot_bg;
             p.selection_text = p.menu_hot_text;
@@ -182,28 +185,35 @@ namespace
                           const state &s) override {
             state_guard guard(_g);
             const palette p = native_palette();
-            const native::rect indicator = indicator_bounds(r);
-            _g.set_pen(1)
-                .set_ink(p.button_bg)
+            const int extent = std::max(
+                5, std::min(14, static_cast<int>(r.d.h) - 4));
+            const native::rect indicator(
+                static_cast<native::coord>(r.p.x + 2),
+                static_cast<native::coord>(
+                    r.p.y + (static_cast<int>(r.d.h) - extent) / 2),
+                static_cast<native::dim>(extent),
+                static_cast<native::dim>(extent));
+            _g.set_pen(1).set_ink(p.button_bg).draw_rect(r, true)
+                .set_ink(p.content_bg)
                 .draw_rect(indicator, true);
-            draw_bevel(indicator, s.pressed, p);
-            if (s.selected && indicator.d.w >= 7) {
+            _g.set_ink(p.button_border).draw_rect(indicator, false);
+            if (s.selected) {
                 _g.set_pen(2)
                     .set_ink(s.disabled ? p.button_disabled_text
                                         : p.button_text)
-                    .draw_line(native::point(indicator.p.x + 3,
-                                             indicator.p.y +
-                                                 indicator.d.h / 2),
-                               native::point(indicator.p.x +
-                                                 indicator.d.w / 2 - 1,
-                                             indicator.y2() - 4))
-                    .draw_line(native::point(indicator.p.x +
-                                                 indicator.d.w / 2 - 1,
-                                             indicator.y2() - 4),
-                               native::point(indicator.x2() - 3,
-                                             indicator.p.y + 3));
+                    .draw_line(
+                        native::point(indicator.p.x + 3,
+                                      indicator.p.y + extent / 2),
+                        native::point(indicator.p.x + extent / 2,
+                                      indicator.y2() - 3))
+                    .draw_line(
+                        native::point(indicator.p.x + extent / 2,
+                                      indicator.y2() - 3),
+                        native::point(indicator.x2() - 3,
+                                      indicator.p.y + 3));
             }
-            draw_selection_label(r, indicator, text, s);
+            draw_selection_label(r, text, s, extent);
+            draw_focus(r, s);
             return *this;
         }
 
@@ -212,44 +222,35 @@ namespace
                           const state &s) override {
             state_guard guard(_g);
             const palette p = native_palette();
-            const native::rect indicator = indicator_bounds(r);
-            const int right = indicator.x2() - 1;
-            const int bottom = indicator.y2() - 1;
-            _g.set_pen(1)
-                .set_ink(p.button_bg)
-                .draw_rect(native::rect(indicator.p.x + 2,
-                                        indicator.p.y,
-                                        indicator.d.w - 4,
-                                        indicator.d.h),
-                           true)
-                .draw_rect(native::rect(indicator.p.x,
-                                        indicator.p.y + 2,
-                                        indicator.d.w,
-                                        indicator.d.h - 4),
-                           true)
-                .set_ink(p.button_border)
-                .draw_line(
-                    native::point(indicator.p.x + 2, indicator.p.y),
-                    native::point(right - 2, indicator.p.y))
-                .draw_line(native::point(right, indicator.p.y + 2),
-                           native::point(right, bottom - 2))
-                .draw_line(native::point(right - 2, bottom),
-                           native::point(indicator.p.x + 2, bottom))
-                .draw_line(
-                    native::point(indicator.p.x, bottom - 2),
-                    native::point(indicator.p.x, indicator.p.y + 2));
+            const int extent = std::max(
+                5, std::min(14, static_cast<int>(r.d.h) - 4));
+            const native::rect indicator(
+                static_cast<native::coord>(r.p.x + 2),
+                static_cast<native::coord>(
+                    r.p.y + (static_cast<int>(r.d.h) - extent) / 2),
+                static_cast<native::dim>(extent),
+                static_cast<native::dim>(extent));
+            _g.set_pen(1).set_ink(p.button_bg).draw_rect(r, true)
+                .set_ink(p.content_bg).draw_ellipse(indicator, true)
+                .set_ink(p.button_border).draw_ellipse(indicator, false);
             if (s.selected) {
-                const int inset =
-                    std::max(3, static_cast<int>(indicator.d.w) / 4);
+                const int inset = std::max(2, extent / 3);
                 _g.set_ink(s.disabled ? p.button_disabled_text
                                       : p.button_text)
-                    .draw_rect(native::rect(indicator.p.x + inset,
-                                            indicator.p.y + inset,
-                                            indicator.d.w - inset * 2,
-                                            indicator.d.h - inset * 2),
-                               true);
+                    .draw_ellipse(
+                        native::rect(
+                            static_cast<native::coord>(
+                                indicator.p.x + inset),
+                            static_cast<native::coord>(
+                                indicator.p.y + inset),
+                            static_cast<native::dim>(
+                                std::max(1, extent - inset * 2)),
+                            static_cast<native::dim>(
+                                std::max(1, extent - inset * 2))),
+                        true);
             }
-            draw_selection_label(r, indicator, text, s);
+            draw_selection_label(r, text, s, extent);
+            draw_focus(r, s);
             return *this;
         }
 
@@ -301,34 +302,26 @@ namespace
         }
 
     private:
-        native::rect indicator_bounds(const native::rect &r) const {
-            const int side =
-                std::max(7, std::min(15, static_cast<int>(r.d.h) - 4));
-            return native::rect(
-                r.p.x + 2,
-                r.p.y +
-                    std::max(0, (static_cast<int>(r.d.h) - side) / 2),
-                side,
-                side);
-        }
-
         void draw_selection_label(const native::rect &r,
-                                  const native::rect &indicator,
                                   const std::string &text,
-                                  const state &s) {
+                                  const state &s,
+                                  int extent) {
             const palette p = native_palette();
+            const int left = r.p.x + extent + 8;
             _g.set_font(
                 native::font_t::stock(native::font_role::control));
             _g.set_ink(s.disabled ? p.button_disabled_text
                                   : p.button_text)
                 .draw_text(
                     text,
-                    native::point(
-                        indicator.x2() + 5,
-                        r.p.y + std::max(0,
-                                         (static_cast<int>(r.d.h) -
-                                          linux::sdl2::text_height()) /
-                                             2)));
+                    native::rect(
+                        static_cast<native::coord>(left), r.p.y,
+                        static_cast<native::dim>(
+                            std::max(0, r.x2() - left)), r.d.h),
+                    {native::text_align::start,
+                     native::text_valign::center,
+                     native::text_overflow::ellipsis,
+                     true});
         }
 
         void draw_bevel(const native::rect &r,

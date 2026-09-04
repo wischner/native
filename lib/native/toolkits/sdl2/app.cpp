@@ -125,6 +125,9 @@ namespace native
         linux::sdl2::render_combo_boxes(wnd, g);
         linux::sdl2::render_text_edits(wnd, g);
         linux::sdl2::render_collections(wnd, g);
+        // Popups are transient top-level control surfaces and must cover
+        // sibling controls regardless of their normal paint order.
+        linux::sdl2::render_combo_popups(wnd, g);
 
         SDL_RenderSetViewport(cache->renderer, nullptr);
 
@@ -147,6 +150,17 @@ namespace native
         cache->invalidated = false;
     }
 
+} // namespace native
+
+namespace linux::sdl2
+{
+    void render_window_if_needed(native::wnd *window) {
+        native::render_window_if_needed(window);
+    }
+} // namespace linux::sdl2
+
+namespace native
+{
     static bool is_input_event(Uint32 type) {
         return type == SDL_KEYDOWN || type == SDL_KEYUP ||
                type == SDL_TEXTEDITING || type == SDL_TEXTINPUT ||
@@ -223,6 +237,11 @@ namespace native
                 case SDL_MOUSEMOTION: {
                     const int logical_y =
                         event.motion.y - content_origin_y(wnd);
+                    if (linux::sdl2::handle_split_motion(
+                            wnd, event.motion.x, logical_y))
+                        break;
+                    linux::sdl2::update_mouse_cursor(
+                        wnd, point(event.motion.x, logical_y));
                     if (auto *aw =
                             dynamic_cast<native::app_wnd *>(wnd)) {
                         if (aw->menu.id()) {
@@ -251,6 +270,9 @@ namespace native
                         }
                     }
                     if (logical_y < 0)
+                        break;
+                    if (linux::sdl2::handle_combo_motion(
+                            wnd, event.motion.x, logical_y))
                         break;
                     linux::sdl2::handle_button_motion(
                         wnd, event.motion.x, logical_y);
@@ -300,6 +322,206 @@ namespace native
                             cache->invalidated = true;
                     };
 
+                    auto *window_state =
+                        linux::sdl2::wnd_gpx_bindings.object_from_handle(wnd);
+                    if (event.type == SDL_MOUSEBUTTONDOWN && window_state) {
+                        window_state->replay_focus_click = false;
+                        window_state->suppress_combo_release = false;
+                    }
+                    const bool replay_focus_click =
+                        event.type == SDL_MOUSEBUTTONUP && window_state &&
+                        window_state->replay_focus_click;
+                    if (replay_focus_click)
+                        window_state->replay_focus_click = false;
+
+                    // Some window managers consume the press which activates
+                    // an SDL window but still deliver its release. Recreate
+                    // that one complete transition for the topmost control,
+                    // then consume the unmatched native release.
+                    if (replay_focus_click &&
+                        event.button.button == SDL_BUTTON_LEFT) {
+                        bool handled = false;
+                        if (auto *aw =
+                                dynamic_cast<native::app_wnd *>(wnd);
+                            aw && aw->menu.id()) {
+                            auto *menu = linux::sdl2::menu_bindings
+                                             .object_from_handle(
+                                                 aw->menu.id());
+                            int width = 0;
+                            int height = 0;
+                            SDL_Window *native_window =
+                                linux::sdl2::wnd_bindings
+                                    .handle_from_object(wnd);
+                            if (native_window)
+                                SDL_GetWindowSize(
+                                    native_window, &width, &height);
+                            handled = menu &&
+                                linux::sdl2::handle_menu_click(
+                                    menu,
+                                    event.button.x,
+                                    event.button.y,
+                                    width);
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_split_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            linux::sdl2::handle_split_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                false,
+                                true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_combo_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_combo_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_collection_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false,
+                                event.button.clicks)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_collection_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true,
+                                    event.button.clicks);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_canvas_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_canvas_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_text_edit_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true)) {
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_button_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_button_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_check_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_check_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_radio_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_radio_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_list_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true)) {
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_panel_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_panel_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && wnd->get_created()) {
+                            wnd->on_native_mouse_click(mouse_event(
+                                mouse_button::left,
+                                mouse_action::press,
+                                point(event.button.x, logical_y)));
+                            if (wnd->get_created())
+                                wnd->on_native_mouse_click(mouse_event(
+                                    mouse_button::left,
+                                    mouse_action::release,
+                                    point(event.button.x, logical_y)));
+                        }
+                        invalidate_live_window();
+                        break;
+                    }
+
                     // Let the menu intercept down events first
                     if (event.type == SDL_MOUSEBUTTONDOWN) {
                         if (auto *aw =
@@ -333,6 +555,25 @@ namespace native
                     if (logical_y < 0)
                         break;
 
+                    if (event.button.button == SDL_BUTTON_LEFT &&
+                        linux::sdl2::handle_split_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
+                    if (linux::sdl2::handle_combo_mouse(
+                            wnd, event.button.x, logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
                     if (linux::sdl2::handle_collection_mouse(
                             wnd,
                             event.button.x,
@@ -349,13 +590,6 @@ namespace native
                             event.button.x,
                             logical_y,
                             event.type == SDL_MOUSEBUTTONDOWN,
-                            event.type == SDL_MOUSEBUTTONUP)) {
-                        invalidate_live_window();
-                        break;
-                    }
-
-                    if (linux::sdl2::handle_combo_mouse(
-                            wnd, event.button.x, logical_y,
                             event.type == SDL_MOUSEBUTTONUP)) {
                         invalidate_live_window();
                         break;
@@ -474,6 +708,23 @@ namespace native
 
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                        if (auto *cache =
+                                linux::sdl2::wnd_gpx_bindings
+                                    .object_from_handle(wnd)) {
+                            cache->replay_focus_click = true;
+                        }
+                        break;
+
+                    case SDL_WINDOWEVENT_FOCUS_LOST:
+                        if (auto *cache =
+                                linux::sdl2::wnd_gpx_bindings
+                                    .object_from_handle(wnd)) {
+                            cache->replay_focus_click = false;
+                            cache->suppress_combo_release = false;
+                        }
+                        break;
+
                     case SDL_WINDOWEVENT_CLOSE:
                         wnd->destroy();
                         if (wnd == app::main_wnd())
@@ -490,6 +741,16 @@ namespace native
                     case SDL_WINDOWEVENT_SHOWN:
                         keep_window_reachable(wnd);
                         break;
+
+                    case SDL_WINDOWEVENT_ENTER: {
+                        int x = 0;
+                        int y = 0;
+                        SDL_GetMouseState(&x, &y);
+                        linux::sdl2::update_mouse_cursor(
+                            wnd,
+                            point(x, y - content_origin_y(wnd)));
+                        break;
+                    }
 
                     case SDL_WINDOWEVENT_RESIZED:
                         if (auto *cache = linux::sdl2::wnd_gpx_bindings
@@ -523,7 +784,7 @@ namespace native
                 linux::sdl2::windows;
             for (app_wnd *window : windows) {
                 if (window && window->get_created())
-                    render_window_if_needed(window);
+                    linux::sdl2::render_window_if_needed(window);
             }
 
             // Work handed over by worker threads. Drained after
@@ -541,6 +802,7 @@ namespace native
         }
 
         linux::sdl2::x11_clipboard::shutdown();
+        linux::sdl2::shutdown_mouse_cursors();
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
         return 0;
     }

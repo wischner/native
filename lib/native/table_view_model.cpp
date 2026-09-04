@@ -47,8 +47,13 @@ namespace native
 
     bool table_view::handle_model_change(
         const table_model_change &change) {
-        (void)change;
-        const auto top = get_first_visible_row();
+        // A reset is emitted after the model has replaced its contents, while
+        // the visible-row map still describes the previous contents.  There
+        // is therefore no safe stable row ID to preserve across a reset.
+        // Incremental changes can retain the best available top-row anchor.
+        const auto top = change.kind == table_model_change_kind::reset
+                             ? std::nullopt
+                             : get_first_visible_row();
         rebuild_visible_rows();
         _selection.erase(
             std::remove_if(_selection.begin(), _selection.end(),
@@ -223,13 +228,26 @@ namespace native
 
     std::size_t table_view::rows_per_page() const {
         const int header = _header_visible ? _native_header_height : 0;
-        const int available = std::max(
+        int available = std::max(
             1, static_cast<int>(_bounds.d.h) - header);
         const int height = _row_height
                                ? static_cast<int>(*_row_height)
                                : _native_row_height;
+        int content_width = 0;
+        for (const table_column &column : _columns) {
+            if (column.visible)
+                content_width += column.width;
+        }
+        const bool horizontal =
+            _horizontal_policy == scrollbar_policy::always ||
+            (_horizontal_policy == scrollbar_policy::automatic &&
+             content_width > static_cast<int>(_bounds.d.w));
+        if (horizontal)
+            available = std::max(
+                1, available - std::max(1, _theme_metrics.scrollbar_extent));
         return static_cast<std::size_t>(
-            std::max(1, available / std::max(1, height)));
+            std::max(1, (available + std::max(1, height) - 1) /
+                            std::max(1, height)));
     }
 
     table_view &table_view::scroll_to_row(table_row_id id) {
@@ -280,8 +298,10 @@ namespace native
         for (std::size_t offset = 0; offset < range.count; ++offset) {
             const table_display_row row =
                 get_display_row(range.first + offset);
-            if (!row.group && _model)
+            if (!row.group && _model &&
+                row.model_row < _model->row_count()) {
                 return _model->row_id(row.model_row);
+            }
         }
         return std::nullopt;
     }
@@ -292,8 +312,10 @@ namespace native
         for (std::size_t offset = range.count; offset > 0; --offset) {
             const table_display_row row =
                 get_display_row(range.first + offset - 1);
-            if (!row.group && _model)
+            if (!row.group && _model &&
+                row.model_row < _model->row_count()) {
                 return _model->row_id(row.model_row);
+            }
         }
         return std::nullopt;
     }

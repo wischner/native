@@ -172,9 +172,7 @@ namespace native
         apply_ratio();
     }
 
-    void split_view::create() const {
-        if (_created)
-            return;
+    void split_view::create_native() {
         wnd *parent = get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
@@ -185,7 +183,7 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: split_view parent has no widget.");
 
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = new linux::x11::xaw_split_view();
         state->paned = XtVaCreateWidget(
             "splitView",
@@ -213,7 +211,6 @@ namespace native
         }
         linux::x11::wnd_bindings.register_pair(state->paned, self);
         linux::x11::split_view_bindings.register_pair(self, state);
-        _created = true;
         self->refresh_contents();
         cache_children(*self, *state);
         if (!state->first || !state->second) {
@@ -240,11 +237,10 @@ namespace native
                           self);
         self->apply_minimums();
         self->apply_ratio();
-        self->on_native_create();
     }
 
-    void split_view::show() const {
-        auto *state = binding(*const_cast<split_view *>(this));
+    void split_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->paned)
             throw std::runtime_error(
                 "X11/Athena: split_view is not created.");
@@ -253,12 +249,11 @@ namespace native
         get_second().show();
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state && state->paned) {
             linux::x11::wnd_bindings.unregister_by_handle(state->paned);
             XtDestroyWidget(state->paned);

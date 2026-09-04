@@ -560,14 +560,25 @@ namespace native
             fill = colors.button_bg;
             break;
         case surface_kind::status_part:
-            fill = colors.content_bg;
+            fill = colors.button_bg;
             border = colors.button_shadow;
             break;
         }
         _g.set_pen(1).set_ink(fill).draw_rect(bounds, true);
-        if (kind == surface_kind::inset ||
-            kind == surface_kind::popup ||
-            kind == surface_kind::status_part) {
+        if (kind == surface_kind::status_part &&
+            bounds.d.w && bounds.d.h) {
+            _g.set_ink(colors.button_highlight)
+                .draw_line(bounds.p,
+                           point(bounds.x2() - 1, bounds.p.y))
+                .draw_line(bounds.p,
+                           point(bounds.p.x, bounds.y2() - 1));
+            _g.set_ink(border)
+                .draw_line(point(bounds.p.x, bounds.y2() - 1),
+                           point(bounds.x2() - 1, bounds.y2() - 1))
+                .draw_line(point(bounds.x2() - 1, bounds.p.y),
+                           point(bounds.x2() - 1, bounds.y2() - 1));
+        } else if (kind == surface_kind::inset ||
+                   kind == surface_kind::popup) {
             _g.set_ink(border).draw_rect(bounds, false);
         }
         return *this;
@@ -693,19 +704,86 @@ namespace native
 
     theme &theme::draw_scrollbar_part_fallback(
         const rect &bounds,
-        scrollbar_orientation,
+        scrollbar_orientation orientation,
         scrollbar_part part,
         const state &element_state) {
         const palette colors = native_palette();
-        const bool thumb = part == scrollbar_part::thumb;
-        const rgba fill = thumb
+        const bool control = part != scrollbar_part::track;
+        const rgba fill = control
                               ? (element_state.pressed
                                      ? colors.button_pressed_bg
                                      : colors.button_bg)
                               : colors.content_bg;
         _g.set_pen(1).set_ink(fill).draw_rect(bounds, true);
-        if (thumb)
-            _g.set_ink(colors.button_border).draw_rect(bounds, false);
+        if (!control || !bounds.d.w || !bounds.d.h)
+            return *this;
+
+        _g.set_ink(colors.button_border).draw_rect(bounds, false);
+        _g.set_ink(colors.button_highlight)
+            .draw_line(bounds.p,
+                       point(bounds.x2() - 1, bounds.p.y))
+            .draw_line(bounds.p,
+                       point(bounds.p.x, bounds.y2() - 1));
+        _g.set_ink(colors.button_shadow)
+            .draw_line(point(bounds.p.x, bounds.y2() - 1),
+                       point(bounds.x2() - 1, bounds.y2() - 1))
+            .draw_line(point(bounds.x2() - 1, bounds.p.y),
+                       point(bounds.x2() - 1, bounds.y2() - 1));
+
+        if (part == scrollbar_part::thumb) {
+            _g.set_ink(colors.button_shadow);
+            if (orientation == scrollbar_orientation::vertical) {
+                const int center = bounds.p.y + bounds.d.h / 2;
+                for (int offset = -2; offset <= 2; offset += 2) {
+                    _g.draw_line(
+                        point(bounds.p.x + 4,
+                              static_cast<coord>(center + offset)),
+                        point(bounds.x2() - 5,
+                              static_cast<coord>(center + offset)));
+                }
+            } else {
+                const int center = bounds.p.x + bounds.d.w / 2;
+                for (int offset = -2; offset <= 2; offset += 2) {
+                    _g.draw_line(
+                        point(static_cast<coord>(center + offset),
+                              bounds.p.y + 4),
+                        point(static_cast<coord>(center + offset),
+                              bounds.y2() - 5));
+                }
+            }
+            return *this;
+        }
+
+        const int inset = std::max(
+            3, std::min<int>(bounds.d.w, bounds.d.h) / 3);
+        const int left = bounds.p.x + inset;
+        const int right = bounds.x2() - inset - 1;
+        const int top = bounds.p.y + inset;
+        const int bottom = bounds.y2() - inset - 1;
+        const int center_x = (left + right) / 2;
+        const int center_y = (top + bottom) / 2;
+        std::vector<point> arrow;
+        if (orientation == scrollbar_orientation::vertical) {
+            arrow = part == scrollbar_part::decrement
+                ? std::vector<point>{point(left, bottom),
+                                     point(right, bottom),
+                                     point(center_x, top)}
+                : std::vector<point>{point(left, top),
+                                     point(right, top),
+                                     point(center_x, bottom)};
+        } else {
+            arrow = part == scrollbar_part::decrement
+                ? std::vector<point>{point(right, top),
+                                     point(right, bottom),
+                                     point(left, center_y)}
+                : std::vector<point>{point(left, top),
+                                     point(left, bottom),
+                                     point(right, center_y)};
+        }
+        _g.set_ink(element_state.disabled
+                       ? colors.button_disabled_text
+                       : colors.button_text)
+            .draw_polygon(arrow, true);
         return *this;
     }
 } // namespace native

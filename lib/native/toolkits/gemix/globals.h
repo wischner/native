@@ -17,6 +17,10 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
+#include "../../emulated_tree.h"
+
 namespace linux::gemix
 {
     // GEM callbacks expose numeric handles, so shared runtime state and
@@ -82,16 +86,14 @@ namespace linux::gemix
         bool open = false;
         bool focused = false;
     };
-
-    extern native::bindings<native::combo_box *, gem_combo_box *>
-        combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, gem_combo_box *> combo_box_bindings;
 
     bool handle_combo_key(native::app_wnd *parent,
                           WORD modifiers,
                           WORD key);
-
-    extern native::bindings<native::text_edit *, gem_text_edit *>
-        text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, gem_text_edit *> text_edit_bindings;
 
     // Focus and position the editor under a local window point.
     bool focus_text_edit(native::app_wnd *parent, native::point point);
@@ -112,13 +114,9 @@ namespace linux::gemix
     //      an AES window, so painting and dispatch match on the root
     //      rather than on the immediate parent.
     //
-    native::wnd *root_of(native::wnd *control);
-
-    // Return a control's origin in its root window's coordinates.
-    native::point origin_in_root(const native::wnd &control);
-
-    // Return a control's bounds in its root window's coordinates.
-    native::rect root_bounds(const native::wnd &control);
+    using native::detail::origin_in_root;
+    using native::detail::root_bounds;
+    using native::detail::root_of;
 
     // Draw panel and canvas regions under every control they contain.
     void render_surfaces(native::app_wnd *parent, native::gpx &g);
@@ -150,9 +148,9 @@ namespace linux::gemix
     // Forget pending double-click state for a destroyed tree.
     void forget_tree_click(native::tree_view *control);
 
-    // Select the AES text cursor while the pointer is over an editor.
-    void update_text_edit_cursor(native::app_wnd *parent,
-                                 native::point point);
+    // Select the cursor of the deepest visible window at a root point.
+    void update_mouse_cursor(native::app_wnd *parent,
+                             native::point point);
 
     // Initialize AES and VDI once; return whether both are available.
     bool ensure_runtime();

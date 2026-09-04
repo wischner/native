@@ -119,28 +119,24 @@ namespace native
         }
     }
 
-    void combo_box::create() const {
-        if (_created) return;
-        auto *self = const_cast<combo_box *>(this);
+    void combo_box::create_native() {
+        auto *self = this;
         HWND window = create_window(self);
         windows::wnd_bindings.register_pair(window, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
-        HWND window = handle(const_cast<combo_box *>(this));
+    void combo_box::show_native() {
+        HWND window = handle(this);
         if (!_created || !window)
             throw std::runtime_error("Windows: combo box is not created.");
         ShowWindow(window, SW_SHOW);
         UpdateWindow(window);
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         HWND window = handle(self);
-        self->on_native_destroy();
         if (window) {
             windows::wnd_bindings.unregister_by_handle(window);
             DestroyWindow(window);

@@ -21,11 +21,13 @@ Theme primitives paint only. Live controls, including `accordion` and
 when available.
 
 Every public control is inheritable. Its protected virtual painting stages are
-the owner-draw contract: simple controls expose a complete control stage, while
-collections split rows, cells, images, text, borders, disclosures, focus, and
-scrollbars into separate stages. The default pixels are drawn inside the base
-virtual method. A derived implementation can therefore replace a part, or add
-to it by calling base:
+the owner-draw contract: simple controls dispatch background, border or
+indicator, text/content, and focus stages from their complete control entry
+point, while collections also split rows, cells, images, disclosures, and
+scrollbars. Windows and panels expose their surface background, and split
+views separate the splitter background from its grip. The default pixels are
+drawn inside each base virtual method. A derived implementation can therefore
+replace a part, or add to it by calling base:
 
 ```cpp
 void result_table::draw_cell_content(
@@ -48,6 +50,12 @@ Renderers invoke these stages directly; they do not draw a default and then
 call an owner hook. Native backends enter them through the platform's normal
 custom-draw, cell/view, expose, or repaint facility, keeping native input and
 metrics while allowing the same derived C++ class on every backend.
+
+A complete themed check or radio and the corresponding live control stages
+share one visual contract: the panel background, indicator geometry, stock
+control font, semantic colors, and focus treatment must agree. SDL's emulated
+controls follow this rule directly so theme samples compare pixel-for-pixel
+with ordinary controls.
 
 Interaction is also expressed semantically:
 
@@ -145,6 +153,16 @@ selection, inactive selection, separators, and focus indicators have matching
 getters. Every color getter returns an opaque `rgba`; in particular,
 `get_content_alternate_background_color()` resolves a backend's optional
 alternate-row sentinel into a usable derived color.
+
+The panel color is the normal application-window and container background.
+The content color is reserved for editors and item surfaces such as lists,
+trees, icon grids, and tables. Painted status parts use panel color with theme
+highlight/shadow edges instead of appearing as white editable fields.
+Combo arrow buttons use that content color with a compact filled mark. Portable
+collection and table scrollbars share one classic composition: matching raised
+decrement/increment buttons, a page trough, and a gripped thumb. Disclosure
+size remains a backend metric so SDL2 and other compact themes can avoid bulky
+hierarchy marks.
 
 ```cpp
 event.g.clear(appearance->get_content_background_color())

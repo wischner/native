@@ -129,9 +129,8 @@ namespace native
         }
     }
 
-    void combo_box::create() const {
-        if (_created) return;
-        auto *self = const_cast<combo_box *>(this);
+    void combo_box::create_native() {
+        auto *self = this;
         auto *state = new linux::wmaker::native_combo_box;
         state->frame = WMCreateFrame(linux::wmaker::parent_widget(self));
         state->popup = WMCreatePopUpButton(state->frame);
@@ -163,12 +162,10 @@ namespace native
             WMSetPopUpButtonSelectedItem(state->popup, get_selected_index());
         linux::wmaker::wnd_bindings.register_pair(state->frame, self);
         linux::wmaker::combo_box_bindings.register_pair(self, state);
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
-        auto *state = binding(const_cast<combo_box *>(this));
+    void combo_box::show_native() {
+        auto *state = binding(this);
         if (!_created || !state)
             throw std::runtime_error(
                 "Window Maker/WINGs: combo box is not created.");
@@ -181,11 +178,10 @@ namespace native
         WMMapWidget(state->frame);
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *state = binding(self);
-        self->on_native_destroy();
         linux::wmaker::combo_box_bindings.unregister_by_handle(self);
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (state && state->frame) WMDestroyWidget(state->frame);

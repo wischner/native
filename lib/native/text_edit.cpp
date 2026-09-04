@@ -27,6 +27,7 @@ namespace native
         : wnd(x, y, width, height)
         , _text(std::move(text))
         , _mode(mode) {
+        set_cursor(mouse_cursor::ibeam);
         if (!validate(_text))
             throw std::invalid_argument(
                 "text_edit requires valid text for its mode");
@@ -152,15 +153,46 @@ namespace native
         return replace_selected_text(input.read_text());
     }
 
-    void text_edit::select_all() const {
+    void text_edit::select_all() {
         select_all_native();
     }
 
     void text_edit::draw_control(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        if (!bounds.d.w || !bounds.d.h)
+            return;
+        draw_background(graphics, appearance, bounds, state);
+        draw_border(graphics, appearance, bounds, state);
+        draw_focus(graphics, appearance, bounds, state);
+    }
+
+    void text_edit::draw_background(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_ink(appearance.get_content_background_color())
+            .draw_rect(bounds, true);
+    }
+
+    void text_edit::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_pen(1)
+            .set_ink(appearance.get_button_border_color())
+            .draw_rect(bounds, false);
+    }
+
+    void text_edit::draw_focus(
         gpx &,
         theme &appearance,
         const rect &bounds,
         const theme::state &state) {
-        appearance.draw_text_edit_frame(bounds, state);
+        appearance.draw_focus(bounds, state);
     }
 } // namespace native

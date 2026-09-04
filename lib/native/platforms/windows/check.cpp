@@ -25,16 +25,14 @@ namespace native
         SendMessageW(
             h, BM_SETCHECK, _checked ? BST_CHECKED : BST_UNCHECKED, 0);
     }
-    void check::create() const {
-        if (_created)
-            return;
+    void check::create_native() {
         auto *p = get_parent();
         HWND parent =
             p ? windows::wnd_bindings.handle_from_object(p) : nullptr;
         if (!p || !p->get_created() || !parent)
             throw std::runtime_error(
                 "Windows: check requires a created parent.");
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         auto s = windows::utf8_to_wide(_text);
         HWND h = CreateWindowExW(0,
                                  L"BUTTON",
@@ -59,23 +57,20 @@ namespace native
                      TRUE);
         SendMessageW(
             h, BM_SETCHECK, _checked ? BST_CHECKED : BST_UNCHECKED, 0);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         HWND h = windows::wnd_bindings.handle_from_object(
-            const_cast<check *>(this));
+            this);
         if (!_created || !h)
             throw std::runtime_error("Windows: check is not created.");
         ShowWindow(h, SW_SHOW);
         UpdateWindow(h);
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         HWND h = windows::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (h) {
             DestroyWindow(h);
             windows::wnd_bindings.unregister_by_handle(h);

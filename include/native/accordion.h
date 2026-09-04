@@ -14,13 +14,28 @@
 #include <string>
 #include <vector>
 
-#include "theme.h"
-#include "wnd.h"
+#include "collection_view.h"
 
 namespace native
 {
     class accordion;
     class img;
+
+    // Describes one accordion section for builder-style appending.
+    struct accordion_section
+    {
+        // Construct a text-only section borrowing its content window.
+        accordion_section(std::string title, wnd &content);
+
+        // Construct a section borrowing an icon and content window.
+        accordion_section(std::string title,
+                          const img &icon,
+                          wnd &content);
+
+        std::string title;
+        const img *icon;
+        wnd *content;
+    };
 
     namespace detail
     {
@@ -90,7 +105,7 @@ namespace native
     };
 
     // Presents vertically stacked headers and borrowed content bodies.
-    class accordion : public wnd
+    class accordion : public collection_view
     {
     public:
         // Construct an empty single-expansion accordion from bounds.
@@ -114,6 +129,12 @@ namespace native
         // Return the current expansion behavior.
         accordion_mode get_mode() const;
 
+        // Show or hide the complete outer control border.
+        accordion &set_border_visible(bool visible);
+
+        // Return whether the complete outer border is visible.
+        bool get_border_visible() const;
+
         // Return the number of sections in display order.
         std::size_t get_item_count() const;
 
@@ -129,6 +150,9 @@ namespace native
         accordion_item &add_item(const std::string &title,
                                  const img &icon,
                                  wnd &content);
+
+        // Append one section descriptor.
+        accordion &operator<<(accordion_section section);
 
         // Remove a section by index or throw std::out_of_range.
         accordion &remove_item(std::size_t index);
@@ -155,20 +179,23 @@ namespace native
         int get_focused_index() const;
 
         // Cache backend focus entry or departure without a signal.
-        virtual void on_native_focus(bool focused);
+        void on_native_focus(bool focused) override;
 
         // Apply one backend-originated header navigation command.
         virtual void on_native_navigation(
             accordion_navigation navigation);
 
+    protected:
         // Create the backend accordion resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend accordion resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend accordion resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the newly expanded index, or -1 after a collapse.
         signal<int> on_expanded_change;
@@ -184,7 +211,7 @@ namespace native
         virtual void refresh();
 
         // Refresh dimensions from the current native theme.
-        virtual void synchronize_theme_metrics();
+        void synchronize_theme_metrics() override;
 
         // Draw the complete accordion background.
         virtual void draw_background(
@@ -238,6 +265,13 @@ namespace native
             const rect &bounds,
             const theme::state &state);
 
+        // Draw the complete accordion border after every child part.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
     private:
         friend class accordion_item;
         friend void detail::draw_accordion(
@@ -247,6 +281,7 @@ namespace native
         std::vector<std::unique_ptr<accordion_item>> _items;
         int _header_height = 24;
         int _focused_index = -1;
+        bool _border_visible = true;
 
         void validate_index(int index, bool allow_none) const;
         void set_item_expanded(std::size_t index, bool expanded);

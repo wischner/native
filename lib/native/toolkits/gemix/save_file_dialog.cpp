@@ -11,7 +11,7 @@
 
 namespace native
 {
-    void save_file_dialog::show() const {
+    void save_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -30,14 +30,14 @@ namespace native
             }
 
             if (response.accepted) {
-                const_cast<save_file_dialog *>(this)->on_native_accept(
+                this->on_native_accept(
                     {response.path});
             } else {
-                const_cast<save_file_dialog *>(this)
+                this
                     ->on_native_cancel();
             }
         } catch (...) {
-            const_cast<save_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

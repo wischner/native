@@ -54,6 +54,18 @@ The `src/` directory contains the `vision` application. It is a consumer of
 the public library API and must not contain private library implementation.
 Tests live in `tests/`, and developer automation in `scripts/`.
 
+Library-owned path manipulation, traversal, metadata, and file publication
+use the C++20 `std::filesystem` library; file contents use standard C++
+streams. Do not add direct POSIX or C filesystem calls, shell command
+construction, or OS-specific helpers for work covered by those facilities.
+Public values that identify filesystem entries use
+`std::filesystem::path`; filename patterns, extensions, and labels remain
+text.
+Descriptor, process, signal, and terminal operations use POSIX interfaces.
+Native UI, standard-panel, system-icon, and known-folder APIs remain isolated
+and allowed in their platform or toolkit layer where the C++ standard library
+has no equivalent.
+
 ## Public interface rules
 
 - The public API is exposed through `include/native.h`.
@@ -64,11 +76,15 @@ Tests live in `tests/`, and developer automation in `scripts/`.
 
 ## Native state and bindings
 
-- Native resources are associated with C++ objects through external bindings.
-- Use `native::bindings` to map native handles to library objects and caches.
-- Keep those bindings in toolkit or platform `globals.*` files inside the relevant namespace.
-- Example pattern:
-  `native::bindings<native::wnd *, x11gpx *> wnd_gpx_bindings`
+- Every created `wnd` owns one opaque internal peer. Per-window backend state,
+  including graphics caches, is stored by that peer and never in the public
+  class definition.
+- Use `native::bindings` only where a native callback or resource identifier
+  must recover its library object. Keep those callback-facing bindings in
+  toolkit or platform `globals.*` files inside the relevant namespace.
+- Object-to-state compatibility names use the stateless internal
+  `detail::peer_bindings`; do not add another process-wide bidirectional map
+  for a new window/control state type.
 
 ## Build system rules
 
@@ -223,7 +239,7 @@ standard appear to disagree.
 
 | Document | Contents |
 | --- | --- |
-| [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | Sections 1–19: code structure, native bindings, signals, setters/getters, windows, painting, custom drawing, application, screens, fonts, clipboard, text editing, advanced tables, source editing, classic trees, split views and tabs, input controls/standard dialogs/non-client chrome, structural containers, and paintable child surfaces. |
+| [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | Sections 1–19: code structure, native bindings, signals, setters/getters, windows, painting, custom drawing, application, screens, fonts, clipboard, text editing, advanced tables, source editing, classic trees, split views and tabs, filesystem resources/input controls/standard dialogs/non-client chrome, structural containers, and paintable child surfaces. |
 | [CPP-CODING-STYLE.md](docs/standards/CPP-CODING-STYLE.md) | Sections 1–9: project directory structure, naming conventions, header and implementation separation, file header block, function documentation, general coding rules, build rules, documentation rules, and tests. |
 
 ## The Book of Native — `docs/manuals/book-of-native/`
@@ -252,7 +268,7 @@ contents.
 | [PATTERNS-TABLE-VIEW.md](docs/manuals/book-of-native/PATTERNS-TABLE-VIEW.md) | Model ownership, stable row identity, virtualization, grouping, search, backend adaptation. Expands Architecture 13. |
 | [PATTERNS-CODE-EDIT.md](docs/manuals/book-of-native/PATTERNS-CODE-EDIT.md) | Canonical source storage, overlays, lexers, completion, shared painting, backend input translation. Expands Architecture 14. |
 | [PATTERNS-SPLIT-VIEWS-AND-TABS.md](docs/manuals/book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md) | Split/tab layout ownership, native content transitions, floating shells, interaction, themed painting, persistence. Expands Architecture 16. |
-| [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | Combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
+| [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | File icons, special directories, combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
@@ -290,7 +306,7 @@ instructions.
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |
 | [16-SPLIT-VIEWS-AND-TABS.md](docs/manuals/programming-native/16-SPLIT-VIEWS-AND-TABS.md) | `split_view` and native tab controls. |
-| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | Choice controls, OS dialogs, non-client chrome. |
+| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | File icons, special directories, choice controls, OS dialogs, non-client chrome. |
 | [18-PANELS-AND-CANVASES.md](docs/manuals/programming-native/18-PANELS-AND-CANVASES.md) | `panel` grouping and child lifecycle, `canvas` painting, scrolling, scrollbar policy, and rulers. |
 
 ## Notes — `docs/notes/`
@@ -303,6 +319,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | Document | Contents |
 | --- | --- |
 | [CUSTOM.md](docs/notes/CUSTOM.md) | Native-versus-custom control audit. Per backend, per public control: native (**N**), hybrid (**H**), library-painted (**C**), or external helper (**E**), plus applied native replacements and deliberately retained custom implementations with reasons. Carries an audit date. |
+| [REFACTOR.md](docs/notes/REFACTOR.md) | Deferred review of splitting the large theme interface; records the measured concern, proposed grouping, and evidence threshold for implementing it. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
 | [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, the `MAC_REMOTE_*` environment variables, and the driving scripts. |
@@ -332,9 +349,16 @@ invalidates it. Use this table to find what a change touches.
 | Backend feature coverage or test status | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) and, if the runtime status changed, [README.md](README.md), [BOOK-OF-NATIVE.md](docs/manuals/BOOK-OF-NATIVE.md) "Current scope", and [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md). |
 | Build paths, CMake targets, or Docker images | [README.md](README.md), the build system rules in Part 1 of this file, [GETTING-STARTED.md](docs/manuals/book-of-native/GETTING-STARTED.md), [BUILD-SYSTEM.md](docs/manuals/book-of-native/BUILD-SYSTEM.md), [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md), and `.vscode/launch.json` / `.vscode/tasks.json`. |
 | Architectural layering or binding rules | [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md), the architecture rules in Part 1 of this file, and [PATTERNS-LAYERING.md](docs/manuals/book-of-native/PATTERNS-LAYERING.md). |
+| The `wnd` base contract — geometry derivation, paint sequence, hierarchy, or a new protected hook | [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) Section 5, [PATTERNS-WINDOWS.md](docs/manuals/book-of-native/PATTERNS-WINDOWS.md), [PATTERNS-PAINTING.md](docs/manuals/book-of-native/PATTERNS-PAINTING.md), and any chapter describing a control that overrides the hook. Every window type inherits the change, so the sweep is wider than the control that motivated it. |
+| Add or move a test executable | [BUILD-SYSTEM.md](docs/manuals/book-of-native/BUILD-SYSTEM.md) test table, and `tests/CMakeLists.txt`. |
 | Add or remove a TODO in production source | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md). |
 | A remote or unusual host workflow | The matching note in [docs/notes/](docs/notes/), and its entry in [docs/notes/README.md](docs/notes/README.md). |
 | A vendored third-party file | [lib/native/third_party/README.md](lib/native/third_party/README.md). |
+
+Every new control, and every existing control added to another backend, must
+record its **N**, **H**, **C**, or **E** kind in `CUSTOM.md` in the same
+commit. Every **C** entry must also have a concrete justification in the
+reviewed-proposals table; an unexplained custom implementation is a defect.
 
 ## Documentation conventions
 

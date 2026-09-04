@@ -11,15 +11,15 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
         try {
             linux::openmotif::show_file_dialog(
-                *const_cast<open_file_dialog *>(this), false);
+                *this, false);
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

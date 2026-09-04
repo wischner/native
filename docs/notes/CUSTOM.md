@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-09-03.
+Audit date: 2026-09-04.
 
 ## Legend
 
@@ -19,6 +19,10 @@ Audit date: 2026-09-03.
 `list_box` is a compatibility alias of `list`, not a second implementation.
 Models, layouts, graphics, fonts, clipboard, screen discovery, and signals are
 services rather than controls and are outside this control inventory.
+The inherited `wnd` mouse-cursor adapter, including its resize shapes and the
+documented GEMix/macOS precision-pointer fallbacks, is likewise common window
+behavior; adding its system cursor mapping does not change a control's **N**,
+**H**, or **C** classification below.
 
 ## Applied native replacements
 
@@ -41,6 +45,9 @@ services rather than controls and are outside this control inventory.
 | Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | Windows, macOS, and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` with native scrollbar hosting is the supported public-API composition. |
+| SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
+| X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
 | All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
 | All `canvas` scrollbars | Keep **C**. Native scrollbars (`BScrollBar`, `XmScrollBar`, `WMScroller`, `NSScroller`, `SBS_*`) carry a narrower or differently-shaped range than the portable signed 32-bit content contract, which requires both endpoints to stay exactly reachable. The themed portable scrollbar also keeps the ruler/scrollbar and scrollbar/scrollbar corners inside one geometry pass. |
 | All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; only the client, ruler, and scrollbar painting is portable, because the application owns the client pixels by contract. |
@@ -81,19 +88,19 @@ in those backends.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, modality filtering, positioning, and results. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, modality filtering, positioning, first-frame presentation, focus-click-through with one-shot activation-release reconstruction, renderer-before-window teardown, and results. |
 | `wnd` and all child-control hosts | **C** | SDL event routing and renderer-backed library windows; SDL2 supplies no desktop widget set. |
 | `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch. |
-| `button`, `check`, `radio` | **C** | Library-painted controls using SDL's neutral system-gray emulation palette. |
-| `list`, `combo_box`, `text_edit` | **C** | Library layout, painting, selection, editing, and popup behavior; SDL text-input and clipboard services are used. |
-| `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only tab pages, and page routing. |
-| `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, hit testing, and scrolling. |
+| `button`, `check`, `radio` | **C** | Library-painted controls using SDL's neutral system-gray emulation palette; live and complete theme check/radio drawing share the same stages and geometry. |
+| `list`, `combo_box`, `text_edit` | **C** | Library layout, painting, selection, editing, and conventionally stacked popup behavior; text selection uses the same active/inactive foreground and background palette as collections, and bounds changes reclamp retained text scrolling. Either combo field region opens the popup, its hot row follows pointer motion, it receives hits ahead of covered siblings, and it commits a row on the first press. Combos use a content-colored inset arrow button, and SDL text-input and clipboard services are used. |
+| `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including stable optional accordion frames, framed/strip-only tab pages, frame-aligned tab-strip starts, one-pixel selected-page overlap on every edge, and page routing. |
+| `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, root-relative hit testing, and scrolling; collection scrollbars share classic arrow/trough/thumb painting and SDL thumb capture, tree frames are optional and default on, and SDL uses compact disclosure arrows without connector lines. Tables finish with complete rows and their complete outer frame. |
 | `code_edit` | **C** | Portable document/editor and library painting. |
-| `split_view` | **C** | Library pane geometry, hit testing, and drag handling. |
+| `split_view` | **C** | Library pane geometry, registered root-relative divider hit testing, pointer-captured drag handling, and resize cursor. |
 | `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting, clipping through an SDL viewport, and root-relative hit testing are library-owned. |
-| `ruler`, `status_bar` | **C** | Shared library-painted non-client strips. |
-| File open/save/directory | **E** | Zenity or KDialog desktop helper; returns cancel/unavailable when neither exists. |
-| `message_box` | **N** | `SDL_ShowMessageBox`. |
+| `ruler`, `status_bar` | **C** | Shared library-painted non-client strips; status parts use gray chrome surfaces and highlighted/shadowed edges. |
+| File open/save/directory | **C** | One compact resizable themed browser for all three modes, with icon-backed Places and Name/Type/Size tables, icon-only history navigation, a breadcrumb/direct-address area toggled by double click, continuous draggable scrolling without pagination, separate filename entry, filters, validation, and save overwrite handling. |
+| `message_box` | **C** | Library-owned themed `modal_wnd` with attributed embedded PNG semantic badges, stock control font, real Native buttons, and SDL event routing. |
 
 ## Linux OpenMotif
 
@@ -164,7 +171,7 @@ in those backends.
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
 | File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode. |
-| `message_box` | **N** | `WMRunAlertPanel`. |
+| `message_box` | **N/H** | Native WINGs alert panel and modal loop with attributed embedded PNG semantic badges and the WINGs bold system title font. |
 
 ## Linux GEMix/AES
 

@@ -17,6 +17,20 @@ A handler returns `true` when it has handled the event and wants signal
 propagation to stop. Signal connections do not transfer ownership of the
 target object, so the connected window must remain alive.
 
+When the signal source can outlive the receiver, keep a scoped handle as a
+receiver member:
+
+```cpp
+native::connection _movement =
+    source.on_mouse_move.connect_scoped(
+        this,
+        &painter_window::on_move);
+```
+
+Destroying `_movement` disconnects automatically. It is move-only and may be
+stored in a `std::vector<native::connection>` when a receiver owns several
+subscriptions.
+
 `on_mouse_move` positions are in client coordinates. Native backends also
 retain the matching absolute position; `get_mouse_screen_position()` returns
 the screen point from the latest motion notification. This is useful for
@@ -48,6 +62,7 @@ public:
     // Construct the painter window and connect its event handlers.
     painter_window()
         : native::app_wnd("Native Painter"), _drawing(false) {
+        set_cursor(native::mouse_cursor::crosshair);
         on_mouse_click.connect(this, &painter_window::on_click);
         on_mouse_move.connect(this, &painter_window::on_move);
         on_mouse_wheel.connect(this, &painter_window::on_wheel);
@@ -112,11 +127,42 @@ int program(int, char **) {
 }
 ```
 
+## Mouse cursors
+
+Every window and control supports the ordinary pointer, text, drawing, and
+four directional resize pointer shapes:
+
+```cpp
+window.set_cursor(native::mouse_cursor::arrow);
+editor.set_cursor(native::mouse_cursor::ibeam);
+drawing_surface.set_cursor(native::mouse_cursor::crosshair);
+horizontal_splitter.set_cursor(
+    native::mouse_cursor::resize_horizontal);
+vertical_splitter.set_cursor(native::mouse_cursor::resize_vertical);
+northwest_corner.set_cursor(
+    native::mouse_cursor::resize_northwest_southeast);
+northeast_corner.set_cursor(
+    native::mouse_cursor::resize_northeast_southwest);
+```
+
+`set_cursor()` may be called before or after `create()` and returns the window
+for chaining. `get_cursor()` returns the cached selection. Windows default to
+the arrow; `text_edit` and `code_edit` choose the I-beam by default. The
+painter example selects a crosshair because its client area is a drawing
+surface. GEMix falls back to a thin crosshair for resize cursors because AES
+does not provide directional system shapes; macOS does the same for diagonal
+resize cursors.
+
 ## Invalidation and painting
 
 `invalidate()` schedules the client area for repainting. It does not call the
 paint handler synchronously. The backend later emits a `wnd_paint_event`
 containing the invalid rectangle and a borrowed graphics context.
+
+Backends report keyboard focus through `on_native_focus(bool)` on the same
+window contract. Plain windows ignore it; painted controls cache it for their
+themed focus stage. Applications normally consume the control's semantic
+signals rather than calling this backend-facing hook.
 
 The graphics context supports colors, lines, rectangles, text, images, fonts,
 and clipping. Never retain the event's graphics reference beyond the handler.

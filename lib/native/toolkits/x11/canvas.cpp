@@ -19,23 +19,18 @@
 
 namespace native
 {
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         Widget widget =
             linux::x11::create_collection_host(*self, "canvas");
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
         (void)widget;
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !widget)
             throw std::runtime_error(
                 "X11/Athena: canvas is not created.");
@@ -44,14 +39,13 @@ namespace native
             XRaiseWindow(linux::x11::cached_display, XtWindow(widget));
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (widget) {
             linux::x11::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);

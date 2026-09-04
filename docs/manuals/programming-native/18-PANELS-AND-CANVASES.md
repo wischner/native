@@ -14,6 +14,10 @@ A panel is an empty child window. It adds no border, caption, focus ring, or
 padding, and it shows the platform's ordinary control-host background. Give it
 a layout and assign children to it exactly as you would to a window:
 
+A derived panel may override the protected `draw_background()` stage to
+replace only that host background. The inherited paint signal, non-client
+strips, child lifecycle, and layout continue to run normally.
+
 ```cpp
 native::panel page(0, 0, 400, 300);
 native::button command("Run");

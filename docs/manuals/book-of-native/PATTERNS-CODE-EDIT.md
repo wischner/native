@@ -16,7 +16,8 @@ Load and save form the only encoding boundary. Loading detects LF, CRLF, or
 CR, strips a UTF-8 BOM, repairs malformed sequences with U+FFFD, and records
 the detected choices. Saving expands canonical newlines and optionally
 restores the loaded BOM. Presentation overlays are never serialized with the
-source.
+source. The editor's remembered file location is a
+`std::filesystem::path`.
 
 Insert, erase, and replace are document commands. Each retains a compact undo
 record and remaps line markers, diagnostics, and style spans. `set_text()` is

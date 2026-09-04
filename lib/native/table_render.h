@@ -26,6 +26,19 @@ namespace native::detail
                             gpx &graphics,
                             point origin);
 
+    // Begin dragging a portable table scrollbar thumb. Return false when the
+    // point is not over either thumb; horizontal identifies the captured bar.
+    bool begin_table_scrollbar_drag(table_view &control,
+                                    point position,
+                                    bool &horizontal,
+                                    int &grab_offset);
+
+    // Move a previously captured portable table scrollbar thumb.
+    bool drag_table_scrollbar(table_view &control,
+                              point position,
+                              bool horizontal,
+                              int grab_offset);
+
     // Route one client-relative primary-button release.
     bool handle_table_click(table_view &control, point position);
 } // namespace native::detail

@@ -43,7 +43,7 @@ namespace native
     char **app::envp = nullptr;
     app_wnd *app::_main_wnd = nullptr;
 
-    int app::run(const app_wnd &wnd) {
+    int app::run(app_wnd &wnd) {
         if (_main_wnd)
             throw std::logic_error(
                 "An application event loop is already active.");
@@ -52,7 +52,7 @@ namespace native
                 "An owned window cannot be the application main "
                 "window.");
 
-        _main_wnd = const_cast<app_wnd *>(&wnd);
+        _main_wnd = &wnd;
 
         try {
             // Populate screens before creation so handlers may query

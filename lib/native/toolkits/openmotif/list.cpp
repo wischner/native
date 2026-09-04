@@ -64,64 +64,52 @@ namespace native
         if (_selected_index >= 0)
             XmListSelectPos(w, _selected_index + 1, False);
     }
-    void list::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<list *>(this);
-        Widget scroller = XtVaCreateWidget(
-            "listScroll",
-            xmScrolledWindowWidgetClass,
+    void list::create_native() {
+        auto *self = this;
+        Arg arguments[8];
+        Cardinal count = 0;
+        XtSetArg(arguments[count], XmNselectionPolicy,
+                 XmBROWSE_SELECT); ++count;
+        XtSetArg(arguments[count], XmNlistSizePolicy,
+                 XmCONSTANT); ++count;
+        XtSetArg(arguments[count], XmNnavigationType,
+                 XmTAB_GROUP); ++count;
+        Widget w = XmCreateScrolledList(
             parent_of(self),
-            XmNx,
-            _bounds.p.x,
-            XmNy,
-            _bounds.p.y,
-            XmNwidth,
-            _bounds.d.w,
-            XmNheight,
-            _bounds.d.h,
-            XmNscrollingPolicy,
-            XmAUTOMATIC,
-            XmNscrollBarDisplayPolicy,
-            XmDYNAMIC,
-            nullptr);
-        Widget w = XtVaCreateManagedWidget(
-            "list",
-            xmListWidgetClass,
-            scroller,
-            XmNselectionPolicy,
-            XmBROWSE_SELECT,
-            XmNlistSizePolicy,
-            XmCONSTANT,
-            XmNnavigationType,
-            XmTAB_GROUP,
-            nullptr);
+            const_cast<char *>("list"),
+            arguments,
+            count);
+        Widget scroller = w ? XtParent(w) : nullptr;
         if (!scroller || !w)
             throw std::runtime_error("Motif: Failed to create list.");
+        XtVaSetValues(scroller,
+                      XmNx, _bounds.p.x,
+                      XmNy, _bounds.p.y,
+                      XmNwidth, _bounds.d.w,
+                      XmNheight, _bounds.d.h,
+                      nullptr);
+        XtManageChild(w);
         linux::openmotif::wnd_bindings.register_pair(scroller, self);
         linux::openmotif::list_content_bindings.register_pair(self, w);
         XtAddCallback(w, XmNbrowseSelectionCallback, changed, self);
         replace(w, _items);
         if (_selected_index >= 0)
             XmListSelectPos(w, _selected_index + 1, False);
-        _created = true;
-        self->on_native_create();
     }
-    void list::show() const {
+    void list::show_native() {
         Widget w = linux::openmotif::wnd_bindings.handle_from_object(
-            const_cast<list *>(this));
+            this);
         if (!_created || !w)
             throw std::runtime_error("Motif: list is not created.");
         XtManageChild(w);
     }
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         Widget w =
             linux::openmotif::wnd_bindings.handle_from_object(self);
         Widget content = content_for(self);
-        self->on_native_destroy();
         if (content)
             linux::openmotif::list_content_bindings
                 .unregister_by_handle(self);

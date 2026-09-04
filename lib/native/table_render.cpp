@@ -17,6 +17,8 @@
 #include <native/table_view.h>
 #include <native/theme.h>
 
+#include "classic_scrollbar.h"
+
 namespace native::detail
 {
     namespace
@@ -131,35 +133,45 @@ namespace native::detail
                 0,
                 static_cast<int>(control.get_dimensions().h) -
                     result.header);
-            const bool needs_vertical =
+            const auto needs_vertical = [&](int height) {
+                return
                 static_cast<std::uint64_t>(
                     control.get_display_row_count()) * result.row >
-                static_cast<std::uint64_t>(body_height);
+                    static_cast<std::uint64_t>(std::max(0, height));
+            };
+            const auto wants_vertical = [&](int height) {
+                return control.get_vertical_scrollbar_policy() ==
+                           scrollbar_policy::always ||
+                       (control.get_vertical_scrollbar_policy() ==
+                            scrollbar_policy::automatic &&
+                        needs_vertical(height));
+            };
+            const auto wants_horizontal = [&](int width) {
+                return control.get_horizontal_scrollbar_policy() ==
+                           scrollbar_policy::always ||
+                       (control.get_horizontal_scrollbar_policy() ==
+                            scrollbar_policy::automatic &&
+                        result.content_width > std::max(0, width));
+            };
             result.vertical =
-                control.get_vertical_scrollbar_policy() ==
-                    scrollbar_policy::always ||
-                (control.get_vertical_scrollbar_policy() ==
-                     scrollbar_policy::automatic &&
-                 needs_vertical);
+                wants_vertical(body_height);
             if (result.vertical)
                 body_width = std::max(0, body_width - result.scrollbar);
-            const bool needs_horizontal =
-                result.content_width > body_width;
-            result.horizontal =
-                control.get_horizontal_scrollbar_policy() ==
-                    scrollbar_policy::always ||
-                (control.get_horizontal_scrollbar_policy() ==
-                     scrollbar_policy::automatic &&
-                 needs_horizontal);
+            result.horizontal = wants_horizontal(body_width);
             if (result.horizontal)
                 body_height = std::max(0,
                                        body_height - result.scrollbar);
+            if (!result.vertical && wants_vertical(body_height)) {
+                result.vertical = true;
+                body_width = std::max(0, body_width - result.scrollbar);
+                result.horizontal = wants_horizontal(body_width);
+            }
             result.body = rect(
                 0,
                 static_cast<coord>(result.header),
                 static_cast<dim>(body_width),
                 static_cast<dim>(body_height));
-            if (metrics.table_fill_last_column && !result.horizontal &&
+            if (control.get_fill_last_column() && !result.horizontal &&
                 result.content_width < body_width) {
                 for (auto column = control.get_columns().rbegin();
                      column != control.get_columns().rend(); ++column) {
@@ -175,11 +187,91 @@ namespace native::detail
             return result;
         }
 
+        classic_scrollbar_geometry vertical_scrollbar(
+            const geometry &layout,
+            table_view &control,
+            const theme::metrics &metrics) {
+            const rect bounds(
+                static_cast<coord>(layout.body.x2()),
+                static_cast<coord>(layout.header),
+                static_cast<dim>(layout.scrollbar),
+                layout.body.d.h);
+            const std::size_t total = std::max<std::size_t>(
+                1, control.get_display_row_count());
+            const std::size_t page = std::max<std::size_t>(
+                1, control.get_visible_row_range().count);
+            return make_classic_scrollbar(
+                bounds,
+                scrollbar_orientation::vertical,
+                total,
+                page,
+                control.get_vertical_scroll_row(),
+                metrics.scrollbar_min_thumb);
+        }
+
+        classic_scrollbar_geometry horizontal_scrollbar(
+            const geometry &layout,
+            table_view &control,
+            const theme::metrics &metrics) {
+            const rect bounds(
+                0,
+                static_cast<coord>(layout.body.y2()),
+                layout.body.d.w,
+                static_cast<dim>(layout.scrollbar));
+            const int total = std::max(1, layout.content_width);
+            const int page = std::max(
+                1, static_cast<int>(layout.body.d.w));
+            return make_classic_scrollbar(
+                bounds,
+                scrollbar_orientation::horizontal,
+                static_cast<std::uint64_t>(total),
+                static_cast<std::uint64_t>(page),
+                static_cast<std::uint64_t>(
+                    control.get_horizontal_scroll_offset()),
+                metrics.scrollbar_min_thumb);
+        }
+
         int rendered_width(const geometry &layout,
                            const table_column &column) {
             return column.id == layout.fill_column
                        ? layout.fill_width
                        : column.width;
+        }
+
+        int rendered_header_width(const geometry &layout,
+                                  const table_column &column) {
+            const int width = rendered_width(layout, column);
+            return column.id == layout.fill_column && layout.vertical
+                       ? width + layout.scrollbar
+                       : width;
+        }
+
+        rect rendered_row_bounds(const geometry &layout,
+                                 std::size_t index,
+                                 std::size_t count) {
+            const std::uint64_t nominal_height =
+                static_cast<std::uint64_t>(count) *
+                static_cast<std::uint64_t>(layout.row);
+            if (count == 0 || nominal_height <= layout.body.d.h) {
+                return rect(
+                    layout.body.p.x,
+                    static_cast<coord>(
+                        layout.body.p.y +
+                        static_cast<int>(index) * layout.row),
+                    layout.body.d.w,
+                    static_cast<dim>(layout.row));
+            }
+            const int top = layout.body.p.y + static_cast<int>(
+                static_cast<std::uint64_t>(layout.body.d.h) * index /
+                count);
+            const int bottom = layout.body.p.y + static_cast<int>(
+                static_cast<std::uint64_t>(layout.body.d.h) * (index + 1) /
+                count);
+            return rect(
+                layout.body.p.x,
+                static_cast<coord>(top),
+                layout.body.d.w,
+                static_cast<dim>(std::max(0, bottom - top)));
         }
 
         std::optional<table_group> group_by_id(table_model &model,
@@ -215,7 +307,7 @@ namespace native::detail
             for (const auto &column : control.get_columns()) {
                 if (!column.visible)
                     continue;
-                const int width = rendered_width(layout, column);
+                const int width = rendered_header_width(layout, column);
                 const rect cell_bounds(
                     static_cast<coord>(std::clamp(
                         column_x,
@@ -257,12 +349,8 @@ namespace native::detail
             const std::size_t display_index = visible.first + index;
             const table_display_row display =
                 control.get_display_row(display_index);
-            const int y = layout.header +
-                          static_cast<int>(index) * layout.row;
-            const rect row_bounds(0,
-                                  static_cast<coord>(y),
-                                  layout.body.d.w,
-                                  static_cast<dim>(layout.row));
+            const rect row_bounds = rendered_row_bounds(
+                layout, index, visible.count);
             if (display.group) {
                 theme::state group_state = control_state;
                 const auto group = model
@@ -296,9 +384,9 @@ namespace native::detail
                     model->cell(display.model_row, column.id);
                 const rect cell_bounds(
                     static_cast<coord>(column_x),
-                    static_cast<coord>(y),
+                    row_bounds.p.y,
                     static_cast<dim>(width),
-                    static_cast<dim>(layout.row));
+                    row_bounds.d.h);
                 control.draw_cell_background(
                     graphics, *painter, row_id, display.model_row,
                     column, value, cell_bounds, row_state);
@@ -317,73 +405,30 @@ namespace native::detail
         graphics.set_clip(old_clip);
 
         if (layout.vertical) {
-            const rect track(
-                static_cast<coord>(layout.body.x2()),
-                static_cast<coord>(layout.header),
-                static_cast<dim>(layout.scrollbar),
-                layout.body.d.h);
-            const std::size_t total = std::max<std::size_t>(
-                1, control.get_display_row_count());
-            const std::size_t page = std::max<std::size_t>(
-                1, control.get_visible_row_range().count);
-            const int thumb_height = std::min(
-                static_cast<int>(track.d.h),
-                std::max(metrics.scrollbar_min_thumb,
-                         static_cast<int>(track.d.h * page / total)));
-            const std::size_t maximum = total > page ? total - page : 0;
-            const int thumb_y = maximum == 0
-                ? track.p.y
-                : track.p.y + static_cast<int>(
-                      control.get_vertical_scroll_row() *
-                      (track.d.h - thumb_height) / maximum);
+            const classic_scrollbar_geometry scrollbar =
+                vertical_scrollbar(layout, control, metrics);
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::vertical,
-                track,
-                rect(track.p.x,
-                     static_cast<coord>(thumb_y),
-                     track.d.w,
-                     static_cast<dim>(thumb_height)),
+                scrollbar.bounds,
+                scrollbar.thumb,
                 control_state);
         }
         if (layout.horizontal) {
-            const rect track(
-                0,
-                static_cast<coord>(layout.body.y2()),
-                layout.body.d.w,
-                static_cast<dim>(layout.scrollbar));
-            const int total = std::max(1, layout.content_width);
-            const int page = std::max(1,
-                                      static_cast<int>(layout.body.d.w));
-            const int thumb_width = std::min(
-                static_cast<int>(track.d.w),
-                std::max(metrics.scrollbar_min_thumb,
-                         static_cast<int>(track.d.w) * page / total));
-            const int maximum = std::max(0, total - page);
-            const int thumb_x = maximum == 0
-                ? 0
-                : control.get_horizontal_scroll_offset() *
-                      (track.d.w - thumb_width) / maximum;
+            const classic_scrollbar_geometry scrollbar =
+                horizontal_scrollbar(layout, control, metrics);
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::horizontal,
-                track,
-                rect(static_cast<coord>(thumb_x),
-                     track.p.y,
-                     static_cast<dim>(thumb_width),
-                     track.d.h),
+                scrollbar.bounds,
+                scrollbar.thumb,
                 control_state);
         }
-        // The viewport relief is intentionally last. Header cells may touch
-        // its bounds and must not erase it. Native scrollbar reservations
-        // remain outside the viewport as independently framed controls.
-        const rect viewport_bounds(
-            0,
-            0,
-            layout.body.d.w,
-            static_cast<dim>(layout.header + layout.body.d.h));
+        // The complete control frame is intentionally last. Rows, headers,
+        // and scrollbar parts may touch an edge but must never erase it.
+        const rect viewport_bounds = bounds;
         control.draw_border(
             graphics, *painter, viewport_bounds, control_state);
     }
@@ -397,17 +442,140 @@ namespace native::detail
         draw_table_view(control, translated);
     }
 
-    bool handle_table_click(table_view &control, point position) {
-        auto painter = theme::create(control.get_gpx());
-        const theme::metrics metrics = painter->defaults();
+    bool begin_table_scrollbar_drag(table_view &control,
+                                    point position,
+                                    bool &horizontal,
+                                    int &grab_offset) {
+        theme::metrics metrics;
+        metrics.header_height = control._native_header_height;
+        metrics.table_row_height = control._native_row_height;
         const geometry layout = table_geometry(control, metrics);
+        if (layout.vertical) {
+            const classic_scrollbar_geometry scrollbar =
+                vertical_scrollbar(layout, control, metrics);
+            if (scrollbar.thumb.contains(position)) {
+                horizontal = false;
+                grab_offset = position.y - scrollbar.thumb.y1();
+                return true;
+            }
+        }
+        if (layout.horizontal) {
+            const classic_scrollbar_geometry scrollbar =
+                horizontal_scrollbar(layout, control, metrics);
+            if (scrollbar.thumb.contains(position)) {
+                horizontal = true;
+                grab_offset = position.x - scrollbar.thumb.x1();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool drag_table_scrollbar(table_view &control,
+                              point position,
+                              bool horizontal,
+                              int grab_offset) {
+        theme::metrics metrics;
+        metrics.header_height = control._native_header_height;
+        metrics.table_row_height = control._native_row_height;
+        const geometry layout = table_geometry(control, metrics);
+        if (horizontal) {
+            if (!layout.horizontal)
+                return false;
+            const classic_scrollbar_geometry scrollbar =
+                horizontal_scrollbar(layout, control, metrics);
+            const std::uint64_t value = classic_scrollbar_drag_value(
+                scrollbar,
+                scrollbar_orientation::horizontal,
+                position.x,
+                grab_offset,
+                static_cast<std::uint64_t>(
+                    std::max(1, layout.content_width)),
+                static_cast<std::uint64_t>(
+                    std::max(1, static_cast<int>(layout.body.d.w))));
+            control.on_native_scroll(
+                control.get_vertical_scroll_row(),
+                static_cast<int>(std::min<std::uint64_t>(
+                    value,
+                    static_cast<std::uint64_t>(
+                        std::numeric_limits<int>::max()))));
+            return true;
+        }
+        if (!layout.vertical)
+            return false;
+        const classic_scrollbar_geometry scrollbar =
+            vertical_scrollbar(layout, control, metrics);
+        const std::uint64_t value = classic_scrollbar_drag_value(
+            scrollbar,
+            scrollbar_orientation::vertical,
+            position.y,
+            grab_offset,
+            std::max<std::uint64_t>(
+                1, control.get_display_row_count()),
+            std::max<std::uint64_t>(
+                1, control.get_visible_row_range().count));
+        control.on_native_scroll(
+            static_cast<std::size_t>(value),
+            control.get_horizontal_scroll_offset());
+        return true;
+    }
+
+    bool handle_table_click(table_view &control, point position) {
+        // Emulated collection controls are painted into their root window
+        // and deliberately have no graphics binding of their own. Hit-test
+        // with the metrics synchronized during native creation instead of
+        // trying to manufacture a child graphics context.
+        theme::metrics metrics;
+        metrics.header_height = control._native_header_height;
+        metrics.table_row_height = control._native_row_height;
+        const geometry layout = table_geometry(control, metrics);
+        if (layout.vertical) {
+            const classic_scrollbar_geometry scrollbar =
+                vertical_scrollbar(layout, control, metrics);
+            if (scrollbar.bounds.contains(position)) {
+                std::size_t row = control.get_vertical_scroll_row();
+                const std::size_t page = std::max<std::size_t>(
+                    1, control.get_visible_row_range().count);
+                if (scrollbar.decrement.contains(position)) {
+                    row -= std::min<std::size_t>(row, 1);
+                } else if (scrollbar.increment.contains(position)) {
+                    ++row;
+                } else if (position.y < scrollbar.thumb.y1()) {
+                    row -= std::min(row, page);
+                } else if (position.y >= scrollbar.thumb.y2()) {
+                    row += page;
+                }
+                control.on_native_scroll(
+                    row, control.get_horizontal_scroll_offset());
+                return true;
+            }
+        }
+        if (layout.horizontal) {
+            const classic_scrollbar_geometry scrollbar =
+                horizontal_scrollbar(layout, control, metrics);
+            if (scrollbar.bounds.contains(position)) {
+                int offset = control.get_horizontal_scroll_offset();
+                const int step = std::max(8, layout.scrollbar);
+                if (scrollbar.decrement.contains(position))
+                    offset -= step;
+                else if (scrollbar.increment.contains(position))
+                    offset += step;
+                else if (position.x < scrollbar.thumb.x1())
+                    offset -= layout.body.d.w;
+                else if (position.x >= scrollbar.thumb.x2())
+                    offset += layout.body.d.w;
+                control.on_native_scroll(
+                    control.get_vertical_scroll_row(), offset);
+                return true;
+            }
+        }
         if (position.y < layout.header) {
             int x = position.x +
                     control.get_horizontal_scroll_offset();
             for (const auto &column : control.get_columns()) {
                 if (!column.visible)
                     continue;
-                const int width = rendered_width(layout, column);
+                const int width = rendered_header_width(layout, column);
                 if (x >= 0 && x < width) {
                     control.on_native_sort_request(column.id);
                     return true;
@@ -418,8 +586,22 @@ namespace native::detail
         }
         if (!layout.body.contains(position))
             return false;
-        const std::size_t offset = static_cast<std::size_t>(
-            (position.y - layout.header) / layout.row);
+        const table_visible_range visible =
+            control.get_visible_row_range();
+        const std::uint64_t nominal_height =
+            static_cast<std::uint64_t>(visible.count) *
+            static_cast<std::uint64_t>(layout.row);
+        const std::size_t offset =
+            visible.count > 0 && nominal_height > layout.body.d.h
+                ? std::min<std::size_t>(
+                      visible.count - 1,
+                      static_cast<std::size_t>(
+                          static_cast<std::uint64_t>(
+                              position.y - layout.body.p.y) *
+                          visible.count /
+                          std::max<int>(1, layout.body.d.h)))
+                : static_cast<std::size_t>(
+                      (position.y - layout.header) / layout.row);
         const std::size_t display =
             control.get_vertical_scroll_row() + offset;
         if (display >= control.get_display_row_count())

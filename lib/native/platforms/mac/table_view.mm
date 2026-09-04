@@ -463,6 +463,22 @@ namespace
             owner.get_header_visible() ? binding.header : nil];
         [binding.table setAllowsColumnReordering:
             owner.get_columns_reorderable()];
+        [binding.table setColumnAutoresizingStyle:
+            owner.get_fill_last_column()
+                ? NSTableViewLastColumnOnlyAutoresizingStyle
+                : NSTableViewNoColumnAutoresizing];
+        if (owner.get_fill_last_column() &&
+            [[binding.table tableColumns] count] > 0) {
+            CGFloat total = 0;
+            for (NSTableColumn *column in [binding.table tableColumns])
+                total += [column width];
+            const CGFloat available = [binding.table bounds].size.width;
+            if (available > total) {
+                NSTableColumn *last =
+                    [[binding.table tableColumns] lastObject];
+                [last setWidth:[last width] + available - total];
+            }
+        }
         [binding.table setAllowsMultipleSelection:
             owner.get_selection_mode() ==
                 native::table_selection_mode::multiple];
@@ -533,10 +549,8 @@ namespace native
             [binding.scroll contentView]];
     }
 
-    void table_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<table_view *>(this);
+    void table_view::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -570,30 +584,27 @@ namespace native
         binding->header = [[table headerView] retain];
         binding->adapter = adapter;
         mac::table_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         rebuild(*self);
         self->apply_selection();
         self->apply_scroll();
-        self->on_native_create();
     }
 
-    void table_view::show() const {
+    void table_view::show_native() {
         auto *binding = mac::table_view_bindings.object_from_handle(
-            const_cast<table_view *>(this));
+            this);
         if (!_created || !binding || !binding->scroll)
             throw std::runtime_error(
                 "macOS: table_view is not created.");
         [binding->scroll setHidden:NO];
     }
 
-    void table_view::destroy() const {
+    void table_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         auto *binding =
             mac::table_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->table setDataSource:nil];
             [binding->table setDelegate:nil];

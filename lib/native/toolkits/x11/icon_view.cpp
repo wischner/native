@@ -22,35 +22,30 @@ namespace native
     void icon_view::apply_selected_index() { invalidate(); }
     void icon_view::apply_scroll_offset() { invalidate(); }
 
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
+    void icon_view::create_native() {
+        auto *self = this;
         Widget widget = linux::x11::create_collection_host(*self);
         auto *binding = new linux::x11::xaw_collection();
         binding->widget = widget;
         linux::x11::icon_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *binding = linux::x11::icon_view_bindings.object_from_handle(
-            const_cast<icon_view *>(this));
+            this);
         if (!_created || !binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: icon_view is not created.");
         XtManageChild(binding->widget);
     }
 
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::icon_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(

@@ -374,10 +374,8 @@ namespace native
                nullptr);
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<text_edit *>(this);
+    void text_edit::create_native() {
+        auto *self = this;
         Panel panel = linux::openlook::parent_panel(self);
         const bool multiline =
             _mode == text_edit_mode::multi_line;
@@ -435,12 +433,10 @@ namespace native
             delete binding;
             throw;
         }
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
-        auto *binding = binding_for(const_cast<text_edit *>(this));
+    void text_edit::show_native() {
+        auto *binding = binding_for(this);
         if (!_created || !binding || !binding->item) {
             throw std::runtime_error(
                 "OpenLook/XView: text_edit is not created.");
@@ -453,12 +449,11 @@ namespace native
         }
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = binding_for(self);
-        self->on_native_destroy();
         if (binding) {
             linux::openlook::wnd_bindings.unregister_by_handle(
                 binding->item);
@@ -470,7 +465,8 @@ namespace native
     }
 
     std::string text_edit::selected_text() const {
-        auto *binding = binding_for(const_cast<text_edit *>(this));
+        auto *binding = binding_for(
+            const_cast<text_edit *>(this));
         if (!binding || !binding->item)
             return {};
         if (binding->all_selected)
@@ -513,8 +509,8 @@ namespace native
         return on_native_text(candidate);
     }
 
-    void text_edit::select_all_native() const {
-        auto *binding = binding_for(const_cast<text_edit *>(this));
+    void text_edit::select_all_native() {
+        auto *binding = binding_for(this);
         if (!binding || !binding->item)
             return;
         binding->all_selected = true;

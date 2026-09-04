@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include <X11/cursorfont.h>
+
 #include <native.h>
 #include <native/wnd.h>
 
@@ -22,6 +24,26 @@
 
 namespace
 {
+    Cursor cursor_for(Display *display, native::mouse_cursor cursor) {
+        if (!display)
+            return None;
+
+        unsigned int shape = XC_left_ptr;
+        if (cursor == native::mouse_cursor::ibeam)
+            shape = XC_xterm;
+        else if (cursor == native::mouse_cursor::crosshair)
+            shape = XC_crosshair;
+        else if (cursor == native::mouse_cursor::resize_horizontal)
+            shape = XC_sb_h_double_arrow;
+        else if (cursor == native::mouse_cursor::resize_vertical)
+            shape = XC_sb_v_double_arrow;
+        else if (cursor == native::mouse_cursor::resize_northwest_southeast)
+            shape = XC_bottom_right_corner;
+        else if (cursor == native::mouse_cursor::resize_northeast_southwest)
+            shape = XC_bottom_left_corner;
+        return XCreateFontCursor(display, shape);
+    }
+
     Panel_item control_item(native::wnd *window) {
         Xv_opaque handle = linux::openlook::wnd_bindings
                                .handle_from_object(window);
@@ -30,39 +52,16 @@ namespace
 
     linux::openlook::openlook_collection *collection_state(
         native::wnd *window) {
-        if (auto *accordion =
-                dynamic_cast<native::accordion *>(window)) {
-            return linux::openlook::accordion_bindings
-                .object_from_handle(accordion);
-        }
-        if (auto *tabs = dynamic_cast<native::tab_view *>(window)) {
-            return linux::openlook::tab_view_bindings
-                .object_from_handle(tabs);
-        }
-        if (auto *icons = dynamic_cast<native::icon_view *>(window)) {
-            return linux::openlook::icon_view_bindings
-                .object_from_handle(icons);
-        }
-        if (auto *tree = dynamic_cast<native::tree_view *>(window)) {
-            return linux::openlook::tree_view_bindings
-                .object_from_handle(tree);
-        }
-        if (auto *table = dynamic_cast<native::table_view *>(window)) {
-            return linux::openlook::table_view_bindings
-                .object_from_handle(table);
-        }
-        if (auto *editor = dynamic_cast<native::code_edit *>(window)) {
-            return linux::openlook::code_edit_bindings
-                .object_from_handle(editor);
-        }
-        return nullptr;
+        return window ? native::detail::peer_state<
+                            linux::openlook::openlook_collection>(*window)
+                      : nullptr;
     }
 
     linux::openlook::openlook_combo_box *combo_state(
         native::wnd *window) {
-        auto *combo = dynamic_cast<native::combo_box *>(window);
-        return combo ? linux::openlook::combo_box_bindings
-                           .object_from_handle(combo) : nullptr;
+        return window ? native::detail::peer_state<
+                            linux::openlook::openlook_combo_box>(*window)
+                      : nullptr;
     }
 
     void position_combo(native::wnd *window,
@@ -88,19 +87,45 @@ namespace
                    nullptr);
     }
 
+    void fit_list_height(Panel_item item, int requested_height) {
+        const int rows = static_cast<int>(xv_get(
+            item, PANEL_LIST_DISPLAY_ROWS));
+        const int row_height = static_cast<int>(xv_get(
+            item, PANEL_LIST_ROW_HEIGHT));
+        const int native_height = static_cast<int>(xv_get(
+            item, XV_HEIGHT));
+        if (rows <= 0 || row_height <= 0)
+            return;
+        const int chrome = std::max(
+            0, native_height - rows * row_height);
+        const int fitted_rows = std::max(
+            1,
+            (std::max(0, requested_height - chrome) + row_height / 2) /
+                row_height);
+        if (fitted_rows != rows) {
+            xv_set(item,
+                   PANEL_LIST_DISPLAY_ROWS,
+                   fitted_rows,
+                   nullptr);
+        }
+    }
+
     native::point frame_position(native::wnd *window,
                                  int &menu_height) {
         native::point result = window->get_position();
         native::wnd *root = window->get_parent();
-        while (root && !dynamic_cast<native::app_wnd *>(root)) {
+        while (root &&
+               !native::detail::peer_state<
+                   linux::openlook::openlook_window>(*root)) {
             result.x = static_cast<native::coord>(
                 result.x + root->get_position().x);
             result.y = static_cast<native::coord>(
                 result.y + root->get_position().y);
             root = root->get_parent();
         }
-        auto *top = dynamic_cast<native::app_wnd *>(root);
-        auto *state = top ? linux::openlook::window_state(top) : nullptr;
+        auto *state = root ? native::detail::peer_state<
+                                 linux::openlook::openlook_window>(*root)
+                           : nullptr;
         menu_height = state ? state->menu_height : 0;
         return result;
     }
@@ -110,8 +135,8 @@ namespace
 namespace native
 {
     void wnd::apply_position() {
-        if (auto *window = dynamic_cast<app_wnd *>(this)) {
-            auto *state = linux::openlook::window_state(window);
+        if (auto *state = native::detail::peer_state<
+                linux::openlook::openlook_window>(*this)) {
             if (!state || !state->frame)
                 return;
             const point position =
@@ -164,8 +189,8 @@ namespace native
     }
 
     void wnd::apply_dimensions() {
-        if (auto *window = dynamic_cast<app_wnd *>(this)) {
-            auto *state = linux::openlook::window_state(window);
+        if (auto *state = native::detail::peer_state<
+                linux::openlook::openlook_window>(*this)) {
             if (!state || !state->frame)
                 return;
             xv_set(state->content,
@@ -208,6 +233,8 @@ namespace native
             // disturb their native geometry.
             if (dynamic_cast<button *>(this))
                 linux::openlook::fit_item_width(item, _bounds.d.w);
+            if (dynamic_cast<list *>(this))
+                fit_list_height(item, _bounds.d.h);
         }
     }
 
@@ -217,7 +244,8 @@ namespace native
     }
 
     void wnd::apply_parent() {
-        if (dynamic_cast<app_wnd *>(this))
+        if (native::detail::peer_state<
+                linux::openlook::openlook_window>(*this))
             return;
 
         Panel_item item = control_item(this);
@@ -231,12 +259,27 @@ namespace native
         }
     }
 
-    wnd &wnd::invalidate() const {
-        if (!_created)
-            return const_cast<wnd &>(*this);
+    void wnd::apply_cursor() {
+        const Window target = linux::openlook::drawable(this);
+        Display *display = linux::openlook::cached_display;
+        if (!display || target == None)
+            return;
 
-        auto *self = const_cast<wnd *>(this);
-        if (auto *window = dynamic_cast<app_wnd *>(self)) {
+        Cursor cursor = cursor_for(display, _cursor);
+        if (cursor != None) {
+            XDefineCursor(display, target, cursor);
+            XFreeCursor(display, cursor);
+        }
+    }
+
+    wnd &wnd::invalidate_native() {
+        if (!_created)
+            return *this;
+
+        auto *self = this;
+        if (native::detail::peer_state<
+                linux::openlook::openlook_window>(*self)) {
+            auto *window = static_cast<app_wnd *>(self);
             linux::openlook::repaint_window(
                 window,
                 rect(point(0, 0), window->get_dimensions()));
@@ -250,12 +293,14 @@ namespace native
         return *self;
     }
 
-    wnd &wnd::invalidate(const rect &area) const {
+    wnd &wnd::invalidate_native(const rect &area) {
         if (!_created)
-            return const_cast<wnd &>(*this);
+            return *this;
 
-        auto *self = const_cast<wnd *>(this);
-        if (auto *window = dynamic_cast<app_wnd *>(self)) {
+        auto *self = this;
+        if (native::detail::peer_state<
+                linux::openlook::openlook_window>(*self)) {
+            auto *window = static_cast<app_wnd *>(self);
             linux::openlook::repaint_window(window, area);
         } else if (collection_state(self)) {
             linux::openlook::repaint_collection(*self, area);
@@ -265,7 +310,7 @@ namespace native
         return *self;
     }
 
-    gpx &wnd::get_gpx() const {
+    gpx &wnd::get_gpx() {
         if (!_created) {
             throw std::runtime_error(
                 "Cannot obtain gpx before window is created.");

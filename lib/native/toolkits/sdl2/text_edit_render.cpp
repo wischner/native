@@ -64,7 +64,14 @@ namespace
                         text.substr(begin, first - begin));
                     const int x2 = origin_x + linux::sdl2::text_width(
                         text.substr(begin, last - begin));
-                    g.set_ink(native::rgba(51, 103, 209, 255))
+                    const native::rgba selection_background =
+                        binding->focused
+                            ? colors.selection_bg
+                            : colors.selection_inactive_bg;
+                    const native::rgba selection_text = binding->focused
+                        ? colors.selection_text
+                        : colors.selection_inactive_text;
+                    g.set_ink(selection_background)
                         .draw_rect(native::rect(
                                        x1,
                                        y,
@@ -73,10 +80,23 @@ namespace
                                        static_cast<native::dim>(
                                            line_height)),
                                    true);
+                    g.set_ink(colors.button_text)
+                        .draw_text(
+                            text.substr(begin, first - begin),
+                            native::point(origin_x, y))
+                        .set_ink(selection_text)
+                        .draw_text(
+                            text.substr(first, last - first),
+                            native::point(x1, y))
+                        .set_ink(colors.button_text)
+                        .draw_text(
+                            text.substr(last, end - last),
+                            native::point(x2, y));
+                } else {
+                    g.set_ink(colors.button_text)
+                        .draw_text(text.substr(begin, end - begin),
+                                   native::point(origin_x, y));
                 }
-                g.set_ink(colors.button_text)
-                    .draw_text(text.substr(begin, end - begin),
-                               native::point(origin_x, y));
                 if (binding->focused && binding->cursor >= begin &&
                     binding->cursor <= end) {
                     const int caret_x = origin_x +

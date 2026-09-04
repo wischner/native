@@ -22,6 +22,16 @@
 
 namespace
 {
+    constexpr unsigned int bitmap_arrow_width = 9;
+    constexpr unsigned int bitmap_arrow_height = 5;
+    constexpr char bitmap_arrow_bits[] = {
+        static_cast<char>(0xff), 0x01,
+        static_cast<char>(0xfe), 0x00,
+        0x7c, 0x00,
+        0x38, 0x00,
+        0x10, 0x00
+    };
+
     linux::x11::xaw_combo_box *state(native::combo_box *owner) {
         return linux::x11::combo_box_bindings.object_from_handle(owner);
     }
@@ -55,6 +65,8 @@ namespace
             "comboMenu",
             simpleMenuWidgetClass,
             binding->root,
+            XtNborderWidth,
+            1,
             nullptr);
         for (std::size_t index = 0;
              index < owner->get_items().size();
@@ -108,28 +120,42 @@ namespace native
                     ? XawtextEdit : XawtextRead, nullptr);
     }
 
-    void combo_box::create() const {
-        if (_created) return;
+    void combo_box::create_native() {
         Widget parent = get_parent()
             ? linux::x11::wnd_bindings.handle_from_object(get_parent())
             : nullptr;
         if (!parent || !get_parent()->get_created())
             throw std::runtime_error(
                 "X11: combo box requires a created parent.");
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *binding = new linux::x11::xaw_combo_box;
         binding->root = XtVaCreateWidget(
             "comboBox", formWidgetClass, parent,
-            XtNx, _bounds.p.x, XtNy, _bounds.p.y,
+            XtNhorizDistance, _bounds.p.x,
+            XtNvertDistance, _bounds.p.y,
             XtNwidth, linux::x11::widget_dimension(_bounds.d.w),
             XtNheight, linux::x11::widget_dimension(_bounds.d.h),
-            XtNborderWidth, 0, nullptr);
+            XtNborderWidth, 0,
+            XtNdefaultDistance, 0,
+            XtNleft, XtChainLeft,
+            XtNright, XtChainLeft,
+            XtNtop, XtChainTop,
+            XtNbottom, XtChainTop,
+            XtNresizable, False,
+            nullptr);
         const int button_width = std::min<int>(_bounds.d.w, _bounds.d.h+4);
+        const int child_height = std::max(1,
+            static_cast<int>(_bounds.d.h)-2);
+        const int text_width = std::max(1,
+            static_cast<int>(_bounds.d.w)-button_width-2);
+        const int arrow_width = std::max(1, button_width-2);
         binding->text = XtVaCreateManagedWidget(
             "comboText", asciiTextWidgetClass, binding->root,
-            XtNx, 0, XtNy, 0,
-            XtNwidth, std::max(1, static_cast<int>(_bounds.d.w)-button_width),
-            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
+            XtNhorizDistance, 0,
+            XtNvertDistance, 0,
+            XtNwidth, text_width,
+            XtNheight, child_height,
+            XtNborderWidth, 1,
             XtNstring, get_text().c_str(),
             XtNeditType, get_style() == combo_box_style::editable
                 ? XawtextEdit : XawtextRead,
@@ -138,13 +164,29 @@ namespace native
             nullptr);
         binding->button = XtVaCreateManagedWidget(
             "comboButton", menuButtonWidgetClass, binding->root,
-            XtNx, static_cast<int>(_bounds.d.w)-button_width, XtNy, 0,
-            XtNwidth, linux::x11::widget_dimension(button_width),
-            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
-            XtNlabel, "v", XtNmenuName, "comboMenu",
+            XtNfromHoriz, binding->text,
+            XtNhorizDistance, 0,
+            XtNvertDistance, 0,
+            XtNwidth, arrow_width,
+            XtNheight, child_height,
+            XtNborderWidth, 1,
+            XtNlabel, "", XtNmenuName, "comboMenu",
             XtNleft, XtChainRight, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,
             nullptr);
+        if (linux::x11::cached_display) {
+            binding->arrow = XCreateBitmapFromData(
+                linux::x11::cached_display,
+                RootWindowOfScreen(XtScreen(binding->root)),
+                bitmap_arrow_bits,
+                bitmap_arrow_width,
+                bitmap_arrow_height);
+            if (binding->arrow != None)
+                XtVaSetValues(binding->button,
+                              XtNbitmap,
+                              binding->arrow,
+                              nullptr);
+        }
         create_menu(self, binding);
         if (!binding->root || !binding->text || !binding->button ||
             !binding->menu) {
@@ -156,26 +198,29 @@ namespace native
                           text_event, self);
         linux::x11::wnd_bindings.register_pair(binding->root, self);
         linux::x11::combo_box_bindings.register_pair(self, binding);
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
-        auto *binding = state(const_cast<combo_box *>(this));
+    void combo_box::show_native() {
+        auto *binding = state(this);
         if (!_created || !binding)
             throw std::runtime_error("X11: combo box is not created.");
         XtManageChild(binding->root);
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *binding = state(self);
-        self->on_native_destroy();
         linux::x11::combo_box_bindings.unregister_by_handle(self);
         linux::x11::wnd_bindings.unregister_by_object(self);
         if (binding) {
             if (binding->root) XtDestroyWidget(binding->root);
+            if (binding->arrow != None &&
+                linux::x11::cached_display) {
+                XSync(linux::x11::cached_display, False);
+                XFreePixmap(linux::x11::cached_display,
+                            binding->arrow);
+            }
             clear_callbacks(binding); delete binding;
         }
     }

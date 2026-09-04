@@ -308,10 +308,7 @@ namespace native
             XFlush(XtDisplay(shell));
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
         Display *probe_display = linux::x11::cached_display;
@@ -410,7 +407,7 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: Failed to create main container.");
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         linux::x11::shell_bindings.register_pair(shell, self);
         linux::x11::main_wnd_bindings.register_pair(main_window, self);
 
@@ -518,16 +515,14 @@ namespace native
 
         linux::x11::wnd_bindings.register_pair(canvas, self);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "X11/Athena: Cannot show window before creation.");
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         Widget shell =
             linux::x11::shell_bindings.handle_from_object(self);
         Widget canvas =
@@ -562,15 +557,14 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         Widget shell =
             linux::x11::shell_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
-        self->on_native_destroy();
 
         linux::x11::wnd_bindings.unregister_by_object(self);
         linux::x11::main_wnd_bindings.unregister_by_object(self);

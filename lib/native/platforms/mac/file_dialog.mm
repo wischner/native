@@ -10,6 +10,7 @@
 
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
+#include <filesystem>
 #include <string>
 
 #include <native/file_dialog.h>
@@ -71,14 +72,11 @@ namespace mac
         [panel setCanCreateDirectories:YES];
 
         if (!dialog.get_initial_path().empty()) {
-            NSString *path =
-                string_from_utf8(dialog.get_initial_path());
-            BOOL is_directory = NO;
-            const BOOL exists = [[NSFileManager defaultManager]
-                fileExistsAtPath:path
-                     isDirectory:&is_directory];
-            if (exists && !is_directory)
-                path = [path stringByDeletingLastPathComponent];
+            std::filesystem::path initial = dialog.get_initial_path();
+            std::error_code error;
+            if (!std::filesystem::is_directory(initial, error))
+                initial = initial.parent_path();
+            NSString *path = string_from_utf8(initial.string());
             NSURL *url = [NSURL fileURLWithPath:path
                                    isDirectory:YES];
             if (url)
@@ -90,36 +88,32 @@ namespace mac
             [panel setAllowedContentTypes:types];
     }
 
-    std::string path_from_url(NSURL *url) {
+    std::filesystem::path path_from_url(NSURL *url) {
         if (!url)
             return {};
         const char *path = [[url path] fileSystemRepresentation];
-        return path ? std::string(path) : std::string();
+        return path ? std::filesystem::path(path)
+                    : std::filesystem::path();
     }
 
-    std::string add_default_extension(
-        const std::string &path, const std::string &extension) {
+    std::filesystem::path add_default_extension(
+        const std::filesystem::path &path,
+        const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1))
+        std::filesystem::path result(path);
+        if (result.has_extension())
             return path;
-
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
         return result;
     }
 } // namespace mac
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
-        auto *self = const_cast<file_dialog *>(this);
+    void file_dialog::cancel_native_dialog() {
+        auto *self = this;
         NSSavePanel *panel =
             mac::file_dialog_bindings.object_from_handle(self);
         if (!panel)

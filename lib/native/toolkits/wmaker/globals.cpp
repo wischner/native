@@ -33,32 +33,8 @@ namespace linux::wmaker
     WMColor *list_selection_text = nullptr;
 
     native::bindings<WMWidget *, native::wnd *> wnd_bindings;
-    native::bindings<native::app_wnd *, window_state *>
-        window_bindings;
-    native::bindings<native::wnd *, window_graphics *>
-        graphics_bindings;
     native::bindings<std::uint32_t, native_font *> font_bindings;
     native::bindings<std::uint32_t, native_menu *> menu_bindings;
-    native::bindings<native::text_edit *, native_text_edit *>
-        text_edit_bindings;
-    native::bindings<native::combo_box *, native_combo_box *>
-        combo_box_bindings;
-    native::bindings<native::accordion *, native_collection *>
-        accordion_bindings;
-    native::bindings<native::tab_view *, native_tab_view *>
-        tab_view_bindings;
-    native::bindings<native::split_view *, native_split_view *>
-        split_view_bindings;
-    native::bindings<native::icon_view *, native_collection *>
-        icon_view_bindings;
-    native::bindings<native::tree_view *, native_collection *>
-        tree_view_bindings;
-    native::bindings<native::table_view *, native_collection *>
-        table_view_bindings;
-    native::bindings<native::code_edit *, native_collection *>
-        code_edit_bindings;
-    native::bindings<native::canvas *, native_collection *>
-        canvas_bindings;
 
     void initialize() {
         if (initialized)

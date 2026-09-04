@@ -9,9 +9,7 @@
 #include <native/file_dialog.h>
 
 #include <algorithm>
-#include <cctype>
 #include <filesystem>
-#include <fnmatch.h>
 #include <memory>
 #include <string>
 #include <system_error>
@@ -27,11 +25,13 @@
 #include <X11/Xaw/Label.h>
 #include <X11/Xaw/List.h>
 #include <X11/Xaw/Viewport.h>
+#include <X11/keysym.h>
 
 #include <native/open_file_dialog.h>
 #include <native/save_file_dialog.h>
 #include <bindings.h>
 
+#include "../../file_filter_match.h"
 #include "../../platforms/linux/file_dialog_process.h"
 #include "file_dialog_fallback.h"
 #include "globals.h"
@@ -47,28 +47,9 @@ namespace
         const auto &filters = dialog.get_filters();
         if (filters.empty())
             return true;
-        std::string folded_name = name;
-        std::transform(
-            folded_name.begin(),
-            folded_name.end(),
-            folded_name.begin(),
-            [](unsigned char value) {
-                return static_cast<char>(std::tolower(value));
-            });
         for (const native::file_filter &filter : filters) {
             for (const std::string &pattern : filter.patterns) {
-                std::string folded_pattern = pattern;
-                std::transform(
-                    folded_pattern.begin(),
-                    folded_pattern.end(),
-                    folded_pattern.begin(),
-                    [](unsigned char value) {
-                        return static_cast<char>(
-                            std::tolower(value));
-                    });
-                if (fnmatch(folded_pattern.c_str(),
-                            folded_name.c_str(),
-                            0) == 0) {
+                if (native::detail::matches_file_pattern(pattern, name)) {
                     return true;
                 }
             }
@@ -122,7 +103,7 @@ namespace
         std::vector<item> items;
         const fs::path parent = state.directory.parent_path();
         if (!parent.empty() && parent != state.directory)
-            items.push_back({"[..]", parent, true});
+            items.push_back({"..", parent, true});
 
         std::error_code error;
         fs::directory_iterator iterator(state.directory, error);
@@ -135,11 +116,13 @@ namespace
             const bool is_directory = entry.is_directory(type_error);
             if (type_error)
                 continue;
+            if (!is_directory && state.directory_only)
+                continue;
             if (!is_directory &&
                 !matches_filters(*state.dialog, leaf)) {
                 continue;
             }
-            items.push_back({is_directory ? "[" + leaf + "]" : leaf,
+            items.push_back({is_directory ? leaf + "/" : leaf,
                              entry.path(),
                              is_directory});
         }
@@ -182,7 +165,11 @@ namespace
         return value ? fs::path(value) : fs::path();
     }
 
-    // Select a listed entry and copy its path into the editor.
+    void on_accept(Widget, XtPointer, XtPointer);
+
+    // Select a listed entry and copy its path into the editor. A second
+    // click follows a directory or accepts a file, matching desktop
+    // browsers without requiring an extra Open-button click.
     void on_list_selection(Widget,
                            XtPointer client_data,
                            XtPointer call_data) {
@@ -211,19 +198,12 @@ namespace
         state->last_selection_time = event_time;
 
         std::error_code error;
-        if (double_click && fs::is_directory(path, error) && !error)
-            enter_directory(*state, path);
-    }
-
-    // Navigate upward without ending the active modal session.
-    void on_up(Widget, XtPointer client_data, XtPointer) {
-        auto *state = static_cast<chooser_state *>(client_data);
-        if (!state)
-            return;
-        const fs::path parent = state->directory.parent_path();
-        if (parent.empty() || parent == state->directory)
-            return;
-        enter_directory(*state, parent);
+        if (double_click) {
+            if (fs::is_directory(path, error) && !error)
+                enter_directory(*state, path);
+            else
+                on_accept(nullptr, state, nullptr);
+        }
     }
 
     // Accept a file or navigate into an entered directory.
@@ -242,6 +222,16 @@ namespace
         path = path.lexically_normal();
 
         std::error_code error;
+        if (state->directory_only) {
+            if (!fs::is_directory(path, error) || error) {
+                set_status(*state,
+                           "The selected folder does not exist.");
+                return;
+            }
+            state->dialog->on_native_accept({path.string()});
+            return;
+        }
+
         if (fs::is_directory(path, error) && !error) {
             enter_directory(*state, path);
             return;
@@ -279,6 +269,30 @@ namespace
         dialog->on_native_accept({path.string()});
     }
 
+    // Treat Return in the editable location as direct navigation when it
+    // names a directory, or as the primary action for a file name.
+    void on_path_key(Widget,
+                     XtPointer client_data,
+                     XEvent *event,
+                     Boolean *) {
+        auto *state = static_cast<chooser_state *>(client_data);
+        if (!state || !event || event->type != KeyPress)
+            return;
+        const KeySym symbol = XLookupKeysym(&event->xkey, 0);
+        if (symbol != XK_Return && symbol != XK_KP_Enter)
+            return;
+
+        fs::path path = entered_path(*state);
+        if (path.is_relative())
+            path = state->directory / path;
+        std::error_code error;
+        if (!path.empty() && fs::is_directory(path, error) && !error) {
+            enter_directory(*state, path.lexically_normal());
+            return;
+        }
+        on_accept(nullptr, state, nullptr);
+    }
+
     // Cancel from an Athena command or the window-manager close button.
     void on_cancel(Widget, XtPointer client_data, XtPointer) {
         auto *state = static_cast<chooser_state *>(client_data);
@@ -304,7 +318,7 @@ namespace
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
+    void file_dialog::cancel_native_dialog() {
         chooser_state *state = linux::x11::file_dialog_bindings
                                    .object_from_handle(this);
         if (!state)
@@ -320,6 +334,7 @@ namespace linux::x11
     bool show_file_dialog_fallback(
         native::file_dialog &dialog,
         bool save,
+        bool directory_only,
         const std::string &suggested_name,
         const std::string &default_extension,
         bool confirm_overwrite) {
@@ -334,6 +349,7 @@ namespace linux::x11
         auto state = std::make_unique<chooser_state>();
         state->dialog = &dialog;
         state->save = save;
+        state->directory_only = directory_only;
         state->suggested_name = suggested_name;
         state->default_extension = default_extension;
         state->confirm_overwrite = confirm_overwrite;
@@ -389,12 +405,25 @@ namespace linux::x11
             XtNwidth,
             536,
             nullptr);
+        state->path_edit = XtVaCreateManagedWidget(
+            "path",
+            asciiTextWidgetClass,
+            form,
+            XtNfromVert,
+            state->directory_label,
+            XtNeditType,
+            XawtextEdit,
+            XtNwidth,
+            536,
+            XtNheight,
+            28,
+            nullptr);
         Widget viewport = XtVaCreateManagedWidget(
             "file_viewport",
             viewportWidgetClass,
             form,
             XtNfromVert,
-            state->directory_label,
+            state->path_edit,
             XtNwidth,
             536,
             XtNheight,
@@ -417,40 +446,14 @@ namespace linux::x11
             XtNverticalList,
             True,
             nullptr);
-        state->path_edit = XtVaCreateManagedWidget(
-            "path",
-            asciiTextWidgetClass,
+        Widget accept = XtVaCreateManagedWidget(
+            directory_only ? "select" : (save ? "save" : "open"),
+            commandWidgetClass,
             form,
             XtNfromVert,
             viewport,
-            XtNeditType,
-            XawtextEdit,
-            XtNwidth,
-            536,
-            XtNheight,
-            28,
-            nullptr);
-        Widget up = XtVaCreateManagedWidget(
-            "up",
-            commandWidgetClass,
-            form,
-            XtNfromVert,
-            state->path_edit,
             XtNlabel,
-            "Up",
-            XtNwidth,
-            88,
-            nullptr);
-        Widget accept = XtVaCreateManagedWidget(
-            save ? "save" : "open",
-            commandWidgetClass,
-            form,
-            XtNfromVert,
-            state->path_edit,
-            XtNfromHoriz,
-            up,
-            XtNlabel,
-            save ? "Save" : "Open",
+            directory_only ? "Select" : (save ? "Save" : "Open"),
             XtNwidth,
             88,
             nullptr);
@@ -459,7 +462,7 @@ namespace linux::x11
             commandWidgetClass,
             form,
             XtNfromVert,
-            state->path_edit,
+            viewport,
             XtNfromHoriz,
             accept,
             XtNlabel,
@@ -472,9 +475,13 @@ namespace linux::x11
                       XtNcallback,
                       on_list_selection,
                       state.get());
-        XtAddCallback(up, XtNcallback, on_up, state.get());
         XtAddCallback(accept, XtNcallback, on_accept, state.get());
         XtAddCallback(cancel, XtNcallback, on_cancel, state.get());
+        XtAddEventHandler(state->path_edit,
+                          KeyPressMask,
+                          False,
+                          on_path_key,
+                          state.get());
         XtAddEventHandler(state->shell,
                           NoEventMask,
                           True,

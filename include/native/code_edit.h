@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -181,22 +182,22 @@ namespace native
         const std::string &get_text() const override;
 
         // Set the path used by load and save without accessing it.
-        code_edit &set_path(const std::string &path);
+        code_edit &set_path(const std::filesystem::path &path);
 
         // Return the current source path.
-        const std::string &get_path() const;
+        const std::filesystem::path &get_path() const;
 
         // Load UTF-8 source from the current path.
         code_edit &load();
 
         // Load UTF-8 source and remember the supplied path.
-        code_edit &load(const std::string &path);
+        code_edit &load(const std::filesystem::path &path);
 
         // Save source through the current path and line-ending policy.
         const code_edit &save() const;
 
         // Save source to a new path and remember it.
-        code_edit &save_as(const std::string &path);
+        code_edit &save_as(const std::filesystem::path &path);
 
         // Return whether malformed UTF-8 was repaired by the last load.
         bool get_load_warning() const;
@@ -334,7 +335,7 @@ namespace native
         bool paste() override;
 
         // Select the complete source buffer.
-        void select_all() const override;
+        void select_all() override;
 
         // Apply a backend-originated editing/navigation command.
         virtual bool on_native_key(code_edit_key key,
@@ -347,19 +348,22 @@ namespace native
         bool on_native_text(const std::string &text) override;
 
         // Cache backend focus entry or departure.
-        virtual void on_native_focus(bool focused);
+        void on_native_focus(bool focused) override;
 
         // Return whether the editor host has keyboard focus.
         bool get_focused() const;
 
+    protected:
         // Create the backend source-editor host.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend source-editor host.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend source-editor host.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits after a user or edit-command source mutation.
         signal<> on_text_change;
@@ -387,7 +391,7 @@ namespace native
         bool replace_selected_text(const std::string &text) override;
 
         // Select the complete source buffer.
-        void select_all_native() const override;
+        void select_all_native() override;
 
         // Keep the caret visible after a bounds change.
         void on_bounds_changed() override;
@@ -527,7 +531,7 @@ namespace native
         friend class detail::control_render_access;
 
         std::unique_ptr<detail::code_document> _document;
-        std::string _path;
+        std::filesystem::path _path;
         std::string _language;
         code_lexer *_lexer = nullptr;
         code_theme _code_theme;

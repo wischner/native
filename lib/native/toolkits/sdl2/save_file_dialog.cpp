@@ -1,5 +1,5 @@
 //
-// Presents the Linux desktop file-save chooser for the SDL2 backend.
+// Presents the library-owned modern file-save chooser for SDL2.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -8,31 +8,37 @@
 #include <native/save_file_dialog.h>
 
 #include "../../platforms/linux/file_dialog_process.h"
+#include "globals.h"
 
 namespace native
 {
-    void save_file_dialog::show() const {
+    void save_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
+        app_wnd *owner = get_owner();
+
         try {
-            linux::file_dialog_response response =
-                linux::show_save_file_dialog(*this,
-                                             get_suggested_name(),
-                                             get_confirm_overwrite());
-            if (response.outcome ==
-                    linux::file_dialog_outcome::accepted &&
-                !response.paths.empty()) {
-                response.paths.front() = linux::add_default_extension(
-                    response.paths.front(), get_default_extension());
-                const_cast<save_file_dialog *>(this)->on_native_accept(
-                    response.paths);
+            std::vector<std::filesystem::path> paths;
+            if (linux::sdl2::show_file_dialog(
+                    *this,
+                    true,
+                    false,
+                    get_suggested_name(),
+                    get_default_extension(),
+                    get_confirm_overwrite(),
+                    paths) &&
+                !paths.empty()) {
+                paths.front() = linux::add_default_extension(
+                    paths.front(), get_default_extension());
+                this->on_native_accept(paths);
             } else {
-                const_cast<save_file_dialog *>(this)
-                    ->on_native_cancel();
+                this->on_native_cancel();
             }
+            linux::sdl2::restore_window_focus(owner);
         } catch (...) {
-            const_cast<save_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
+            linux::sdl2::restore_window_focus(owner);
             throw;
         }
     }

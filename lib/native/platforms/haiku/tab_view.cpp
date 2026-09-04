@@ -258,6 +258,12 @@ namespace native
                 destroy_host(*this, *binding);
             }
             create_host(*this, *binding);
+            // The binding is installed before create_host() because the
+            // refresh path needs to find it.  Publish the host afterwards
+            // so custom left/right tab views can obtain their BWindow while
+            // painting instead of falling through to the top-level lookup.
+            native::detail::wnd_peer_access::assign_content(
+                *this, binding->view);
         }
         view = native_view(*this);
         if (view) {
@@ -301,35 +307,30 @@ namespace native
         });
     }
 
-    void tab_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         auto *binding = new haiku::haiku_tab_view();
         haiku::tab_view_bindings.register_pair(self, binding);
-        _created = true;
         self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
+    void tab_view::show_native() {
         auto *binding = haiku::tab_view_bindings.object_from_handle(
-            const_cast<tab_view *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("Haiku: tab_view is not created.");
         locked(binding->view->Window(), [&] { binding->view->Show(); });
-        const_cast<tab_view *>(this)->apply_selected_index();
+        this->apply_selected_index();
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *binding =
             haiku::tab_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding)
             destroy_host(*self, *binding);
         haiku::tab_view_bindings.unregister_by_handle(self);

@@ -139,9 +139,7 @@ namespace native
         SendMessageW(window, EM_SETREADONLY, _read_only, 0);
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
+    void text_edit::create_native() {
         wnd *parent = get_parent();
         HWND parent_window = parent
                                  ? windows::wnd_bindings
@@ -174,7 +172,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: Failed to create text_edit.");
 
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = new windows::win_text_edit;
         binding->hwnd = window;
         windows::wnd_bindings.register_pair(window, self);
@@ -190,27 +188,24 @@ namespace native
                          windows::control_font()),
                      TRUE);
         SendMessageW(window, EM_SETREADONLY, _read_only, 0);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         HWND window = windows::wnd_bindings.handle_from_object(
-            const_cast<text_edit *>(this));
+            this);
         if (!_created || !window)
             throw std::runtime_error(
                 "Windows: text_edit is not created.");
         ShowWindow(window, SW_SHOW);
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         HWND window = windows::wnd_bindings.handle_from_object(self);
         auto *binding =
             windows::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (window) {
             windows::wnd_bindings.unregister_by_handle(window);
             DestroyWindow(window);
@@ -258,9 +253,9 @@ namespace native
         return true;
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         HWND window = windows::wnd_bindings.handle_from_object(
-            const_cast<text_edit *>(this));
+            this);
         if (window)
             SendMessageW(window, EM_SETSEL, 0, -1);
     }

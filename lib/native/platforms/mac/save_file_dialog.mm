@@ -19,7 +19,7 @@
 
 namespace native
 {
-    void save_file_dialog::show() const {
+    void save_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -29,7 +29,7 @@ namespace native
                                            .handle_from_object(owner)
                                      : nil;
         if (!owner_window) {
-            const_cast<save_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw std::runtime_error(
                 "macOS: Missing owner window for a save panel.");
         }
@@ -41,7 +41,7 @@ namespace native
                 stringWithUTF8String:get_suggested_name().c_str()]];
         }
 
-        auto *dialog = const_cast<save_file_dialog *>(this);
+        auto *dialog = this;
         try {
             mac::file_dialog_bindings.register_pair(dialog, panel);
         } catch (...) {
@@ -61,7 +61,8 @@ namespace native
 
             mac::file_dialog_bindings.unregister_by_handle(dialog);
             if (response == NSModalResponseOK) {
-                std::string path = mac::add_default_extension(
+                std::filesystem::path path =
+                    mac::add_default_extension(
                     mac::path_from_url([panel URL]),
                     dialog->get_default_extension());
                 dialog->on_native_accept({path});

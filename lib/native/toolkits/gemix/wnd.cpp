@@ -62,24 +62,44 @@ namespace native
         }
     }
 
-    wnd &wnd::invalidate() const {
+    void wnd::apply_cursor() {
+        if (!linux::gemix::runtime.initialized)
+            return;
+
+        WORD x = 0;
+        WORD y = 0;
+        WORD buttons = 0;
+        WORD modifiers = 0;
+        graf_mkstate(&x, &y, &buttons, &modifiers);
+        const WORD handle = wind_find(x, y);
+        auto *root = dynamic_cast<app_wnd *>(
+            linux::gemix::wnd_bindings.object_from_handle(handle));
+        if (!root || linux::gemix::root_of(this) != root)
+            return;
+
+        const rect work = linux::gemix::work_rect(handle);
+        linux::gemix::update_mouse_cursor(
+            root, point(x - work.p.x, y - work.p.y));
+    }
+
+    wnd &wnd::invalidate_native() {
         if (auto *p = get_parent())
             p->invalidate();
         else
-            linux::gemix::request_repaint(const_cast<wnd *>(this));
-        return const_cast<wnd &>(*this);
+            linux::gemix::request_repaint(this);
+        return *this;
     }
 
-    wnd &wnd::invalidate(const rect &area) const {
+    wnd &wnd::invalidate_native(const rect &area) {
         if (auto *parent = get_parent())
             parent->invalidate(area);
         else
             linux::gemix::request_repaint(
-                const_cast<wnd *>(this), &area);
-        return const_cast<wnd &>(*this);
+                this, &area);
+        return *this;
     }
 
-    gpx &wnd::get_gpx() const {
+    gpx &wnd::get_gpx() {
         if (!_created)
             throw std::runtime_error(
                 "Cannot obtain gpx before window is created.");

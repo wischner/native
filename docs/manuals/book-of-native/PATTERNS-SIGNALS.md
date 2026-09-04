@@ -72,6 +72,21 @@ A member-function connection stores a non-owning receiver pointer. It does not
 extend the receiver's lifetime. The receiver must outlive the connection, or
 the connection must be removed before the receiver is destroyed.
 
+The safer receiver-bound form is `connect_scoped()`. It returns the move-only
+`native::connection` handle, whose destructor disconnects the slot:
+
+```cpp
+native::connection movement =
+    window.on_wnd_move.connect_scoped(
+        this,
+        &main_window::handle_move);
+```
+
+The handle may be stored as a receiver member or in a vector of connections.
+It can safely outlive the signal because it retains only a weak reference to
+the signal state. `release()` leaves the slot connected and relinquishes
+automatic cleanup; use it only when another lifetime rule is explicit.
+
 ## Do not mutate connections during emission
 
 Handlers must not call `connect()`, `disconnect()`, or `disconnect_all()` on

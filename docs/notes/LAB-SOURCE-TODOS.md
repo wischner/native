@@ -1,5 +1,10 @@
 # Lab Source TODOs
 
+Status: the `lab/` tree is not present in the repository. This note is kept as
+a historical inventory of what that tree contained, so the material is
+recoverable from history if it is ever restored. Nothing below describes code
+that ships today.
+
 This note inventories TODOs in the `lab/` tree.
 
 The `lab/` tree is legacy code.

@@ -29,12 +29,10 @@ namespace native
     }
     void tab_view::apply_selected_index() { invalidate(); }
 
-    void tab_view::create() const {
-        if (_created) return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         auto *state = linux::openlook::create_collection_panel(*self);
         linux::openlook::tab_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         const rect content = get_content_bounds();
         const int panel_x = static_cast<int>(xv_get(state->panel, XV_X));
@@ -58,12 +56,11 @@ namespace native
         }
         self->configure_page_host(true, false);
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
+    void tab_view::show_native() {
         auto *state = linux::openlook::tab_view_bindings.object_from_handle(
-            const_cast<tab_view *>(this));
+            this);
         if (!_created || !state || !state->panel)
             throw std::runtime_error("OpenLook/XView: tab_view is not created.");
         xv_set(state->panel, XV_SHOW, TRUE, nullptr);
@@ -86,9 +83,9 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *state = linux::openlook::tab_view_bindings
             .object_from_handle(self);
         linux::openlook::destroy_collection_panel(*self, state);

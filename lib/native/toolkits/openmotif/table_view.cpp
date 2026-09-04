@@ -479,10 +479,8 @@ namespace native
             XmScrollVisible(state.widget, item, 0, 0);
     }
 
-    void table_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<table_view *>(this);
+    void table_view::create_native() {
+        auto *self = this;
         auto *state = new collection_state();
         state->native_table =
             _data_mode == table_data_mode::materialized;
@@ -493,34 +491,31 @@ namespace native
                 linux::openmotif::create_collection_host(*self, *state);
         linux::openmotif::table_view_bindings.register_pair(
             self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         if (state->native_table) {
             rebuild_native(*self);
             self->apply_selection();
             self->apply_scroll();
         }
-        self->on_native_create();
     }
 
-    void table_view::show() const {
+    void table_view::show_native() {
         auto *state = linux::openmotif::table_view_bindings
                           .object_from_handle(
-                              const_cast<table_view *>(this));
+                              this);
         if (!_created || !state || !state->widget)
             throw std::runtime_error(
                 "Motif: table_view is not created.");
         XtManageChild(state->widget);
     }
 
-    void table_view::destroy() const {
+    void table_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         auto *state = linux::openmotif::table_view_bindings
                           .object_from_handle(self);
         if (state && state->native_table) {
-            self->on_native_destroy();
             clear_items(*state);
             if (state->widget) {
                 linux::openmotif::wnd_bindings.unregister_by_handle(

@@ -32,28 +32,8 @@ namespace
 
     linux::openlook::openlook_collection *state_for(
         native::wnd &owner) {
-        if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
-            return linux::openlook::accordion_bindings
-                .object_from_handle(accordion);
-        if (auto *tabs = dynamic_cast<native::tab_view *>(&owner))
-            return linux::openlook::tab_view_bindings
-                .object_from_handle(tabs);
-        if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
-            return linux::openlook::icon_view_bindings
-                .object_from_handle(icons);
-        if (auto *tree = dynamic_cast<native::tree_view *>(&owner))
-            return linux::openlook::tree_view_bindings
-                .object_from_handle(tree);
-        if (auto *table = dynamic_cast<native::table_view *>(&owner))
-            return linux::openlook::table_view_bindings
-                .object_from_handle(table);
-        if (auto *editor = dynamic_cast<native::code_edit *>(&owner))
-            return linux::openlook::code_edit_bindings
-                .object_from_handle(editor);
-        if (auto *surface = dynamic_cast<native::canvas *>(&owner))
-            return linux::openlook::canvas_bindings
-                .object_from_handle(surface);
-        return nullptr;
+        return native::detail::peer_state<
+            linux::openlook::openlook_collection>(owner);
     }
 
     void ensure_backbuffer(native::wnd &owner, int width, int height) {
@@ -552,29 +532,9 @@ namespace
                 type);
         const int action = event_action(event);
         if (action == KBD_USE) {
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(true);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(true);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(true);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(true);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(true);
+            owner->on_native_focus(true);
         } else if (action == KBD_DONE) {
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(false);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(false);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(false);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(false);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(false);
+            owner->on_native_focus(false);
         } else if (action == ACTION_SCROLL_UP ||
                    action == ACTION_SCROLL_DOWN) {
             owner->on_native_mouse_wheel(native::mouse_wheel_event(
@@ -988,21 +948,17 @@ namespace linux::openlook
 namespace native
 {
     void accordion::apply_items() { invalidate(); }
-    void accordion::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<accordion *>(this);
+    void accordion::create_native() {
+        auto *self = this;
         auto *state = create_panel(*self);
         linux::openlook::accordion_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
-    void accordion::show() const {
+    void accordion::show_native() {
         auto *state = linux::openlook::accordion_bindings
                           .object_from_handle(
-                              const_cast<accordion *>(this));
+                              this);
         if (!_created || !state || !state->panel)
             throw std::runtime_error(
                 "OpenLook/XView: accordion is not created.");
@@ -1019,10 +975,10 @@ namespace native
                 item.get_content().show();
         }
     }
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         auto *state = linux::openlook::accordion_bindings
                           .object_from_handle(self);
         destroy_panel(*self, state);
@@ -1034,20 +990,16 @@ namespace native
     void icon_view::apply_label_mode() { invalidate(); }
     void icon_view::apply_selected_index() { invalidate(); }
     void icon_view::apply_scroll_offset() { invalidate(); }
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
+    void icon_view::create_native() {
+        auto *self = this;
         auto *state = create_panel(*self);
         linux::openlook::icon_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *state = linux::openlook::icon_view_bindings
                           .object_from_handle(
-                              const_cast<icon_view *>(this));
+                              this);
         if (!_created || !state || !state->panel)
             throw std::runtime_error(
                 "OpenLook/XView: icon_view is not created.");
@@ -1059,10 +1011,10 @@ namespace native
             XFlush(linux::openlook::cached_display);
         }
     }
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *state = linux::openlook::icon_view_bindings
                           .object_from_handle(self);
         destroy_panel(*self, state);

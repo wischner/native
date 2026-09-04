@@ -10,6 +10,7 @@
 
 #include <array>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <limits>
 #include <memory>
@@ -23,7 +24,7 @@ namespace
         128U * 1024U * 1024U;
 
     // Read a reasonably bounded complete binary file into memory.
-    bool read_file(const std::string &path,
+    bool read_file(const std::filesystem::path &path,
                    std::vector<std::uint8_t> &bytes) {
         std::ifstream stream(path, std::ios::binary | std::ios::ate);
         if (!stream)
@@ -44,12 +45,8 @@ namespace
     }
 
     // Return the final component of a platform path for display.
-    std::string file_name(const std::string &path) {
-        const std::string::size_type separator =
-            path.find_last_of("/\\");
-        if (separator == std::string::npos)
-            return path;
-        return path.substr(separator + 1);
+    std::string file_name(const std::filesystem::path &path) {
+        return path.filename().string();
     }
 } // namespace
 
@@ -155,8 +152,9 @@ namespace vision
         }
     }
 
-    bool vision_window::load_font(const std::string &path,
-                                  std::uint32_t face_index) {
+    bool vision_window::load_font(
+        const std::filesystem::path &path,
+        std::uint32_t face_index) {
         std::vector<std::uint8_t> bytes;
         if (!read_file(path, bytes)) {
             set_status("Could not read font file: " + file_name(path));

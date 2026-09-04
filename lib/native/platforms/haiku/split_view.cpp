@@ -147,10 +147,8 @@ namespace native
             state->view->SetSplitterSize(get_splitter_size());
     }
 
-    void split_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<split_view *>(this);
+    void split_view::create_native() {
+        auto *self = this;
         BView *parent = haiku::parent_view(get_parent(), self);
         if (!parent || !parent->Window())
             throw std::runtime_error(
@@ -183,15 +181,13 @@ namespace native
             throw std::runtime_error("Haiku: failed to create split_view.");
         }
         haiku::split_view_bindings.register_pair(self, state);
-        _created = true;
         self->_content_hosts_are_panes = true;
         self->apply_minimums();
         self->refresh_contents();
-        self->on_native_create();
     }
 
-    void split_view::show() const {
-        auto *state = binding(*const_cast<split_view *>(this));
+    void split_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->view)
             throw std::runtime_error("Haiku: split_view is not created.");
         locked(state->view->Window(), [&] { state->view->Show(); });
@@ -199,12 +195,11 @@ namespace native
         get_second().show();
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state && state->view) {
             BWindow *window = state->view->Window();
             locked(window, [&] {

@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -66,13 +67,13 @@ namespace native::detail
     // Return descriptions for every valid face in encoded font data.
     std::vector<font_description> describe_font_data(
         const std::vector<std::uint8_t> &bytes,
-        const std::string &path);
+        const std::filesystem::path &path);
 
     // Validate and describe one face while returning its byte offset.
     bool inspect_font_face_data(
         const std::vector<std::uint8_t> &bytes,
         std::uint32_t face_index,
-        const std::string &path,
+        const std::filesystem::path &path,
         font_description &description,
         std::size_t &face_offset);
 }

@@ -20,6 +20,8 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
 class BMenuBar;
 class BCheckBox;
 class BRadioButton;
@@ -106,14 +108,14 @@ namespace haiku
 
     extern BApplication *global_app;
     extern native::bindings<BWindow *, native::wnd *> wnd_bindings;
-    extern native::bindings<native::wnd *, haiku_gpx *>
-        wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, haiku_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, haiku_font *> font_bindings;
     extern native::bindings<uint32_t, haiku_menu *> menu_bindings;
-    extern native::bindings<native::app_wnd *, haiku_menu *>
-        owner_menu_bindings;
-    extern native::bindings<native::button *, haiku_button *>
-        button_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::app_wnd *, haiku_menu *> owner_menu_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::button *, haiku_button *> button_bindings;
 
     struct haiku_check
     {
@@ -179,33 +181,83 @@ namespace haiku
         BScrollView *scroll = nullptr;
     };
 
-    extern native::bindings<native::panel *, haiku_surface *>
-        panel_bindings;
-    extern native::bindings<native::canvas *, haiku_surface *>
-        canvas_bindings;
-    extern native::bindings<native::check *, haiku_check *>
-        check_bindings;
-    extern native::bindings<native::radio *, haiku_radio *>
-        radio_bindings;
-    extern native::bindings<native::list *, haiku_list *> list_bindings;
-    extern native::bindings<native::tab_view *, haiku_tab_view *>
-        tab_view_bindings;
-    extern native::bindings<native::split_view *, haiku_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::combo_box *, haiku_combo_box *>
-        combo_box_bindings;
-    extern native::bindings<native::accordion *, haiku_collection *>
-        accordion_bindings;
-    extern native::bindings<native::icon_view *, haiku_collection *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, haiku_tree_view *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, haiku_collection *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, haiku_collection *>
-        code_edit_bindings;
-    extern native::bindings<native::text_edit *, haiku_text_edit *>
-        text_edit_bindings;
+    // Return the child-host resource carried by each control state.
+    inline void *peer_content(haiku_button *state) {
+        return state ? state->button : nullptr;
+    }
+
+    inline void *peer_content(haiku_surface *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_check *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_radio *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_list *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_tab_view *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_split_view *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_combo_box *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_collection *state) {
+        return state ? state->view : nullptr;
+    }
+
+    inline void *peer_content(haiku_tree_view *state) {
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
+    }
+
+    inline void *peer_content(haiku_text_edit *state) {
+        if (!state)
+            return nullptr;
+        return state->scroll
+                   ? reinterpret_cast<void *>(state->scroll)
+                   : reinterpret_cast<void *>(state->view);
+    }
+
+    inline constexpr native::detail::peer_bindings<
+        native::panel *, haiku_surface *> panel_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::canvas *, haiku_surface *> canvas_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::check *, haiku_check *> check_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::radio *, haiku_radio *> radio_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::list *, haiku_list *> list_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, haiku_tab_view *> tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, haiku_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, haiku_combo_box *> combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, haiku_collection *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, haiku_collection *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, haiku_tree_view *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, haiku_collection *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, haiku_collection *> code_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, haiku_text_edit *> text_edit_bindings;
     extern native::bindings<native::file_dialog *, haiku_file_dialog *>
         file_dialog_bindings;
 

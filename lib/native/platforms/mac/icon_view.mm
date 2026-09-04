@@ -366,10 +366,8 @@ namespace native
                             [binding.scroll contentView]];
     }
 
-    void icon_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<icon_view *>(this);
+    void icon_view::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -415,30 +413,27 @@ namespace native
         binding->layout = layout;
         binding->adapter = adapter;
         mac::icon_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         rebuild_images(*self);
         update_layout(*self);
         self->apply_selected_index();
-        self->on_native_create();
     }
 
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *binding = mac::icon_view_bindings.object_from_handle(
-            const_cast<icon_view *>(this));
+            this);
         if (!_created || !binding || !binding->scroll)
             throw std::runtime_error(
                 "macOS: icon_view is not created.");
         [binding->scroll setHidden:NO];
     }
 
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *binding =
             mac::icon_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->collection setDataSource:nil];
             [binding->collection setDelegate:nil];

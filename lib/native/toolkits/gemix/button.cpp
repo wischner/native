@@ -20,10 +20,7 @@ namespace native
         invalidate();
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *parent = get_parent();
         if (!parent)
             throw std::runtime_error(
@@ -32,24 +29,21 @@ namespace native
             throw std::runtime_error(
                 "GEMix: button parent is not created.");
 
-        _created = true;
-        linux::gemix::buttons.push_back(const_cast<button *>(this));
-        const_cast<button *>(this)->on_native_create();
+        linux::gemix::buttons.push_back(this);
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "GEMix: Cannot show button before it is created.");
         invalidate();
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
-        self->on_native_destroy();
+        auto *self = this;
 
         linux::gemix::buttons.erase(
             std::remove(linux::gemix::buttons.begin(),

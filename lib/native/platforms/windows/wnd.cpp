@@ -19,6 +19,33 @@
 
 namespace windows
 {
+    static HCURSOR cursor_handle(native::mouse_cursor cursor) {
+        LPCTSTR resource = IDC_ARROW;
+        if (cursor == native::mouse_cursor::ibeam)
+            resource = IDC_IBEAM;
+        else if (cursor == native::mouse_cursor::crosshair)
+            resource = IDC_CROSS;
+        else if (cursor == native::mouse_cursor::resize_horizontal)
+            resource = IDC_SIZEWE;
+        else if (cursor == native::mouse_cursor::resize_vertical)
+            resource = IDC_SIZENS;
+        else if (cursor == native::mouse_cursor::resize_northwest_southeast)
+            resource = IDC_SIZENWSE;
+        else if (cursor == native::mouse_cursor::resize_northeast_southwest)
+            resource = IDC_SIZENESW;
+        return LoadCursor(nullptr, resource);
+    }
+
+    static native::wnd *cursor_owner(HWND target) {
+        while (target) {
+            if (native::wnd *owner =
+                    wnd_bindings.object_from_handle(target))
+                return owner;
+            target = GetParent(target);
+        }
+        return nullptr;
+    }
+
     static void app_window_frame_size(HWND hwnd,
                                       LONG &width,
                                       LONG &height) {
@@ -134,6 +161,16 @@ namespace windows
             }
             break;
 
+        case WM_SETCURSOR:
+            if (LOWORD(lparam) == HTCLIENT) {
+                native::wnd *owner = cursor_owner(
+                    reinterpret_cast<HWND>(wparam));
+                SetCursor(cursor_handle(
+                    owner ? owner->get_cursor() : wnd->get_cursor()));
+                return TRUE;
+            }
+            break;
+
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
@@ -179,23 +216,11 @@ namespace windows
         }
 
         case WM_SETFOCUS:
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(wnd))
-                accordion->on_native_focus(true);
-            if (auto *icons = dynamic_cast<native::icon_view *>(wnd))
-                icons->on_native_focus(true);
-            if (auto *editor = dynamic_cast<native::code_edit *>(wnd))
-                editor->on_native_focus(true);
+            wnd->on_native_focus(true);
             break;
 
         case WM_KILLFOCUS:
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(wnd))
-                accordion->on_native_focus(false);
-            if (auto *icons = dynamic_cast<native::icon_view *>(wnd))
-                icons->on_native_focus(false);
-            if (auto *editor = dynamic_cast<native::code_edit *>(wnd))
-                editor->on_native_focus(false);
+            wnd->on_native_focus(false);
             break;
 
         case WM_KEYDOWN:
@@ -823,31 +848,45 @@ namespace native
             SetParent(child, parent);
     }
 
-    wnd &wnd::invalidate() const {
-        if (!_created)
-            return const_cast<wnd &>(*this);
+    void wnd::apply_cursor() {
+        HWND hwnd = windows::wnd_bindings.handle_from_object(this);
+        if (!hwnd)
+            return;
 
-        HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<wnd *>(this));
-        if (hwnd)
-            InvalidateRect(hwnd, nullptr, FALSE);
-        return const_cast<wnd &>(*this);
+        POINT point = {};
+        if (!GetCursorPos(&point))
+            return;
+        native::wnd *owner = windows::cursor_owner(
+            WindowFromPoint(point));
+        if (owner == this)
+            SetCursor(windows::cursor_handle(_cursor));
     }
 
-    wnd &wnd::invalidate(const rect &r) const {
+    wnd &wnd::invalidate_native() {
         if (!_created)
-            return const_cast<wnd &>(*this);
+            return *this;
 
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<wnd *>(this));
+            this);
+        if (hwnd)
+            InvalidateRect(hwnd, nullptr, FALSE);
+        return *this;
+    }
+
+    wnd &wnd::invalidate_native(const rect &r) {
+        if (!_created)
+            return *this;
+
+        HWND hwnd = windows::wnd_bindings.handle_from_object(
+            this);
         if (hwnd) {
             RECT rect = {r.p.x, r.p.y, r.x2(), r.y2()};
             InvalidateRect(hwnd, &rect, FALSE);
         }
-        return const_cast<wnd &>(*this);
+        return *this;
     }
 
-    gpx &wnd::get_gpx() const {
+    gpx &wnd::get_gpx() {
         if (!_created)
             throw std::runtime_error(
                 "Cannot obtain gpx before window is created.");

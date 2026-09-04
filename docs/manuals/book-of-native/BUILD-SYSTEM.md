@@ -121,7 +121,24 @@ The root `CMakeLists.txt` adds the library and program subtrees:
 - `lib/native/`
 - `src/`
 
-When tests are enabled, the root project also adds `tests/`.
+When tests are enabled, the root project also adds `tests/`. It defines these
+executables:
+
+| Executable | Scope | Where it runs |
+| --- | --- | --- |
+| `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
+| `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; native resources are simulated, so no display is needed | Every hosted build |
+| `native_table_model_tests` | `table_model`/`table_store` behavior | Every hosted build |
+| `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
+| `native_collection_runtime_tests` | Live collection and source-editor lifecycle | Registered as a test on SDL2 |
+| `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
+| `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
+
+The runtime executables are built on every backend so they keep compiling, but
+only SDL2 registers them with CTest, because it is the backend that runs
+unattended under `SDL_VIDEODRIVER=dummy`. Toolkit sessions can still run the
+binaries by hand: each one closes its own window and returns a process exit
+code.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.

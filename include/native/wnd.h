@@ -21,6 +21,27 @@ namespace native
     class layout_manager;
     class non_client;
     class radio;
+    class wnd;
+
+    // Selects one of the portable system pointer shapes.
+    enum class mouse_cursor
+    {
+        arrow,
+        ibeam,
+        crosshair,
+        resize_horizontal,
+        resize_vertical,
+        resize_northwest_southeast,
+        resize_northeast_southwest
+    };
+
+    namespace detail
+    {
+        class backend_wnd_peer;
+        class wnd_peer_access;
+        class wnd_peer;
+        wnd *deepest_at(wnd &root, point position);
+    }
 
     // Represents a cross-platform native window or child control.
     class wnd
@@ -79,14 +100,23 @@ namespace native
         // Determine whether the backend resource currently exists.
         bool get_created() const;
 
+        // Return whether show() has made the backend resource visible.
+        bool get_visible() const;
+
+        // Return the cached system pointer shape.
+        mouse_cursor get_cursor() const;
+
+        // Select a system pointer shape and return this window.
+        wnd &set_cursor(mouse_cursor cursor);
+
         // Return whether this window may currently receive user input.
         virtual bool get_input_enabled() const;
 
         // Mark the complete client area for repainting.
-        virtual wnd &invalidate() const;
+        wnd &invalidate();
 
         // Mark a client-area rectangle for repainting.
-        virtual wnd &invalidate(const rect &invalid) const;
+        wnd &invalidate(const rect &invalid);
 
         // Accept creation completed by the native toolkit.
         virtual void on_native_create();
@@ -132,14 +162,17 @@ namespace native
         // Dispatch a backend pointer-wheel notification.
         virtual void on_native_mouse_wheel(mouse_wheel_event event);
 
+        // Dispatch a backend keyboard-focus transition.
+        virtual void on_native_focus(bool focused);
+
         // Make an already-created native resource visible.
-        virtual void show() const = 0;
+        void show();
 
         // Create the backend resource for this object.
-        virtual void create() const = 0;
+        void create();
 
         // Destroy the backend resource for this object.
-        virtual void destroy() const = 0;
+        void destroy();
 
         // Install an owning layout manager for child controls.
         wnd &set_layout(std::unique_ptr<layout_manager> layout);
@@ -148,7 +181,7 @@ namespace native
         layout_manager *get_layout() const;
 
         // Return the lazily created graphics context for this window.
-        gpx &get_gpx() const;
+        gpx &get_gpx();
 
         // Lifecycle, geometry, paint, and mouse notifications.
         signal<> on_wnd_create;
@@ -160,8 +193,25 @@ namespace native
         signal<mouse_wheel_event> on_mouse_wheel;
 
     protected:
+        // Create this window's backend-specific native resource.
+        virtual void create_native() = 0;
+
+        // Make this window's backend-specific resource visible.
+        virtual void show_native() = 0;
+
+        // Release this window's backend-specific native resource.
+        virtual void destroy_native() = 0;
+
+        // Schedule a complete backend repaint.
+        virtual wnd &invalidate_native();
+
+        // Schedule a backend repaint for one client rectangle.
+        virtual wnd &invalidate_native(const rect &invalid);
+
         // True after a backend resource has been created.
-        mutable bool _created;
+        bool _created;
+        bool _visible = false;
+        bool _destroying = false;
 
         rect _bounds;
         std::unique_ptr<layout_manager> _layout;
@@ -169,8 +219,10 @@ namespace native
         // True while a layout pass over this window's children runs,
         // or while cached geometry is being applied to the backend.
         bool _layout_suspended = false;
-        mutable gpx *_gpx = nullptr;
+        gpx *_gpx = nullptr;
+        std::unique_ptr<detail::wnd_peer> _peer;
         wnd *_parent;
+        mouse_cursor _cursor = mouse_cursor::arrow;
         point _mouse_screen_position;
         bool _mouse_screen_position_exact = false;
 
@@ -178,7 +230,7 @@ namespace native
         std::vector<wnd *> _children;
 
         // Release child backend resources before destroying a parent.
-        void destroy_children() const;
+        void destroy_children();
 
         //
         // Run one layout pass over this window's children.
@@ -205,6 +257,9 @@ namespace native
         // Apply the cached parent to a created backend resource.
         virtual void apply_parent();
 
+        // Apply the cached system pointer shape to the backend resource.
+        virtual void apply_cursor();
+
         //
         // Return the host-relative area left for non-client elements
         // and the client after this window's own edge chrome.
@@ -225,6 +280,10 @@ namespace native
         void draw_non_client(gpx &graphics);
 
     private:
+        friend class detail::backend_wnd_peer;
+        friend class detail::wnd_peer_access;
+        friend wnd *detail::deepest_at(wnd &root, point position);
+
         friend class non_client;
 
         // Radio controls inspect siblings to enforce exclusive

@@ -92,10 +92,8 @@ namespace native
             b->view->SetValue(_checked ? B_CONTROL_ON : B_CONTROL_OFF);
         });
     }
-    void check::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<check *>(this);
+    void check::create_native() {
+        auto *self = this;
         BView *parent = parent_view(self);
         BWindow *w = parent->Window();
         native_check_view *v = nullptr;
@@ -114,24 +112,21 @@ namespace native
         auto *b = new haiku::haiku_check();
         b->view = v;
         haiku::check_bindings.register_pair(self, b);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         auto *b = haiku::check_bindings.object_from_handle(
-            const_cast<check *>(this));
+            this);
         if (!_created || !b || !b->view)
             throw std::runtime_error("Haiku: check is not created.");
         locked(b->view->Window(), [&] {
             b->view->Show();
         });
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         auto *b = haiku::check_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             BWindow *w = b->view ? b->view->Window() : nullptr;
             locked(w, [&] {

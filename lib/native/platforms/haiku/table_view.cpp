@@ -371,6 +371,20 @@ namespace
                 view.AddColumn(column, static_cast<int32>(index));
                 view.SetColumnVisible(column, columns[index].visible);
             }
+            if (table.get_fill_last_column()) {
+                BColumn *last = nullptr;
+                float total = 0.0f;
+                for (int32 index = 0; index < view.CountColumns(); ++index) {
+                    BColumn *column = view.ColumnAt(index);
+                    if (!column || !column->IsVisible())
+                        continue;
+                    total += column->Width();
+                    last = column;
+                }
+                const float available = view.Bounds().Width() + 1.0f;
+                if (last && available > total)
+                    last->SetWidth(last->Width() + available - total);
+            }
 
             native::table_model *model = table.get_model();
             if (!model) {
@@ -536,10 +550,8 @@ namespace native
         }
     }
 
-    void table_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<table_view *>(this);
+    void table_view::create_native() {
+        auto *self = this;
         auto *binding = new haiku::haiku_collection();
         binding->native_table =
             _data_mode == table_data_mode::materialized;
@@ -549,19 +561,17 @@ namespace native
             binding->view = haiku::create_collection_view(*self);
         }
         haiku::table_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         if (binding->native_table) {
             rebuild_native(*self);
             self->apply_selection();
             self->apply_scroll();
         }
-        self->on_native_create();
     }
 
-    void table_view::show() const {
+    void table_view::show_native() {
         auto *binding = haiku::table_view_bindings.object_from_handle(
-            const_cast<table_view *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error(
                 "Haiku: table_view is not created.");
@@ -574,13 +584,12 @@ namespace native
         }
     }
 
-    void table_view::destroy() const {
+    void table_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         auto *binding =
             haiku::table_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->view) {
                 BWindow *window = binding->view->Window();

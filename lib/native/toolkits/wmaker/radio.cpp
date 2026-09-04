@@ -53,10 +53,8 @@ namespace native
         WMSetButtonSelected(widget, _selected);
     }
 
-    void radio::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<radio *>(this);
+    void radio::create_native() {
+        auto *self = this;
         WMButton *widget =
             WMCreateRadioButton(linux::wmaker::parent_widget(self));
         if (!widget) {
@@ -74,26 +72,23 @@ namespace native
         WMSetButtonSelected(widget, _selected);
         WMSetButtonAction(widget, changed, self);
         linux::wmaker::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void radio::show() const {
+    void radio::show_native() {
         if (!_created) {
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated radio.");
         }
-        WMButton *widget = widget_for(const_cast<radio *>(this));
+        WMButton *widget = widget_for(this);
         WMRealizeWidget(widget);
         WMMapWidget(widget);
     }
 
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         WMButton *widget = widget_for(self);
-        self->on_native_destroy();
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (widget)
             WMDestroyWidget(widget);

@@ -15,9 +15,7 @@
 
 namespace native
 {
-    void code_edit::create() const {
-        if (_created)
-            return;
+    void code_edit::create_native() {
         wnd *parent = get_parent();
         HWND parent_hwnd = parent
                                ? windows::wnd_bindings.handle_from_object(
@@ -27,7 +25,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: code_edit requires a created parent.");
         windows::register_window_class();
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         HWND hwnd = CreateWindowExW(
             0,
             windows::class_name,
@@ -44,14 +42,12 @@ namespace native
         if (!hwnd)
             throw std::runtime_error(
                 "Windows: failed to create code_edit host.");
-        _created = true;
         self->invalidate();
-        self->on_native_create();
     }
 
-    void code_edit::show() const {
+    void code_edit::show_native() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<code_edit *>(this));
+            this);
         if (!_created || !hwnd)
             throw std::runtime_error(
                 "Windows: code_edit is not created.");
@@ -59,13 +55,12 @@ namespace native
         UpdateWindow(hwnd);
     }
 
-    void code_edit::destroy() const {
+    void code_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(self);
         windows::code_edit_high_surrogates.erase(self);
-        self->on_native_destroy();
         if (hwnd) {
             DestroyWindow(hwnd);
             windows::wnd_bindings.unregister_by_handle(hwnd);

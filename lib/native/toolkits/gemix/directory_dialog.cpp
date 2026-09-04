@@ -13,13 +13,13 @@
 
 namespace native
 {
-    void directory_dialog::show() const {
+    void directory_dialog::show_native() {
         if (!begin_dialog())
             return;
         try {
             const auto response = linux::gemix::show_file_dialog(
                 *this, std::string());
-            auto *self = const_cast<directory_dialog *>(this);
+            auto *self = this;
             if (!response.accepted) {
                 self->on_native_cancel();
                 return;
@@ -31,7 +31,7 @@ namespace native
             else
                 self->on_native_accept({folder});
         } catch (...) {
-            const_cast<directory_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

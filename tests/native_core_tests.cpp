@@ -19,6 +19,7 @@
 #include <native/signal.h>
 #include <native/theme.h>
 #include <bindings.h>
+#include <file_filter_match.h>
 #include <message_box_common.h>
 
 namespace
@@ -138,6 +139,41 @@ namespace
         initialized_event.emit();
         expect(recursive_initialization_count == 1,
                "signal initialization remains non-recursive");
+
+        native::signal<int> scoped_event;
+        int scoped_total = 0;
+        {
+            native::connection scoped = scoped_event.connect_scoped(
+                [&scoped_total](int value) {
+                    scoped_total += value;
+                    return false;
+                });
+            expect(static_cast<bool>(scoped),
+                   "scoped signal connection reports ownership");
+            scoped_event.emit(3);
+        }
+        scoped_event.emit(3);
+        expect(scoped_total == 3,
+               "scoped signal connection disconnects on destruction");
+
+        native::connection released = scoped_event.connect_scoped(
+            [&scoped_total](int value) {
+                scoped_total += value;
+                return false;
+            });
+        released.release();
+        scoped_event.emit(2);
+        expect(scoped_total == 5,
+               "released scoped connection remains connected");
+
+        native::connection after_signal;
+        {
+            native::signal<> short_lived;
+            after_signal = short_lived.connect_scoped(
+                []() { return false; });
+        }
+        expect(static_cast<bool>(after_signal),
+               "connection safely outlives its signal");
     }
 
     // Verify replacing either side preserves a bijective binding.
@@ -159,6 +195,18 @@ namespace
         expect(registry.object_from_handle(2) == &second,
                "reused handle retains its current object");
     }
+
+    // Verify portable file filters without a POSIX matching dependency.
+    void test_file_filter_match() {
+        expect(native::detail::matches_file_pattern("*.PNG", "photo.png"),
+               "file wildcard matching is case insensitive");
+        expect(native::detail::matches_file_pattern("file?.txt",
+                                                    "file1.txt"),
+               "file wildcard matching accepts one-character wildcards");
+        expect(!native::detail::matches_file_pattern("*.txt", "photo.png"),
+               "file wildcard matching rejects a different extension");
+    }
+
 } // namespace
 
 int main() {
@@ -166,5 +214,6 @@ int main() {
     test_geometry();
     test_signal();
     test_bindings();
+    test_file_filter_match();
     return failure_count == 0 ? 0 : 1;
 }

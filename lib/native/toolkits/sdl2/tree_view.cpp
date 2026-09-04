@@ -20,38 +20,33 @@ namespace native
     void tree_view::apply_expansion(tree_item_id, bool) { invalidate(); }
     void tree_view::apply_scroll_offset() { invalidate(); }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
+    void tree_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "SDL2: tree_view requires a created parent.");
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         linux::sdl2::tree_view_bindings.register_pair(
             self, new linux::sdl2::sdl2_collection());
         linux::sdl2::tree_views.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *state = linux::sdl2::tree_view_bindings
                           .object_from_handle(
-                              const_cast<tree_view *>(this));
+                              this);
         if (!_created || !state)
             throw std::runtime_error("SDL2: tree_view is not created.");
         state->visible = true;
         invalidate();
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *state = linux::sdl2::tree_view_bindings
                           .object_from_handle(self);
-        self->on_native_destroy();
         linux::sdl2::tree_views.erase(
             std::remove(linux::sdl2::tree_views.begin(),
                         linux::sdl2::tree_views.end(),

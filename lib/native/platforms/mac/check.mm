@@ -89,10 +89,8 @@ namespace native
         [b->button setState:_checked ? NSControlStateValueOn
                                      : NSControlStateValueOff];
     }
-    void check::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<check *>(this);
+    void check::create_native() {
+        auto *self = this;
         native_check_view *b = [[native_check_view alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,
@@ -112,22 +110,19 @@ namespace native
         h->button = b;
         h->target = t;
         mac::check_bindings.register_pair(self, h);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         auto *b = mac::check_bindings.object_from_handle(
-            const_cast<check *>(this));
+            this);
         if (!_created || !b || !b->button)
             throw std::runtime_error("macOS: check is not created.");
         [b->button setHidden:NO];
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         auto *b = mac::check_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             [b->button removeFromSuperview];
             [b->button release];

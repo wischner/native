@@ -353,7 +353,7 @@ namespace native
                 const point local(mx - work.p.x, my - work.p.y);
 
                 if (mx != prev_mx || my != prev_my) {
-                    linux::gemix::update_text_edit_cursor(
+                    linux::gemix::update_mouse_cursor(
                         pointer_window, local);
                     linux::gemix::update_collection_pointer(
                         pointer_window, local);
@@ -404,8 +404,7 @@ namespace native
 
             if (!pointer_window &&
                 (mx != prev_mx || my != prev_my)) {
-                linux::gemix::update_text_edit_cursor(nullptr,
-                                                      point());
+                linux::gemix::update_mouse_cursor(nullptr, point());
             }
 
             prev_mx = mx;

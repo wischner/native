@@ -28,14 +28,11 @@ namespace native
             setTitle:[NSString stringWithUTF8String:_title.c_str()]];
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         const rect b = get_bounds();
         [[maybe_unused]] mac::native_window native_window(
-            const_cast<app_wnd *>(this),
+            this,
             _title.c_str(),
             b.p.x,
             b.p.y,
@@ -43,23 +40,21 @@ namespace native
             static_cast<int>(b.d.h));
 
         if (!mac::wnd_bindings.handle_from_object(
-                const_cast<app_wnd *>(this)))
+                this))
             throw std::runtime_error(
                 "macOS: failed to create native window.");
 
-        _created = true;
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_native_create();
+        this->menu.attach(
+            *this);
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "macOS: Cannot show window before it is created.");
 
         NSWindow *win = mac::wnd_bindings.handle_from_object(
-            const_cast<app_wnd *>(this));
+            this);
         if (!win)
             throw std::runtime_error(
                 "macOS: Missing NSWindow binding for app_wnd.");
@@ -82,17 +77,16 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         NSWindow *win = mac::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
         NSWindow *owner_window =
             owner ? mac::wnd_bindings.handle_from_object(owner) : nil;
         id delegate = mac::delegate_bindings.object_from_handle(self);
-        self->on_native_destroy();
         mac::delegate_bindings.unregister_by_handle(self);
 
         if (win) {

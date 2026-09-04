@@ -67,11 +67,8 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         wnd *parent = get_parent();
         WMWidget *parent_host = linux::wmaker::parent_widget(self);
         if (!parent || !parent->get_created() || !parent_host)
@@ -97,14 +94,12 @@ namespace native
                                  ButtonReleaseMask | PointerMotionMask,
                              route_panel_event,
                              self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         auto *frame = static_cast<WMFrame *>(
             linux::wmaker::wnd_bindings.handle_from_object(
-                const_cast<panel *>(this)));
+                this));
         if (!_created || !frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: panel is not created.");
@@ -114,35 +109,29 @@ namespace native
         WMMapWidget(frame);
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         auto *frame = static_cast<WMFrame *>(
             linux::wmaker::wnd_bindings.handle_from_object(self));
-        self->on_native_destroy();
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (frame)
             WMDestroyWidget(frame);
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         auto *state = linux::wmaker::create_collection_frame(*self);
         linux::wmaker::canvas_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *state = linux::wmaker::canvas_bindings.object_from_handle(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: canvas is not created.");
@@ -151,11 +140,11 @@ namespace native
         WMRaiseWidget(state->frame);
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *state =
             linux::wmaker::canvas_bindings.object_from_handle(self);
         linux::wmaker::destroy_collection_frame(*self, state);

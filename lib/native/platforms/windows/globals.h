@@ -16,6 +16,8 @@
 #include <native.h>
 #include <bindings.h>
 
+#include "../../wnd_peer.h"
+
 namespace windows
 {
     // Win32 callbacks carry handles rather than C++ object context, so
@@ -95,19 +97,20 @@ namespace windows
     };
 
     extern native::bindings<HWND, native::wnd *> wnd_bindings;
-    extern native::bindings<native::wnd *, win_gpx *> wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, win_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, win_font *> font_bindings;
     extern native::bindings<uint32_t, win_menu *> menu_bindings;
-    extern native::bindings<native::button *, win_button *>
-        button_bindings;
-    extern native::bindings<native::text_edit *, win_text_edit *>
-        text_edit_bindings;
-    extern native::bindings<native::icon_view *, win_icon_view *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, win_tree_view *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, win_table_view *>
-        table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::button *, win_button *> button_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, win_text_edit *> text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, win_icon_view *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, win_tree_view *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, win_table_view *> table_view_bindings;
     extern std::unordered_map<native::code_edit *, wchar_t>
         code_edit_high_surrogates;
 

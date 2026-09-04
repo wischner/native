@@ -180,7 +180,7 @@ namespace native::detail
         rebuild_lines();
     }
 
-    void code_document::load(const std::string &path) {
+    void code_document::load(const std::filesystem::path &path) {
         std::ifstream input(path, std::ios::binary);
         if (!input)
             throw std::runtime_error("unable to open source file");
@@ -205,7 +205,7 @@ namespace native::detail
         rebuild_lines();
     }
 
-    void code_document::save(const std::string &path) const {
+    void code_document::save(const std::filesystem::path &path) const {
         if (path.empty())
             throw std::invalid_argument("source path is empty");
         std::ofstream output(path, std::ios::binary | std::ios::trunc);

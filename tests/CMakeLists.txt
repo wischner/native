@@ -1,5 +1,7 @@
 add_executable(native_core_tests
     native_core_tests.cpp
+    ${PROJECT_SOURCE_DIR}/lib/native/connection.cpp
+    ${PROJECT_SOURCE_DIR}/lib/native/file_filter_match.cpp
     ${PROJECT_SOURCE_DIR}/lib/native/geometry.cpp
 )
 

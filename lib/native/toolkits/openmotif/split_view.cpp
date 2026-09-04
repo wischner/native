@@ -19,33 +19,7 @@ namespace
             .object_from_handle(&owner);
     }
 
-    void sash_changed(Widget, XtPointer data, XtPointer) {
-        auto *owner = static_cast<native::split_view *>(data);
-        auto *state = owner ? binding(*owner) : nullptr;
-        if (!owner || !state || state->suppress)
-            return;
-        Widget first = linux::openmotif::wnd_bindings
-            .handle_from_object(&owner->get_first());
-        Widget second = linux::openmotif::wnd_bindings
-            .handle_from_object(&owner->get_second());
-        if (!first || !second)
-            return;
-        Dimension first_extent = 0;
-        Dimension second_extent = 0;
-        if (owner->get_orientation() ==
-            native::split_orientation::horizontal) {
-            XtVaGetValues(first, XmNwidth, &first_extent, nullptr);
-            XtVaGetValues(second, XmNwidth, &second_extent, nullptr);
-        } else {
-            XtVaGetValues(first, XmNheight, &first_extent, nullptr);
-            XtVaGetValues(second, XmNheight, &second_extent, nullptr);
-        }
-        const float total = first_extent + second_extent;
-        if (total > 0)
-            owner->on_native_ratio(first_extent/total);
-    }
-
-    void connect_sashes(native::split_view &owner, Widget paned) {
+    void hide_sashes(Widget paned) {
         WidgetList children = nullptr;
         Cardinal count = 0;
         XtVaGetValues(paned,
@@ -53,9 +27,67 @@ namespace
                       XmNnumChildren, &count,
                       nullptr);
         for (Cardinal index = 0; index < count; ++index) {
-            if (XmIsSash(children[index]))
-                XtAddCallback(children[index], XmNvalueChangedCallback,
-                              sash_changed, &owner);
+            if (!XmIsSash(children[index]))
+                continue;
+            XtVaSetValues(children[index],
+                          XmNwidth, 1,
+                          XmNheight, 1,
+                          XmNborderWidth, 0,
+                          XmNtraversalOn, False,
+                          nullptr);
+            XtSetMappedWhenManaged(children[index], False);
+            if (XtIsManaged(children[index]))
+                XtUnmanageChild(children[index]);
+            if (XtIsRealized(children[index]))
+                XtUnmapWidget(children[index]);
+        }
+    }
+
+    // Let the complete quiet divider act as the drag target. Motif's
+    // default sash is a small bordered square at one end of the divider,
+    // which is easy to miss and visually separates the splitter from the
+    // surrounding window.
+    void splitter_event(Widget paned,
+                        XtPointer data,
+                        XEvent *event,
+                        Boolean *) {
+        auto *owner = static_cast<native::split_view *>(data);
+        auto *state = owner ? binding(*owner) : nullptr;
+        if (!owner || !state || !event)
+            return;
+        const native::point position(
+            event->type == MotionNotify ? event->xmotion.x
+                                        : event->xbutton.x,
+            event->type == MotionNotify ? event->xmotion.y
+                                        : event->xbutton.y);
+        if (event->type == ButtonPress &&
+            event->xbutton.button == Button1 &&
+            owner->get_splitter_bounds().contains(position)) {
+            state->dragging = true;
+            owner->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left,
+                native::mouse_action::press,
+                position));
+            XGrabPointer(XtDisplay(paned),
+                         XtWindow(paned),
+                         False,
+                         PointerMotionMask | ButtonReleaseMask,
+                         GrabModeAsync,
+                         GrabModeAsync,
+                         None,
+                         None,
+                         event->xbutton.time);
+        } else if (event->type == MotionNotify && state->dragging) {
+            owner->on_native_mouse_move(position);
+        } else if (event->type == ButtonRelease &&
+                   event->xbutton.button == Button1 &&
+                   state->dragging) {
+            owner->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left,
+                native::mouse_action::release,
+                position));
+            state->dragging = false;
+            XUngrabPointer(XtDisplay(paned), event->xbutton.time);
         }
     }
 } // namespace
@@ -101,7 +133,7 @@ namespace native
             XtVaSetValues(first,
                           XmNpaneMinimum, get_first_minimum(),
                           XmNskipAdjust, False,
-                          XmNshowSash, True,
+                          XmNshowSash, False,
                           nullptr);
         if (second)
             XtVaSetValues(second,
@@ -115,15 +147,14 @@ namespace native
         auto *state = binding(*this);
         if (state && state->paned)
             XtVaSetValues(state->paned,
+                          XmNspacing, get_splitter_size(),
                           XmNsashWidth, get_splitter_size(),
                           XmNsashHeight, get_splitter_size(),
                           nullptr);
     }
 
-    void split_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<split_view *>(this);
+    void split_view::create_native() {
+        auto *self = this;
         Widget parent = linux::openmotif::parent_widget(self);
         if (!parent)
             throw std::runtime_error(
@@ -134,10 +165,14 @@ namespace native
             XmNy, _bounds.p.y,
             XmNwidth, _bounds.d.w,
             XmNheight, _bounds.d.h,
+            XmNresizable, False,
+            XmNmarginWidth, 0,
+            XmNmarginHeight, 0,
             XmNorientation,
             get_orientation() == split_orientation::horizontal
                 ? XmHORIZONTAL : XmVERTICAL,
-            XmNseparatorOn, True,
+            XmNseparatorOn, False,
+            XmNspacing, get_splitter_size(),
             XmNsashWidth, get_splitter_size(),
             XmNsashHeight, get_splitter_size(),
             nullptr);
@@ -148,30 +183,39 @@ namespace native
         state->paned = paned;
         linux::openmotif::wnd_bindings.register_pair(paned, self);
         linux::openmotif::split_view_bindings.register_pair(self, state);
-        _created = true;
         self->_content_hosts_are_panes = true;
         self->refresh_contents();
         self->apply_minimums();
         self->apply_ratio();
-        connect_sashes(*self, paned);
-        self->on_native_create();
+        hide_sashes(paned);
+        XtAddEventHandler(paned,
+                          ButtonPressMask | ButtonReleaseMask |
+                              PointerMotionMask,
+                          False,
+                          splitter_event,
+                          self);
     }
 
-    void split_view::show() const {
-        auto *state = binding(*const_cast<split_view *>(this));
+    void split_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->paned)
             throw std::runtime_error("Motif: split_view is not created.");
         XtManageChild(state->paned);
         get_first().show();
         get_second().show();
+        XtVaSetValues(state->paned,
+                      XmNwidth, get_dimensions().w,
+                      XmNheight, get_dimensions().h,
+                      nullptr);
+        apply_ratio();
+        hide_sashes(state->paned);
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state && state->paned) {
             linux::openmotif::wnd_bindings.unregister_by_handle(state->paned);
             XtDestroyWidget(state->paned);

@@ -9,6 +9,20 @@ each item has an image, a label, spatial arrow-key navigation, activation,
 wrapping, or scrolling. Use `tree_view` when parent/child structure and
 independent branch expansion are part of the data.
 
+All three advanced item controls follow the same append spelling as menus and
+layouts. An icon descriptor appends directly, `tree_node()` names a branch,
+and `accordion_section` makes its borrowed window explicit:
+
+```cpp
+icons << native::icon_view_item{"Document", document_icon, 1, true};
+files << native::tree_node("src", 10, {
+    native::tree_node("main.cpp", 11)});
+sections << native::accordion_section("Properties", property_panel);
+```
+
+Each `operator<<` delegates to the corresponding `add_item()` operation and
+never changes selection or another property.
+
 ## Classic tree hierarchies
 
 Tree items recursively own their children. Every item has a unique non-zero
@@ -55,11 +69,11 @@ uses the platform's normal branch behavior and activates the item.
 
 `reveal_item()` expands ancestors and scrolls the item into view.
 `set_lines_visible()` controls classic connector lines where the native peer
-offers that choice. The native default is theme-specific: Window Maker uses
-indentation and transparent right/down disclosure triangles without connector
-branches. An explicit `set_lines_visible()` choice survives later native-theme
-metric synchronization. Replacing items retains selection by stable ID when
-the item survives.
+offers that choice. Connector lines default off, so hierarchy is expressed by
+indentation and right/down disclosure arrows unless the application explicitly
+enables branches. An explicit `set_lines_visible()` choice survives later
+native-theme metric synchronization. Replacing items retains selection by
+stable ID when the item survives.
 
 `set_presentation()` selects the normal platform presentation or the optional
 `three_dimensional` outline. On CDE, `native` follows the InfoLib Book List:
@@ -158,6 +172,10 @@ toggle independently and retains each content control's preferred height.
 `set_expanded_index()` selects one section (or `-1`) without emitting;
 user toggles emit `on_expanded_change(int)`.
 
+Accordions and classic trees show a complete outer border by default. Hide one
+explicitly with `set_border_visible(false)`. Accordion body geometry is inset
+while that border is visible, so a child repaint cannot cover the frame.
+
 When a header has focus, Up/Down and Home/End move among headers, while Enter
 or Space toggles the focused section. Focus inside a content control keeps
 that control's normal keyboard handling.
@@ -197,6 +215,11 @@ suppressed rather than drawn underneath it.
 WINGs stock disclosure arrows are composited as transparent glyphs over the
 row or accordion header. Their embedded pixmap paper is not copied, so normal,
 selected, collapsed, and expanded indicators retain the surrounding surface.
+
+SDL2 uses compact disclosure marks and the shared classic painted scrollbar
+for icon views, trees, and tables. The scrollbar includes arrow buttons, a
+page trough, and a gripped thumb; SDL pointer capture keeps an icon-view or
+tree thumb moving until release, even when the pointer leaves the track.
 
 The Vision application's **Collection controls** window demonstrates a
 Libraries accordion with enough alpha-bearing thumbnails to force scrolling

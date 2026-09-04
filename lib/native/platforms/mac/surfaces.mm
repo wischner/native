@@ -153,11 +153,8 @@
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -178,25 +175,22 @@ namespace native
         // Children resolve their parent view through this registry, so
         // the binding has to exist before on_wnd_create runs.
         mac::panel_bindings.register_pair(self, binding);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         auto *binding = mac::panel_bindings.object_from_handle(
-            const_cast<panel *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("macOS: panel is not created.");
         [binding->view setHidden:NO];
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         auto *binding = mac::panel_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->view removeFromSuperview];
             [binding->view release];
@@ -205,11 +199,8 @@ namespace native
         }
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -227,27 +218,24 @@ namespace native
         auto *binding = new mac::mac_surface();
         binding->view = view;
         mac::canvas_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *binding = mac::canvas_bindings.object_from_handle(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("macOS: canvas is not created.");
         [binding->view setHidden:NO];
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *binding = mac::canvas_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->view removeFromSuperview];
             [binding->view release];

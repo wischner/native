@@ -393,14 +393,12 @@ namespace native
         invalidate_binding(binding);
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
+    void text_edit::create_native() {
         wnd *parent = get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "SDL2: text_edit requires a created parent.");
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = new linux::sdl2::sdl2_text_edit;
         binding->parent = parent;
         binding->bounds = linux::sdl2::root_bounds(*this);
@@ -408,11 +406,9 @@ namespace native
         binding->anchor = binding->cursor;
         linux::sdl2::text_edit_bindings.register_pair(self, binding);
         linux::sdl2::text_edits.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         auto *binding =
             linux::sdl2::text_edit_bindings.object_from_handle(
                 const_cast<text_edit *>(this));
@@ -423,13 +419,12 @@ namespace native
         invalidate_binding(binding);
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding =
             linux::sdl2::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &editors = linux::sdl2::text_edits;
         editors.erase(std::remove(editors.begin(), editors.end(), self),
                       editors.end());
@@ -450,14 +445,15 @@ namespace native
 
     bool text_edit::replace_selected_text(const std::string &text) {
         auto *binding =
-            linux::sdl2::text_edit_bindings.object_from_handle(this);
+            linux::sdl2::text_edit_bindings.object_from_handle(
+                const_cast<text_edit *>(this));
         return replace_selection(this, binding, text);
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         auto *binding =
             linux::sdl2::text_edit_bindings.object_from_handle(
-                const_cast<text_edit *>(this));
+                this);
         if (binding) {
             binding->anchor = 0;
             binding->cursor = _text.size();

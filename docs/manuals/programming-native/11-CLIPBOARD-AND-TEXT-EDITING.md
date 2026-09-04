@@ -75,7 +75,9 @@ A single-line editor rejects line feeds. Both modes reject malformed UTF-8,
 embedded nulls, and carriage returns. `get_text()` always returns the complete
 portable value. `set_text()` validates and updates the property without
 emitting a user-action signal. `set_read_only()` prevents changes while still
-allowing selection and copy.
+allowing selection and copy. Text editors inherit the window cursor property
+and select `mouse_cursor::ibeam` by default; an application may replace it with
+`set_cursor()` like any other window property.
 
 ## Live complete-value validation
 

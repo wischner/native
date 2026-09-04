@@ -119,7 +119,7 @@ namespace native
             int table_row_height = 20;
             // Width of a final inset table-viewport relief drawn after all
             // table parts. Zero leaves the frame to a native peer or theme.
-            int table_outer_border_extent = 0;
+            int table_outer_border_extent = 1;
             int focus_inset = 2;
             int disclosure_size = 12;
             int sort_indicator_size = 8;
@@ -127,7 +127,7 @@ namespace native
             // Whether a tree draws classic hierarchy connector branches by
             // default. Controls retain an explicit set_lines_visible()
             // override across later native metric synchronization.
-            bool tree_lines_visible = true;
+            bool tree_lines_visible = false;
             // Tree-specific geometry. Negative/zero sentinel values retain
             // the generic list/header-derived geometry.
             int tree_row_height = 0;
@@ -153,7 +153,7 @@ namespace native
             // Native table implementations that conventionally consume
             // unused header space can stretch the trailing visible column
             // without changing its semantic/model width.
-            bool table_fill_last_column = false;
+            bool table_fill_last_column = true;
         };
 
         // Stores colors used when a backend must emulate native

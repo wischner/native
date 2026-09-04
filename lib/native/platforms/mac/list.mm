@@ -82,10 +82,8 @@ namespace native
                   byExtendingSelection:NO];
         adapter(b)->_suppress = NO;
     }
-    void list::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<list *>(this);
+    void list::create_native() {
+        auto *self = this;
         NSScrollView *s = [[NSScrollView alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,
@@ -133,22 +131,19 @@ namespace native
         b->table = t;
         b->adapter = a;
         mac::list_bindings.register_pair(self, b);
-        _created = true;
-        self->on_native_create();
     }
-    void list::show() const {
+    void list::show_native() {
         auto *b = mac::list_bindings.object_from_handle(
-            const_cast<list *>(this));
+            this);
         if (!_created || !b || !b->scroll)
             throw std::runtime_error("macOS: list is not created.");
         [b->scroll setHidden:NO];
     }
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *b = mac::list_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             [b->table setDataSource:nil];
             [b->table setDelegate:nil];

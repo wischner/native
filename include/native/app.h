@@ -30,7 +30,7 @@ namespace native
         // Returns:
         //      The platform event loop's process exit code.
         //
-        static int run(const app_wnd &window);
+        static int run(app_wnd &window);
 
         //
         // Enter the backend event loop.

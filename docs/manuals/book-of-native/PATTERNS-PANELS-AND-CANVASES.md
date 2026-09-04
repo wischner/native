@@ -35,8 +35,8 @@ scrolled content transform. Keeping them apart means each has one answer.
 
 ## The panel is inherited behavior, not new behavior
 
-`panel` adds three constructors, a destructor, and the three backend
-operations. Everything else already existed on `wnd`:
+`panel` adds three constructors, a destructor, one background draw stage, and
+the three protected backend hooks. Everything else already existed on `wnd`:
 
 ```cpp
 native::panel page;
@@ -85,8 +85,11 @@ does not.
 
 ## Backend hosts
 
-Each backend gives the panel the toolkit's own empty container, so the toolkit
-paints the container background and Native paints nothing:
+Each backend gives the panel the toolkit's own empty container. Native's base
+`draw_background()` stage requests the ordinary control-host surface before
+inherited paint subscribers; a derived panel may replace just that stage.
+Where the toolkit fills an empty host itself, the request resolves to the same
+native resource colors:
 
 | Backend | Host |
 | --- | --- |

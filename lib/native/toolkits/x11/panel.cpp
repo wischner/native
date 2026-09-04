@@ -70,10 +70,7 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
+    void panel::create_native() {
         wnd *parent = get_parent();
         if (!parent)
             throw std::runtime_error(
@@ -88,7 +85,7 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: panel parent has no widget.");
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         Widget widget = XtVaCreateWidget(
             "panel",
             formWidgetClass,
@@ -131,27 +128,24 @@ namespace native
         // Children resolve their Xt parent through this registry, so
         // the binding has to exist before on_wnd_create runs.
         linux::x11::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
-            const_cast<panel *>(this));
+            this);
         if (!_created || !widget)
             throw std::runtime_error(
                 "X11/Athena: panel is not created.");
         XtManageChild(widget);
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (widget) {
             linux::x11::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);

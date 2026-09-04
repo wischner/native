@@ -52,10 +52,8 @@ namespace native
         XtVaSetValues(
             widget, XtNstate, _selected ? True : False, nullptr);
     }
-    void radio::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<radio *>(this);
+    void radio::create_native() {
+        auto *self = this;
         Widget group = nullptr;
         for (wnd *sibling : _parent->_children) {
             if (sibling == this || !dynamic_cast<radio *>(sibling))
@@ -68,7 +66,7 @@ namespace native
         Widget widget =
             XtVaCreateWidget("radio",
                              toggleWidgetClass,
-                             radio_parent(const_cast<radio *>(this)),
+                             radio_parent(this),
                              XtNhorizDistance,
                              _bounds.p.x,
                              XtNvertDistance,
@@ -99,24 +97,21 @@ namespace native
                 "X11/Athena: Failed to create radio.");
         XtAddCallback(widget, XtNcallback, radio_changed, self);
         linux::x11::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !widget)
             throw std::runtime_error(
                 "X11/Athena: radio is not created.");
         XtManageChild(widget);
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (widget) {
             linux::x11::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);

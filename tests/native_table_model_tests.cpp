@@ -265,7 +265,7 @@ namespace
         expect(view.find_and_reveal(query) &&
                    view.get_selected_rows() ==
                        std::vector<native::table_row_id>{900001} &&
-                   view.get_vertical_scroll_row() == 899998 &&
+                   view.get_vertical_scroll_row() == 899997 &&
                    model.find_requests == 2 &&
                    model.id_requests == 2 &&
                    model.cell_requests == 0,
@@ -278,6 +278,11 @@ namespace
     void test_columns_and_sort_signals() {
         native::table_store store = sample_store();
         native::table_view view;
+        expect(view.get_fill_last_column(),
+               "tables fill their trailing visible column by default");
+        view.set_fill_last_column(false);
+        expect(!view.get_fill_last_column(),
+               "trailing-column fill can be disabled explicitly");
         view.set_columns(sample_columns()).set_model(&store);
         view.set_column_width(1, 4);
         expect(view.get_columns()[0].width == 24,
@@ -319,6 +324,25 @@ namespace
         expect(rejected_height,
                "table row height rejects a zero-sized selection row");
     }
+
+    void test_model_reset_after_scroll() {
+        native::table_store store = sample_store();
+        native::table_view view(0, 0, 240, 48);
+        view.set_columns(sample_columns()).set_model(&store);
+        view.on_native_scroll(2, 0);
+        view.set_selected_rows({30});
+
+        store.set_rows({});
+        expect(view.get_display_row_count() == 0 &&
+                   view.get_vertical_scroll_row() == 0 &&
+                   view.get_selected_rows().empty(),
+               "resetting a scrolled table to empty clears stale rows");
+
+        store.set_rows({{90, {{1, {"Only row", nullptr}}}}});
+        expect(view.get_display_row_count() == 1 &&
+                   view.get_first_visible_row() == 90,
+               "a table remains usable after an empty model reset");
+    }
 } // namespace
 
 int main() {
@@ -327,5 +351,6 @@ int main() {
     test_groups_selection_and_reveal();
     test_virtual_scale();
     test_columns_and_sort_signals();
+    test_model_reset_after_scroll();
     return failures == 0 ? 0 : 1;
 }

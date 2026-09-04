@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -33,10 +34,11 @@ namespace native
         ~file_dialog() override;
 
         // Return the folder or path initially presented to the user.
-        const std::string &get_initial_path() const;
+        const std::filesystem::path &get_initial_path() const;
 
         // Set the folder or path initially presented to the user.
-        file_dialog &set_initial_path(const std::string &path);
+        file_dialog &set_initial_path(
+            const std::filesystem::path &path);
 
         // Return the ordered filename filter groups.
         const std::vector<file_filter> &get_filters() const;
@@ -51,40 +53,40 @@ namespace native
         // Remove every filename filter group.
         file_dialog &clear_filters();
 
-        // Return the first selected path, or an empty string.
-        const std::string &get_path() const;
+        // Return the first selected path, or an empty path.
+        const std::filesystem::path &get_path() const;
 
         // Return all selected paths in chooser order.
-        const std::vector<std::string> &get_paths() const;
+        const std::vector<std::filesystem::path> &get_paths() const;
 
         // Accept paths reported by a native panel callback.
         virtual void on_native_accept(
-            const std::vector<std::string> &paths);
+            const std::vector<std::filesystem::path> &paths);
 
         // Cancel the active dialog from a native panel callback.
         virtual void on_native_cancel();
 
+    protected:
         // Prepare this logical panel after its owner has been created.
-        void create() const override;
+        void create_native() override;
 
         // Close the native panel and release the logical resource.
-        void destroy() const override;
+        void destroy_native() override;
 
-    protected:
         // Construct common file-dialog state for an owner and title.
         file_dialog(app_wnd &owner, std::string title);
 
         // Start an owner-modal session; false means already active.
-        bool begin_dialog() const;
+        bool begin_dialog();
 
     private:
-        std::string _initial_path;
+        std::filesystem::path _initial_path;
         std::vector<file_filter> _filters;
-        std::vector<std::string> _paths;
-        std::string _empty_path;
+        std::vector<std::filesystem::path> _paths;
+        std::filesystem::path _empty_path;
 
         // Close and release a panel supplied by the selected backend.
-        void cancel_native_dialog() const;
+        void cancel_native_dialog();
 
         // System panels do not use ordinary window update hooks.
         void apply_position() override;

@@ -16,12 +16,52 @@ target_include_directories(native
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+# Embed the generic filesystem PNGs in the static library. Platform-native
+# icons are preferred at runtime, so these assets are fallback data only.
+set(native_generic_icon_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/bootstrap-icons/filesystem)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    ${native_generic_icon_directory}/file.png
+    ${native_generic_icon_directory}/folder.png
+)
+file(READ
+    ${native_generic_icon_directory}/file.png
+    native_generic_file_png
+    HEX
+)
+file(READ
+    ${native_generic_icon_directory}/folder.png
+    native_generic_directory_png
+    HEX
+)
+string(REGEX REPLACE
+    "([0-9a-f][0-9a-f])"
+    "0x\\1,"
+    native_generic_file_png
+    "${native_generic_file_png}"
+)
+string(REGEX REPLACE
+    "([0-9a-f][0-9a-f])"
+    "0x\\1,"
+    native_generic_directory_png
+    "${native_generic_directory_png}"
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/generic_file_icon_data.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generic_file_icon_data.h
+    @ONLY
 )
 
 # Add backend-neutral native source files.
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/custom_control.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/collection_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/portable_font.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/portable_font_data.cpp
@@ -31,6 +71,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/software_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rotated_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/emulated_tree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/wnd_peer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/panel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/canvas.cpp
@@ -43,7 +85,11 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/owned_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modeless_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modal_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/message_box_icons.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_filter_match.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_icon.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/special_directory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/directory_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
@@ -63,6 +109,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/icon_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tree_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/collection_render.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/classic_scrollbar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_store.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_search.cpp

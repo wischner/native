@@ -15,9 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "collection_view.h"
 #include "graphics.h"
-#include "theme.h"
-#include "wnd.h"
 
 namespace native
 {
@@ -60,7 +59,7 @@ namespace native
     };
 
     // Presents image-and-label items in a wrapping, scrolling grid.
-    class icon_view : public wnd
+    class icon_view : public collection_view
     {
     public:
         // Construct an icon view from items and scalar bounds.
@@ -91,6 +90,9 @@ namespace native
         // Append one item and update a created native control.
         icon_view &add_item(icon_view_item item);
 
+        // Append one item with builder syntax.
+        icon_view &operator<<(icon_view_item item);
+
         // Remove an item by index or throw std::out_of_range.
         icon_view &remove_item(std::size_t index);
 
@@ -115,11 +117,8 @@ namespace native
         // Select an index, or -1, without emitting an action signal.
         icon_view &set_selected_index(int index);
 
-        // Return the vertical content offset in pixels.
-        int get_scroll_offset() const;
-
         // Set and clamp the vertical content offset.
-        icon_view &set_scroll_offset(int offset);
+        icon_view &set_scroll_offset(int offset) override;
 
         // Return one client-relative item rectangle.
         rect get_item_bounds(std::size_t index) const;
@@ -143,20 +142,17 @@ namespace native
         // Scroll vertically by a signed pixel delta.
         virtual void on_native_scroll(int delta);
 
-        // Return whether the collection currently has keyboard focus.
-        bool get_focused() const;
-
-        // Cache backend focus entry or departure without a signal.
-        virtual void on_native_focus(bool focused);
-
+    protected:
         // Create the backend icon-view resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend icon-view resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend icon-view resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the selected index after a user-originated change.
         signal<int> on_selection_change;
@@ -181,10 +177,10 @@ namespace native
         virtual void apply_selected_index();
 
         // Apply cached scrolling to the native control.
-        virtual void apply_scroll_offset();
+        void apply_scroll_offset() override;
 
         // Refresh dimensions from the current native theme.
-        virtual void synchronize_theme_metrics();
+        void synchronize_theme_metrics() override;
 
         // Draw the complete icon-view background and frame.
         virtual void draw_background(
@@ -248,8 +244,6 @@ namespace native
         icon_view_label_mode _label_mode =
             icon_view_label_mode::below;
         int _selected_index = -1;
-        int _scroll_offset = 0;
-        bool _focused = false;
         int _item_padding = 6;
         int _item_gap = 4;
         int _label_gap = 4;
@@ -260,7 +254,7 @@ namespace native
         int column_count() const;
         int item_width() const;
         int item_height() const;
-        int maximum_scroll_offset() const;
+        int maximum_scroll_offset() const override;
         int navigated_index(icon_view_navigation navigation) const;
         void ensure_selection_visible();
     };

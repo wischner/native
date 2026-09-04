@@ -22,32 +22,28 @@ namespace native
     void tree_view::apply_expansion(tree_item_id, bool) { invalidate(); }
     void tree_view::apply_scroll_offset() { invalidate(); }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tree_view *>(this);
+    void tree_view::create_native() {
+        auto *self = this;
         auto *state =
             linux::openlook::create_collection_panel(*self);
         linux::openlook::tree_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *state = linux::openlook::tree_view_bindings
                           .object_from_handle(
-                              const_cast<tree_view *>(this));
+                              this);
         if (!_created || !state || !state->panel)
             throw std::runtime_error(
                 "OpenLook/XView: tree_view is not created.");
         xv_set(state->panel, XV_SHOW, TRUE, nullptr);
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *state = linux::openlook::tree_view_bindings
                           .object_from_handle(self);
         linux::openlook::destroy_collection_panel(*self, state);

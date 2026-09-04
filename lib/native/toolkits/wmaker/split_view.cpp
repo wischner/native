@@ -110,9 +110,8 @@ namespace native
         apply_ratio();
     }
 
-    void split_view::create() const {
-        if (_created) return;
-        auto *self = const_cast<split_view *>(this);
+    void split_view::create_native() {
+        auto *self = this;
         auto *state = new linux::wmaker::native_split_view();
         state->split = WMCreateSplitView(
             linux::wmaker::parent_widget(self));
@@ -141,15 +140,13 @@ namespace native
                              released,
                              self);
         WMRealizeWidget(state->split);
-        _created = true;
         self->_content_hosts_are_panes = true;
         self->refresh_contents();
         self->apply_ratio();
-        self->on_native_create();
     }
 
-    void split_view::show() const {
-        auto *state = binding(*const_cast<split_view *>(this));
+    void split_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->split)
             throw std::runtime_error(
                 "Window Maker/WINGs: split_view is not created.");
@@ -163,11 +160,10 @@ namespace native
         get_second().show();
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state) {
             linux::wmaker::wnd_bindings.unregister_by_object(self);
             if (state->split) WMDestroyWidget(state->split);

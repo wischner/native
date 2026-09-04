@@ -38,12 +38,6 @@ namespace
         return state && state->visible && control.get_created();
     }
 
-    bool hit(native::wnd &control, int x, int y) {
-        return root_bounds(control).contains(
-            native::point(static_cast<native::coord>(x),
-                          static_cast<native::coord>(y)));
-    }
-
     //
     // Return the visible canvas under a root-space point.
     //
@@ -52,36 +46,24 @@ namespace
     //      pointer is actually over when regions overlap.
     //
     native::canvas *canvas_at(native::wnd *owner, int x, int y) {
-        native::canvas *found = nullptr;
-        int best = -1;
-        for (auto *control : linux::sdl2::canvases) {
-            if (!control || !visible(*control) ||
-                root_of(control) != owner || !hit(*control, x, y))
-                continue;
-            const int depth = depth_of(*control);
-            if (depth > best) {
-                best = depth;
-                found = control;
-            }
-        }
-        return found;
+        if (!owner)
+            return nullptr;
+        return dynamic_cast<native::canvas *>(
+            native::detail::deepest_at(
+                *owner,
+                native::point(static_cast<native::coord>(x),
+                              static_cast<native::coord>(y))));
     }
 
     // Return the deepest visible panel under a root-space point.
     native::panel *panel_at(native::wnd *owner, int x, int y) {
-        native::panel *found = nullptr;
-        int best = -1;
-        for (auto *control : linux::sdl2::panels) {
-            if (!control || !visible(*control) ||
-                root_of(control) != owner || !hit(*control, x, y))
-                continue;
-            const int depth = depth_of(*control);
-            if (depth > best) {
-                best = depth;
-                found = control;
-            }
-        }
-        return found;
+        if (!owner)
+            return nullptr;
+        return dynamic_cast<native::panel *>(
+            native::detail::deepest_at(
+                *owner,
+                native::point(static_cast<native::coord>(x),
+                              static_cast<native::coord>(y))));
     }
 
     // Convert a root-space position into a control-local one.
@@ -125,22 +107,26 @@ namespace linux::sdl2
             static_cast<int>(content_bounds.d.w),
             static_cast<int>(content_bounds.d.h)};
 
-        auto appearance = native::theme::create(graphics);
         for (native::wnd *region : regions) {
             const native::rect bounds = root_bounds(*region);
             if (!bounds.d.w || !bounds.d.h)
                 continue;
 
             if (auto *host = dynamic_cast<native::panel *>(region)) {
-                (void)host;
-                // A panel is visually empty. Repainting the themed
-                // container surface is what stops stale pixels from
-                // showing through where no child covers it.
                 auto saved = graphics.save_state();
-                graphics.set_clip(bounds);
-                appearance->draw_surface(bounds,
-                                         native::surface_kind::panel,
-                                         native::theme::state{});
+                const SDL_Rect region_viewport = {
+                    bounds.p.x,
+                    bounds.p.y + content_origin,
+                    static_cast<int>(bounds.d.w),
+                    static_cast<int>(bounds.d.h)};
+                SDL_RenderSetViewport(renderer, &region_viewport);
+                const native::rect invalid(
+                    0, 0, bounds.d.w, bounds.d.h);
+                graphics.set_clip(invalid);
+                host->on_native_paint(
+                    native::wnd_paint_event(invalid, graphics));
+                SDL_RenderSetViewport(renderer, &content_viewport);
+                graphics.set_clip(content_bounds);
                 continue;
             }
 
@@ -253,10 +239,7 @@ namespace linux::sdl2
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
+    void panel::create_native() {
         wnd *parent = get_parent();
         if (!parent)
             throw std::runtime_error(
@@ -265,30 +248,27 @@ namespace native
             throw std::runtime_error(
                 "SDL2: panel parent is not created.");
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         linux::sdl2::panel_bindings.register_pair(
             self, new linux::sdl2::sdl2_surface());
         linux::sdl2::panels.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         auto *state = linux::sdl2::panel_bindings.object_from_handle(
-            const_cast<panel *>(this));
+            this);
         if (!_created || !state)
             throw std::runtime_error("SDL2: panel is not created.");
         state->visible = true;
         invalidate();
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         auto *state = linux::sdl2::panel_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &registry = linux::sdl2::panels;
         registry.erase(
             std::remove(registry.begin(), registry.end(), self),
@@ -299,10 +279,7 @@ namespace native
         }
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
+    void canvas::create_native() {
         wnd *parent = get_parent();
         if (!parent)
             throw std::runtime_error(
@@ -311,33 +288,30 @@ namespace native
             throw std::runtime_error(
                 "SDL2: canvas parent is not created.");
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         linux::sdl2::canvas_bindings.register_pair(
             self, new linux::sdl2::sdl2_surface());
         linux::sdl2::canvases.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *state = linux::sdl2::canvas_bindings.object_from_handle(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !state)
             throw std::runtime_error("SDL2: canvas is not created.");
         state->visible = true;
         invalidate();
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *state =
             linux::sdl2::canvas_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &registry = linux::sdl2::canvases;
         registry.erase(
             std::remove(registry.begin(), registry.end(), self),

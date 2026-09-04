@@ -56,7 +56,7 @@ namespace native
         return _result;
     }
 
-    void modal_wnd::show() const {
+    void modal_wnd::show_native() {
         if (!get_created())
             throw std::logic_error(
                 "A modal window must be created before show().");
@@ -65,28 +65,28 @@ namespace native
                 "A modal window requires a created owner.");
 
         if (_modal_active) {
-            app_wnd::show();
+            app_wnd::show_native();
             return;
         }
 
         begin_modal_session();
         try {
-            app_wnd::show();
+            app_wnd::show_native();
         } catch (...) {
             end_modal_session();
             throw;
         }
     }
 
-    void modal_wnd::destroy() const {
+    void modal_wnd::destroy_native() {
         if (_modal_active && _result == dialog_result::none)
             _result = dialog_result::cancelled;
 
         const bool notify = end_modal_session();
-        app_wnd::destroy();
+        app_wnd::destroy_native();
 
         if (notify)
-            const_cast<modal_wnd *>(this)->on_native_modal_close(
+            this->on_native_modal_close(
                 _result);
     }
 
@@ -101,7 +101,7 @@ namespace native
             on_native_modal_close(_result);
     }
 
-    void modal_wnd::close(dialog_result result) const {
+    void modal_wnd::close(dialog_result result) {
         if (result == dialog_result::none)
             throw std::invalid_argument(
                 "A closed modal window requires a final result.");
@@ -114,7 +114,7 @@ namespace native
         on_modal_close.emit(result);
     }
 
-    void modal_wnd::begin_modal_session() const {
+    void modal_wnd::begin_modal_session() {
         app_wnd *owner = get_owner();
         if (!owner)
             throw std::logic_error(
@@ -122,15 +122,15 @@ namespace native
 
         _result = dialog_result::none;
         _modal_active = true;
-        owner->begin_modal(const_cast<modal_wnd *>(this));
+        owner->begin_modal(this);
     }
 
-    bool modal_wnd::end_modal_session() const {
+    bool modal_wnd::end_modal_session() {
         if (!_modal_active)
             return false;
 
         if (app_wnd *owner = get_owner())
-            owner->end_modal(const_cast<modal_wnd *>(this));
+            owner->end_modal(this);
         _modal_active = false;
         return true;
     }

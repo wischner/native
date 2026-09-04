@@ -26,10 +26,7 @@ namespace native
         wind_set_str(handle, WF_NAME, _title.c_str());
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         if (!linux::gemix::ensure_runtime())
             throw std::runtime_error(
@@ -49,24 +46,22 @@ namespace native
             throw std::runtime_error("GEMix: failed to create window.");
 
         linux::gemix::wnd_bindings.register_pair(
-            handle, const_cast<app_wnd *>(this));
+            handle, this);
         linux::gemix::windows.push_back(
-            const_cast<app_wnd *>(this));
+            this);
         wind_set_str(handle, WF_NAME, _title.c_str());
-        _created = true;
 
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_native_create();
+        this->menu.attach(
+            *this);
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "GEMix: Cannot show window before it is created.");
 
         WORD handle = linux::gemix::wnd_bindings.handle_from_object(
-            const_cast<app_wnd *>(this));
+            this);
         if (handle <= 0)
             throw std::runtime_error(
                 "GEMix: Missing window binding for app_wnd.");
@@ -82,7 +77,7 @@ namespace native
         // Report it the same way a user-driven resize is reported, so
         // the cache and any installed layout both follow the geometry
         // the window really has.
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         self->on_native_move(linux::gemix::outer_rect(handle).p);
         self->on_native_resize(linux::gemix::work_rect(handle).d);
         linux::gemix::active_window = self;
@@ -91,15 +86,14 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         WORD handle =
             linux::gemix::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
-        self->on_native_destroy();
         if (handle > 0) {
             wind_close(handle);
             wind_delete(handle);

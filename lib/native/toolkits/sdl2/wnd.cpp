@@ -20,35 +20,26 @@
 
 namespace
 {
-    template <typename public_type, typename registry_type>
+    template <typename state_type>
     bool update_bounds(native::wnd *window,
-                       const native::rect &bounds,
-                       registry_type &registry) {
-        auto *control = dynamic_cast<public_type *>(window);
-        if (!control)
-            return false;
-        (void)bounds;
-        auto *binding = registry.object_from_handle(control);
+                       const native::rect &) {
+        auto *binding = native::detail::peer_state<state_type>(*window);
         if (binding) {
             // Emulated controls are painted and hit-tested in their
             // root window's space, so a control nested inside panels
             // caches the accumulated origin rather than the bounds
             // its own parent gave it.
-            binding->bounds = linux::sdl2::root_bounds(*control);
+            binding->bounds = linux::sdl2::root_bounds(*window);
             if (binding->parent)
                 binding->parent->invalidate();
         }
-        return true;
+        return binding != nullptr;
     }
 
-    template <typename public_type, typename registry_type>
+    template <typename state_type>
     bool update_parent(native::wnd *window,
-                       native::wnd *parent,
-                       registry_type &registry) {
-        auto *control = dynamic_cast<public_type *>(window);
-        if (!control)
-            return false;
-        auto *binding = registry.object_from_handle(control);
+                       native::wnd *parent) {
+        auto *binding = native::detail::peer_state<state_type>(*window);
         if (binding) {
             if (binding->parent)
                 binding->parent->invalidate();
@@ -56,93 +47,61 @@ namespace
             if (binding->parent)
                 binding->parent->invalidate();
         }
-        return true;
-    }
-
-    template <typename public_type, typename registry_type>
-    native::wnd *control_parent(native::wnd *window,
-                                registry_type &registry) {
-        auto *control = dynamic_cast<public_type *>(window);
-        if (!control)
-            return nullptr;
-        auto *binding = registry.object_from_handle(control);
-        return binding ? binding->parent : nullptr;
+        return binding != nullptr;
     }
 
     bool update_control_bounds(native::wnd *window,
                                const native::rect &bounds) {
-        if (dynamic_cast<native::panel *>(window) ||
-            dynamic_cast<native::canvas *>(window) ||
-            dynamic_cast<native::accordion *>(window) ||
-            dynamic_cast<native::tab_view *>(window) ||
-            dynamic_cast<native::icon_view *>(window) ||
-            dynamic_cast<native::tree_view *>(window) ||
-            dynamic_cast<native::table_view *>(window)) {
-            if (window->get_parent())
-                window->get_parent()->invalidate(bounds);
+        if (!window->get_parent())
+            return false;
+
+        const bool updated =
+            update_bounds<linux::sdl2::sdl2_button>(window, bounds) ||
+            update_bounds<linux::sdl2::sdl2_check>(window, bounds) ||
+            update_bounds<linux::sdl2::sdl2_radio>(window, bounds) ||
+            update_bounds<linux::sdl2::sdl2_list>(window, bounds);
+        if (updated)
+            return true;
+
+        if (update_bounds<linux::sdl2::sdl2_text_edit>(window, bounds)) {
+            auto *binding = native::detail::peer_state<
+                linux::sdl2::sdl2_text_edit>(*window);
+            auto *editor = dynamic_cast<native::text_edit *>(window);
+            if (binding && editor) {
+                const int viewport_width = std::max(
+                    1, static_cast<int>(binding->bounds.d.w) - 10);
+                const int maximum_scroll = std::max(
+                    0,
+                    linux::sdl2::text_width(editor->get_text()) -
+                        viewport_width);
+                binding->horizontal_scroll = std::clamp(
+                    binding->horizontal_scroll, 0, maximum_scroll);
+            }
             return true;
         }
-        return update_bounds<native::button>(
-                   window, bounds, linux::sdl2::button_bindings) ||
-               update_bounds<native::check>(
-                   window, bounds, linux::sdl2::check_bindings) ||
-               update_bounds<native::radio>(
-                   window, bounds, linux::sdl2::radio_bindings) ||
-               update_bounds<native::list>(
-                   window, bounds, linux::sdl2::list_bindings) ||
-               update_bounds<native::text_edit>(
-                   window, bounds, linux::sdl2::text_edit_bindings);
+        window->get_parent()->invalidate(bounds);
+        return true;
     }
 
     bool update_control_parent(native::wnd *window,
                                native::wnd *parent) {
-        if (dynamic_cast<native::panel *>(window) ||
-            dynamic_cast<native::canvas *>(window) ||
-            dynamic_cast<native::accordion *>(window) ||
-            dynamic_cast<native::tab_view *>(window) ||
-            dynamic_cast<native::icon_view *>(window) ||
-            dynamic_cast<native::tree_view *>(window) ||
-            dynamic_cast<native::table_view *>(window)) {
-            if (parent)
-                parent->invalidate();
-            return true;
-        }
-        return update_parent<native::button>(
-                   window, parent, linux::sdl2::button_bindings) ||
-               update_parent<native::check>(
-                   window, parent, linux::sdl2::check_bindings) ||
-               update_parent<native::radio>(
-                   window, parent, linux::sdl2::radio_bindings) ||
-               update_parent<native::list>(
-                   window, parent, linux::sdl2::list_bindings) ||
-               update_parent<native::text_edit>(
-                   window, parent, linux::sdl2::text_edit_bindings);
+        if (!parent)
+            return false;
+
+        const bool updated =
+            update_parent<linux::sdl2::sdl2_button>(window, parent) ||
+            update_parent<linux::sdl2::sdl2_check>(window, parent) ||
+            update_parent<linux::sdl2::sdl2_radio>(window, parent) ||
+            update_parent<linux::sdl2::sdl2_list>(window, parent) ||
+            update_parent<linux::sdl2::sdl2_combo_box>(window, parent) ||
+            update_parent<linux::sdl2::sdl2_text_edit>(window, parent);
+        if (!updated)
+            parent->invalidate();
+        return true;
     }
 
     native::wnd *emulated_parent(native::wnd *window) {
-        if (dynamic_cast<native::panel *>(window) ||
-            dynamic_cast<native::canvas *>(window) ||
-            dynamic_cast<native::accordion *>(window) ||
-            dynamic_cast<native::tab_view *>(window) ||
-            dynamic_cast<native::icon_view *>(window) ||
-            dynamic_cast<native::tree_view *>(window) ||
-            dynamic_cast<native::table_view *>(window)) {
-            return window->get_parent();
-        }
-        if (auto *parent = control_parent<native::button>(
-                window, linux::sdl2::button_bindings))
-            return parent;
-        if (auto *parent = control_parent<native::check>(
-                window, linux::sdl2::check_bindings))
-            return parent;
-        if (auto *parent = control_parent<native::radio>(
-                window, linux::sdl2::radio_bindings))
-            return parent;
-        if (auto *parent = control_parent<native::list>(
-                window, linux::sdl2::list_bindings))
-            return parent;
-        return control_parent<native::text_edit>(
-            window, linux::sdl2::text_edit_bindings);
+        return window->get_parent();
     }
 } // namespace
 
@@ -218,29 +177,45 @@ namespace native
         update_control_parent(this, _parent);
     }
 
-    wnd &wnd::invalidate() const {
-        if (!_created)
-            return const_cast<wnd &>(*this);
+    void wnd::apply_cursor() {
+        wnd *root = linux::sdl2::root_of(this);
+        SDL_Window *window = root
+                                 ? linux::sdl2::wnd_bindings
+                                       .handle_from_object(root)
+                                 : nullptr;
+        if (!window || SDL_GetMouseFocus() != window)
+            return;
 
-        if (auto *parent = emulated_parent(const_cast<wnd *>(this))) {
+        int x = 0;
+        int y = 0;
+        SDL_GetMouseState(&x, &y);
+        y -= linux::sdl2::content_origin_y(root);
+        linux::sdl2::update_mouse_cursor(root, point(x, y));
+    }
+
+    wnd &wnd::invalidate_native() {
+        if (!_created)
+            return *this;
+
+        if (auto *parent = emulated_parent(this)) {
             parent->invalidate();
-            return const_cast<wnd &>(*this);
+            return *this;
         }
 
         if (auto *cache =
                 linux::sdl2::wnd_gpx_bindings.object_from_handle(
-                    const_cast<wnd *>(this)))
+                    this))
             cache->invalidated = true;
 
-        return const_cast<wnd &>(*this);
+        return *this;
     }
 
-    wnd &wnd::invalidate(const rect &) const {
+    wnd &wnd::invalidate_native(const rect &) {
         // SDL2 does not expose partial window invalidation.
-        return invalidate();
+        return invalidate_native();
     }
 
-    gpx &wnd::get_gpx() const {
+    gpx &wnd::get_gpx() {
         if (!_created)
             throw std::runtime_error(
                 "Cannot obtain gpx before window is created.");

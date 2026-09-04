@@ -102,10 +102,8 @@ namespace native
         }
     }
 
-    void list::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<list *>(this);
+    void list::create_native() {
+        auto *self = this;
         Panel panel = linux::openlook::parent_panel(self);
         const int rows = std::max(
             1, static_cast<int>(_bounds.d.h) / 20);
@@ -139,6 +137,29 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: failed to create list.");
         }
+        // PANEL_LIST sizes itself in complete native rows and treats
+        // XV_HEIGHT as advisory.  Derive its non-row chrome from the first
+        // layout, then choose the closest row count so tall lists fill their
+        // requested pane instead of leaving a conspicuous strip below them.
+        const int row_height = static_cast<int>(xv_get(
+            item, PANEL_LIST_ROW_HEIGHT));
+        const int native_height = static_cast<int>(xv_get(
+            item, XV_HEIGHT));
+        if (row_height > 0) {
+            const int chrome = std::max(
+                0, native_height - rows * row_height);
+            const int fitted_rows = std::max(
+                1,
+                (std::max(0, static_cast<int>(_bounds.d.h) - chrome) +
+                 row_height / 2) /
+                    row_height);
+            if (fitted_rows != rows) {
+                xv_set(item,
+                       PANEL_LIST_DISPLAY_ROWS,
+                       fitted_rows,
+                       nullptr);
+            }
+        }
         linux::openlook::wnd_bindings.register_pair(item, self);
         replace_items(item, _items);
         if (_selected_index >= 0) {
@@ -148,12 +169,10 @@ namespace native
                    TRUE,
                    nullptr);
         }
-        _created = true;
-        self->on_native_create();
     }
 
-    void list::show() const {
-        Panel_item item = item_for(const_cast<list *>(this));
+    void list::show_native() {
+        Panel_item item = item_for(this);
         if (!_created || !item) {
             throw std::runtime_error(
                 "OpenLook/XView: list is not created.");
@@ -161,12 +180,11 @@ namespace native
         xv_set(item, XV_SHOW, TRUE, nullptr);
     }
 
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         Panel_item item = item_for(self);
-        self->on_native_destroy();
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
             xv_destroy_safe(item);

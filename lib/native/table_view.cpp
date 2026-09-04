@@ -18,6 +18,7 @@
 
 #include "table_render.h"
 #include "table_visible_rows.h"
+#include "classic_scrollbar.h"
 
 namespace native
 {
@@ -50,7 +51,7 @@ namespace native
                            coord y,
                            dim width,
                            dim height)
-        : wnd(x, y, width, height)
+        : collection_view(x, y, width, height)
         , _visible_rows(
               std::make_unique<detail::table_visible_rows>()) {
         on_wnd_paint.connect([this](wnd_paint_event event) {
@@ -177,6 +178,10 @@ namespace native
         return set_columns(std::move(columns));
     }
 
+    table_view &table_view::operator<<(table_column column) {
+        return add_column(std::move(column));
+    }
+
     table_view &table_view::remove_column(table_column_id id) {
         const auto found = std::find_if(
             _columns.begin(), _columns.end(),
@@ -283,6 +288,20 @@ namespace native
 
     bool table_view::get_columns_resizable() const {
         return _columns_resizable;
+    }
+
+    table_view &table_view::set_fill_last_column(bool fill) {
+        if (_fill_last_column == fill)
+            return *this;
+        _fill_last_column = fill;
+        if (_created)
+            apply_table();
+        invalidate();
+        return *this;
+    }
+
+    bool table_view::get_fill_last_column() const {
+        return _fill_last_column;
     }
 
     table_view &table_view::set_column_visibility_menu_enabled(
@@ -494,37 +513,24 @@ namespace native
         return _type_search;
     }
 
-    bool table_view::get_focused() const {
-        return _focused;
-    }
-
-    void table_view::on_native_focus(bool focused) {
-        if (_focused == focused)
-            return;
-        _focused = focused;
-        invalidate();
-    }
-
     void table_view::on_bounds_changed() {
         const std::size_t maximum = get_display_row_count() > 0
             ? get_display_row_count() - 1
             : 0;
         _vertical_row = std::min(_vertical_row, maximum);
-        if (_created)
+        if (_created) {
+            apply_table();
             apply_scroll();
+        }
         invalidate();
     }
 
     void table_view::synchronize_theme_metrics() {
-        try {
-            auto painter = theme::create(get_gpx());
-            const theme::metrics values = painter->defaults();
-            _native_row_height = std::max(1, values.table_row_height);
-            _native_header_height = std::max(1, values.header_height);
-        } catch (const std::runtime_error &) {
-            // Some Xt and WINGs parents finish realization after child
-            // construction; their stock defaults remain usable here.
-        }
+        custom_control::synchronize_theme_metrics();
+        _native_row_height = std::max(
+            1, _theme_metrics.table_row_height);
+        _native_header_height = std::max(
+            1, _theme_metrics.header_height);
     }
 
     void table_view::draw_background(
@@ -839,9 +845,7 @@ namespace native
         const rect &track,
         const rect &thumb,
         const theme::state &state) {
-        appearance.draw_scrollbar_part(
-            track, orientation, scrollbar_part::track, state);
-        appearance.draw_scrollbar_part(
-            thumb, orientation, scrollbar_part::thumb, state);
+        detail::draw_classic_scrollbar(
+            appearance, orientation, track, thumb, state);
     }
 } // namespace native

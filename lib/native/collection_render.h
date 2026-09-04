@@ -15,6 +15,7 @@ namespace native
     class accordion;
     class gpx;
     class icon_view;
+    class split_view;
     class tree_view;
     class tab_view;
 
@@ -36,6 +37,11 @@ namespace native
         void draw_tab_view_at(tab_view &control,
                               gpx &graphics,
                               point origin);
+
+        // Draw a portable split view at an ancestor-relative origin.
+        void draw_split_view_at(split_view &control,
+                                gpx &graphics,
+                                point origin);
 
         // Draw one icon view into a backend-owned graphics context.
         void draw_icon_view(icon_view &control, gpx &graphics);

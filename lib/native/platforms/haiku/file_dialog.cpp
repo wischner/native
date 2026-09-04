@@ -8,9 +8,7 @@
 
 #include "file_dialog_common.h"
 
-#include <algorithm>
-#include <cctype>
-#include <fnmatch.h>
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -27,6 +25,7 @@
 
 #include <native/file_dialog.h>
 
+#include "../../file_filter_match.h"
 #include "globals.h"
 
 namespace
@@ -51,21 +50,16 @@ namespace
                         file_dialog_state_deleter>;
 
     // Append a configured extension only when the leaf has none.
-    std::string add_default_extension(
-        const std::string &path, const std::string &extension) {
+    std::filesystem::path add_default_extension(
+        const std::filesystem::path &path,
+        const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1))
+        std::filesystem::path result(path);
+        if (result.has_extension())
             return path;
-
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
         return result;
     }
 
@@ -89,31 +83,16 @@ namespace
             if (!reference)
                 return false;
 
-            BEntry entry(reference, true);
-            if (entry.IsDirectory())
+            BPath path(reference);
+            std::error_code error;
+            if (path.InitCheck() == B_OK &&
+                std::filesystem::is_directory(path.Path(), error)) {
                 return true;
+            }
 
-            std::string name = reference->name;
-            std::transform(name.begin(),
-                           name.end(),
-                           name.begin(),
-                           [](unsigned char value) {
-                               return static_cast<char>(
-                                   std::tolower(value));
-                           });
             for (const std::string &pattern : patterns_) {
-                std::string folded_pattern = pattern;
-                std::transform(
-                    folded_pattern.begin(),
-                    folded_pattern.end(),
-                    folded_pattern.begin(),
-                    [](unsigned char value) {
-                        return static_cast<char>(
-                            std::tolower(value));
-                    });
-                if (fnmatch(folded_pattern.c_str(),
-                            name.c_str(),
-                            0) == 0) {
+                if (native::detail::matches_file_pattern(
+                        pattern, reference->name)) {
                     return true;
                 }
             }
@@ -156,7 +135,7 @@ namespace
                 return;
             }
 
-            std::vector<std::string> paths;
+            std::vector<std::filesystem::path> paths;
             if (message->what == B_REFS_RECEIVED) {
                 for (int32 index = 0;; ++index) {
                     entry_ref reference;
@@ -219,21 +198,22 @@ namespace
 
     // Set the panel directory from either a folder or file path.
     void set_initial_directory(
-        BFilePanel *panel, const std::string &path) {
+        BFilePanel *panel, const std::filesystem::path &path) {
         if (!panel || path.empty())
             return;
 
-        BEntry entry(path.c_str(), true);
+        std::filesystem::path directory(path);
+        std::error_code error;
+        if (!std::filesystem::is_directory(directory, error))
+            directory = directory.parent_path();
+        if (directory.empty())
+            return;
+
+        const std::string value = directory.string();
+        BEntry entry(value.c_str(), true);
         if (entry.InitCheck() != B_OK)
             return;
-        if (entry.IsDirectory()) {
-            panel->SetPanelDirectory(&entry);
-            return;
-        }
-
-        BEntry parent;
-        if (entry.GetParent(&parent) == B_OK)
-            panel->SetPanelDirectory(&parent);
+        panel->SetPanelDirectory(&entry);
     }
 } // namespace
 
@@ -304,8 +284,8 @@ namespace haiku
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
-        auto *self = const_cast<file_dialog *>(this);
+    void file_dialog::cancel_native_dialog() {
+        auto *self = this;
         auto *state =
             haiku::file_dialog_bindings.object_from_handle(self);
         if (!state)

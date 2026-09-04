@@ -16,10 +16,9 @@
 #include <string>
 #include <vector>
 
+#include "collection_view.h"
 #include "scrollbar.h"
 #include "table_model.h"
-#include "theme.h"
-#include "wnd.h"
 
 namespace native
 {
@@ -30,6 +29,15 @@ namespace native
         class control_render_access;
         class table_visible_rows;
         void draw_table_view(table_view &control, gpx &graphics);
+        bool begin_table_scrollbar_drag(table_view &control,
+                                        point position,
+                                        bool &horizontal,
+                                        int &grab_offset);
+        bool drag_table_scrollbar(table_view &control,
+                                  point position,
+                                  bool horizontal,
+                                  int grab_offset);
+        bool handle_table_click(table_view &control, point position);
     }
 
     // Selects automatic, materialized, or virtual native adaptation.
@@ -88,7 +96,7 @@ namespace native
     };
 
     // Presents a virtual, multi-column row model as a native table.
-    class table_view : public wnd
+    class table_view : public collection_view
     {
     public:
         // Construct a table view from scalar bounds.
@@ -121,6 +129,9 @@ namespace native
         // Append one uniquely identified column.
         table_view &add_column(table_column column);
 
+        // Append one column with builder syntax.
+        table_view &operator<<(table_column column);
+
         // Remove one semantic column or throw std::out_of_range.
         table_view &remove_column(table_column_id id);
 
@@ -152,6 +163,12 @@ namespace native
 
         // Return whether user-driven column resizing is enabled.
         bool get_columns_resizable() const;
+
+        // Stretch the trailing visible column into unused viewport width.
+        table_view &set_fill_last_column(bool fill);
+
+        // Return whether the trailing visible column fills unused width.
+        bool get_fill_last_column() const;
 
         // Enable a native column-visibility menu where available.
         table_view &set_column_visibility_menu_enabled(bool enabled);
@@ -315,20 +332,17 @@ namespace native
         // Apply one native UTF-8 incremental type-search fragment.
         virtual void on_native_type_text(const std::string &text);
 
-        // Cache backend focus entry or departure.
-        virtual void on_native_focus(bool focused);
-
-        // Return whether the table currently has keyboard focus.
-        bool get_focused() const;
-
+    protected:
         // Create the backend table resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend table resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend table resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits selected row IDs after a user-originated change.
         signal<const std::vector<table_row_id> &>
@@ -470,12 +484,24 @@ namespace native
         virtual void apply_scroll();
 
         // Refresh metrics obtained from the active native theme.
-        virtual void synchronize_theme_metrics();
+        void synchronize_theme_metrics() override;
 
     private:
         friend class detail::control_render_access;
         friend void detail::draw_table_view(
             table_view &control, gpx &graphics);
+        friend bool detail::begin_table_scrollbar_drag(
+            table_view &control,
+            point position,
+            bool &horizontal,
+            int &grab_offset);
+        friend bool detail::drag_table_scrollbar(
+            table_view &control,
+            point position,
+            bool horizontal,
+            int grab_offset);
+        friend bool detail::handle_table_click(
+            table_view &control, point position);
 
         table_model *_model = nullptr;
         int _model_connection = 0;
@@ -496,10 +522,10 @@ namespace native
         bool _header_visible = true;
         bool _columns_reorderable = true;
         bool _columns_resizable = true;
+        bool _fill_last_column = true;
         bool _visibility_menu = false;
         bool _alternating_rows = false;
         bool _type_search = true;
-        bool _focused = false;
         std::size_t _vertical_row = 0;
         int _horizontal_offset = 0;
         table_row_id _focused_row = invalid_table_row_id;

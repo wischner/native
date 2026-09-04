@@ -14,6 +14,7 @@
 #include <native/app_wnd.h>
 #include <native/modal_wnd.h>
 #include <native/owned_wnd.h>
+#include <native/theme.h>
 
 namespace native
 {
@@ -108,6 +109,24 @@ namespace native
         on_menu.emit(command);
     }
 
+    void app_wnd::on_native_paint(wnd_paint_event event) {
+        auto appearance = theme::create(event.g);
+        draw_background(
+            event.g,
+            *appearance,
+            rect(point(0, 0), get_dimensions()),
+            theme::state{});
+        wnd::on_native_paint(event);
+    }
+
+    void app_wnd::draw_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::panel, state);
+    }
+
     void app_wnd::attach_owned_window(owned_wnd *window) {
         if (!window)
             return;
@@ -146,7 +165,7 @@ namespace native
             _modal_windows.end());
     }
 
-    void app_wnd::destroy_owned_windows() const {
+    void app_wnd::destroy_owned_windows() {
         const std::vector<owned_wnd *> windows = _owned_windows;
         for (auto item = windows.rbegin(); item != windows.rend();
              ++item) {

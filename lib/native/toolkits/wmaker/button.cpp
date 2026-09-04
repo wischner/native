@@ -38,10 +38,8 @@ namespace native
         WMSetButtonText(widget, _text.c_str());
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<button *>(this);
+    void button::create_native() {
+        auto *self = this;
         WMButton *widget =
             WMCreateCommandButton(linux::wmaker::parent_widget(self));
         if (!widget) {
@@ -55,29 +53,26 @@ namespace native
         WMSetButtonText(widget, _text.c_str());
         WMSetButtonAction(widget, activate, self);
         linux::wmaker::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created) {
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated button.");
         }
         WMWidget *widget =
             linux::wmaker::wnd_bindings.handle_from_object(
-                const_cast<button *>(this));
+                this);
         WMRealizeWidget(widget);
         WMMapWidget(widget);
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         WMWidget *widget =
             linux::wmaker::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (widget)
             WMDestroyWidget(widget);

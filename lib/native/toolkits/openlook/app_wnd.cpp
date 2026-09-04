@@ -354,13 +354,11 @@ namespace native
                nullptr);
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
+    void app_wnd::create_native() {
         validate_owner_created();
         linux::openlook::initialize_xview();
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         Frame native_owner = XV_NULL;
         if (app_wnd *owner = get_owner()) {
             auto *owner_state = linux::openlook::window_state(owner);
@@ -492,18 +490,16 @@ namespace native
             throw;
         }
 
-        _created = true;
         if (self == app::main_wnd())
             linux::openlook::main_frame = frame;
-        self->on_native_create();
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created) {
             throw std::runtime_error(
                 "OpenLook/XView: window is not created.");
         }
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         auto *state = linux::openlook::window_state(self);
         if (!state || !state->frame) {
             throw std::runtime_error(
@@ -530,10 +526,10 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         auto *state = linux::openlook::window_state(self);
 
         // Drop the content panel's binding before anything is torn
@@ -543,7 +539,6 @@ namespace native
         // binding the procedure has no owner to find and returns.
         linux::openlook::wnd_bindings.unregister_by_object(self);
 
-        self->on_native_destroy();
         linux::openlook::frame_bindings.unregister_by_object(self);
         linux::openlook::window_bindings.unregister_by_handle(self);
 

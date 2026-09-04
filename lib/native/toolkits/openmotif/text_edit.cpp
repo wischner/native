@@ -176,10 +176,8 @@ namespace native
         XtVaSetValues(widget, XmNeditable, !_read_only, nullptr);
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<text_edit *>(this);
+    void text_edit::create_native() {
+        auto *self = this;
         const bool multiline =
             _mode == text_edit_mode::multi_line;
         Widget widget = XtVaCreateWidget(
@@ -225,27 +223,24 @@ namespace native
                           False,
                           key_pressed,
                           self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         Widget widget =
             linux::openmotif::wnd_bindings.handle_from_object(
-                const_cast<text_edit *>(this));
+                this);
         if (!_created || !widget)
             throw std::runtime_error(
                 "Motif: text_edit is not created.");
         XtManageChild(widget);
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = linux::openmotif::text_edit_bindings
                             .object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             linux::openmotif::wnd_bindings.unregister_by_handle(
                 binding->widget);
@@ -317,10 +312,10 @@ namespace native
         return on_native_text(candidate);
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         auto *binding = linux::openmotif::text_edit_bindings
                             .object_from_handle(
-                                const_cast<text_edit *>(this));
+                                this);
         if (!binding)
             return;
         const XmTextPosition end = character_count(get_text());

@@ -10,17 +10,14 @@ namespace native
     void split_view::apply_minimums() { invalidate(); }
     void split_view::apply_splitter_size() { invalidate(); }
 
-    void split_view::create() const {
-        if (_created) return;
+    void split_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error("GEMix: split_view requires a created parent.");
-        auto *self = const_cast<split_view *>(this);
-        _created = true;
+        auto *self = this;
         self->refresh_contents();
-        self->on_native_create();
     }
 
-    void split_view::show() const {
+    void split_view::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: split_view is not created.");
         get_first().show();
@@ -28,8 +25,7 @@ namespace native
         invalidate();
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created) return;
-        const_cast<split_view *>(this)->on_native_destroy();
     }
 } // namespace native

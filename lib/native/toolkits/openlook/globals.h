@@ -13,6 +13,8 @@
 #include <vector>
 
 #include <bindings.h>
+
+#include "../../wnd_peer.h"
 #include <native.h>
 
 #include <X11/Xlib.h>
@@ -85,6 +87,7 @@ namespace linux::openlook
     {
         Panel_item text = XV_NULL;
         Panel_item choice = XV_NULL;
+        Menu menu = XV_NULL;
         bool suppress = false;
     };
 
@@ -111,6 +114,7 @@ namespace linux::openlook
         Panel host = XV_NULL;
         Panel first = XV_NULL;
         Panel second = XV_NULL;
+        bool dragging = false;
     };
 
     // Owns one asynchronous standard XView file chooser.
@@ -129,34 +133,34 @@ namespace linux::openlook
     extern native::bindings<Xv_opaque, native::wnd *> wnd_bindings;
     extern native::bindings<Xv_opaque, native::app_wnd *>
         frame_bindings;
-    extern native::bindings<native::app_wnd *, openlook_window *>
-        window_bindings;
-    extern native::bindings<native::wnd *, openlook_gpx *>
-        wnd_gpx_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::app_wnd *, openlook_window *> window_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, openlook_gpx *> wnd_gpx_bindings;
     extern native::bindings<std::uint32_t, openlook_font *>
         font_bindings;
     extern native::bindings<std::uint32_t, openlook_menu *>
         menu_bindings;
-    extern native::bindings<native::text_edit *, openlook_text_edit *>
-        text_edit_bindings;
-    extern native::bindings<native::combo_box *, openlook_combo_box *>
-        combo_box_bindings;
-    extern native::bindings<native::accordion *, openlook_collection *>
-        accordion_bindings;
-    extern native::bindings<native::tab_view *, openlook_collection *>
-        tab_view_bindings;
-    extern native::bindings<native::split_view *, openlook_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::icon_view *, openlook_collection *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, openlook_collection *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, openlook_collection *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, openlook_collection *>
-        code_edit_bindings;
-    extern native::bindings<native::canvas *, openlook_collection *>
-        canvas_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, openlook_text_edit *> text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, openlook_combo_box *> combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, openlook_collection *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, openlook_collection *> tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, openlook_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, openlook_collection *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, openlook_collection *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, openlook_collection *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, openlook_collection *> code_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::canvas *, openlook_collection *> canvas_bindings;
     extern native::bindings<Xv_Window, native::wnd *>
         collection_paint_bindings;
     extern native::bindings<

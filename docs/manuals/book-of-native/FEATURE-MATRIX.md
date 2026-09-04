@@ -35,37 +35,41 @@ Legend:
 | Build through the current platform workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
 | `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Exact-size file/directory PNG icons | Freedesktop + fallback (build tested) | Freedesktop + fallback (tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Shell + fallback (tested) | Tracker + fallback (build tested) | AppKit + fallback (tested) | WIP |
+| Typed special-directory detection | XDG/C++ (build tested) | XDG/C++ (tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | Known Folders (tested) | `find_directory` (build tested) | Foundation (tested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Central non-const lifecycle and visible-state contract | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Owner-blocking, focus-taking `modal_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Nested modal stack and `dialog_result` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
-| Standard `open_file_dialog` | Desktop/Xaw (tested) | Desktop helper (build tested), unavailable cancel (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
-| Standard `save_file_dialog` | Desktop/Xaw (tested) | Desktop helper (build tested), unavailable cancel (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
-| Standard `directory_dialog` | Desktop/Xaw (build tested) | Desktop helper (build tested) | Motif (build tested) | XView (build tested) | WINGs (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
-| Standard one-to-three-button `message_box` | Athena (build tested) | SDL (build tested) | Motif (build tested) | XView (build tested) | WINGs (build tested) | AES (build tested) | Win32 (build tested) | BAlert (build tested) | NSAlert (untested) | WIP |
+| Standard `open_file_dialog` | Desktop/Xaw (tested) | Themed C++ browser (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
+| Standard `save_file_dialog` | Desktop/Xaw (tested) | Themed C++ browser (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSSavePanel (untested) | WIP |
+| Standard `directory_dialog` | Desktop/Xaw (build tested) | Themed C++ browser (tested) | Motif (build tested) | XView (build tested) | WINGs (build tested) | AES (build tested) | Common Item Dialog (build tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
+| Standard one-to-three-button `message_box` | Athena (build tested) | Themed modal with embedded PNG badges (tested) | Motif (build tested) | XView (build tested) | WINGs alert with embedded PNG badges (tested) | AES (build tested) | Win32 (build tested) | BAlert (build tested) | NSAlert (untested) | WIP |
 | Paint event (`on_wnd_paint`) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse move | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse button press/release | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Mouse wheel | Yes (tested) | Yes (tested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Native/emulated `check` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
-| Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Arrow, I-beam, crosshair, and four resize mouse cursors | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Resize crosshair fallback (build tested) | Yes (build tested) | Yes (build tested) | Diagonal crosshair fallback (build tested) | WIP |
+| Native/emulated `check` control | Yes (build tested) | Yes (tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Native/emulated sibling-exclusive `radio` control | Yes (build tested) | Yes (tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Native/emulated single-selection `list` control | Yes (build tested) | Yes (build tested) | Yes (build tested) | XView (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | `list_box` compatibility name | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
-| Selection-only/editable `combo_box` | Athena (build tested) | Themed (build tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs composite (build tested) | Themed (build tested) | COMBOBOX (build tested) | BOptionPopUp (build tested) | NSComboBox (untested) | WIP |
-| Non-client rulers and status bars | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Selection-only/editable `combo_box` | Athena (build tested) | Themed (tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs composite (build tested) | Themed (build tested) | COMBOBOX (build tested) | BOptionPopUp composite (tested) | NSComboBox (untested) | WIP |
+| Non-client rulers and status bars | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Structural `panel` container | Xaw `Form` child (build tested) | Emulated nested region (tested) | `XmForm` child (build tested) | XView Panel (build tested) | WINGs flat frame (build tested) | GEM themed region (build tested) | Child HWND, control-host brush (build tested) | Child `BView` container (build tested) | Child `NSView` container (build tested) | WIP |
 | Paintable `canvas` surface | Athena drawable host (build tested) | Emulated nested region (tested) | Motif `XmDrawingArea` (build tested) | XView Panel with paint window (build tested) | WINGs flat frame (build tested) | GEM offset region (build tested) | Child HWND (build tested) | Child `BView` (build tested) | Child `NSView` (build tested) | WIP |
 | Canvas 32-bit content bounds, clamping, and themed scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
-| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Emulated directional host (build tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (build tested) | Win32 tab control and separator (build tested) | `BTabView` top/bottom, directional side host (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
+| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (build tested) | Win32 tab control and separator (build tested) | `BTabView` top/bottom, directional side host (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
 | Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline for both presentations (tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (build tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
 | Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (build tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
 | UTF-8 source `code_edit` with gutter and overlays | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (build tested) | Custom themed HWND (tested) | Native-look BView (tested) | Native-look NSView (tested) | WIP |
-| Two-pane `split_view` | Xaw `Paned` (tested) | Emulated host (build tested) | `XmPanedWindow` (build tested) | XView pane host (build tested) | `WMSplitView` (build tested) | GEM host (build tested) | Win32 splitter host (build tested) | `BSplitView` (tested) | `NSSplitView` (build tested) | WIP |
+| Two-pane `split_view` | Xaw `Paned` (tested) | Emulated host (tested) | `XmPanedWindow` (tested) | XView pane host (tested) | `WMSplitView` (build tested) | GEM host (build tested) | Win32 splitter host (build tested) | `BSplitView` (tested) | `NSSplitView` (build tested) | WIP |
 | Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | XView Selection (tested) | WINGs Selection (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Lossless RGBA image clipboard | PNG selection (build tested) | X11 PNG (build tested), fallback (tested) | PNG selection (build tested) | PNG selection (build tested) | PNG selection (build tested) | AES PNG plus standard IMG scrap (build tested) | PNG/DIBV5 (build tested) | PNG MIME (build tested) | PNG/TIFF (untested) | WIP |
-| Native/emulated single-line `text_edit` | Athena (build tested) | Yes (tested) | Motif (build tested) | XView Panel (tested) | WMTextField (tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
+| Native/emulated single-line `text_edit` | Athena (build tested) | Shared selection palette and bounds-clamped scrolling (tested) | Motif (build tested) | XView Panel (tested) | WMTextField (tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextField (untested) | WIP |
 | Native/emulated multiline `text_edit` | Athena (build tested) | Yes (build tested) | Motif (build tested) | XView Panel (tested) | WMText (build tested) | Yes (build tested) | EDIT (build tested) | BTextView (build tested) | NSTextView (untested) | WIP |
 | Live complete-value validation | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Direct and keyboard copy/cut/paste | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
@@ -96,7 +100,8 @@ Legend:
 | JPEG file load/save and memory decode/encode | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
 | `theme` factory, metrics, palette, and state preservation | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed button drawing | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
-| Themed check/radio drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Themed check/radio drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Staged control, window, panel, and splitter owner drawing | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (build tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed complete-list and list-item drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Themed editable-text frame drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (build tested) | WINGs (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
@@ -127,15 +132,23 @@ Legend:
 - `open_file_dialog`, `save_file_dialog`, and `directory_dialog` adapt every native chooser to the
   same `modal_wnd` session and `dialog_result` contract. Windows, AppKit,
   Haiku, Motif, XView, WINGs, and GEM use their standard panels. Athena
-  prefers Zenity or KDialog and falls back to an Xaw browser. SDL2 delegates
-  to the same desktop helpers and completes as cancelled when neither is
-  installed.
+  prefers Zenity or KDialog and falls back to an Xaw browser. SDL2 consistently
+  uses its compact library-owned themed C++ filesystem browser for open, save,
+  and folder selection. It provides icon-backed Places and Name/Type/Size
+  tables, icon-only history navigation, a breadcrumb that toggles direct path
+  editing on double click, and a continuously draggable scrollbar without pagination.
+  Its combo popups retain pointer
+  priority when they overlap another input control, open from either field
+  region, and track a hot row as the pointer moves.
 - `message_box` maps typed button sets and semantic icons to each backend's
-  standard alert API. Rulers and status bars are host-owned non-client strips
+  standard alert presentation. SDL2 uses a library-themed modal alert and the
+  other backends use their toolkit alert API. SDL2 and Window Maker share one
+  attributed, embedded PNG badge set with consistent colored silhouettes and
+  white marks. Rulers and status bars are host-owned non-client strips
   that consume `wnd::get_client_bounds()`. Windows maps status parts to
   `STATUSCLASSNAME`; other current backends paint their active theme roles.
-- The Xaw fallback, Motif, XView, WINGs, and GEM file selection are
-  single-path.
+- The Xaw fallback, SDL2 browser, Motif, XView, WINGs, and GEM file selection
+  are single-path.
   AppKit and Haiku preserve their native overwrite safeguards. These older or
   mandatory native behaviors are conservative reductions of optional public
   settings.
@@ -149,7 +162,10 @@ Legend:
   ListView with owner data for virtual models, macOS uses `NSTableView`, and
   OpenMotif uses `XmContainer` detail view for explicit materialized mode.
   Other toolkit ports request only viewport rows through their native-look
-  table hosts.
+  table hosts. Every adapter fills unused width with the final visible column
+  by default; library-painted hosts also fill the header corner above the
+  vertical scrollbar, keep every final-page row complete, and give arrow
+  buttons and gripped thumbs matching raised relief.
 - `code_edit` keeps UTF-8 source, line indexes, undo records, style runs,
   diagnostics, and markers in the portable document. Every backend hosts the
   library-painted gutter and text presentation with its own theme palette and
@@ -157,8 +173,11 @@ Legend:
   back to that document. Lexers, completion providers, debuggers, and optional
   session sidecars remain application-owned.
 - Accordion and custom icon-grid backends compose reusable theme surfaces,
-  selection, focus, disclosure, separator, and scrollbar parts. They do not
-  copy Windows or macOS styling onto another toolkit.
+  selection, focus, compact disclosure, separator, and classic scrollbar
+  parts. Painted collection scrollbars use the same arrows, trough, and
+  gripped thumb as painted tables. They do not copy Windows or macOS styling
+  onto another toolkit. Accordion and classic tree outer borders default on
+  and can be disabled explicitly.
 - Window Maker uses WINGs `WBTToggle`/`WBTRadio` buttons and `WMList`. The
   list's supported user-draw hook applies the same dark selection role as
   Window Maker collection and table controls instead of WINGs' stock white

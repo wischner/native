@@ -410,6 +410,9 @@ namespace native
 {
     void tree_view::apply_items() {
         auto &binding = binding_for(*this);
+        [binding.scroll setBorderType:get_border_visible()
+                                          ? NSBezelBorder
+                                          : NSNoBorder];
         [binding.outline setIndentationPerLevel:
                              std::max<int>(16, _indent_width)];
         rebuild(*this);
@@ -457,10 +460,8 @@ namespace native
                             [binding.scroll contentView]];
     }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tree_view *>(this);
+    void tree_view::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -472,7 +473,9 @@ namespace native
                                      _bounds.d.h)];
         [scroll setHasVerticalScroller:YES];
         [scroll setAutohidesScrollers:YES];
-        [scroll setBorderType:NSBezelBorder];
+        [scroll setBorderType:get_border_visible()
+                                  ? NSBezelBorder
+                                  : NSNoBorder];
         native_tree_outline_view *outline =
             [[native_tree_outline_view alloc]
                 initWithFrame:NSMakeRect(0,
@@ -510,31 +513,28 @@ namespace native
         binding->outline = outline;
         binding->adapter = adapter;
         mac::tree_view_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         [outline setRowHeight:std::max<int>(
                                   _row_height, _icon_size.h + 2)];
         self->apply_items();
         self->apply_selection();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *binding = mac::tree_view_bindings.object_from_handle(
-            const_cast<tree_view *>(this));
+            this);
         if (!_created || !binding || !binding->scroll)
             throw std::runtime_error(
                 "macOS: tree_view is not created.");
         [binding->scroll setHidden:NO];
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *binding =
             mac::tree_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->outline setDataSource:nil];
             [binding->outline setDelegate:nil];

@@ -16,6 +16,7 @@
 
 #include "file_dialog_common.h"
 
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -153,27 +154,19 @@ namespace
     // Split an initial file path into the dialog folder and leaf name.
     void set_initial_path(IFileDialog *panel,
                           const native::file_dialog &dialog) {
-        const std::wstring path =
-            windows::utf8_to_wide(dialog.get_initial_path());
+        const std::filesystem::path path = dialog.get_initial_path();
         if (path.empty())
             return;
 
-        const DWORD attributes = GetFileAttributesW(path.c_str());
-        if (attributes != INVALID_FILE_ATTRIBUTES &&
-            (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
-            set_folder(panel, path);
+        std::error_code error;
+        if (std::filesystem::is_directory(path, error)) {
+            set_folder(panel, path.wstring());
             return;
         }
-
-        const std::size_t separator = path.find_last_of(L"/\\");
-        if (separator == std::wstring::npos) {
-            panel->SetFileName(path.c_str());
-            return;
-        }
-
-        set_folder(panel, path.substr(0, separator));
-        if (separator + 1 < path.size())
-            panel->SetFileName(path.substr(separator + 1).c_str());
+        if (!path.parent_path().empty())
+            set_folder(panel, path.parent_path().wstring());
+        if (!path.filename().empty())
+            panel->SetFileName(path.filename().c_str());
     }
 
     // Apply portable state and caller-specific COM dialog options.
@@ -198,8 +191,8 @@ namespace
         set_initial_path(panel, dialog);
     }
 
-    // Decode one shell item as a UTF-8 filesystem path.
-    std::string path_from_item(IShellItem *item) {
+    // Decode one shell item as a standard filesystem path.
+    std::filesystem::path path_from_item(IShellItem *item) {
         if (!item)
             return {};
 
@@ -209,7 +202,7 @@ namespace
         if (FAILED(result) || !value)
             return {};
 
-        std::string path = windows::wide_to_utf8(value);
+        std::filesystem::path path(value);
         CoTaskMemFree(value);
         return path;
     }
@@ -263,7 +256,8 @@ namespace windows
             com_ptr<IShellItem> item;
             require_success(items.get()->GetItemAt(index, item.put()),
                             "Windows: Failed to read a selected file.");
-            const std::string path = path_from_item(item.get());
+            const std::filesystem::path path =
+                path_from_item(item.get());
             if (!path.empty())
                 response.paths.push_back(path);
         }
@@ -316,7 +310,7 @@ namespace windows
         com_ptr<IShellItem> item;
         require_success(panel.get()->GetResult(item.put()),
                         "Windows: Failed to read the selected file.");
-        const std::string path = path_from_item(item.get());
+        const std::filesystem::path path = path_from_item(item.get());
         if (!path.empty())
             response.paths.push_back(path);
         response.accepted = !response.paths.empty();
@@ -352,7 +346,8 @@ namespace windows
             com_ptr<IShellItem> item;
             require_success(items.get()->GetItemAt(index, item.put()),
                             "Windows: Failed to read a selected folder.");
-            const std::string path = path_from_item(item.get());
+            const std::filesystem::path path =
+                path_from_item(item.get());
             if (!path.empty())
                 response.paths.push_back(path);
         }
@@ -363,5 +358,5 @@ namespace windows
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {}
+    void file_dialog::cancel_native_dialog() {}
 } // namespace native

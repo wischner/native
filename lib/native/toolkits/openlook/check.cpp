@@ -60,10 +60,8 @@ namespace native
         xv_set(item, PANEL_VALUE, _checked ? 1 : 0, nullptr);
     }
 
-    void check::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<check *>(this);
+    void check::create_native() {
+        auto *self = this;
         Panel panel = linux::openlook::parent_panel(self);
         Panel_item item = static_cast<Panel_item>(xv_create(
             panel,
@@ -93,12 +91,10 @@ namespace native
                 "OpenLook/XView: failed to create check.");
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void check::show() const {
-        Panel_item item = item_for(const_cast<check *>(this));
+    void check::show_native() {
+        Panel_item item = item_for(this);
         if (!_created || !item) {
             throw std::runtime_error(
                 "OpenLook/XView: check is not created.");
@@ -106,12 +102,11 @@ namespace native
         xv_set(item, XV_SHOW, TRUE, nullptr);
     }
 
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         Panel_item item = item_for(self);
-        self->on_native_destroy();
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
             xv_destroy_safe(item);

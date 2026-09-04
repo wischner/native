@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "menu.h"
+#include "theme.h"
 #include "wnd.h"
 
 namespace native
@@ -72,14 +73,20 @@ namespace native
         // Dispatch a command selected from the native menu.
         virtual void on_native_menu(int command);
 
+        // Paint the default window background before application handlers.
+        void on_native_paint(wnd_paint_event event) override;
+
+    protected:
         // Create the backend application window.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend application window.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend application window.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Menu model attached when the application window is created.
         main_menu menu;
@@ -88,6 +95,13 @@ namespace native
         signal<int> on_menu;
 
     protected:
+        // Draw the application window's complete client background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
         // Apply the cached title to a created backend window.
         virtual void apply_title();
 
@@ -112,7 +126,7 @@ namespace native
         void end_modal(modal_wnd *window);
 
         // Destroy native resources of independent owned windows first.
-        void destroy_owned_windows() const;
+        void destroy_owned_windows();
 
         // Reject native creation before an assigned owner exists.
         void validate_owner_created() const;

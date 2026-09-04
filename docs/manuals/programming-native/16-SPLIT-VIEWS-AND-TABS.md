@@ -20,7 +20,11 @@ split.set_parent(&window);
 
 `horizontal` places panes left and right; `vertical` places them top and
 bottom. `set_ratio()` is programmatic and signal-silent. A user drag updates
-the cached ratio and emits `on_ratio_change`.
+the cached ratio and emits `on_ratio_change`. The split view automatically
+uses the corresponding horizontal- or vertical-resize cursor over its
+divider; applications do not need to set it themselves. Portable dividers use
+the same borderless panel color as their host and retain only a compact center
+grip, so the gutter reads as part of the window rather than a framed control.
 
 The implementation uses Xaw `Paned`, `BSplitView`, `XmPanedWindow`,
 `WMSplitView`, and `NSSplitView` on their respective backends. Other systems
@@ -28,8 +32,9 @@ use their normal native child-host mechanism and the portable divider
 interaction.
 
 `tab_view` borrows one child window per item and creates only the selected
-page. Add pages with `add_item()`, select with `set_selected_index()`, and
-listen to `on_selection_change` for user-originated changes. Native tab
+page. Add pages with `add_item()` or append-only `operator<<`, select with
+`set_selected_index()`, and listen to `on_selection_change` for
+user-originated changes. Native tab
 backends include `BTabView`, `XmNotebook`, `WMTabView`, `NSTabView`, and the
 Win32 tab common control.
 
@@ -41,8 +46,8 @@ before or after native creation:
 native::tab_view tabs(20, 20, 420, 260);
 tabs.set_tab_placement(native::tab_placement::bottom)
     .set_page_frame_visible(false);
-tabs.add_item("General", general_page);
-tabs.add_item("Advanced", advanced_page);
+tabs << native::tab_page("General", general_page)
+     << native::tab_page("Advanced", advanced_page);
 ```
 
 Left and right tabs rotate their labels: left labels read bottom-to-top and
@@ -65,7 +70,10 @@ page is flush to the control's cross-axis edges and a single separator spans
 the complete boundary between the page and the tab labels. The getter is
 `get_page_frame_visible()`. The setter works before or after `create()`,
 preserves items, selection, and borrowed page contents, and does not emit a
-selection-change signal.
+selection-change signal. Painted tabs overlap the adjoining page or separator
+by one device pixel, so every placement meets its page without a visible gap.
+With the frame enabled, the first tab aligns with the page frame on all four
+placements; strip-only tabs remain flush with the control edge.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.

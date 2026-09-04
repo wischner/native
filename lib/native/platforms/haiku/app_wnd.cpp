@@ -32,10 +32,7 @@ namespace native
         window->Unlock();
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         if (!haiku::global_app)
             haiku::global_app =
@@ -53,7 +50,7 @@ namespace native
                                      ? B_MODAL_SUBSET_WINDOW_FEEL
                                      : B_NORMAL_WINDOW_FEEL;
         auto *window = new haiku::native_window(
-            const_cast<app_wnd *>(this),
+            this,
             frame,
             _title.c_str(),
             look,
@@ -67,23 +64,21 @@ namespace native
         }
 
         if (!haiku::wnd_bindings.handle_from_object(
-                const_cast<app_wnd *>(this)))
+                this))
             throw std::runtime_error(
                 "Haiku: failed to create native window.");
 
-        _created = true;
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_native_create();
+        this->menu.attach(
+            *this);
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "Haiku: Cannot show window before it is created.");
 
         BWindow *win = haiku::wnd_bindings.handle_from_object(
-            const_cast<app_wnd *>(this));
+            this);
         if (!win)
             throw std::runtime_error(
                 "Haiku: Missing BWindow binding for app_wnd.");
@@ -94,17 +89,16 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         BWindow *win = haiku::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
         BWindow *owner_window =
             owner ? haiku::wnd_bindings.handle_from_object(owner)
                   : nullptr;
-        self->on_native_destroy();
 
         if (win) {
             haiku::wnd_bindings.unregister_by_object(self);

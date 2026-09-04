@@ -13,6 +13,8 @@ Connect to `on_wnd_create` and perform these steps for each child control:
 3. Make the control visible with `show()`.
 
 The control's signals can be connected before its backend resource exists.
+Lifecycle operations are intentionally non-`const`: creating, showing,
+invalidating, and destroying a control mutate its portable and native state.
 
 ```cpp
 //

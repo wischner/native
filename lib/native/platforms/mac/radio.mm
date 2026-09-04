@@ -90,10 +90,8 @@ namespace native
         [b->button setState:_selected ? NSControlStateValueOn
                                       : NSControlStateValueOff];
     }
-    void radio::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<radio *>(this);
+    void radio::create_native() {
+        auto *self = this;
         native_radio_view *b = [[native_radio_view alloc]
             initWithFrame:NSMakeRect(_bounds.p.x,
                                      _bounds.p.y,
@@ -113,22 +111,19 @@ namespace native
         h->button = b;
         h->target = t;
         mac::radio_bindings.register_pair(self, h);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         auto *b = mac::radio_bindings.object_from_handle(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !b || !b->button)
             throw std::runtime_error("macOS: radio is not created.");
         [b->button setHidden:NO];
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         auto *b = mac::radio_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             [b->button removeFromSuperview];
             [b->button release];

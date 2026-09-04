@@ -48,12 +48,13 @@ namespace native
         SDL_SetWindowTitle(window, _title.c_str());
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         const bool initialize_runtime = linux::sdl2::windows.empty();
+        // SDL normally consumes the click which activates an unfocused
+        // window. Native controls are expected to activate on that same
+        // click, just as they do on the other desktop backends.
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
         if (initialize_runtime &&
             SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
             throw std::runtime_error(
@@ -102,7 +103,7 @@ namespace native
         if (!linux::sdl2::main_window)
             linux::sdl2::main_window = window;
 
-        auto *self = const_cast<app_wnd *>(this);
+        auto *self = this;
         int actual_x = 0;
         int actual_y = 0;
         SDL_GetWindowPosition(window, &actual_x, &actual_y);
@@ -124,7 +125,6 @@ namespace native
         }
 #endif
 
-        _created = true;
 
         self->menu.attach(*self);
 
@@ -155,21 +155,24 @@ namespace native
                  static_cast<dim>(
                      std::max(1, window_height - menu_height))));
 
-        self->on_native_create();
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "SDL2: Cannot show window before it is created.");
 
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(
-                const_cast<app_wnd *>(this));
+                this);
         if (!window)
             throw std::runtime_error(
                 "SDL2: Missing SDL_Window binding for app_wnd.");
 
+        // Present the complete first frame while the shell is still hidden;
+        // otherwise compositors display SDL's initial black backbuffer.
+        invalidate();
+        linux::sdl2::render_window_if_needed(this);
         SDL_ShowWindow(window);
         int current_x = 0;
         int current_y = 0;
@@ -180,7 +183,7 @@ namespace native
                 window, current, get_dimensions());
         if (position.x != current.x || position.y != current.y) {
             SDL_SetWindowPosition(window, position.x, position.y);
-            const_cast<app_wnd *>(this)->on_native_move(position);
+            this->on_native_move(position);
         }
         if (get_modal()) {
             SDL_RaiseWindow(window);
@@ -188,19 +191,22 @@ namespace native
             SDL_SetWindowInputFocus(window);
 #endif
         }
-        invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
-        self->on_native_destroy();
         if (window) {
+            // SDL renderers must be released before their SDL_Window. The
+            // core destroy path normally releases _gpx after this hook,
+            // which is too late for SDL's ownership order.
+            delete _gpx;
+            _gpx = nullptr;
             SDL_DestroyWindow(window);
             linux::sdl2::wnd_bindings.unregister_by_object(self);
         }
@@ -212,29 +218,16 @@ namespace native
                         self),
             linux::sdl2::windows.end());
 
-        if (get_modal() && owner) {
+        if (owner) {
             app_wnd *focus = owner->get_input_enabled()
                                  ? owner
                                  : owner->get_active_modal();
-            SDL_Window *focus_window =
-                focus ? linux::sdl2::wnd_bindings
-                            .handle_from_object(focus)
-                      : nullptr;
-            if (focus_window)
-                SDL_RaiseWindow(focus_window);
-#if SDL_VERSION_ATLEAST(2, 0, 5)
-            if (focus_window)
-                SDL_SetWindowInputFocus(focus_window);
-#endif
+            linux::sdl2::restore_window_focus(focus);
         }
 
-        if (!linux::sdl2::windows.empty())
-            return;
-        // SDL_QuitSubSystem leaves process-global platform services
-        // (including SDL's Linux DBus connection) alive. The last
-        // Native window owns the complete SDL runtime, so release it
-        // completely and allow a later window to initialize it again.
-        SDL_Quit();
+        // app::main_loop owns SDL shutdown. A child/modeless window may be
+        // the last entry briefly while callbacks are still unwinding, and
+        // process-wide teardown here invalidates cursors and event state.
     }
 
 } // namespace native

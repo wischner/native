@@ -57,21 +57,52 @@ namespace native
         // changes.
         virtual void on_native_selected();
 
+    protected:
         // Create the backend radio resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend radio resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend radio resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits selection changes caused by a user action in the group.
         signal<bool> on_change;
 
     protected:
-        // Draw the complete radio using the active native theme.
+        // Dispatch the complete staged radio-control contract.
         virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the control background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the radio indicator and its selected state.
+        virtual void draw_indicator(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the radio label.
+        virtual void draw_text(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,

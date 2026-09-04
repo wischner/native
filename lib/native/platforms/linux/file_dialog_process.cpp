@@ -9,6 +9,7 @@
 #include "file_dialog_process.h"
 
 #include <cerrno>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <sys/types.h>
@@ -19,6 +20,8 @@
 
 namespace
 {
+    namespace fs = std::filesystem;
+
     // Stores one child-process exit status and its standard output.
     struct process_result
     {
@@ -89,8 +92,9 @@ namespace
     }
 
     // Split newline-separated chooser output into non-empty paths.
-    std::vector<std::string> split_paths(std::string output) {
-        std::vector<std::string> paths;
+    std::vector<std::filesystem::path> split_paths(
+        std::string output) {
+        std::vector<std::filesystem::path> paths;
         std::size_t begin = 0;
         while (begin < output.size()) {
             const std::size_t end = output.find('\n', begin);
@@ -101,7 +105,7 @@ namespace
             if (!path.empty() && path.back() == '\r')
                 path.pop_back();
             if (!path.empty())
-                paths.push_back(std::move(path));
+                paths.emplace_back(std::move(path));
             if (end == std::string::npos)
                 break;
             begin = end + 1;
@@ -113,15 +117,12 @@ namespace
     std::string initial_filename(
         const native::file_dialog &dialog,
         const std::string &suggested_name) {
-        std::string value = dialog.get_initial_path();
+        std::string value = dialog.get_initial_path().string();
         if (suggested_name.empty())
             return value;
         if (value.empty())
             return suggested_name;
-        if (value.back() != '/')
-            value.push_back('/');
-        value += suggested_name;
-        return value;
+        return (fs::path(value) / suggested_name).string();
     }
 
     // Encode one portable filter for Zenity's command line.
@@ -274,21 +275,16 @@ namespace linux
         return run_kdialog(dialog, true, false, suggested_name, false);
     }
 
-    std::string add_default_extension(
-        const std::string &path, const std::string &extension) {
+    std::filesystem::path add_default_extension(
+        const std::filesystem::path &path,
+        const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1))
+        fs::path result(path);
+        if (result.has_extension())
             return path;
-
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
         return result;
     }
 } // namespace linux

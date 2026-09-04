@@ -66,11 +66,8 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         HWND parent_hwnd = resolve_parent(self, "panel");
         register_panel_class();
 
@@ -92,37 +89,31 @@ namespace native
             throw std::runtime_error(
                 "Windows: failed to create panel host.");
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<panel *>(this));
+            this);
         if (!_created || !hwnd)
             throw std::runtime_error("Windows: panel is not created.");
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (hwnd) {
             DestroyWindow(hwnd);
             windows::wnd_bindings.unregister_by_handle(hwnd);
         }
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         HWND parent_hwnd = resolve_parent(self, "canvas");
         windows::register_window_class();
 
@@ -142,28 +133,25 @@ namespace native
             throw std::runtime_error(
                 "Windows: failed to create canvas surface.");
 
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !hwnd)
             throw std::runtime_error("Windows: canvas is not created.");
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (hwnd) {
             DestroyWindow(hwnd);
             windows::wnd_bindings.unregister_by_handle(hwnd);

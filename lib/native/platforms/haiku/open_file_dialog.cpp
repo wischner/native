@@ -12,19 +12,19 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
         try {
             haiku::show_file_dialog(
-                *const_cast<open_file_dialog *>(this),
+                *this,
                 false,
                 get_allow_multiple(),
                 std::string(),
                 std::string());
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

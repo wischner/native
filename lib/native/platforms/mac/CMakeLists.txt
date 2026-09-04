@@ -21,6 +21,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/image_codec.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/message_box.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/button.mm

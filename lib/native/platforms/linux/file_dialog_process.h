@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,7 @@ namespace linux
     {
         file_dialog_outcome outcome =
             file_dialog_outcome::unavailable;
-        std::vector<std::string> paths;
+        std::vector<std::filesystem::path> paths;
     };
 
     // Show a desktop open chooser through Zenity or KDialog.
@@ -46,6 +47,7 @@ namespace linux
         bool confirm_overwrite);
 
     // Append an extension when a selected filename has no suffix.
-    std::string add_default_extension(
-        const std::string &path, const std::string &extension);
+    std::filesystem::path add_default_extension(
+        const std::filesystem::path &path,
+        const std::string &extension);
 } // namespace linux

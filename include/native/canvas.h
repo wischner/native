@@ -10,9 +10,8 @@
 
 #include <cstdint>
 
+#include "custom_control.h"
 #include "scrollbar.h"
-#include "theme.h"
-#include "wnd.h"
 
 namespace native
 {
@@ -33,7 +32,7 @@ namespace native
     };
 
     // Provides a concrete child window for application-defined painting.
-    class canvas : public wnd
+    class canvas : public custom_control
     {
     public:
         // Construct a canvas from scalar bounds.
@@ -90,14 +89,17 @@ namespace native
         void on_native_mouse_click(mouse_event event) override;
         void on_native_mouse_wheel(mouse_wheel_event event) override;
 
+    protected:
         // Create the backend child drawing surface.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend child drawing surface.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show an already-created canvas.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the effective position after a user-originated scroll.
         signal<canvas_scroll_position> on_scroll;
@@ -110,7 +112,7 @@ namespace native
         void on_bounds_changed() override;
 
         // Refresh cached scrollbar extents from the active theme.
-        virtual void synchronize_theme_metrics();
+        void synchronize_theme_metrics() override;
 
         // Draw one scrollbar track and thumb through the active theme.
         virtual void draw_scrollbar(gpx &graphics,

@@ -99,16 +99,19 @@ namespace native
         virtual bool paste();
 
         // Select the complete editor value.
-        virtual void select_all() const;
+        virtual void select_all();
 
+    protected:
         // Create the backend text-edit resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend text-edit resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend text-edit resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits validated text after a user-originated change.
         signal<std::string> on_change;
@@ -119,8 +122,29 @@ namespace native
         bool _read_only = false;
         text_validator _validator;
 
-        // Draw the complete editor frame using the native theme.
+        // Dispatch the complete staged text-edit frame contract.
         virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the editable content background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the editable content border.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,
@@ -139,7 +163,7 @@ namespace native
         virtual bool replace_selected_text(const std::string &text);
 
         // Select the complete native control value.
-        virtual void select_all_native() const;
+        virtual void select_all_native();
 
     private:
         friend class detail::control_render_access;

@@ -92,9 +92,7 @@ namespace native
         TabCtrl_SetCurSel(tabs, get_selected_index());
     }
 
-    void tab_view::create() const {
-        if (_created)
-            return;
+    void tab_view::create_native() {
         wnd *parent = get_parent();
         HWND parent_window = parent
             ? windows::wnd_bindings.handle_from_object(parent)
@@ -103,7 +101,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: tab_view requires a created parent.");
 
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         HWND tabs = CreateWindowExW(
             0,
             WC_TABCONTROLW,
@@ -125,16 +123,14 @@ namespace native
                      reinterpret_cast<WPARAM>(windows::control_font()),
                      TRUE);
         windows::wnd_bindings.register_pair(tabs, self);
-        _created = true;
 
         self->apply_items();
         self->refresh_contents();
         self->apply_selected_index();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
-        HWND tabs = handle(const_cast<tab_view *>(this));
+    void tab_view::show_native() {
+        HWND tabs = handle(this);
         if (!_created || !tabs)
             throw std::runtime_error("Windows: tab_view is not created.");
         ShowWindow(tabs, SW_SHOW);
@@ -148,12 +144,11 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         HWND tabs = handle(self);
-        self->on_native_destroy();
         if (tabs) {
             windows::wnd_bindings.unregister_by_handle(tabs);
             DestroyWindow(tabs);

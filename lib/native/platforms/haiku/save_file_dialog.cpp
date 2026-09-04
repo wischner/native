@@ -12,19 +12,19 @@
 
 namespace native
 {
-    void save_file_dialog::show() const {
+    void save_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
         try {
             haiku::show_file_dialog(
-                *const_cast<save_file_dialog *>(this),
+                *this,
                 true,
                 false,
                 get_suggested_name(),
                 get_default_extension());
         } catch (...) {
-            const_cast<save_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

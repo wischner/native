@@ -52,10 +52,7 @@ namespace native
         SetWindowTextW(hwnd, wide.c_str());
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         windows::register_window_class();
 
@@ -91,27 +88,25 @@ namespace native
                                     owner_hwnd,
                                     nullptr,
                                     GetModuleHandle(nullptr),
-                                    const_cast<app_wnd *>(this));
+                                    this);
 
         if (!hwnd)
             throw std::runtime_error(
                 "Windows: Failed to create window.");
 
         windows::wnd_bindings.register_pair(
-            hwnd, const_cast<app_wnd *>(this));
-        _created = true;
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_native_create();
+            hwnd, this);
+        this->menu.attach(
+            *this);
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "Windows: Cannot show window before it is created.");
 
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<app_wnd *>(this));
+            this);
         if (!hwnd)
             throw std::runtime_error(
                 "Windows: Missing HWND binding for app_wnd.");
@@ -132,18 +127,17 @@ namespace native
         UpdateWindow(hwnd);
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
         HWND owner_hwnd = owner
                               ? windows::wnd_bindings
                                     .handle_from_object(owner)
                               : nullptr;
-        self->on_native_destroy();
 
         if (hwnd) {
             DestroyWindow(hwnd);

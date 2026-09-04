@@ -10,7 +10,9 @@ The base class owns or records only portable state:
 
 - Cached bounds.
 - A non-owning parent and non-owning child list.
+- A non-owning list of attached non-client edge elements.
 - An owned layout manager.
+- A cached system mouse cursor.
 - Access to a lazily created graphics abstraction.
 - Lifecycle, geometry, paint, and input signals.
 - Invalidation and lifecycle entry points.
@@ -21,6 +23,13 @@ adds its text and activation signal. `check` and `radio` add selection state,
 while `list` adds an item model and single-selection signal. `text_edit` adds
 single-line or multiline UTF-8 editing, read-only state, live validation, and
 selection-aware clipboard commands.
+
+Painted controls share two public intermediate bases. `custom_control` owns
+focus state and active-theme synchronization. `collection_view` identifies
+painted item collections and adds an optional pixel-based vertical offset;
+icon and tree views use that offset, while tables retain row-based scrolling
+and accordions retain their disclosure layout. The bases carry no toolkit
+types and do not erase each control's specialized navigation contract.
 
 `owned_wnd` adds a separate top-level owner relationship. Its public concrete
 bases are `modeless_wnd` and `modal_wnd`; neither is a control or a layout
@@ -36,8 +45,9 @@ GEMix integrate equivalent controls into their toolkit-owned drawing and
 input paths.
 
 Native window handles, widgets, views, renderers, device contexts, and toolkit
-callbacks never belong in these public classes. Backends keep them in private
-bindings and graphics caches.
+callbacks never belong in these public classes. Each created window's opaque
+peer owns its backend state; callback-facing handle recovery remains in
+private bindings.
 
 ## Window lifecycle
 
@@ -56,23 +66,39 @@ before a backend is involved.
 `create()` must be idempotent. On its first successful call it:
 
 1. Verifies lifecycle prerequisites.
-2. Creates the native resource.
-3. Registers native bindings.
-4. Applies every cached property.
-5. Marks the object as created.
+2. Marks the object as being in its creation transaction.
+3. Calls the backend's protected `create_native()` hook, which creates the
+   native resource and registers bindings.
+4. Applies the cached cursor to the new resource.
+5. Leaves the object marked as created.
 6. Emits `on_wnd_create` exactly once for that creation.
+
+The public lifecycle functions are non-virtual and non-`const`. Derived
+controls implement only `create_native()`, `show_native()`, and
+`destroy_native()`; they do not repeat the idempotence or portable event
+policy. If creation throws, the base restores the uncreated state.
 
 A repeated call while the resource exists does nothing. If a destroyed object
 supports creation again, the next successful creation is a new lifecycle and
 may emit one new create event.
 
-`show()` requires a created resource. It exposes that existing resource; it
-does not substitute for creation.
+`show()` requires a created resource. It exposes that existing resource,
+makes `get_visible()` true after the backend hook succeeds, and does not
+substitute for creation. It reapplies the cursor because some toolkits only
+create the resource that owns a cursor when the window is realized for show.
+Synchronous system panels are the exception to the ordinary lasting-visible
+transition: they can finish and destroy themselves inside `show_native()`.
+The common `show()` path detects that completion, leaves visible state false,
+and does not apply a cursor to the already-completed resource.
 
 `destroy()` is also idempotent. It destroys child resources as required,
 releases graphics resources, removes bindings, destroys the native resource,
 and clears the created state. Destruction initiated by a toolkit must converge
 on the same shared state through `on_native_destroy()`.
+Resource dependency order is part of the backend hook: SDL releases its
+renderer before `SDL_DestroyWindow`, while the application loop retains
+ownership of process-wide cursor and video shutdown until all callbacks have
+unwound.
 
 The same rule applies to a window-manager close command. A backend must not
 leave the portable object marked as created after its native window has been
@@ -149,6 +175,14 @@ owned windows, but the portable owner graph safely detaches surviving objects
 in either destruction order. Destroying the owner's native resource destroys
 owned native resources first.
 
+A modeless window remains in the ordinary application event dispatcher, so its
+buttons, lists, editors, and other children are as interactive as controls in
+the main window. Closing any owned window releases capture and restores focus
+to the previous eligible application window; the next click is an ordinary
+control action, not a focus-only click. SDL requests focus click-through and,
+for window managers that still consume an activation press while retaining its
+release, reconstructs that one transition for the control under the pointer.
+
 Backends express this relationship with their native concept: an owned Win32
 top-level window, an Xt transient shell, an AppKit child window, a Haiku
 floating subset, a WINGs top-level window tracked through the portable owner
@@ -198,6 +232,9 @@ dialogs are modal windows under this model. A backend may present an operating
 system panel instead of a drawable Native window, but it must adapt that panel
 to the same owner, modal-session, focus restoration, result, and close-signal
 contract. Native dialogs do not get a separate nested portable event loop.
+An SDL synchronous alert or chooser may run a backend-local wait while its
+public call is on the stack, but that wait must keep painting and routing the
+active dialog and restore its owner before it returns.
 
 ## File open and save dialogs
 
@@ -218,7 +255,7 @@ dialog.set_filters({
 dialog.set_allow_multiple(true);
 dialog.on_modal_close.connect([&](native::dialog_result result) {
     if (result == native::dialog_result::accepted) {
-        for (const std::string &path : dialog.get_paths())
+        for (const std::filesystem::path &path : dialog.get_paths())
             open_document(path);
     }
     return false;
@@ -229,8 +266,8 @@ dialog.show();
 
 `get_path()` returns the first selected path and is convenient for the common
 single-file case. `get_paths()` preserves chooser order. A cancelled dialog
-has no selected paths. Paths are UTF-8 strings; `file_filter` patterns use the
-familiar forms such as `*.png` and `*.txt`.
+has no selected paths. Paths use `std::filesystem::path`; `file_filter`
+patterns remain text in familiar forms such as `*.png` and `*.txt`.
 
 A save dialog adds the filename-specific options:
 
@@ -258,12 +295,11 @@ their native event dispatch. Both forms produce the same signal and result.
 The backend selection follows native facilities: Windows Common Item Dialogs,
 AppKit `NSOpenPanel`/`NSSavePanel`, Haiku `BFilePanel`, Motif
 `XmFileSelectionBox`, XView `File_chooser`, WINGs
-`WMOpenPanel`/`WMSavePanel`, and GEM AES `fsel_input`. Athena and SDL2 do not
-include a standard chooser, so those Linux backends first invoke Zenity or
-KDialog directly without a shell. If neither is installed, X11 presents a
-browser made entirely from Athena widgets. SDL2 has no native widget set for
-a compliant fallback, so it completes the session as cancelled and restores
-its owner. Runtime chooser absence is not reported as an exception.
+`WMOpenPanel`/`WMSavePanel`, and GEM AES `fsel_input`. Athena does not include
+a standard chooser, so it first invokes Zenity or KDialog directly without a
+shell and otherwise presents a browser made entirely from Athena widgets.
+SDL2 consistently presents Native's themed C++ filesystem browser for open, save, and
+folder modes, then restores its owner after either result.
 
 Some selectors expose fewer options. The Xaw fallback, Motif, XView, WINGs,
 and GEM return one path even when multiple selection was requested. AppKit
@@ -286,6 +322,38 @@ When the user or toolkit resizes a window, the backend calls
 sending the same resize request back to the toolkit. Native move notifications
 follow the same no-echo rule.
 
+Keyboard focus is also a window-level native notification. A backend calls
+`on_native_focus()` on the `wnd` it already recovered from the event instead
+of enumerating focusable subclasses. Plain windows ignore it; painted controls
+cache and repaint the transition through `custom_control`.
+
+## Mouse cursors
+
+`mouse_cursor` names seven portable pointer shapes: `arrow` for ordinary
+pointing, `ibeam` for text, `crosshair` for precision drawing, horizontal and
+vertical resize cursors, and both diagonal resize cursors. A window defaults
+to `arrow`; `text_edit` and `code_edit` default to `ibeam`.
+
+`set_cursor()` follows the normal cached-property contract. Calling it before
+creation records the choice, while calling it on a created window immediately
+updates the native pointer shape. `get_cursor()` always reports the cached
+choice:
+
+```cpp
+canvas.set_cursor(native::mouse_cursor::crosshair);
+splitter.set_cursor(native::mouse_cursor::resize_horizontal);
+corner.set_cursor(
+    native::mouse_cursor::resize_northwest_southeast);
+```
+
+Native-widget backends assign the matching system cursor to the window or
+view. SDL2 and GEMix have one toolkit cursor shared by an emulated window tree,
+so their event dispatchers select the cursor belonging to the deepest visible
+child under the pointer. No native cursor handle enters the public class.
+When a toolkit has no matching directional system cursor, the backend uses
+its documented precision-pointer fallback; GEMix uses a thin crosshair for all
+four resize directions, while macOS uses a crosshair for the two diagonals.
+
 A notification that repeats the cached dimensions is ignored. Several backends
 report geometry through a single event that also covers moves, so without this
 a window would arrange its children every time it was dragged.
@@ -300,6 +368,34 @@ A backend reports the client size its window really has once that window and
 its menu exist. Where a menu bar or similar furniture sits above the client
 area, the client is smaller than the window the toolkit created, and the first
 arrangement has to use the smaller size to match what the backend renders.
+
+### Where the layout region comes from
+
+The rectangle a layout manager receives is not the window's bounds. It is
+derived in two steps, and both are on `wnd` so every window type gets the same
+answer:
+
+```text
+_bounds                       the window's own rectangle
+   |
+   v  get_chrome_bounds()     protected virtual; the base returns the
+   |                          complete bounds, so a plain window
+   |                          reserves nothing for itself
+   v  reserve_non_client()    subtract every visible non-client extent
+   |
+   v  get_client_bounds()     the region layout managers receive
+```
+
+`get_chrome_bounds()` exists for controls that own permanent edge furniture of
+their own rather than through a `non_client` element. `canvas` overrides it to
+reserve its scrollbars. Because non-client strips are placed inside the same
+chrome rectangle, a ruler attached to a canvas stops at the scrollbar instead
+of running under it, and neither the client area nor the strip geometry needs
+a second, control-specific rule.
+
+Most windows never touch this. A control only overrides `get_chrome_bounds()`
+when it draws something at its own edge that is not an application-owned
+`non_client` object.
 
 ## Invalidation and painting boundary
 
@@ -321,8 +417,8 @@ The implementation checklist is:
 
 1. Add portable properties, cached state, and public signals.
 2. Implement shared validation and cache behavior.
-3. Implement creation, cached-property application, showing, and destruction
-   in every backend.
+3. Implement `create_native()`, cached-property application including
+   `apply_cursor()`, `show_native()`, and `destroy_native()` in every backend.
 4. Add and remove native bindings at the correct lifecycle points.
 5. Translate native events to public Native event types.
 6. Support invalidation, painting, and graphics cleanup where applicable.

@@ -257,32 +257,76 @@ namespace vision
 {
     feature_inspector::feature_inspector(native::app_wnd &owner)
         : native::modeless_wnd(owner, "Vision Inspector",
-                               150, 140, 390, 280) {
+                               150, 140, 390, 300)
+        , _apply("Apply", 18, 70, 110, 30)
+        , _enabled("Enabled", 18, 116, 150, 24)
+        , _compact("Compact mode", 18, 150, 170, 24)
+        , _sections({"Controls", "Images", "Fonts", "Clipboard"},
+                    210, 70, 155, 112)
+        , _status("Use these controls while the main window stays active.") {
+        _enabled.set_checked(true);
+        _compact.set_selected(true);
+        _sections.set_selected_index(0);
+        on_wnd_create.connect(this, &feature_inspector::on_create);
         on_wnd_paint.connect(this, &feature_inspector::on_paint);
+        _apply.on_click.connect(this, &feature_inspector::on_apply);
+        _enabled.on_change.connect(this, &feature_inspector::on_enabled);
+        _compact.on_change.connect(this, &feature_inspector::on_compact);
+        _sections.on_selection_change.connect(
+            this, &feature_inspector::on_section);
+    }
+
+    bool feature_inspector::on_create() {
+        for (native::wnd *control : {
+                 static_cast<native::wnd *>(&_apply),
+                 static_cast<native::wnd *>(&_enabled),
+                 static_cast<native::wnd *>(&_compact),
+                 static_cast<native::wnd *>(&_sections)}) {
+            control->set_parent(this);
+            control->create();
+            control->show();
+        }
+        return true;
     }
 
     bool feature_inspector::on_paint(
         native::wnd_paint_event event) {
-        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.set_font(native::font_t::stock(native::font_role::control))
+            .set_ink(native::rgba(0, 0, 0, 255));
         event.g.draw_text("This is an independent modeless window.",
                           native::point(18, 18));
         event.g.draw_text("The main window remains interactive.",
                           native::point(18, 42));
+        event.g.draw_text(_status, native::point(18, 214));
+        return true;
+    }
 
-        std::unique_ptr<native::theme> appearance =
-            native::theme::create(event.g);
-        native::theme::state selected;
-        selected.selected = true;
-        appearance->draw_button(native::rect(18, 78, 150, 30),
-                                "Theme button");
-        appearance->draw_check(native::rect(18, 120, 170, 24),
-                               "Theme check", selected);
-        appearance->draw_radio(native::rect(18, 152, 170, 24),
-                               "Theme radio", selected);
-        appearance->draw_list(
-            native::rect(210, 78, 155, 104),
-            {"Controls", "Images", "Fonts", "Clipboard"}, 2,
-            selected);
+    bool feature_inspector::on_apply() {
+        _status = "Apply clicked; modeless input is responsive.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_inspector::on_enabled(bool enabled) {
+        _status = enabled ? "Inspector enabled." : "Inspector disabled.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_inspector::on_compact(bool selected) {
+        _status = selected ? "Compact mode selected."
+                           : "Compact mode cleared.";
+        invalidate();
+        return true;
+    }
+
+    bool feature_inspector::on_section(int index) {
+        if (index >= 0 &&
+            index < static_cast<int>(_sections.get_items().size())) {
+            _status = "Section: " +
+                      _sections.get_items()[static_cast<std::size_t>(index)];
+            invalidate();
+        }
         return true;
     }
 
@@ -885,11 +929,12 @@ namespace vision
                  0, 0, 440, 420)
         , _split(_left, _right,
                  native::split_orientation::horizontal,
-                 native::rect(20, 20, 720, 440)) {
+                 native::rect(20, 20, 720, 460)) {
         _left.set_selected_index(0);
         _right.set_selected_index(0);
         _split.set_ratio(0.35f).set_minimums(140, 220);
         on_wnd_create.connect(this, &feature_splitter::on_create);
+        on_wnd_resize.connect(this, &feature_splitter::on_resize);
         _split.on_ratio_change.connect(
             this, &feature_splitter::on_ratio_change);
     }
@@ -910,15 +955,26 @@ namespace vision
         return true;
     }
 
+    bool feature_splitter::on_resize(native::size dimensions) {
+        _split.set_bounds(native::rect(
+            20,
+            20,
+            static_cast<native::dim>(std::max(
+                0, static_cast<int>(dimensions.w) - 40)),
+            static_cast<native::dim>(std::max(
+                0, static_cast<int>(dimensions.h) - 40))));
+        return true;
+    }
+
     feature_input_chrome::feature_input_chrome(native::app_wnd &owner)
         : native::modeless_wnd(owner, "Vision Input and Window Chrome",
                                120, 60, 790, 730)
         , _selection_combo({"CDE", "OpenLook", "Window Maker", "Haiku"},
                            native::combo_box_style::drop_down_list,
-                           60, 74, 230, 28)
+                           60, 72, 230, 24)
         , _editable_combo({"10 mm", "25 mm", "50 mm", "100 mm"},
                           native::combo_box_style::editable,
-                          60, 118, 230, 28)
+                          60, 116, 230, 24)
         , _list_box({"One", "Two", "Three", "Four", "Five"},
                     60, 174, 230, 146)
         , _tab_general({"Strip-only page", "Borrowed page", "Silent API selection"},
@@ -1023,7 +1079,8 @@ namespace vision
     }
 
     bool feature_input_chrome::on_paint(native::wnd_paint_event event) {
-        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        event.g.set_font(native::font_t::stock(native::font_role::control))
+            .set_ink(native::rgba(0, 0, 0, 255));
         event.g.draw_text("Selection-only combo box",
                           native::point(60, 52));
         event.g.draw_text("Editable combo box",
@@ -1101,7 +1158,7 @@ namespace vision
         native::dialog_result result) {
         _status_bar.set_parts({
             {result == native::dialog_result::accepted
-                 ? "Folder: " + _directory.get_path()
+                 ? "Folder: " + _directory.get_path().string()
                  : "Folder selection cancelled",
              0},
             {"minor 10 / major 50", 180}});

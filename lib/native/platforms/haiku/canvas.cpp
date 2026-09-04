@@ -20,24 +20,19 @@
 
 namespace native
 {
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         BView *view = haiku::create_collection_view(*self);
         auto *binding = new haiku::haiku_surface();
         binding->view = view;
         haiku::canvas_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *binding = haiku::canvas_bindings.object_from_handle(
-            const_cast<canvas *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("Haiku: canvas is not created.");
 
@@ -50,13 +45,12 @@ namespace native
         }
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *binding = haiku::canvas_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->view) {
                 BWindow *window = binding->view->Window();

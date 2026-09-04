@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -122,7 +123,7 @@ namespace native
 
         // Decode a PNG or JPEG file, selected from its encoded
         // contents.
-        static img load(const std::string &path);
+        static img load(const std::filesystem::path &path);
 
         // Decode a PNG or JPEG held in memory.
         static img decode(const std::uint8_t *data, std::size_t size);
@@ -132,7 +133,8 @@ namespace native
                                          int jpeg_quality = 90) const;
 
         // Encode this image to a .png, .jpg, or .jpeg file.
-        void save(const std::string &path, int jpeg_quality = 90) const;
+        void save(const std::filesystem::path &path,
+                  int jpeg_quality = 90) const;
 
         // Return the image width in pixels.
         coord w() const;

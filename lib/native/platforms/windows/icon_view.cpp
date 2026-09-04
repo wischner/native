@@ -170,9 +170,7 @@ namespace native
         }
     }
 
-    void icon_view::create() const {
-        if (_created)
-            return;
+    void icon_view::create_native() {
         wnd *parent = get_parent();
         HWND parent_hwnd = parent
                                ? windows::wnd_bindings.handle_from_object(
@@ -183,7 +181,7 @@ namespace native
                 "Windows: icon_view requires a created parent.");
         INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_LISTVIEW_CLASSES};
         InitCommonControlsEx(&controls);
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         HWND hwnd = CreateWindowExW(
             WS_EX_CLIENTEDGE,
             WC_LISTVIEWW,
@@ -209,17 +207,15 @@ namespace native
                      WM_SETFONT,
                      reinterpret_cast<WPARAM>(windows::control_font()),
                      TRUE);
-        _created = true;
         self->synchronize_theme_metrics();
         rebuild(*self);
         self->apply_icon_size();
         self->apply_selected_index();
-        self->on_native_create();
     }
 
-    void icon_view::show() const {
+    void icon_view::show_native() {
         auto *binding = windows::icon_view_bindings.object_from_handle(
-            const_cast<icon_view *>(this));
+            this);
         if (!_created || !binding || !binding->hwnd)
             throw std::runtime_error(
                 "Windows: icon_view is not created.");
@@ -227,13 +223,12 @@ namespace native
         UpdateWindow(binding->hwnd);
     }
 
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         auto *binding =
             windows::icon_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->images)
                 ImageList_Destroy(binding->images);

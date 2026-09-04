@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -63,6 +64,10 @@ namespace native
         return *this;
     }
 
+    list &list::operator<<(std::string item) {
+        return add_item(item);
+    }
+
     list &list::remove_item(std::size_t index) {
         if (index >= _items.size())
             throw std::out_of_range("list item index is out of range");
@@ -118,11 +123,70 @@ namespace native
     }
 
     void list::draw_control(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        if (!bounds.d.w || !bounds.d.h)
+            return;
+        draw_background(graphics, appearance, bounds, state);
+        draw_content(graphics, appearance, bounds, state);
+        draw_border(graphics, appearance, bounds, state);
+        draw_focus(graphics, appearance, bounds, state);
+    }
+
+    void list::draw_background(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_ink(appearance.get_content_background_color())
+            .draw_rect(bounds, true);
+    }
+
+    void list::draw_content(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        const gpx_state restore(graphics);
+        graphics.set_clip(bounds);
+        const int row_height = std::max(
+            1, appearance.get_list_item_height());
+        int top = bounds.p.y + 1;
+        for (std::size_t index = 0; index < _items.size(); ++index) {
+            if (top >= bounds.y2())
+                break;
+            theme::state row_state = state;
+            row_state.selected =
+                static_cast<int>(index) == _selected_index;
+            appearance.draw_list_item(
+                rect(static_cast<coord>(bounds.p.x + 1),
+                     static_cast<coord>(top),
+                     static_cast<dim>(std::max(
+                         0, static_cast<int>(bounds.d.w) - 2)),
+                     static_cast<dim>(row_height)),
+                _items[index],
+                row_state);
+            top += row_height;
+        }
+    }
+
+    void list::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        graphics.set_pen(1)
+            .set_ink(appearance.get_button_border_color())
+            .draw_rect(bounds, false);
+    }
+
+    void list::draw_focus(
         gpx &,
         theme &appearance,
         const rect &bounds,
         const theme::state &state) {
-        appearance.draw_list(
-            bounds, _items, _selected_index, state);
+        appearance.draw_focus(bounds, state);
     }
 } // namespace native

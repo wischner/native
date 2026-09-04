@@ -110,13 +110,13 @@ namespace
 namespace native
 {
     canvas::canvas(coord x, coord y, dim width, dim height)
-        : wnd(x, y, width, height) {}
+        : custom_control(x, y, width, height) {}
 
     canvas::canvas(const point &position, const size &dimensions)
-        : wnd(position, dimensions) {}
+        : custom_control(position, dimensions) {}
 
     canvas::canvas(const rect &bounds)
-        : wnd(bounds) {}
+        : custom_control(bounds) {}
 
     canvas::~canvas() {
         destroy();
@@ -411,18 +411,11 @@ namespace native
     }
 
     void canvas::synchronize_theme_metrics() {
-        wnd *root = this;
-        while (root->get_parent())
-            root = root->get_parent();
-        try {
-            auto appearance = theme::create(root->get_gpx());
-            _scrollbar_extent =
-                std::max(1, appearance->get_scrollbar_extent());
-            _scrollbar_min_thumb =
-                std::max(1, appearance->get_scrollbar_min_thumb());
-        } catch (const std::runtime_error &) {
-            // A native child can provide its precise metric later.
-        }
+        custom_control::synchronize_theme_metrics();
+        _scrollbar_extent = std::max(
+            1, _theme_metrics.scrollbar_extent);
+        _scrollbar_min_thumb = std::max(
+            1, _theme_metrics.scrollbar_min_thumb);
     }
 
     void canvas::draw_scrollbar(gpx &graphics,

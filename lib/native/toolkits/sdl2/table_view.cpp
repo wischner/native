@@ -19,25 +19,21 @@ namespace native
     void table_view::apply_selection() { invalidate(); }
     void table_view::apply_scroll() { invalidate(); }
 
-    void table_view::create() const {
-        if (_created)
-            return;
+    void table_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "SDL2: table_view requires a created parent.");
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         linux::sdl2::table_view_bindings.register_pair(
             self, new linux::sdl2::sdl2_collection());
         linux::sdl2::table_views.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void table_view::show() const {
+    void table_view::show_native() {
         auto *state = linux::sdl2::table_view_bindings
                           .object_from_handle(
-                              const_cast<table_view *>(this));
+                              this);
         if (!_created || !state)
             throw std::runtime_error(
                 "SDL2: table_view is not created.");
@@ -45,13 +41,12 @@ namespace native
         invalidate();
     }
 
-    void table_view::destroy() const {
+    void table_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         auto *state = linux::sdl2::table_view_bindings
                           .object_from_handle(self);
-        self->on_native_destroy();
         linux::sdl2::table_views.erase(
             std::remove(linux::sdl2::table_views.begin(),
                         linux::sdl2::table_views.end(), self),

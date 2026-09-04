@@ -189,10 +189,8 @@
 
 namespace native
 {
-    void code_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<code_edit *>(this);
+    void code_edit::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -207,27 +205,24 @@ namespace native
         auto *binding = new mac::mac_code_edit();
         binding->view = view;
         mac::code_edit_bindings.register_pair(self, binding);
-        _created = true;
         self->invalidate();
-        self->on_native_create();
     }
 
-    void code_edit::show() const {
+    void code_edit::show_native() {
         auto *binding = mac::code_edit_bindings.object_from_handle(
-            const_cast<code_edit *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error(
                 "macOS: code_edit is not created.");
         [binding->view setHidden:NO];
     }
 
-    void code_edit::destroy() const {
+    void code_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         auto *binding =
             mac::code_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             [binding->view removeFromSuperview];
             [binding->view release];

@@ -24,22 +24,8 @@
 namespace
 {
     linux::openmotif::motif_collection *binding(native::wnd &owner) {
-        if (auto *accordion = dynamic_cast<native::accordion *>(&owner))
-            return linux::openmotif::accordion_bindings
-                .object_from_handle(accordion);
-        if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
-            return linux::openmotif::icon_view_bindings
-                .object_from_handle(icons);
-        if (auto *tree = dynamic_cast<native::tree_view *>(&owner))
-            return linux::openmotif::tree_view_bindings
-                .object_from_handle(tree);
-        if (auto *table = dynamic_cast<native::table_view *>(&owner))
-            return linux::openmotif::table_view_bindings
-                .object_from_handle(table);
-        if (auto *editor = dynamic_cast<native::code_edit *>(&owner))
-            return linux::openmotif::code_edit_bindings
-                .object_from_handle(editor);
-        return nullptr;
+        return native::detail::peer_state<
+            linux::openmotif::motif_collection>(owner);
     }
 
     int saturated_int(std::size_t value) {
@@ -524,17 +510,7 @@ namespace
         case FocusIn:
         case FocusOut: {
             const bool focused = event->type == FocusIn;
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(owner))
-                accordion->on_native_focus(focused);
-            if (auto *icons = dynamic_cast<native::icon_view *>(owner))
-                icons->on_native_focus(focused);
-            if (auto *tree = dynamic_cast<native::tree_view *>(owner))
-                tree->on_native_focus(focused);
-            if (auto *table = dynamic_cast<native::table_view *>(owner))
-                table->on_native_focus(focused);
-            if (auto *editor = dynamic_cast<native::code_edit *>(owner))
-                editor->on_native_focus(focused);
+            owner->on_native_focus(focused);
             break;
         }
         case KeyPress:
@@ -788,23 +764,19 @@ namespace native
 {
     void accordion::apply_items() { invalidate(); }
 
-    void accordion::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<accordion *>(this);
+    void accordion::create_native() {
+        auto *self = this;
         auto *state = new linux::openmotif::motif_collection();
         state->widget = create_host(*self, *state);
         linux::openmotif::accordion_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void accordion::show() const {
+    void accordion::show_native() {
         auto *state = linux::openmotif::accordion_bindings
                           .object_from_handle(
-                              const_cast<accordion *>(this));
+                              this);
         if (!_created || !state || !state->widget)
             throw std::runtime_error("Motif: accordion is not created.");
         XtManageChild(state->widget);
@@ -814,10 +786,10 @@ namespace native
         }
     }
 
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         auto *state = linux::openmotif::accordion_bindings
                           .object_from_handle(self);
         destroy_host(*self, state);

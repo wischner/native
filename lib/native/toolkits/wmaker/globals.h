@@ -17,6 +17,8 @@
 #include <WINGs/WINGs.h>
 
 #include <bindings.h>
+
+#include "../../wnd_peer.h"
 #include <native.h>
 
 namespace linux::wmaker
@@ -151,34 +153,34 @@ namespace linux::wmaker
     extern WMColor *list_selection_text;
 
     extern native::bindings<WMWidget *, native::wnd *> wnd_bindings;
-    extern native::bindings<native::app_wnd *, window_state *>
-        window_bindings;
-    extern native::bindings<native::wnd *, window_graphics *>
-        graphics_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::app_wnd *, window_state *> window_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::wnd *, window_graphics *> graphics_bindings;
     extern native::bindings<std::uint32_t, native_font *>
         font_bindings;
     extern native::bindings<std::uint32_t, native_menu *>
         menu_bindings;
-    extern native::bindings<native::text_edit *, native_text_edit *>
-        text_edit_bindings;
-    extern native::bindings<native::combo_box *, native_combo_box *>
-        combo_box_bindings;
-    extern native::bindings<native::accordion *, native_collection *>
-        accordion_bindings;
-    extern native::bindings<native::tab_view *, native_tab_view *>
-        tab_view_bindings;
-    extern native::bindings<native::split_view *, native_split_view *>
-        split_view_bindings;
-    extern native::bindings<native::icon_view *, native_collection *>
-        icon_view_bindings;
-    extern native::bindings<native::tree_view *, native_collection *>
-        tree_view_bindings;
-    extern native::bindings<native::table_view *, native_collection *>
-        table_view_bindings;
-    extern native::bindings<native::code_edit *, native_collection *>
-        code_edit_bindings;
-    extern native::bindings<native::canvas *, native_collection *>
-        canvas_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::text_edit *, native_text_edit *> text_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::combo_box *, native_combo_box *> combo_box_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::accordion *, native_collection *> accordion_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tab_view *, native_tab_view *> tab_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::split_view *, native_split_view *> split_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::icon_view *, native_collection *> icon_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::tree_view *, native_collection *> tree_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::table_view *, native_collection *> table_view_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::code_edit *, native_collection *> code_edit_bindings;
+    inline constexpr native::detail::peer_bindings<
+        native::canvas *, native_collection *> canvas_bindings;
 
     // Initialize the process-wide display and WINGs application screen.
     void initialize();

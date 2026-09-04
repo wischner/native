@@ -232,10 +232,7 @@ namespace native
         XtVaSetValues(shell, XtNtitle, _title.c_str(), nullptr);
     }
 
-    void app_wnd::create() const {
-        if (_created)
-            return;
-
+    void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
         Display *probe_display = linux::openmotif::cached_display;
@@ -332,32 +329,30 @@ namespace native
                               ButtonReleaseMask,
                           False,
                           handle_canvas_event,
-                          const_cast<app_wnd *>(this));
+                          this);
         XtAddEventHandler(shell,
                           StructureNotifyMask,
                           False,
                           handle_shell_event,
-                          const_cast<app_wnd *>(this));
+                          this);
 
         linux::openmotif::shell_bindings.register_pair(
-            shell, const_cast<app_wnd *>(this));
+            shell, this);
         linux::openmotif::main_wnd_bindings.register_pair(
-            main_win, const_cast<app_wnd *>(this));
+            main_win, this);
         linux::openmotif::wnd_bindings.register_pair(
-            canvas, const_cast<app_wnd *>(this));
+            canvas, this);
 
-        _created = true;
-        const_cast<app_wnd *>(this)->menu.attach(
-            *const_cast<app_wnd *>(this));
-        const_cast<app_wnd *>(this)->on_native_create();
+        this->menu.attach(
+            *this);
     }
 
-    void app_wnd::show() const {
+    void app_wnd::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "Motif: Cannot show window before it is created.");
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         Widget shell =
             linux::openmotif::shell_bindings.handle_from_object(self);
         Widget canvas =
@@ -399,15 +394,14 @@ namespace native
         invalidate();
     }
 
-    void app_wnd::destroy() const {
+    void app_wnd::destroy_native() {
         if (!_created)
             return;
 
-        app_wnd *self = const_cast<app_wnd *>(this);
+        app_wnd *self = this;
         Widget shell =
             linux::openmotif::shell_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
-        self->on_native_destroy();
 
         linux::openmotif::wnd_bindings.unregister_by_object(self);
         linux::openmotif::main_wnd_bindings.unregister_by_object(self);

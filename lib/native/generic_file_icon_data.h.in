@@ -1,0 +1,21 @@
+//
+// Embeds the attributed generic filesystem PNG assets at configure time.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+
+#pragma once
+
+#include <cstdint>
+
+namespace native::detail::generic_file_icon_data
+{
+    inline constexpr std::uint8_t file_png[] = {
+        @native_generic_file_png@
+    };
+
+    inline constexpr std::uint8_t directory_png[] = {
+        @native_generic_directory_png@
+    };
+} // namespace native::detail::generic_file_icon_data

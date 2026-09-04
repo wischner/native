@@ -11,6 +11,26 @@
 
 namespace linux::gemix
 {
+    namespace
+    {
+        WORD current_mouse_form = ARROW;
+
+        WORD mouse_form(native::mouse_cursor cursor) {
+            if (cursor == native::mouse_cursor::ibeam)
+                return TEXT_CRSR;
+            if (cursor == native::mouse_cursor::crosshair)
+                return THIN_CROSS;
+            if (cursor == native::mouse_cursor::resize_horizontal ||
+                cursor == native::mouse_cursor::resize_vertical ||
+                cursor == native::mouse_cursor::
+                              resize_northwest_southeast ||
+                cursor == native::mouse_cursor::
+                              resize_northeast_southwest)
+                return THIN_CROSS;
+            return ARROW;
+        }
+    } // namespace
+
     runtime_state runtime;
     native::bindings<WORD, native::wnd *> wnd_bindings;
     std::vector<native::button *> buttons;
@@ -25,10 +45,6 @@ namespace linux::gemix
     std::vector<native::tree_view *> tree_views;
     std::vector<native::table_view *> table_views;
     std::vector<native::code_edit *> code_edits;
-    native::bindings<native::text_edit *, gem_text_edit *>
-        text_edit_bindings;
-    native::bindings<native::combo_box *, gem_combo_box *>
-        combo_box_bindings;
     std::vector<native::panel *> panels;
     std::vector<native::canvas *> canvases;
     std::vector<native::app_wnd *> windows;
@@ -74,10 +90,28 @@ namespace linux::gemix
         return true;
     }
 
+    void update_mouse_cursor(native::app_wnd *parent,
+                             native::point point) {
+        native::wnd *target = parent
+                                  ? native::detail::deepest_at(
+                                        *parent, point)
+                                  : nullptr;
+        const WORD next_form = mouse_form(
+            target ? target->get_cursor()
+                   : native::mouse_cursor::arrow);
+        if (next_form == current_mouse_form)
+            return;
+
+        graf_mouse(next_form, nullptr);
+        current_mouse_form = next_form;
+    }
+
     void shutdown_runtime() {
         if (!runtime.initialized)
             return;
 
+        graf_mouse(ARROW, nullptr);
+        current_mouse_form = ARROW;
         if (runtime.vdi_handle != 0) {
             v_clsvwk(runtime.vdi_handle);
             runtime.vdi_handle = 0;

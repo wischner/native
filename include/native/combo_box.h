@@ -58,6 +58,9 @@ namespace native
         // Append one item without changing the current selection.
         combo_box &add_item(const std::string &item);
 
+        // Append one item with builder syntax.
+        combo_box &operator<<(std::string item);
+
         // Remove an item by index or throw std::out_of_range.
         combo_box &remove_item(std::size_t index);
 
@@ -91,14 +94,17 @@ namespace native
         // Accept a native popup visibility transition.
         virtual void on_native_drop_down(bool open);
 
+    protected:
         // Create the backend resource for this control.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend resource for this control.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the already-created backend resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // User-originated selection, text, and popup notifications.
         signal<int> on_selection_change;
@@ -106,11 +112,46 @@ namespace native
         signal<bool> on_drop_down;
 
     protected:
-        // Draw the complete themed fallback control.
+        // Dispatch the complete staged combo-box contract.
         virtual void draw_control(gpx &graphics,
                                   theme &appearance,
                                   const rect &bounds,
                                   const theme::state &state);
+
+        // Draw the editable or selection-only field background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the field border.
+        virtual void draw_border(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the current text without the drop-down indicator.
+        virtual void draw_text(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the drop-down surface and indicator.
+        virtual void draw_indicator(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
 
         // Apply the cached items to an existing native widget.
         virtual void apply_items();

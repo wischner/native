@@ -9,6 +9,8 @@
 
 #include <native/panel.h>
 
+#include <native/theme.h>
+
 namespace native
 {
     panel::panel(coord x, coord y, dim width, dim height)
@@ -22,5 +24,23 @@ namespace native
 
     panel::~panel() {
         destroy();
+    }
+
+    void panel::on_native_paint(wnd_paint_event event) {
+        auto appearance = theme::create(event.g);
+        draw_background(
+            event.g,
+            *appearance,
+            rect(point(0, 0), get_dimensions()),
+            theme::state{});
+        wnd::on_native_paint(event);
+    }
+
+    void panel::draw_background(
+        gpx &,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &state) {
+        appearance.draw_surface(bounds, surface_kind::panel, state);
     }
 } // namespace native

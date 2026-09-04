@@ -69,11 +69,8 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         BView *parent = haiku::parent_view(get_parent(), self);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
@@ -100,13 +97,11 @@ namespace native
         // Children resolve their parent view through this registry, so
         // the binding has to exist before on_wnd_create runs.
         haiku::panel_bindings.register_pair(self, binding);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         auto *binding = haiku::panel_bindings.object_from_handle(
-            const_cast<panel *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("Haiku: panel is not created.");
 
@@ -119,13 +114,12 @@ namespace native
         }
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         auto *binding = haiku::panel_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->view) {
                 BWindow *window = binding->view->Window();

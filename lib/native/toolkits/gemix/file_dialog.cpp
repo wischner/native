@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
-#include <fstream>
+#include <filesystem>
 #include <string>
 
 #include <gem.h>
@@ -55,7 +55,7 @@ namespace
     // Convert the initial portable path into an AES wildcard path.
     std::string prepare_path(const native::file_dialog &dialog,
                              std::string &selection) {
-        std::string path = dialog.get_initial_path();
+        std::string path = dialog.get_initial_path().string();
         const std::string pattern = first_pattern(dialog);
         if (path.empty())
             return pattern;
@@ -63,29 +63,22 @@ namespace
             path.find('?') != std::string::npos)
             return path;
 
-        const std::size_t separator = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (separator == std::string::npos || dot > separator)) {
-            selection = path.substr(separator == std::string::npos
-                                        ? 0
-                                        : separator + 1);
-            path.erase(separator == std::string::npos ? 0
-                                                      : separator + 1);
-        } else if (path.back() != '/' && path.back() != '\\') {
-            path.push_back('/');
+        std::filesystem::path initial(path);
+        if (initial.has_extension()) {
+            selection = initial.filename().string();
+            initial = initial.parent_path();
         }
-        path += pattern;
-        return path;
+        return (initial / pattern).string();
     }
 
     // Replace the selector wildcard with the selected leaf name.
     std::string combine_path(const std::string &mask,
                              const std::string &selection) {
-        const std::size_t separator = mask.find_last_of("/\\");
-        if (separator == std::string::npos)
+        const std::filesystem::path parent =
+            std::filesystem::path(mask).parent_path();
+        if (parent.empty())
             return selection;
-        return mask.substr(0, separator + 1) + selection;
+        return (parent / selection).string();
     }
 } // namespace
 
@@ -117,23 +110,17 @@ namespace linux::gemix
         const std::string &path, const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1))
+        std::filesystem::path result(path);
+        if (result.has_extension())
             return path;
-
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
-        return result;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
+        return result.string();
     }
 
     bool confirm_file_overwrite(const std::string &path) {
-        std::ifstream input(path, std::ios::binary);
-        if (!input.good())
+        std::error_code error;
+        if (!std::filesystem::is_regular_file(path, error))
             return true;
 
         char alert[] =
@@ -145,5 +132,5 @@ namespace linux::gemix
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {}
+    void file_dialog::cancel_native_dialog() {}
 } // namespace native

@@ -41,7 +41,9 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Extensible controls**: Virtual behavior hooks and protected owner-draw
   stages whose base implementations retain standard native behavior
 - **Standard file dialogs**: Native open/save panels with one portable modal
-  result, path, and filter model
+  result, `std::filesystem::path`, and filter model
+- **Filesystem resources**: Exact-size native file/folder icons as PNG with
+  generic fallbacks, plus typed special directories as `std::filesystem::path`
 - **Clipboard and text editing**: Typed UTF-8/image clipboard transactions,
   native or emulated single-line/multiline editors, and live validation
 - **Minimal and modern C++**: Clean code, few dependencies
@@ -60,9 +62,10 @@ If you are looking for a straightforward, understandable UI library, or if you w
 
 #include <native.h>
 
-// Start the application with a temporary main window.
+// Start the application with a mutable main window.
 int program(int, char **) {
-    return native::app::run(native::app_wnd("Hello World!"));
+    native::app_wnd window("Hello World!");
+    return native::app::run(window);
 }
 ```
 
@@ -87,8 +90,9 @@ toolchain with C++20 support. A direct Linux build also needs
   selection service, stock fonts, and native-look drawing resources.
 - File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
   OpenMotif, OPEN LOOK, Window Maker, and GEMix. X11/Athena prefers Zenity or
-  KDialog and otherwise uses its Xaw browser. SDL2 delegates to Zenity or
-  KDialog and reports cancellation when neither desktop chooser is installed.
+  KDialog and otherwise uses its Xaw browser. SDL2 consistently uses its
+  library-owned themed C++ filesystem browser for file open, file save, and folder
+  selection.
 - Portable TrueType/OpenType fonts use the vendored `stb_truetype`
   rasterizer, so file- and memory-backed fonts have the same metrics
   and pixels on every backend.

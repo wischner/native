@@ -1,6 +1,7 @@
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/image_codec.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.cpp
 )
 
 find_package(PNG REQUIRED)

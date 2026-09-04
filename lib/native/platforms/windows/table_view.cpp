@@ -251,6 +251,43 @@ namespace
                        table.get_header_visible() ? SW_SHOW : SW_HIDE);
     }
 
+    void fit_last_column(native::table_view &table) {
+        auto &binding = binding_for(table);
+        if (!table.get_fill_last_column() ||
+            binding.native_columns.empty()) {
+            return;
+        }
+
+        RECT client{};
+        if (!GetClientRect(binding.hwnd, &client))
+            return;
+        int available = std::max(
+            0, static_cast<int>(client.right - client.left));
+        if ((GetWindowLongPtrW(binding.hwnd, GWL_STYLE) & WS_VSCROLL) != 0)
+            available = std::max(
+                0, available - GetSystemMetrics(SM_CXVSCROLL));
+
+        int total = 0;
+        int last_width = 0;
+        for (native::table_column_id id : binding.native_columns) {
+            const auto found = std::find_if(
+                table.get_columns().begin(), table.get_columns().end(),
+                [id](const native::table_column &column) {
+                    return column.id == id;
+                });
+            if (found == table.get_columns().end())
+                continue;
+            total += found->width;
+            last_width = found->width;
+        }
+        if (available > total) {
+            ListView_SetColumnWidth(
+                binding.hwnd,
+                static_cast<int>(binding.native_columns.size() - 1),
+                last_width + available - total);
+        }
+    }
+
     int native_group_for_row(native::table_model &model,
                              std::size_t row) {
         for (std::size_t index = 0;
@@ -368,6 +405,7 @@ namespace
                       SB_HORZ,
                       table.get_horizontal_scrollbar_policy() !=
                           native::scrollbar_policy::never);
+        fit_last_column(table);
         binding.suppress = false;
     }
 } // namespace
@@ -784,9 +822,7 @@ namespace native
         }
     }
 
-    void table_view::create() const {
-        if (_created)
-            return;
+    void table_view::create_native() {
         wnd *parent = get_parent();
         HWND parent_hwnd = parent
             ? windows::wnd_bindings.handle_from_object(parent)
@@ -797,7 +833,7 @@ namespace native
         INITCOMMONCONTROLSEX controls{sizeof(controls),
                                       ICC_LISTVIEW_CLASSES};
         InitCommonControlsEx(&controls);
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         const bool owner_data =
             _data_mode != table_data_mode::materialized;
         DWORD style = WS_CHILD | WS_TABSTOP | WS_BORDER |
@@ -830,18 +866,16 @@ namespace native
                      WM_SETFONT,
                      reinterpret_cast<WPARAM>(windows::control_font()),
                      TRUE);
-        _created = true;
         self->synchronize_theme_metrics();
         rebuild(*self);
         self->apply_selection();
         self->apply_scroll();
-        self->on_native_create();
     }
 
-    void table_view::show() const {
+    void table_view::show_native() {
         auto *binding = windows::table_view_bindings
                             .object_from_handle(
-                                const_cast<table_view *>(this));
+                                this);
         if (!_created || !binding || !binding->hwnd)
             throw std::runtime_error(
                 "Windows: table_view is not created.");
@@ -849,13 +883,12 @@ namespace native
         UpdateWindow(binding->hwnd);
     }
 
-    void table_view::destroy() const {
+    void table_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<table_view *>(this);
+        auto *self = this;
         auto *binding =
             windows::table_view_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->images)
                 ImageList_Destroy(binding->images);

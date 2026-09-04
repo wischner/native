@@ -237,28 +237,6 @@ namespace
 
 namespace linux::gemix
 {
-    void update_text_edit_cursor(native::app_wnd *parent,
-                                 native::point point) {
-        bool over_editor = false;
-        for (native::text_edit *editor : text_edits) {
-            auto *binding =
-                text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->visible &&
-                editor->get_parent() == parent &&
-                editor->get_bounds().contains(point)) {
-                over_editor = true;
-                break;
-            }
-        }
-
-        static WORD current_form = ARROW;
-        const WORD next_form = over_editor ? TEXT_CRSR : ARROW;
-        if (next_form != current_form) {
-            graf_mouse(next_form, nullptr);
-            current_form = next_form;
-        }
-    }
-
     bool focus_text_edit(native::app_wnd *parent,
                          native::point point) {
         native::text_edit *hit = nullptr;
@@ -434,27 +412,23 @@ namespace native
         invalidate();
     }
 
-    void text_edit::create() const {
-        if (_created)
-            return;
+    void text_edit::create_native() {
         auto *parent = dynamic_cast<app_wnd *>(get_parent());
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "GEMix: text_edit requires a created app_wnd parent.");
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding = new linux::gemix::gem_text_edit;
         binding->cursor = _text.size();
         binding->anchor = binding->cursor;
         linux::gemix::text_edit_bindings.register_pair(self, binding);
         linux::gemix::text_edits.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void text_edit::show() const {
+    void text_edit::show_native() {
         auto *binding =
             linux::gemix::text_edit_bindings.object_from_handle(
-                const_cast<text_edit *>(this));
+                this);
         if (!_created || !binding)
             throw std::runtime_error(
                 "GEMix: text_edit is not created.");
@@ -462,13 +436,12 @@ namespace native
         invalidate();
     }
 
-    void text_edit::destroy() const {
+    void text_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<text_edit *>(this);
+        auto *self = this;
         auto *binding =
             linux::gemix::text_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         linux::gemix::text_edits.erase(
             std::remove(linux::gemix::text_edits.begin(),
                         linux::gemix::text_edits.end(),
@@ -490,14 +463,15 @@ namespace native
 
     bool text_edit::replace_selected_text(const std::string &text) {
         auto *binding =
-            linux::gemix::text_edit_bindings.object_from_handle(this);
+            linux::gemix::text_edit_bindings.object_from_handle(
+                const_cast<text_edit *>(this));
         return replace_selection(this, binding, text);
     }
 
-    void text_edit::select_all_native() const {
+    void text_edit::select_all_native() {
         auto *binding =
             linux::gemix::text_edit_bindings.object_from_handle(
-                const_cast<text_edit *>(this));
+                this);
         if (binding) {
             binding->anchor = 0;
             binding->cursor = _text.size();

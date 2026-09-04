@@ -44,6 +44,10 @@ inspector.create();
 inspector.show();
 ```
 
+Controls inside a modeless window are ordinary live controls. Closing the
+inspector returns focus to its owner, so the first subsequent button click is
+delivered normally.
+
 Call `center_to_parent()` before or after native creation to center an owned
 window over its owner. The method updates the cached screen position and, for
 an already-created window, moves the native window immediately:
@@ -190,7 +194,7 @@ private:
 
     bool on_open_close(native::dialog_result result) {
         _status = result == native::dialog_result::accepted
-            ? "Open: " + _open.get_path()
+            ? "Open: " + _open.get_path().string()
             : "Open cancelled";
         invalidate();
         return true;
@@ -198,7 +202,7 @@ private:
 
     bool on_save_close(native::dialog_result result) {
         _status = result == native::dialog_result::accepted
-            ? "Save: " + _save.get_path()
+            ? "Save: " + _save.get_path().string()
             : "Save cancelled";
         invalidate();
         return true;
@@ -218,12 +222,12 @@ int program(int, char **) {
 
 `get_path()` returns the first accepted path. `get_paths()` returns every path
 in chooser order. `set_initial_path()` sets the starting location;
-`file_filter` groups provide display names and wildcard patterns. Paths and
-labels are UTF-8.
+`file_filter` groups provide display names and wildcard patterns. Paths are
+`std::filesystem::path`; labels and filter patterns are UTF-8 text.
 
-The open chooser can request multiple selection. OpenMotif, XView, WINGs,
-and GEM selectors still return one path because that is what their standard
-selector provides.
+The open chooser can request multiple selection. SDL2's focused browser and
+the OpenMotif, XView, WINGs, and GEM selectors return one path because that is
+what their current chooser provides.
 The save chooser can suggest a name, append a default extension, and request
 overwrite confirmation. Platforms that always protect existing files retain
 their native safeguard.
@@ -240,14 +244,26 @@ their native safeguard.
 | Window Maker | WINGs `WMOpenPanel` and `WMSavePanel` |
 | GEMix | AES `fsel_input` |
 | X11/Athena | Zenity, KDialog, then an Athena-widget browser |
-| SDL2 | Zenity or KDialog |
+| SDL2 | Themed Native C++ filesystem browser |
 
 Athena and SDL2 have no standard file chooser of their own. X11 can always use
 its fallback browser because that browser is composed entirely from Athena
-widgets. SDL2 has no native control set from which to compose such a browser,
-so it delegates to an installed desktop chooser. If neither helper is
-available, the SDL2 dialog completes as cancelled, restores its owner, and
-does not throw merely because that runtime capability is absent.
+widgets. SDL2 consistently opens Native's themed C++ filesystem browser. It supports
+open, save, and folder modes with a compact Places table, native-or-generic PNG
+file icons, icon-only back/forward/up navigation, and a horizontal breadcrumb.
+The main Name/Type/Size table scrolls continuously with arrows, a trough,
+wheel input, and a draggable thumb; it is not paginated. Double-click the
+breadcrumb to toggle direct path entry, or use Ctrl+L. Double-click the path
+editor to return to the breadcrumb. File modes expose a separate filename
+field, and Ctrl+H toggles dot-prefixed hidden entries. The browser validates
+the selected path, applies file filters, adds the default save extension before
+overwrite confirmation, and restores its owner after acceptance or
+cancellation.
+
+Desktop-helper choosers complete synchronously: their accepted/cancelled
+signal may run before `show()` returns. After that return the logical dialog
+is destroyed and `get_visible()` is false, so reusable code should observe
+`on_modal_close` and call `create()` again for the next session.
 
 The XView chooser is an owner-modal native OPEN LOOK command frame. It keeps
 directories visible while applying filename filters, performs directory

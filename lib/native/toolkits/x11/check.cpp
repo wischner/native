@@ -54,13 +54,11 @@ namespace native
         XtVaSetValues(
             widget, XtNstate, _checked ? True : False, nullptr);
     }
-    void check::create() const {
-        if (_created)
-            return;
+    void check::create_native() {
         Widget widget =
             XtVaCreateWidget("check",
                              toggleWidgetClass,
-                             check_parent(const_cast<check *>(this)),
+                             check_parent(this),
                              XtNhorizDistance,
                              _bounds.p.x,
                              XtNvertDistance,
@@ -87,27 +85,24 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: Failed to create check.");
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         XtAddCallback(widget, XtNcallback, check_changed, self);
         linux::x11::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
-            const_cast<check *>(this));
+            this);
         if (!_created || !widget)
             throw std::runtime_error(
                 "X11/Athena: check is not created.");
         XtManageChild(widget);
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (widget) {
             linux::x11::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);

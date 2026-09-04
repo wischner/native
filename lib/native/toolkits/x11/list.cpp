@@ -69,13 +69,11 @@ namespace native
         else
             XawListHighlight(binding->widget, _selected_index);
     }
-    void list::create() const {
-        if (_created)
-            return;
+    void list::create_native() {
         Widget widget =
             XtVaCreateWidget("list",
                              listWidgetClass,
-                             list_parent(const_cast<list *>(this)),
+                             list_parent(this),
                              XtNhorizDistance,
                              _bounds.p.x,
                              XtNvertDistance,
@@ -104,7 +102,7 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: Failed to create list.");
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *binding = new linux::x11::xaw_list();
         binding->widget = widget;
         linux::x11::wnd_bindings.register_pair(widget, self);
@@ -113,24 +111,21 @@ namespace native
         refresh_list(self);
         if (_selected_index >= 0)
             XawListHighlight(widget, _selected_index);
-        _created = true;
-        self->on_native_create();
     }
-    void list::show() const {
+    void list::show_native() {
         auto *binding = linux::x11::list_bindings.object_from_handle(
-            const_cast<list *>(this));
+            this);
         if (!_created || !binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: list is not created.");
         XtManageChild(binding->widget);
     }
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::list_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(

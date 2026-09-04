@@ -7,6 +7,7 @@
 #include <Xm/Notebook.h>
 #include <Xm/PushB.h>
 #include <Xm/SeparatoG.h>
+#include <Xm/SpinB.h>
 
 #include <native.h>
 
@@ -129,6 +130,36 @@ namespace
             event->page_number > 0) {
             owner->on_native_selection(event->page_number-1);
         }
+    }
+
+    // XmNotebook creates a numeric SpinBox page scroller at realization.
+    // native::tab_view already exposes every page through its tabs, so the
+    // extra control is redundant and steals page space from small views.
+    void hide_page_scroller(Widget notebook) {
+        Widget scroller = XtNameToWidget(
+            notebook, const_cast<char *>("PageScroller"));
+        WidgetList children = nullptr;
+        Cardinal count = 0;
+        XtVaGetValues(notebook,
+                      XmNchildren, &children,
+                      XmNnumChildren, &count,
+                      nullptr);
+        for (Cardinal index = 0; index < count; ++index) {
+            Widget child = children[index];
+            if (child != scroller &&
+                !XtIsSubclass(child, xmSpinBoxWidgetClass))
+                continue;
+            XtSetMappedWhenManaged(child, False);
+            if (XtIsManaged(child))
+                XtUnmanageChild(child);
+            if (XtIsRealized(child))
+                XtUnmapWidget(child);
+        }
+
+    }
+
+    void hide_page_scroller_later(XtPointer data, XtIntervalId *) {
+        hide_page_scroller(static_cast<Widget>(data));
     }
 
     void rebuild(native::tab_view &owner,
@@ -353,10 +384,8 @@ namespace native
         state->suppress = false;
     }
 
-    void tab_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tab_view *>(this);
+    void tab_view::create_native() {
+        auto *self = this;
         Widget parent = linux::openmotif::parent_widget(self);
         if (!parent)
             throw std::runtime_error(
@@ -369,6 +398,10 @@ namespace native
             XmNwidth, _bounds.d.w,
             XmNheight, _bounds.d.h,
             XmNbindingType, XmNONE,
+            XmNbackPageNumber, 0,
+            XmNbackPageSize, 0,
+            XmNinnerMarginWidth, 0,
+            XmNinnerMarginHeight, 0,
             XmNorientation, notebook_orientation(get_tab_placement()),
             XmNbackPagePlacement,
             notebook_placement(get_tab_placement()),
@@ -385,18 +418,21 @@ namespace native
         linux::openmotif::tab_view_bindings.register_pair(self, state);
         XtAddCallback(state->notebook, XmNpageChangedCallback,
                       page_changed, self);
-        _created = true;
         self->configure_page_host(true, true);
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
-        auto *state = binding(*const_cast<tab_view *>(this));
+    void tab_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->notebook)
             throw std::runtime_error("Motif: tab_view is not created.");
         XtManageChild(state->notebook);
+        hide_page_scroller(state->notebook);
+        XtAppAddTimeOut(linux::openmotif::app_instance,
+                        0,
+                        hide_page_scroller_later,
+                        state->notebook);
         const int selected = get_selected_index();
         if (selected >= 0) {
             wnd &content = get_item(
@@ -406,12 +442,11 @@ namespace native
         }
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state && state->notebook) {
             linux::openmotif::wnd_bindings.unregister_by_handle(
                 state->notebook);

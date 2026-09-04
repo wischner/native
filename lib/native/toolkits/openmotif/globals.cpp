@@ -21,30 +21,10 @@ namespace linux::openmotif
     native::bindings<Widget, native::wnd *> wnd_bindings;
     native::bindings<Widget, native::wnd *> shell_bindings;
     native::bindings<Widget, native::wnd *> main_wnd_bindings;
-    native::bindings<native::wnd *, motif_gpx *> wnd_gpx_bindings;
     native::bindings<uint32_t, motif_font *> font_bindings;
     native::bindings<uint32_t, motif_menu *> menu_bindings;
-    native::bindings<native::button *, motif_button *> button_bindings;
-    native::bindings<native::text_edit *, motif_text_edit *>
-        text_edit_bindings;
     native::bindings<native::list *, Widget> list_content_bindings;
     native::bindings<native::combo_box *, Widget> combo_box_bindings;
-    native::bindings<native::accordion *, motif_collection *>
-        accordion_bindings;
-    native::bindings<native::tab_view *, motif_tab_view *>
-        tab_view_bindings;
-    native::bindings<native::split_view *, motif_split_view *>
-        split_view_bindings;
-    native::bindings<native::icon_view *, motif_collection *>
-        icon_view_bindings;
-    native::bindings<native::tree_view *, motif_collection *>
-        tree_view_bindings;
-    native::bindings<native::table_view *, motif_collection *>
-        table_view_bindings;
-    native::bindings<native::code_edit *, motif_collection *>
-        code_edit_bindings;
-    native::bindings<native::canvas *, motif_collection *>
-        canvas_bindings;
     native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     Display *cached_display = nullptr;

@@ -92,7 +92,7 @@ libraries appear on an end user's machine.
 | Target | Application payload | Runtime that must be present |
 | --- | --- | --- |
 | Linux X11 | Executable and assets | X11, Xaw7, Xt, pixman, Xrandr, PNG/JPEG, and GCC runtime; optional Zenity or KDialog desktop integration |
-| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, optional SDL2_ttf and optional Zenity or KDialog desktop integration |
+| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, and optional SDL2_ttf |
 | Linux OpenMotif | Executable and assets | Xm, Xt, X11, PNG/JPEG, and GCC runtime |
 | Linux OPEN LOOK | Executable and assets | XView, OLGX, libtirpc, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux Window Maker | Executable and assets | WINGs, WUtil, wraster, Pango/Xft, Fontconfig/Freetype, X11/Xrandr, PNG/JPEG, and GCC runtime |

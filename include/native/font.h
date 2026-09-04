@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -59,7 +60,7 @@ namespace native
         std::string family;
         std::string style;
         std::string face_name;
-        std::string path;
+        std::filesystem::path path;
         int weight = 400;
         std::uint32_t face_index = 0;
         bool italic = false;
@@ -74,7 +75,7 @@ namespace native
         std::string style;
 
         // File path for file-backed fonts; empty for memory fonts.
-        std::string resource;
+        std::filesystem::path resource;
 
         // Pixel line size, or zero for a backend-selected stock size.
         int size = 0;
@@ -141,7 +142,7 @@ namespace native
         //      An invalid font when validation or creation fails.
         //
         static font_t from_file(
-            const std::string &path,
+            const std::filesystem::path &path,
             int size,
             std::uint32_t face_index = 0);
 

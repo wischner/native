@@ -16,36 +16,31 @@
 
 namespace native
 {
-    void code_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<code_edit *>(this);
+    void code_edit::create_native() {
+        auto *self = this;
         Widget widget = linux::x11::create_collection_host(*self);
         auto *binding = new linux::x11::xaw_collection();
         binding->widget = widget;
         linux::x11::code_edit_bindings.register_pair(self, binding);
-        _created = true;
         self->invalidate();
-        self->on_native_create();
     }
 
-    void code_edit::show() const {
+    void code_edit::show_native() {
         auto *binding = linux::x11::code_edit_bindings
                             .object_from_handle(
-                                const_cast<code_edit *>(this));
+                                this);
         if (!_created || !binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: code_edit is not created.");
         XtManageChild(binding->widget);
     }
 
-    void code_edit::destroy() const {
+    void code_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::code_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(

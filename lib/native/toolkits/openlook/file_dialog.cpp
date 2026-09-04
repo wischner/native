@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
@@ -29,17 +30,12 @@ namespace
         const std::string &extension) {
         if (path.empty() || extension.empty())
             return path;
-        const std::size_t slash = path.find_last_of("/\\");
-        const std::size_t dot = path.find_last_of('.');
-        if (dot != std::string::npos &&
-            (slash == std::string::npos || dot > slash + 1)) {
+        std::filesystem::path result(path);
+        if (result.has_extension())
             return path;
-        }
-        std::string result = path;
-        if (extension.front() != '.')
-            result.push_back('.');
-        result += extension;
-        return result;
+        result += extension.front() == '.' ? extension
+                                           : "." + extension;
+        return result.string();
     }
 
     std::string regex_from_filters(
@@ -161,7 +157,7 @@ namespace linux::openlook
         const std::string initial_directory =
             dialog.get_initial_path().empty()
                 ? "."
-                : dialog.get_initial_path();
+                : dialog.get_initial_path().string();
         const char *document = "";
         bool confirm_overwrite = true;
         if (auto *save_dialog =
@@ -272,7 +268,7 @@ namespace linux::openlook
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
-        release_dialog(const_cast<file_dialog *>(this));
+    void file_dialog::cancel_native_dialog() {
+        release_dialog(this);
     }
 } // namespace native

@@ -16,22 +16,18 @@
 
 namespace native
 {
-    void code_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<code_edit *>(this);
+    void code_edit::create_native() {
+        auto *self = this;
         auto *state =
             linux::wmaker::create_collection_frame(*self);
         linux::wmaker::code_edit_bindings.register_pair(self, state);
-        _created = true;
         self->invalidate();
-        self->on_native_create();
     }
 
-    void code_edit::show() const {
+    void code_edit::show_native() {
         auto *state = linux::wmaker::code_edit_bindings
                           .object_from_handle(
-                              const_cast<code_edit *>(this));
+                              this);
         if (!_created || !state || !state->frame)
             throw std::runtime_error(
                 "Window Maker/WINGs: code_edit is not created.");
@@ -39,10 +35,10 @@ namespace native
         WMMapWidget(state->frame);
     }
 
-    void code_edit::destroy() const {
+    void code_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         auto *state = linux::wmaker::code_edit_bindings
                           .object_from_handle(self);
         linux::wmaker::destroy_collection_frame(*self, state);

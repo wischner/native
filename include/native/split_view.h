@@ -67,9 +67,12 @@ namespace native
         // Accept a ratio produced by a native splitter drag.
         virtual void on_native_ratio(float ratio);
 
-        void create() const override;
-        void destroy() const override;
-        void show() const override;
+    protected:
+        void create_native() override;
+        void destroy_native() override;
+        void show_native() override;
+
+    public:
 
         // Emits after the user moves the splitter; programmatic changes are silent.
         signal<float> on_ratio_change;
@@ -80,6 +83,20 @@ namespace native
         virtual void apply_ratio();
         virtual void apply_minimums();
         virtual void apply_splitter_size();
+
+        // Draw the full splitter background.
+        virtual void draw_splitter_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw grip marks centered in the splitter.
+        virtual void draw_splitter_grip(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
 
     private:
         wnd *_first;

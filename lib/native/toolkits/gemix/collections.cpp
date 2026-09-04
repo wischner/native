@@ -19,24 +19,8 @@
 
 namespace
 {
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
-
-    native::point origin_in_root(const native::wnd &control) {
-        int x = control.get_position().x;
-        int y = control.get_position().y;
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            x += parent->get_position().x;
-            y += parent->get_position().y;
-        }
-        return native::point(static_cast<native::coord>(x),
-                             static_cast<native::coord>(y));
-    }
+    using native::detail::origin_in_root;
+    using native::detail::root_of;
 
     native::point local_point(native::wnd &control,
                               native::point point) {
@@ -511,29 +495,25 @@ namespace native
     void tab_view::apply_items() { invalidate(); }
     void tab_view::apply_selected_index() { invalidate(); }
 
-    void tab_view::create() const {
-        if (_created) return;
+    void tab_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "GEMix: tab_view requires a created parent.");
-        auto *self = const_cast<tab_view *>(this);
+        auto *self = this;
         linux::gemix::tab_views.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void tab_view::show() const {
+    void tab_view::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: tab_view is not created.");
         invalidate();
     }
 
-    void tab_view::destroy() const {
+    void tab_view::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<tab_view *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::tab_views.erase(
             std::remove(linux::gemix::tab_views.begin(),
                         linux::gemix::tab_views.end(), self),
@@ -542,31 +522,26 @@ namespace native
 
     void accordion::apply_items() { invalidate(); }
 
-    void accordion::create() const {
-        if (_created)
-            return;
+    void accordion::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "GEMix: accordion requires a created parent.");
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         linux::gemix::accordions.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void accordion::show() const {
+    void accordion::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: accordion is not created.");
         invalidate();
     }
 
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::accordions.erase(
             std::remove(linux::gemix::accordions.begin(),
                         linux::gemix::accordions.end(),
@@ -580,30 +555,25 @@ namespace native
     void icon_view::apply_selected_index() { invalidate(); }
     void icon_view::apply_scroll_offset() { invalidate(); }
 
-    void icon_view::create() const {
-        if (_created)
-            return;
+    void icon_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "GEMix: icon_view requires a created parent.");
-        auto *self = const_cast<icon_view *>(this);
+        auto *self = this;
         linux::gemix::icon_views.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void icon_view::show() const {
+    void icon_view::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: icon_view is not created.");
         invalidate();
     }
 
-    void icon_view::destroy() const {
+    void icon_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<icon_view *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::icon_views.erase(
             std::remove(linux::gemix::icon_views.begin(),
                         linux::gemix::icon_views.end(),

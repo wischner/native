@@ -67,10 +67,8 @@ namespace native
                nullptr);
     }
 
-    void radio::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<radio *>(this);
+    void radio::create_native() {
+        auto *self = this;
         Panel panel = linux::openlook::parent_panel(self);
         Panel_item item = static_cast<Panel_item>(xv_create(
             panel,
@@ -104,12 +102,10 @@ namespace native
                 "OpenLook/XView: failed to create radio.");
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void radio::show() const {
-        Panel_item item = item_for(const_cast<radio *>(this));
+    void radio::show_native() {
+        Panel_item item = item_for(this);
         if (!_created || !item) {
             throw std::runtime_error(
                 "OpenLook/XView: radio is not created.");
@@ -117,12 +113,11 @@ namespace native
         xv_set(item, XV_SHOW, TRUE, nullptr);
     }
 
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         Panel_item item = item_for(self);
-        self->on_native_destroy();
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
             xv_destroy_safe(item);

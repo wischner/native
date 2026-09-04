@@ -92,10 +92,7 @@ namespace native
         [binding->ns_button setTitle:to_nsstring(_text)];
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *p = get_parent();
         if (!p)
             throw std::runtime_error(
@@ -105,7 +102,7 @@ namespace native
                 "macOS: button parent is not created.");
 
         NSView *content = mac::parent_view(
-            p, const_cast<button *>(this));
+            p, this);
         if (!content)
             throw std::runtime_error(
                 "macOS: button parent has no content view.");
@@ -115,7 +112,7 @@ namespace native
                                      _bounds.p.y,
                                      _bounds.d.w,
                                      _bounds.d.h)];
-        btn->_nativeOwner = const_cast<button *>(this);
+        btn->_nativeOwner = this;
         [btn setTitle:to_nsstring(_text)];
         [btn setButtonType:NSButtonTypeMomentaryPushIn];
         [btn setBezelStyle:NSBezelStyleRounded];
@@ -125,30 +122,28 @@ namespace native
                                          NSControlSizeRegular]]];
 
         mac_button_target *target = [[mac_button_target alloc] init];
-        target->_owner = const_cast<button *>(this);
+        target->_owner = this;
 
         [btn setTarget:target];
         [btn setAction:@selector(button_action:)];
         [content addSubview:btn];
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *h = new mac::mac_button();
         h->ns_button = btn;
         h->target = target;
         h->owner = self;
         mac::button_bindings.register_pair(self, h);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "macOS: Cannot show button before it is created.");
 
         auto *h = mac::button_bindings.object_from_handle(
-            const_cast<button *>(this));
+            this);
         if (!h || !h->ns_button)
             throw std::runtime_error(
                 "macOS: Missing NSButton binding.");
@@ -156,13 +151,12 @@ namespace native
         [h->ns_button setHidden:NO];
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *h = mac::button_bindings.object_from_handle(self);
-        self->on_native_destroy();
 
         if (h) {
             if (h->ns_button) {

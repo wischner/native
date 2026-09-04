@@ -93,7 +93,7 @@ namespace linux::wmaker
             panel,
             owner_state->window,
             path.c_str(),
-            dialog.get_title().c_str(),
+            nullptr,
             nullptr);
         if (!accepted) {
             dialog.on_native_cancel();
@@ -122,7 +122,7 @@ namespace linux::wmaker
 
 namespace native
 {
-    void file_dialog::cancel_native_dialog() const {
+    void file_dialog::cancel_native_dialog() {
         // The modal file-panel call closes its shared panel before
         // returning. There is no retained per-dialog resource.
     }

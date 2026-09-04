@@ -351,6 +351,8 @@ namespace
             bounds.d.h,
             XmNscrollingPolicy,
             XmAUTOMATIC,
+            XmNshadowThickness,
+            tree.get_border_visible() ? 2 : 0,
             nullptr);
         state.content = XmVaCreateManagedContainer(
             scroller,
@@ -424,6 +426,10 @@ namespace native
 {
     void tree_view::apply_items() {
         auto &state = binding_for(*this);
+        XtVaSetValues(state.widget,
+                      XmNshadowThickness,
+                      get_border_visible() ? 2 : 0,
+                      nullptr);
         XtVaSetValues(
             state.content,
             XmNoutlineLineStyle,
@@ -485,36 +491,31 @@ namespace native
             XmScrollVisible(state.widget, item, 0, 0);
     }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<tree_view *>(this);
+    void tree_view::create_native() {
+        auto *self = this;
         auto *state = new collection_state();
         state->widget = create_tree_widget(*self, *state);
         linux::openmotif::tree_view_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         rebuild(*self);
         self->apply_selection();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         auto *state = linux::openmotif::tree_view_bindings
                           .object_from_handle(
-                              const_cast<tree_view *>(this));
+                              this);
         if (!_created || !state || !state->widget)
             throw std::runtime_error("Motif: tree_view is not created.");
         XtManageChild(state->widget);
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         auto *state = linux::openmotif::tree_view_bindings
                           .object_from_handle(self);
-        self->on_native_destroy();
         if (state) {
             destroy_tree_widget(*state);
             linux::openmotif::tree_view_bindings

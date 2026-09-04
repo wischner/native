@@ -22,6 +22,24 @@ This note lists backend-level open issues that are real today.
 - Other toolkit ports are still work in progress.
   They should stay out of the normal user workflow until they are built and
   exercised.
+- `panel` and `canvas` are implemented on every enabled backend, but their
+  verification depth differs:
+  - SDL2 has runtime assertions through `native_surface_runtime_tests`,
+    covering layout, nesting, scrollbar thresholds, scrolling, pointer
+    routing, and a destroy/recreate cycle under ASan/UBSan.
+  - X11, OpenMotif, OPEN LOOK, Window Maker, GEMix, Windows, and Haiku are
+    compiled through their Docker targets and share the portable geometry,
+    clamping, and painting code the SDL2 run exercises. Their own hosts have
+    not been driven interactively.
+  - OpenMotif and OPEN LOOK split hosts were driven interactively in their
+    Tribblix guests, including divider dragging. Haiku input/chrome controls
+    were driven interactively after deployment, including both combo modes.
+  - Windows table and native file-open hosts were driven through Wine, and
+    Window Maker's alert panel was driven in its Bookworm guest.
+  - The macOS implementation, including
+    `lib/native/platforms/mac/surfaces.mm`, compiles and launches through the
+    remote `leia` workflow. That SSH session cannot access WindowServer for a
+    screenshot or interactive visual pass.
 
 ## Why this note exists
 

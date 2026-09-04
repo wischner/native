@@ -14,29 +14,47 @@
 
 namespace linux::sdl2
 {
-    native::wnd *root_of(native::wnd *control) {
-        while (control && control->get_parent())
-            control = control->get_parent();
-        return control;
-    }
+    namespace
+    {
+        SDL_Cursor *arrow_cursor = nullptr;
+        SDL_Cursor *ibeam_cursor = nullptr;
+        SDL_Cursor *crosshair_cursor = nullptr;
+        SDL_Cursor *horizontal_resize_cursor = nullptr;
+        SDL_Cursor *vertical_resize_cursor = nullptr;
+        SDL_Cursor *northwest_southeast_resize_cursor = nullptr;
+        SDL_Cursor *northeast_southwest_resize_cursor = nullptr;
 
-    native::point origin_in_root(const native::wnd &control) {
-        int x = control.get_position().x;
-        int y = control.get_position().y;
-        for (native::wnd *parent = control.get_parent();
-             parent && parent->get_parent();
-             parent = parent->get_parent()) {
-            x += parent->get_position().x;
-            y += parent->get_position().y;
+        SDL_Cursor *system_cursor(native::mouse_cursor cursor) {
+            SDL_Cursor **cached = &arrow_cursor;
+            SDL_SystemCursor shape = SDL_SYSTEM_CURSOR_ARROW;
+            if (cursor == native::mouse_cursor::ibeam) {
+                cached = &ibeam_cursor;
+                shape = SDL_SYSTEM_CURSOR_IBEAM;
+            } else if (cursor == native::mouse_cursor::crosshair) {
+                cached = &crosshair_cursor;
+                shape = SDL_SYSTEM_CURSOR_CROSSHAIR;
+            } else if (cursor ==
+                       native::mouse_cursor::resize_horizontal) {
+                cached = &horizontal_resize_cursor;
+                shape = SDL_SYSTEM_CURSOR_SIZEWE;
+            } else if (cursor ==
+                       native::mouse_cursor::resize_vertical) {
+                cached = &vertical_resize_cursor;
+                shape = SDL_SYSTEM_CURSOR_SIZENS;
+            } else if (cursor == native::mouse_cursor::
+                                     resize_northwest_southeast) {
+                cached = &northwest_southeast_resize_cursor;
+                shape = SDL_SYSTEM_CURSOR_SIZENWSE;
+            } else if (cursor == native::mouse_cursor::
+                                     resize_northeast_southwest) {
+                cached = &northeast_southwest_resize_cursor;
+                shape = SDL_SYSTEM_CURSOR_SIZENESW;
+            }
+            if (!*cached)
+                *cached = SDL_CreateSystemCursor(shape);
+            return *cached;
         }
-        return native::point(static_cast<native::coord>(x),
-                             static_cast<native::coord>(y));
-    }
-
-    native::rect root_bounds(const native::wnd &control) {
-        return native::rect(origin_in_root(control),
-                            control.get_dimensions());
-    }
+    } // namespace
 
     int depth_of(const native::wnd &control) {
         int depth = 0;
@@ -54,34 +72,65 @@ namespace linux::sdl2
                    : 0;
     }
 
+    void update_mouse_cursor(native::wnd *window,
+                             native::point position) {
+        if (!window)
+            return;
+
+        native::wnd *target = position.y < 0
+                                  ? window
+                                  : native::detail::deepest_at(
+                                        *window, position);
+        SDL_Cursor *cursor = system_cursor(target->get_cursor());
+        if (cursor)
+            SDL_SetCursor(cursor);
+    }
+
+    void shutdown_mouse_cursors() {
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        if (arrow_cursor)
+            SDL_FreeCursor(arrow_cursor);
+        if (ibeam_cursor)
+            SDL_FreeCursor(ibeam_cursor);
+        if (crosshair_cursor)
+            SDL_FreeCursor(crosshair_cursor);
+        if (horizontal_resize_cursor)
+            SDL_FreeCursor(horizontal_resize_cursor);
+        if (vertical_resize_cursor)
+            SDL_FreeCursor(vertical_resize_cursor);
+        if (northwest_southeast_resize_cursor)
+            SDL_FreeCursor(northwest_southeast_resize_cursor);
+        if (northeast_southwest_resize_cursor)
+            SDL_FreeCursor(northeast_southwest_resize_cursor);
+        arrow_cursor = nullptr;
+        ibeam_cursor = nullptr;
+        crosshair_cursor = nullptr;
+        horizontal_resize_cursor = nullptr;
+        vertical_resize_cursor = nullptr;
+        northwest_southeast_resize_cursor = nullptr;
+        northeast_southwest_resize_cursor = nullptr;
+    }
+
+    void restore_window_focus(native::app_wnd *window) {
+        SDL_CaptureMouse(SDL_FALSE);
+        if (!window || !window->get_created())
+            return;
+
+        SDL_Window *native_window =
+            wnd_bindings.handle_from_object(window);
+        if (!native_window)
+            return;
+
+        SDL_RaiseWindow(native_window);
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+        SDL_SetWindowInputFocus(native_window);
+#endif
+        window->invalidate();
+    }
+
     SDL_Window *main_window = nullptr;
     native::bindings<SDL_Window *, native::wnd *> wnd_bindings;
-    native::bindings<native::wnd *, sdl2_gpx *> wnd_gpx_bindings;
     native::bindings<uint32_t, sdl2_menu *> menu_bindings;
-    native::bindings<native::button *, sdl2_button *> button_bindings;
-    native::bindings<native::check *, sdl2_check *> check_bindings;
-    native::bindings<native::radio *, sdl2_radio *> radio_bindings;
-    native::bindings<native::list *, sdl2_list *> list_bindings;
-    native::bindings<native::combo_box *, sdl2_combo_box *>
-        combo_box_bindings;
-    native::bindings<native::text_edit *, sdl2_text_edit *>
-        text_edit_bindings;
-    native::bindings<native::panel *, sdl2_surface *> panel_bindings;
-    native::bindings<native::canvas *, sdl2_surface *> canvas_bindings;
-    native::bindings<native::accordion *, sdl2_collection *>
-        accordion_bindings;
-    native::bindings<native::tab_view *, sdl2_collection *>
-        tab_view_bindings;
-    native::bindings<native::split_view *, sdl2_collection *>
-        split_view_bindings;
-    native::bindings<native::icon_view *, sdl2_collection *>
-        icon_view_bindings;
-    native::bindings<native::tree_view *, sdl2_collection *>
-        tree_view_bindings;
-    native::bindings<native::table_view *, sdl2_collection *>
-        table_view_bindings;
-    native::bindings<native::code_edit *, sdl2_collection *>
-        code_edit_bindings;
     std::vector<native::check *> checks;
     std::vector<native::radio *> radios;
     std::vector<native::list *> lists;
@@ -90,6 +139,7 @@ namespace linux::sdl2
     std::vector<native::text_edit *> text_edits;
     std::vector<native::accordion *> accordions;
     std::vector<native::tab_view *> tab_views;
+    std::vector<native::split_view *> split_views;
     std::vector<native::icon_view *> icon_views;
     std::vector<native::tree_view *> tree_views;
     std::vector<native::table_view *> table_views;

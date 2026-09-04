@@ -5,6 +5,22 @@ control. It presents semantic columns, image-and-text cells, stable row
 selection, headings, sort requests, groups, search, and native scrolling
 without making the portable model depend on a platform widget.
 
+Columns may be appended with the named `add_column()` operation or with the
+shared collection-builder spelling `table << native::table_column{...}`.
+The operator performs exactly one append and is never used for table
+configuration.
+
+Scrollbar visibility follows `scrollbar_policy`, which is declared in
+`include/native/scrollbar.h` rather than in `table_view.h`. It is one shared
+control concept: `canvas` uses the same type with the same qualified name, and
+`automatic`, `always`, and `never` mean the same thing on both.
+
+The final visible column consumes unused viewport width by default across all
+backends. `set_fill_last_column(false)` preserves only configured widths. The
+fitted width is presentation state, so the semantic `table_column::width`
+remains unchanged and becomes authoritative again when horizontal scrolling is
+needed.
+
 ## Model and identity
 
 A view borrows a `table_model`. The model returns a logical row count, a
@@ -45,6 +61,19 @@ Each adapter applies cached state during creation. Programmatic changes do not
 emit action signals; translated user actions update the portable cache and
 emit once.
 
+Library-painted table input uses the row and header metrics synchronized when
+the backend host is created. SDL child controls paint into the root renderer,
+so pointer routing computes the hit from that cache and never asks an
+unbound child for its own graphics context.
+
+Those hosts paint the complete outer border after headers, rows, and portable
+scrollbars, use a subtle theme-supplied alternate row color, and distribute the
+last visible page across the complete viewport so no row is clipped and no
+empty bottom strip remains. The fitted final header occupies the top-right area
+above a vertical scrollbar. Portable step arrows and the gripped thumb share
+the same raised relief. Native-widget adapters keep their system scrollbars
+while applying the same final-column fitting policy.
+
 ## Search and invalidation
 
 The default model search supports exact, prefix, and substring matching,
@@ -54,8 +83,10 @@ function. `find_and_reveal()` selects a result, expands its group if allowed,
 and scrolls it into view.
 
 Model notifications identify resets, inserted, removed, changed, or regrouped
-row ranges. The view rebuilds compact mapping and native presentation while
-preserving still-valid selection and viewport anchors by stable ID.
+row ranges. The view rebuilds compact mapping and native presentation.
+Incremental changes preserve still-valid selection and viewport anchors by
+stable ID; a complete reset drops obsolete anchors, removes stale selection,
+and clamps its scroll position before querying the replacement model.
 
 See the application-facing
 [Advanced Table Views](../programming-native/14-ADVANCED-TABLE-VIEWS.md)

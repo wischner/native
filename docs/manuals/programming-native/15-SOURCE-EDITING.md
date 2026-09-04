@@ -45,7 +45,8 @@ source.save();
 
 Loading remembers LF, CRLF, or CR and normalizes the in-memory text. Saving
 uses the remembered or explicitly selected `line_ending`. A loaded UTF-8 BOM
-is restored only while `preserve_bom` is enabled.
+is restored only while `preserve_bom` is enabled. `set_path()`, `load(path)`,
+`get_path()`, and `save_as(path)` use `std::filesystem::path`.
 
 Markers, styles, diagnostics, caret, selection, and scrolling never enter the
 source file. If your application restores those values from a session

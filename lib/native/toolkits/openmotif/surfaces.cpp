@@ -70,11 +70,8 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         wnd *parent = get_parent();
         Widget parent_host = linux::openmotif::parent_widget(self);
         if (!parent || !parent->get_created() || !parent_host)
@@ -115,52 +112,44 @@ namespace native
         // Children resolve their Xt parent through this registry, so
         // the binding has to exist before on_wnd_create runs.
         linux::openmotif::wnd_bindings.register_pair(widget, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         Widget widget =
             linux::openmotif::wnd_bindings.handle_from_object(
-                const_cast<panel *>(this));
+                this);
         if (!_created || !widget)
             throw std::runtime_error("Motif: panel is not created.");
         XtManageChild(widget);
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         Widget widget =
             linux::openmotif::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (widget) {
             linux::openmotif::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);
         }
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         auto *state = new linux::openmotif::motif_collection();
         state->widget =
             linux::openmotif::create_collection_host(*self, *state);
         linux::openmotif::canvas_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *state = linux::openmotif::canvas_bindings
                           .object_from_handle(
-                              const_cast<canvas *>(this));
+                              this);
         if (!_created || !state || !state->widget)
             throw std::runtime_error("Motif: canvas is not created.");
         XtManageChild(state->widget);
@@ -170,11 +159,11 @@ namespace native
         }
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *state =
             linux::openmotif::canvas_bindings.object_from_handle(self);
         linux::openmotif::destroy_collection_host(*self, state);

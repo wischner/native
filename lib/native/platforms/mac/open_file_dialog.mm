@@ -18,7 +18,7 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -28,7 +28,7 @@ namespace native
                                            .handle_from_object(owner)
                                      : nil;
         if (!owner_window) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw std::runtime_error(
                 "macOS: Missing owner window for an open panel.");
         }
@@ -41,7 +41,7 @@ namespace native
         [panel setAllowsMultipleSelection:get_allow_multiple() ? YES
                                                                : NO];
 
-        auto *dialog = const_cast<open_file_dialog *>(this);
+        auto *dialog = this;
         try {
             mac::file_dialog_bindings.register_pair(dialog, panel);
         } catch (...) {
@@ -61,9 +61,10 @@ namespace native
 
             mac::file_dialog_bindings.unregister_by_handle(dialog);
             if (response == NSModalResponseOK) {
-                std::vector<std::string> paths;
+                std::vector<std::filesystem::path> paths;
                 for (NSURL *url in [panel URLs]) {
-                    std::string path = mac::path_from_url(url);
+                    std::filesystem::path path =
+                        mac::path_from_url(url);
                     if (!path.empty())
                         paths.push_back(path);
                 }

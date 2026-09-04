@@ -113,10 +113,8 @@ namespace native
             v->_suppress = false;
         });
     }
-    void list::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<list *>(this);
+    void list::create_native() {
+        auto *self = this;
         BView *parent = parent_view(self);
         BWindow *w = parent->Window();
         native_list_view *v = nullptr;
@@ -139,24 +137,21 @@ namespace native
         auto *b = new haiku::haiku_list();
         b->view = v;
         haiku::list_bindings.register_pair(self, b);
-        _created = true;
-        self->on_native_create();
     }
-    void list::show() const {
+    void list::show_native() {
         auto *b = haiku::list_bindings.object_from_handle(
-            const_cast<list *>(this));
+            this);
         if (!_created || !b || !b->view)
             throw std::runtime_error("Haiku: list is not created.");
         locked(b->view->Window(), [&] {
             b->view->Show();
         });
     }
-    void list::destroy() const {
+    void list::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<list *>(this);
+        auto *self = this;
         auto *b = haiku::list_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             BWindow *w = b->view ? b->view->Window() : nullptr;
             locked(w, [&] {

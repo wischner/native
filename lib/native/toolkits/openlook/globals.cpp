@@ -25,32 +25,8 @@ namespace linux::openlook
 
     native::bindings<Xv_opaque, native::wnd *> wnd_bindings;
     native::bindings<Xv_opaque, native::app_wnd *> frame_bindings;
-    native::bindings<native::app_wnd *, openlook_window *>
-        window_bindings;
-    native::bindings<native::wnd *, openlook_gpx *>
-        wnd_gpx_bindings;
     native::bindings<std::uint32_t, openlook_font *> font_bindings;
     native::bindings<std::uint32_t, openlook_menu *> menu_bindings;
-    native::bindings<native::text_edit *, openlook_text_edit *>
-        text_edit_bindings;
-    native::bindings<native::combo_box *, openlook_combo_box *>
-        combo_box_bindings;
-    native::bindings<native::accordion *, openlook_collection *>
-        accordion_bindings;
-    native::bindings<native::tab_view *, openlook_collection *>
-        tab_view_bindings;
-    native::bindings<native::split_view *, openlook_split_view *>
-        split_view_bindings;
-    native::bindings<native::icon_view *, openlook_collection *>
-        icon_view_bindings;
-    native::bindings<native::tree_view *, openlook_collection *>
-        tree_view_bindings;
-    native::bindings<native::table_view *, openlook_collection *>
-        table_view_bindings;
-    native::bindings<native::code_edit *, openlook_collection *>
-        code_edit_bindings;
-    native::bindings<native::canvas *, openlook_collection *>
-        canvas_bindings;
     native::bindings<Xv_Window, native::wnd *>
         collection_paint_bindings;
     native::bindings<
@@ -152,63 +128,31 @@ namespace linux::openlook
     }
 
     Window drawable(native::wnd *window) {
-        if (auto *top = dynamic_cast<native::app_wnd *>(window)) {
-            openlook_window *state = window_state(top);
-            return state && state->paint_window
+        if (!window)
+            return None;
+
+        if (auto *state =
+                native::detail::peer_state<openlook_window>(*window)) {
+            return state->paint_window
                        ? static_cast<Window>(xv_get(
                              state->paint_window, XV_XID))
                        : None;
         }
 
-        if (auto *accordion =
-                dynamic_cast<native::accordion *>(window)) {
-            auto *state = accordion_bindings.object_from_handle(
-                accordion);
-            return state && state->paint_window
+        if (auto *state =
+                native::detail::peer_state<openlook_collection>(
+                    *window)) {
+            return state->paint_window
                        ? static_cast<Window>(xv_get(
                              state->paint_window, XV_XID))
                        : None;
         }
-        if (auto *tabs = dynamic_cast<native::tab_view *>(window)) {
-            auto *state = tab_view_bindings.object_from_handle(tabs);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
-                       : None;
-        }
-        if (auto *icons = dynamic_cast<native::icon_view *>(window)) {
-            auto *state = icon_view_bindings.object_from_handle(icons);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
-                       : None;
-        }
-        if (auto *tree = dynamic_cast<native::tree_view *>(window)) {
-            auto *state = tree_view_bindings.object_from_handle(tree);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
-                       : None;
-        }
-        if (auto *table = dynamic_cast<native::table_view *>(window)) {
-            auto *state = table_view_bindings.object_from_handle(table);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
-                       : None;
-        }
-        if (auto *editor = dynamic_cast<native::code_edit *>(window)) {
-            auto *state = code_edit_bindings.object_from_handle(editor);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
-                       : None;
-        }
-        if (auto *surface = dynamic_cast<native::canvas *>(window)) {
-            auto *state = canvas_bindings.object_from_handle(surface);
-            return state && state->paint_window
-                       ? static_cast<Window>(xv_get(
-                             state->paint_window, XV_XID))
+
+        if (auto *split = dynamic_cast<native::split_view *>(window)) {
+            auto *state = split_view_bindings.object_from_handle(split);
+            return state && state->host
+                       ? static_cast<Window>(
+                             xv_get(state->host, XV_XID))
                        : None;
         }
 

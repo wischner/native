@@ -20,23 +20,19 @@ namespace native
         invalidate();
     }
 
-    void accordion::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<accordion *>(this);
+    void accordion::create_native() {
+        auto *self = this;
         Widget widget = linux::x11::create_collection_host(*self);
         auto *binding = new linux::x11::xaw_collection();
         binding->widget = widget;
         linux::x11::accordion_bindings.register_pair(self, binding);
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void accordion::show() const {
+    void accordion::show_native() {
         auto *binding = linux::x11::accordion_bindings.object_from_handle(
-            const_cast<accordion *>(this));
+            this);
         if (!_created || !binding || !binding->widget)
             throw std::runtime_error(
                 "X11/Athena: accordion is not created.");
@@ -47,13 +43,12 @@ namespace native
         }
     }
 
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         auto *binding =
             linux::x11::accordion_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->widget) {
                 linux::x11::wnd_bindings.unregister_by_handle(

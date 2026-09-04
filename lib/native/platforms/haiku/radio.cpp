@@ -92,10 +92,8 @@ namespace native
             b->view->SetValue(_selected ? B_CONTROL_ON : B_CONTROL_OFF);
         });
     }
-    void radio::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<radio *>(this);
+    void radio::create_native() {
+        auto *self = this;
         BView *parent = parent_view(self);
         BWindow *w = parent->Window();
         native_radio_view *v = nullptr;
@@ -114,24 +112,21 @@ namespace native
         auto *b = new haiku::haiku_radio();
         b->view = v;
         haiku::radio_bindings.register_pair(self, b);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         auto *b = haiku::radio_bindings.object_from_handle(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !b || !b->view)
             throw std::runtime_error("Haiku: radio is not created.");
         locked(b->view->Window(), [&] {
             b->view->Show();
         });
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         auto *b = haiku::radio_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (b) {
             BWindow *w = b->view ? b->view->Window() : nullptr;
             locked(w, [&] {

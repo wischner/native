@@ -20,30 +20,25 @@ namespace native
     void tree_view::apply_expansion(tree_item_id, bool) { invalidate(); }
     void tree_view::apply_scroll_offset() { invalidate(); }
 
-    void tree_view::create() const {
-        if (_created)
-            return;
+    void tree_view::create_native() {
         if (!get_parent() || !get_parent()->get_created())
             throw std::runtime_error(
                 "GEMix: tree_view requires a created parent.");
-        auto *self = const_cast<tree_view *>(this);
+        auto *self = this;
         linux::gemix::tree_views.push_back(self);
-        _created = true;
         self->synchronize_theme_metrics();
-        self->on_native_create();
     }
 
-    void tree_view::show() const {
+    void tree_view::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: tree_view is not created.");
         invalidate();
     }
 
-    void tree_view::destroy() const {
+    void tree_view::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<tree_view *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::tree_views.erase(
             std::remove(linux::gemix::tree_views.begin(),
                         linux::gemix::tree_views.end(),

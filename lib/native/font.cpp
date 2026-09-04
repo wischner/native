@@ -65,7 +65,7 @@ namespace native
     }
 
     font_t font_t::from_file(
-        const std::string &path,
+        const std::filesystem::path &path,
         int size,
         std::uint32_t face_index) {
         std::ifstream stream(path, std::ios::binary);

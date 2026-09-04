@@ -16,6 +16,8 @@
 #include "collection_render.h"
 #include <native/theme.h>
 
+#include "classic_scrollbar.h"
+
 namespace
 {
     native::dim bounded_dimension(int value) {
@@ -34,7 +36,7 @@ namespace native
                          coord y,
                          dim width,
                          dim height)
-        : wnd(x, y, width, height)
+        : collection_view(x, y, width, height)
         , _items(std::move(items)) {
         on_wnd_paint.connect([this](wnd_paint_event event) {
             detail::draw_icon_view(*this, event.g);
@@ -113,6 +115,10 @@ namespace native
             apply_items();
         invalidate();
         return *this;
+    }
+
+    icon_view &icon_view::operator<<(icon_view_item item) {
+        return add_item(std::move(item));
     }
 
     icon_view &icon_view::remove_item(std::size_t index) {
@@ -211,19 +217,8 @@ namespace native
         return *this;
     }
 
-    int icon_view::get_scroll_offset() const {
-        return _scroll_offset;
-    }
-
     icon_view &icon_view::set_scroll_offset(int offset) {
-        const int clamped = std::clamp(
-            offset, 0, maximum_scroll_offset());
-        if (_scroll_offset == clamped)
-            return *this;
-        _scroll_offset = clamped;
-        if (_created)
-            apply_scroll_offset();
-        invalidate();
+        collection_view::set_scroll_offset(offset);
         return *this;
     }
 
@@ -403,17 +398,6 @@ namespace native
         set_scroll_offset(_scroll_offset + delta);
     }
 
-    bool icon_view::get_focused() const {
-        return _focused;
-    }
-
-    void icon_view::on_native_focus(bool focused) {
-        if (_focused == focused)
-            return;
-        _focused = focused;
-        invalidate();
-    }
-
     void icon_view::ensure_selection_visible() {
         if (_selected_index < 0)
             return;
@@ -441,31 +425,17 @@ namespace native
         const font_metrics font =
             font_t::stock(font_role::icon_label).get_metrics();
         _label_height = std::max(1, font.height);
-        wnd *root = this;
-        while (root->get_parent())
-            root = root->get_parent();
-        try {
-            gpx &graphics = root->get_gpx();
-            auto painter = theme::create(graphics);
-            const theme::metrics values = painter->defaults();
-            _item_padding = std::max(
-                0, std::max(values.icon_view_padding_x,
-                            values.icon_view_padding_y));
-            _item_gap = std::max(
-                0, std::max(values.icon_view_item_gap_x,
-                            values.icon_view_item_gap_y));
-            _label_gap = std::max(0, values.icon_view_label_gap);
-            _minimum_item_width = std::max(
-                1, values.icon_view_min_item_width);
-            auto saved = graphics.save_state();
-            graphics.set_font(font_t::stock(font_role::icon_label));
-            _label_height = std::max(
-                1, graphics.get_font_metrics().height);
-        } catch (const std::runtime_error &) {
-            // Some native hosts acquire their drawable only when the
-            // parent is first mapped. The stock font and portable
-            // spacing defaults remain valid during early creation.
-        }
+        custom_control::synchronize_theme_metrics();
+        _item_padding = std::max(
+            0, std::max(_theme_metrics.icon_view_padding_x,
+                        _theme_metrics.icon_view_padding_y));
+        _item_gap = std::max(
+            0, std::max(_theme_metrics.icon_view_item_gap_x,
+                        _theme_metrics.icon_view_item_gap_y));
+        _label_gap = std::max(
+            0, _theme_metrics.icon_view_label_gap);
+        _minimum_item_width = std::max(
+            1, _theme_metrics.icon_view_min_item_width);
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
         ensure_selection_visible();
@@ -546,9 +516,7 @@ namespace native
         const rect &track,
         const rect &thumb,
         const theme::state &state) {
-        appearance.draw_scrollbar_part(
-            track, orientation, scrollbar_part::track, state);
-        appearance.draw_scrollbar_part(
-            thumb, orientation, scrollbar_part::thumb, state);
+        detail::draw_classic_scrollbar(
+            appearance, orientation, track, thumb, state);
     }
 } // namespace native

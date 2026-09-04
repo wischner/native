@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,8 +27,23 @@ namespace vision
         explicit feature_inspector(native::app_wnd &owner);
 
     private:
-        // Paint the modeless-window explanation and theme samples.
+        native::button _apply;
+        native::check _enabled;
+        native::radio _compact;
+        native::list _sections;
+        std::string _status;
+
+        // Create genuinely interactive controls in the modeless shell.
+        bool on_create();
+
+        // Paint the modeless-window explanation and live status.
         bool on_paint(native::wnd_paint_event event);
+
+        // Report interaction from any inspector control.
+        bool on_apply();
+        bool on_enabled(bool enabled);
+        bool on_compact(bool selected);
+        bool on_section(int index);
     };
 
     // Demonstrates how layout managers arrange child controls.
@@ -215,6 +231,7 @@ namespace vision
         native::split_view _split;
 
         bool on_create();
+        bool on_resize(native::size dimensions);
         bool on_ratio_change(float ratio);
     };
 
@@ -431,7 +448,7 @@ namespace vision
         bool reset_image();
 
         // Load one face through both the file and memory font APIs.
-        bool load_font(const std::string &path,
+        bool load_font(const std::filesystem::path &path,
                        std::uint32_t face_index = 0);
 
         // Enumerate installed faces and load the first usable one.

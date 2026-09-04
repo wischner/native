@@ -55,21 +55,52 @@ namespace native
         // Cache a native-originated state change and emit on_change.
         virtual void on_native_checked(bool checked);
 
+    protected:
         // Create the backend check resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend check resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend check resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the checked state after a user-originated change.
         signal<bool> on_change;
 
     protected:
-        // Draw the complete check using the active native theme.
+        // Dispatch the complete staged check-control contract.
         virtual void draw_control(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the control background.
+        virtual void draw_background(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the check indicator and its selected state.
+        virtual void draw_indicator(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the check label.
+        virtual void draw_text(
+            gpx &graphics,
+            theme &appearance,
+            const rect &bounds,
+            const theme::state &state);
+
+        // Draw the keyboard-focus indicator last.
+        virtual void draw_focus(
             gpx &graphics,
             theme &appearance,
             const rect &bounds,

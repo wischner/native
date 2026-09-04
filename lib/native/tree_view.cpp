@@ -17,6 +17,8 @@
 
 #include <native/theme.h>
 
+#include "classic_scrollbar.h"
+
 #include "collection_render.h"
 
 namespace
@@ -41,6 +43,20 @@ namespace
 
 namespace native
 {
+    tree_view_item tree_node(
+        std::string text,
+        tree_item_id id,
+        std::vector<tree_view_item> children,
+        bool expanded,
+        bool enabled) {
+        return tree_view_item(std::move(text),
+                              nullptr,
+                              id,
+                              std::move(children),
+                              expanded,
+                              enabled);
+    }
+
     tree_view_item::tree_view_item() = default;
 
     tree_view_item::tree_view_item(
@@ -62,7 +78,7 @@ namespace native
                          coord y,
                          dim width,
                          dim height)
-        : wnd(x, y, width, height)
+        : collection_view(x, y, width, height)
         , _items(std::move(items)) {
         validate_items(_items);
         on_wnd_paint.connect([this](wnd_paint_event event) {
@@ -170,6 +186,10 @@ namespace native
             parent->children.push_back(std::move(item));
         }
         return set_items(std::move(candidate));
+    }
+
+    tree_view &tree_view::operator<<(tree_view_item item) {
+        return add_item(std::move(item));
     }
 
     tree_view &tree_view::remove_item(tree_item_id id) {
@@ -416,6 +436,26 @@ namespace native
         return _lines_visible;
     }
 
+    tree_view &tree_view::set_border_visible(bool visible) {
+        if (_border_visible == visible)
+            return *this;
+        _border_visible = visible;
+        if (_created) {
+            apply_items();
+            // Native outline widgets rebuild their peer rows while applying
+            // frame styles. Restore the portable selection and viewport so
+            // changing decoration never changes tree state.
+            apply_selection();
+            apply_scroll_offset();
+        }
+        invalidate();
+        return *this;
+    }
+
+    bool tree_view::get_border_visible() const {
+        return _border_visible;
+    }
+
     tree_view &tree_view::set_presentation(
         tree_view_presentation presentation) {
         if (_presentation == presentation)
@@ -532,19 +572,8 @@ namespace native
                         content - static_cast<int>(_bounds.d.h));
     }
 
-    int tree_view::get_scroll_offset() const {
-        return _scroll_offset;
-    }
-
     tree_view &tree_view::set_scroll_offset(int offset) {
-        const int clamped = std::clamp(
-            offset, 0, maximum_scroll_offset());
-        if (_scroll_offset == clamped)
-            return *this;
-        _scroll_offset = clamped;
-        if (_created)
-            apply_scroll_offset();
-        invalidate();
+        collection_view::set_scroll_offset(offset);
         return *this;
     }
 
@@ -746,17 +775,6 @@ namespace native
         set_scroll_offset(_scroll_offset + delta);
     }
 
-    bool tree_view::get_focused() const {
-        return _focused;
-    }
-
-    void tree_view::on_native_focus(bool focused) {
-        if (_focused == focused)
-            return;
-        _focused = focused;
-        invalidate();
-    }
-
     void tree_view::on_bounds_changed() {
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
@@ -770,20 +788,8 @@ namespace native
     }
 
     void tree_view::synchronize_theme_metrics() {
-        const font_metrics font =
-            font_t::stock(font_role::control).get_metrics();
-        _row_height = std::max(20, font.height + 4);
-        try {
-            wnd *root = this;
-            while (root->get_parent())
-                root = root->get_parent();
-            gpx &graphics = root->get_gpx();
-            auto painter = theme::create(graphics);
-            const theme::metrics values = painter->defaults();
-            apply_theme_metrics(values);
-        } catch (const std::runtime_error &) {
-            // Early native creation may not yet expose a drawable.
-        }
+        custom_control::synchronize_theme_metrics();
+        apply_theme_metrics(_theme_metrics);
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
         ensure_item_visible(_selected_item);
@@ -941,9 +947,19 @@ namespace native
         const rect &track,
         const rect &thumb,
         const theme::state &state) {
-        appearance.draw_scrollbar_part(
-            track, orientation, scrollbar_part::track, state);
-        appearance.draw_scrollbar_part(
-            thumb, orientation, scrollbar_part::thumb, state);
+        detail::draw_classic_scrollbar(
+            appearance, orientation, track, thumb, state);
+    }
+
+    void tree_view::draw_border(
+        gpx &graphics,
+        theme &appearance,
+        const rect &bounds,
+        const theme::state &) {
+        if (!_border_visible)
+            return;
+        graphics.set_pen(1)
+            .set_ink(appearance.get_button_border_color())
+            .draw_rect(bounds, false);
     }
 } // namespace native

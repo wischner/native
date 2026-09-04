@@ -47,11 +47,8 @@ namespace
 
 namespace native
 {
-    void panel::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<panel *>(this);
+    void panel::create_native() {
+        auto *self = this;
         app_wnd *window = nullptr;
         const point position = frame_position(*self, window);
         auto *window_state =
@@ -89,51 +86,43 @@ namespace native
         // Children resolve their parent Panel through this registry,
         // so the binding has to exist before on_wnd_create runs.
         linux::openlook::wnd_bindings.register_pair(host, self);
-        _created = true;
-        self->on_native_create();
     }
 
-    void panel::show() const {
+    void panel::show_native() {
         auto host = static_cast<Panel>(
             linux::openlook::wnd_bindings.handle_from_object(
-                const_cast<panel *>(this)));
+                this));
         if (!_created || !host)
             throw std::runtime_error(
                 "OpenLook/XView: panel is not created.");
         xv_set(host, XV_SHOW, TRUE, nullptr);
     }
 
-    void panel::destroy() const {
+    void panel::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<panel *>(this);
+        auto *self = this;
         auto host = static_cast<Panel>(
             linux::openlook::wnd_bindings.handle_from_object(self));
-        self->on_native_destroy();
         if (host) {
             linux::openlook::wnd_bindings.unregister_by_handle(host);
             xv_destroy_safe(host);
         }
     }
 
-    void canvas::create() const {
-        if (_created)
-            return;
-
-        auto *self = const_cast<canvas *>(this);
+    void canvas::create_native() {
+        auto *self = this;
         auto *state = linux::openlook::create_collection_panel(*self);
         linux::openlook::canvas_bindings.register_pair(self, state);
-        _created = true;
         self->synchronize_theme_metrics();
         self->relayout_children();
-        self->on_native_create();
     }
 
-    void canvas::show() const {
+    void canvas::show_native() {
         auto *state = linux::openlook::canvas_bindings
                           .object_from_handle(
-                              const_cast<canvas *>(this));
+                              this);
         if (!_created || !state || !state->panel)
             throw std::runtime_error(
                 "OpenLook/XView: canvas is not created.");
@@ -146,11 +135,11 @@ namespace native
         }
     }
 
-    void canvas::destroy() const {
+    void canvas::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<canvas *>(this);
+        auto *self = this;
         auto *state =
             linux::openlook::canvas_bindings.object_from_handle(self);
         linux::openlook::destroy_collection_panel(*self, state);

@@ -11,7 +11,7 @@
 
 namespace native
 {
-    void open_file_dialog::show() const {
+    void open_file_dialog::show_native() {
         if (!begin_dialog())
             return;
 
@@ -20,14 +20,14 @@ namespace native
                 windows::show_open_file_dialog(
                     *this, get_allow_multiple());
             if (response.accepted) {
-                const_cast<open_file_dialog *>(this)->on_native_accept(
+                this->on_native_accept(
                     response.paths);
             } else {
-                const_cast<open_file_dialog *>(this)
+                this
                     ->on_native_cancel();
             }
         } catch (...) {
-            const_cast<open_file_dialog *>(this)->on_native_cancel();
+            this->on_native_cancel();
             throw;
         }
     }

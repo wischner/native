@@ -20,6 +20,16 @@ The basic code-structure rules are:
   available.
 - Place all library implementation code under `lib/native/`.
 - Keep class declarations in headers and class implementations in source files.
+- Implement library-owned path manipulation, traversal, metadata, rename,
+  and removal with C++20 `std::filesystem`. Read and write file contents with
+  standard C++ streams. Do not use direct POSIX or C filesystem calls, shell
+  command construction, or OS-specific helpers where the standard library
+  provides the operation. Public values that identify filesystem entries use
+  `std::filesystem::path`; filename patterns, extensions, and labels remain
+  text. Descriptor, process, signal, and terminal work continues to use POSIX
+  interfaces. Native window, control, standard-panel, system-icon, and
+  known-folder APIs remain permitted inside their platform or toolkit layer
+  because the C++ standard library has no equivalent.
 - When necessary, implement a class across three levels:
   - Place behavior shared by all platforms in `lib/native/`.
   - Place operating-system-specific behavior in
@@ -33,24 +43,33 @@ Public C++ classes must not contain native types, even in private members. To
 associate a public C++ object with one or more native resources, use an
 internal binding that is never exposed outside the library.
 
-The `native::bindings<A, B>` class provides a bidirectional mapping between
-native objects and library objects.
+Every created `wnd` owns one opaque `detail::wnd_peer`. The peer routes common
+geometry, visibility, and invalidation operations and owns typed backend state
+without placing a toolkit type in a public header. Object-to-state lookups use
+the stateless internal `detail::peer_bindings` adapter and therefore require no
+process-wide object-to-state registry.
+
+The `native::bindings<A, B>` class remains the bidirectional mapping for a
+native callback handle or resource identifier that must recover a library
+object.
 
 Typical mappings include:
 
 - A native window handle and its `native::wnd *` object.
-- A `native::wnd *` object and its backend graphics cache.
+- A font or menu identifier and its backend resource.
 
 This lets the backend:
 
 - Find the `wnd` that owns a native event.
-- Find the native handle associated with a given `wnd`.
-- Keep renderer and graphics state outside the public window class.
+- Find a callback-facing native handle associated with a given `wnd` when the
+  backend cannot retain that handle in peer state.
+- Map non-window resource identifiers without exposing toolkit types.
 
-Declare these bindings in a private `globals.h` file and define them in the
-corresponding `globals.cpp` file. Place them in the platform namespace when a
-platform does not use a toolkit. When it does, place them in a nested
-`platform::toolkit` namespace.
+Declare callback-facing bindings in a private `globals.h` file and define them
+in the corresponding `globals.cpp` file. Place them in the platform namespace
+when a platform does not use a toolkit. When it does, place them in a nested
+`platform::toolkit` namespace. Do not add one `native::bindings` instance per
+control type; state that belongs to one window belongs to its peer.
 
 Example:
 
@@ -88,6 +107,12 @@ event; `false` continues delivery. Dispatch is synchronous and newest-first.
 `connect()` returns an identifier local to that signal; use `disconnect()` or
 `disconnect_all()` to remove handlers.
 
+`connect_scoped()` returns a move-only `native::connection`. The handle
+disconnects its slot when destroyed and may safely outlive the signal; call
+`release()` only when the receiver's lifetime is managed another way and the
+slot must remain connected. Prefer scoped connections for callbacks that
+capture an object or bind one of its member functions.
+
 Member connections do not own their receiver, which must outlive the
 connection. Do not modify a signal's connections during its emission. Use UI
 signals on the UI thread unless access is externally synchronized.
@@ -101,6 +126,11 @@ retain the normal state transition and notification. Internal semantic events
 that are not direct toolkit callbacks follow the same template-method pattern
 through a protected virtual hook. An optional signal initializer may defer
 event-source setup; it runs once before the first `connect()` or `emit()`.
+
+Keyboard focus follows the same route: backends call `wnd::on_native_focus()`
+without switching on the public control type. The `wnd` default is a no-op;
+`custom_control` caches focus and invalidates, and specialized controls may
+extend that behavior.
 
 ## 4. Setters and Getters
 
@@ -124,26 +154,66 @@ avoid sending the change back to the backend.
 
 `wnd` is the portable base class for top-level windows and controls. It contains
 only behavior and state common to all windows: bounds, parent and children,
-layout, graphics access, invalidation, lifecycle operations, and signals.
+layout, mouse cursor, graphics access, invalidation, lifecycle operations, and
+signals.
 Derived types add only their specific properties and events. Native handles and
-backend graphics state belong in bindings, never in public window classes.
+backend graphics state belong in the internal peer or callback-facing
+bindings, never in public window classes.
 
 Window lifecycle must follow these rules:
 
 - Construction records portable state but does not create native resources.
-- `create()` is idempotent, creates bindings, applies cached properties, and
-  emits `on_wnd_create` once per creation.
+- `create()`, `show()`, `destroy()`, and `invalidate()` are mutating,
+  non-`const` operations.
+- Public `create()`, `show()`, and `destroy()` are non-virtual template
+  methods. Backends implement only `create_native()`, `show_native()`, and
+  `destroy_native()`.
+- `create()` is idempotent, validates the parent once, establishes the backend
+  resource, applies the cached cursor, marks it created, and emits
+  `on_wnd_create` once per creation. A failed backend hook restores the
+  uncreated state.
 - A child requires an assigned, created parent before it can be created.
-- `show()` requires a created resource.
+- `show()` requires a created resource and makes `get_visible()` true only
+  after the backend hook succeeds. A synchronous system panel may accept or
+  cancel and destroy its logical resource inside that hook; in that case
+  `show()` returns with both created and visible state false and must not apply
+  any more backend state to the completed resource.
 - `destroy()` is idempotent and releases native resources and bindings.
+- Backend-owned drawing resources must be released before the native window
+  or surface they target. In particular, SDL renderers are destroyed before
+  their `SDL_Window`; process-wide SDL shutdown belongs to the application
+  loop, never to a closing modeless window.
 - A window-manager close request must converge on `destroy()`, not merely hide
   or dismiss the native resource. A later `create()`/`show()` therefore starts
   a complete new native lifecycle on every backend.
 
+`mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
+`crosshair`, `resize_horizontal`, `resize_vertical`,
+`resize_northwest_southeast`, and `resize_northeast_southwest`. Every `wnd`
+caches its choice; `set_cursor()` is valid before or after creation, and
+`get_cursor()` returns that cached value. Windows default to `arrow`, while
+text editors select `ibeam` during construction. Backends apply the cache
+through the protected `apply_cursor()` hook after creation, again after showing
+a resource that may only then be realized, and immediately after a live value
+changes. Emulated child-window backends must choose the cursor of the deepest
+visible child under the pointer. A backend without a corresponding directional
+system cursor must use its precision-pointer fallback rather than an unrelated
+arrow.
+
 Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
-must update cached bounds and relayout children. Backend resize notifications
-must update the cache and layout without requesting the same resize again.
+must update cached bounds and relayout children.
+
+The layout region is derived in two documented steps. `get_chrome_bounds()` is
+a protected virtual returning the host-relative area a window leaves for
+non-client elements and the client after its own permanent edge furniture; the
+base returns the complete bounds, so a plain window reserves nothing.
+`get_client_bounds()` is that area further reduced by every visible non-client
+element, and non-client strips are placed inside the same chrome rectangle.
+A control that owns edge chrome, such as canvas scrollbars, overrides only the
+first step, and both the client area and the strip geometry stay consistent.
+Backend resize notifications must update the cache and layout without
+requesting the same resize again.
 Portable layout may temporarily assign a child zero width or zero height. A
 backend whose native window system requires non-zero dimensions must use its
 minimum native backing size without changing the cached portable bounds.
@@ -168,7 +238,8 @@ object must safely detach the non-owning relationship.
 
 - A `modeless_wnd` uses the backend's owned, transient, floating-subset, or
   equivalent top-level relationship. It remains in the normal application
-  event loop and does not disable its owner.
+  event loop, accepts controls through that loop, and does not disable its
+  owner.
 - A `modal_wnd` is an owner-modal dialog. Showing it starts a modal session,
   moves focus to the dialog, and prevents input to its owner and the owner's
   other owned branches. The event loop must continue to dispatch paint and
@@ -176,6 +247,17 @@ object must safely detach the non-owning relationship.
   Closing it supplies an accepted or cancelled `dialog_result`, ends the
   session exactly once, and restores the previous eligible owner or modal
   dialog.
+
+Closing any owned top-level resource must release pointer capture and restore
+keyboard focus to the previous eligible application window. This applies to
+modeless windows and synchronous platform panels as well as `modal_wnd`; the
+first control click after closure must be delivered as an action rather than
+consumed only to reacquire focus.
+An activation click from outside the application follows the same rule. SDL2
+sets `SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH` before creating a window so the
+window-manager activation click reaches the control under the pointer. If a
+window manager still consumes the press but delivers its release, SDL2
+reconstructs that single press/release transition once after focus gain.
 
 Modal sessions form a stack so a modal dialog may own another modal dialog.
 Only the active modal branch accepts user input. Native owner disabling,
@@ -191,11 +273,11 @@ result, or event-loop policy.
 
 `file_dialog` is the shared system-panel base for `open_file_dialog` and
 `save_file_dialog`. It caches an initial path, ordered `file_filter` groups,
-and the selected UTF-8 filesystem paths. `open_file_dialog` adds optional
-multiple selection. `save_file_dialog` adds a suggested leaf name, default
-extension, and overwrite-confirmation preference. These public classes contain
-no native panel handles and do not pretend that a system panel has drawable
-window geometry.
+and the selected `std::filesystem::path` values. `open_file_dialog` adds
+optional multiple selection. `save_file_dialog` adds a suggested leaf name,
+default extension, and overwrite-confirmation preference. These public
+classes contain no native panel handles and do not pretend that a system
+panel has drawable window geometry.
 
 Backends must use the operating system or toolkit file selector when one
 exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
@@ -221,6 +303,15 @@ Backends implement creation, display, destruction, invalidation, painting, and
 event translation with identical public behavior. Add each new window type to
 every supported backend and keep all platform differences below the public API.
 
+Painted controls use the public `custom_control` base for shared focus state
+and active-theme metric synchronization. Indexed painted collections use its
+`collection_view` subclass. That base also owns the optional pixel-based
+vertical scroll offset used by `icon_view` and `tree_view`; collections with a
+different scrolling model retain their specialized policy. `accordion`,
+`icon_view`, `tree_view`, and `table_view` derive from `collection_view`;
+`canvas` derives from `custom_control`. These bases expose no backend handles
+or toolkit types.
+
 Interactive controls are windows, not theme drawings. `button`, `check`,
 `radio`, `list`, `text_edit`, `code_edit`, `accordion`, `tab_view`, `icon_view`,
 `tree_view`, and `table_view` must use the platform or toolkit's native
@@ -234,9 +325,19 @@ its own same-named public, common, and backend source file. Do not collect
 unrelated controls into a `controls` module or add a `_box` suffix to the
 `check`, `radio`, or `list` type names.
 
+Item collections retain their named `add_item()` or `add_column()` operation
+and additionally provide `operator<<` as append-only builder sugar. The
+operator must never configure a property, and it must never be the only way to
+perform an append. Descriptor values such as `tab_page`,
+`accordion_section`, and `tree_node()` make borrowed ownership and stable
+identity explicit at the call site.
+
 `accordion` owns section state but borrows its section content windows. Its
 default single mode leaves all headers visible and assigns remaining height to
 the expanded body; multiple mode keeps independent expanded states.
+Its complete outer border is visible by default and can be changed with
+`set_border_visible()`. A visible border insets borrowed body geometry so a
+repainted child cannot cover the accordion's left, right, or bottom edge.
 `tab_view` follows the same borrowing rule: it owns stable `tab_item`
 descriptors but never owns the page windows. Only the selected page is
 created. Programmatic selection is silent and only native user selection emits
@@ -341,8 +442,8 @@ Use concrete contexts for different drawing targets:
 
 - `gpx_wnd` draws into a created window and borrows that window.
 - `gpx_img` draws into an owned background image and borrows that image.
-- Backend handles, renderers, buffers, and cached drawing objects remain in
-  private bindings.
+- Per-window renderers, buffers, and cached drawing objects remain in the
+  internal peer. Other target handles and caches remain in private bindings.
 
 Both context types implement the complete `gpx` contract on every backend.
 Their initial clip is the complete target bounds; paint dispatch replaces a
@@ -363,7 +464,8 @@ from `.png`, `.jpg`, or `.jpeg` for file output. PNG preserves RGBA data; JPEG
 discards alpha and decodes as opaque. Backends use operating-system codecs
 where those are part of the platform and use shared image libraries where the
 window system has no codec service. Codec handles and foreign-library types
-must remain below the public API.
+must remain below the public API. File load and save accept
+`std::filesystem::path`.
 
 A native expose or paint event must be translated into one synchronous
 `on_wnd_paint` emission on the UI thread. The `wnd_paint_event` contains the
@@ -408,14 +510,16 @@ Adding a new public `wnd` subclass still requires lifecycle, event, and drawing
 support in every backend as described in Section 5.
 
 Public controls must remain inheritable. Their semantic painting is divided
-into protected virtual template-method stages: a simple control may expose one
-complete `draw_control()` stage, while a collection exposes useful parts such
-as background, row/cell background, image, text/content, border, focus,
-disclosure, and scrollbar. The base implementation performs the actual default
-drawing inside each virtual method. A renderer calls the virtual stage in
-place; it must never paint a default part first and invoke an owner callback
-afterward. This lets an override replace a part completely or call the base
-implementation and add decoration without double painting.
+into protected virtual template-method stages. Simple controls dispatch
+background, border or indicator, text/content, and focus stages from their
+complete `draw_control()` entry point. Collections expose the corresponding
+row/cell, image, disclosure, and scrollbar stages. `app_wnd` and `panel`
+expose their background stage, and `split_view` exposes separate splitter
+background and grip stages. The base implementation performs the actual
+default drawing inside each virtual method. A renderer calls each virtual
+stage in place; it must never paint a default part first and invoke an owner
+callback afterward. This lets an override replace a part completely or call
+the base implementation and add decoration without double painting.
 
 Native-widget backends retain the toolkit's interaction, accessibility, and
 metrics and use its supported owner-draw, custom-draw, cell/view, expose, or
@@ -426,6 +530,12 @@ need access to protected stages; public headers never expose native handles.
 Every new control event and every new painted part requires corresponding
 virtual behavior and painting coverage in all backends plus a derived-control
 test that overrides and calls base.
+
+The default application and container surface is the backend's `panel` role;
+editable text and item-bearing views use the contrasting `content` role.
+Complete theme primitives for checks, radios, and similar controls must use
+the same metrics and semantic roles as the corresponding live control's base
+draw stages, so an application-painted sample is not a second visual design.
 
 ## 8. Application
 
@@ -546,7 +656,8 @@ and rendering behavior. File creation reads the resource during creation and
 must not depend on the file remaining open afterward. Memory creation copies
 or otherwise owns the bytes needed for the complete lifetime of the font; it
 must never retain a borrowed pointer to application memory. Collections must
-allow an explicit face index in both creation paths.
+allow an explicit face index in both creation paths. Enumerated and selected
+file resources are `std::filesystem::path` values.
 
 For a portable font, the following behavior must be backend-independent:
 
@@ -690,7 +801,8 @@ window lifecycle and layout, and uses a native text control whenever the
 active system or toolkit supplies one. Its public state contains only UTF-8
 text, an immutable editing mode, read-only state, and a portable validator.
 Native text buffers, delegates, callback records, selection positions, and
-emulated cursor state remain in backend bindings.
+emulated cursor state remain in the internal peer; callback handles remain in
+backend bindings.
 
 The construction-time `text_edit_mode` is either `single_line` or
 `multi_line`. Single-line values contain no line breaks. Multiline values use
@@ -721,6 +833,9 @@ shortcuts through those same operations, so keyboard paste cannot bypass
 validation. A clipboard failure is not reported as a text change. Cursor and
 selection offsets may use a backend's native units privately, but conversion
 to the portable cache must preserve complete Unicode scalar boundaries.
+Emulated editors paint selected text with the same active and inactive
+selection background and foreground roles used by collection controls; they
+must not introduce a backend-local highlight color.
 
 Backend controls are selected as follows:
 
@@ -731,7 +846,9 @@ Backend controls are selected as follows:
 - OPEN LOOK/XView uses native `PANEL_TEXT` and `PANEL_MULTILINE_TEXT` items.
 - Window Maker/WINGs uses native `WMTextField` and `WMText` widgets.
 - SDL2 and GEMix keep cursor, selection, focus, and scrolling in private
-  bindings and draw through their backend-owned native-look facilities.
+  bindings and draw through their backend-owned native-look facilities. SDL2
+  reclamps retained horizontal scrolling whenever editor bounds change, so a
+  temporarily zero-width editor cannot reopen with its value off-screen.
 
 Tests must cover both modes, Unicode cursor boundaries, selection replacement,
 read-only behavior, programmatic and native change-signal rules, live
@@ -754,6 +871,15 @@ native object per row for a virtual model. Visible-row mapping is compact in
 the number of groups, so a million-row model does not require a million-row
 mapping array.
 
+Scrollbar visibility uses `scrollbar_policy`, declared in
+`include/native/scrollbar.h` and shared with `canvas`. It is one definition
+with one qualified name; `table_view.h` must not redeclare it.
+
+The final visible column fills unused viewport width by default on every
+backend. `set_fill_last_column(false)` opts out. Fitting changes presentation,
+not the configured semantic column width, and horizontal overflow retains the
+configured widths.
+
 Columns have stable IDs and cache title, width constraints, visibility,
 alignment, image, resize, reorder, and sort capabilities. Group ranges are
 ordered, disjoint logical row ranges. Expansion is view state: collapsing a
@@ -764,8 +890,10 @@ Programmatic model, selection, sort-indicator, column, group, and scroll
 changes update native state without emitting user-action signals. Native
 selection, activation, sort, resize, reorder, and disclosure actions update
 the portable cache first and emit exactly one corresponding signal. Model
-notifications preserve selection and scroll anchors by stable ID when those
-rows still exist.
+incremental notifications preserve selection and scroll anchors by stable ID
+when those rows still exist. A complete reset rebuilds the visible mapping,
+removes stale selection, and clamps scrolling without consulting obsolete row
+indices.
 
 Row height is a complete row/selection height, not merely text padding.
 `set_row_height()` installs an explicit portable height and `std::nullopt`
@@ -774,17 +902,30 @@ native default independently from compact list-item height. The Window Maker
 default includes the vertical spacing used by the reference Task Manager, so
 its selection fill occupies the same taller row rather than hugging the text.
 Table painting has a separate protected `draw_border()` stage invoked after
-headers and rows. Its base implementation draws the backend-requested inset
-`table_outer_border_extent`; it must not be folded into the initial background
-stage because edge-aligned headers can overpaint it. The stage receives only
-the data viewport, excluding native scrollbar reservations. Window Maker uses
-a one-pixel black top/left and white bottom/right relief around that viewport;
-the adjacent WINGs scrollers remain separately framed native controls, matching
-the Task Manager table construction. Column-header cells begin inside that
-viewport relief and use their distinct table-header surface role. Window Maker
-table and collection headers have a white left edge only; their top
+headers, rows, and portable scrollbar parts. Its base implementation draws the
+backend-requested `table_outer_border_extent`; it must not be folded into the
+initial background stage because edge-aligned content can overpaint it. A
+library-painted table passes the complete control bounds so its right and
+bottom edges include the scrollbar reservations. When the default trailing
+column fitting is active, its header also covers the top-right area above a
+vertical scrollbar. Native scroller hosts may retain separately framed native
+controls. Window Maker uses a one-pixel black top/left and white bottom/right
+relief. Column-header cells use their distinct table-header surface role.
+Window Maker table and collection headers have a white left edge only; their top
 edge remains black, matching the reference Task Manager rather than an
 ordinary raised-button relief.
+
+Library-painted tables distribute the final visible page over the complete
+body when the viewport height is not an exact multiple of row height. Every
+visible row is complete and no unpainted strip remains below the items. Their
+complete outer frame is the last paint stage. A portable scrollbar includes
+decrement and increment arrow buttons, a page trough, and a gripped thumb; all
+parts use the active backend palette.
+
+Pointer hit testing on a library-painted table uses the theme metrics cached
+when the control was created. An emulated child may paint into its root
+window and have no child `gpx`; input routing must not call `get_gpx()` on
+that child merely to recover row or header geometry.
 
 Windows uses report-mode `WC_LISTVIEW`, `LVS_OWNERDATA` for virtual data, and
 native ListView groups for explicitly materialized data. macOS uses
@@ -818,6 +959,8 @@ buffer. A save restores the selected line ending and preserves a loaded BOM
 when requested. Syntax styles, diagnostics, markers, selection, caret,
 scrolling, and completion items never become file bytes. Optional session
 JSON is application state; Native does not define or access a sidecar file.
+The remembered source location and all path-taking operations use
+`std::filesystem::path`.
 
 All mutations pass through insert, erase, or replace operations. They rebuild
 the line index, remap overlays, record a document-local delta undo step, and
@@ -871,7 +1014,7 @@ Replacing items preserves selection by stable ID when that item still exists;
 removing a branch removes all descendants and clears descendant selection.
 
 Programmatic item, selection, expansion, image-size, line-visibility,
-presentation, and scroll changes update a created native control without
+border-visibility, presentation, and scroll changes update a created native control without
 emitting action signals. Backend selection, disclosure, and activation update
 the portable cache first and emit exactly one `on_selection_change`,
 `on_expanded_change`, or `on_item_activate` signal. Disabled items remain
@@ -895,15 +1038,22 @@ selection, disclosure, keyboard interaction, layout, and scrolling. Athena,
 XView, WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with
 the shared semantic selection, disclosure, focus, connector, image, and
 scrollbar painter because they have no adequate interactive outline widget.
-The flat Motif `list` is hosted by an `XmScrolledWindow`; Motif icon views,
+Every library-painted collection scrollbar uses the same classic arrow,
+trough, and gripped-thumb composition as a painted table. Its arrow and page
+areas scroll immediately, and a backend with pointer input must keep thumb
+capture active until release so dragging remains responsive outside the
+track. The flat Motif `list` is hosted by an `XmScrolledWindow`; Motif icon views,
 materialized tables, and both tree presentations use `XmContainer` with its
 toolkit-owned automatic scrollbars. Scrollbar value callbacks update portable
 scroll state without synthesizing selection or activation.
-Connector visibility has a backend theme default while remaining an explicit
-portable tree property. Window Maker defaults it off, matching its native
-indentation-only outlines. Its disclosure indicator paints only a compact
-right/down triangle; selected rows use the selection-text color and never
-carry an opaque resource-paper rectangle.
+Connector visibility remains an explicit portable tree property and defaults
+off on every backend. Indentation and the platform's compact right/down
+disclosure indicator express hierarchy unless an application enables classic
+branches. Selected rows use the selection-text color and never carry an opaque
+resource-paper rectangle on painted backends.
+The complete tree border is visible by default and can be disabled with
+`set_border_visible(false)`. Painted backends draw it after rows and scrollbars;
+native outline backends map it to their native scroll-view or client-edge frame.
 Every path uses its backend theme metrics and native drawing resources.
 
 Tests must cover unique IDs, recursive ownership, visible flattening,
@@ -927,6 +1077,12 @@ native grips or sashes. Backends without a general-purpose stock splitter use
 a native child host and the shared separator interaction without introducing
 top-level window management.
 
+An emulated split backend must paint the split host before its pane children,
+register the divider for root-relative hit testing, and retain pointer capture
+until release so dragging continues beyond the narrow divider. Horizontal
+splits use the horizontal-resize cursor and vertical splits use the
+vertical-resize cursor.
+
 `tab_view` independently borrows any number of page windows and creates only
 the selected page. Its top, bottom, left, and right placement remains a pure
 C++ model property; side labels use directional rotation. Native
@@ -935,6 +1091,11 @@ direction satisfy that contract,
 including Motif `XmNotebook`, Haiku `BTabView`, AppKit `NSTabView`, Win32 tab
 common controls, and Window Maker `WMTabView`. A backend wrapper may provide a
 page-local content host, but it must remain below the public API boundary.
+Library-painted tabs overlap the adjoining page edge by one device pixel when
+selected. The page frame or strip-only separator paints first, preventing a
+gap on any of the four tab placements. When the page frame is visible, the
+first tab's leading cross-axis edge must align with the corresponding page
+frame edge; strip-only tabs remain flush with the complete control edge.
 
 Split views and tabs compose normally and may be placed by any layout manager.
 Neither control creates floating windows, persists layouts, draws drop targets,
@@ -943,8 +1104,9 @@ orientation, programmatic silence, user event counts, and native
 create/show/destroy transitions.
 ## 17. Input controls, standard dialogs, and non-client chrome
 
-The public input and chrome API consists of `combo_box`, the `list_box` alias,
-`directory_dialog`, `message_box`, `non_client`, `ruler`, and `status_bar`.
+The public input, filesystem-resource, and chrome API consists of `combo_box`,
+the `list_box` alias, `file_icon`, `special_directory`, `directory_dialog`,
+`message_box`, `non_client`, `ruler`, and `status_bar`.
 Headers remain pure C++ and are exported through `include/native.h`. Portable
 state and fallback behavior live in `lib/native/`; native widget creation,
 dialog presentation, and event routing remain in the matching platform or
@@ -958,9 +1120,40 @@ with a native combo widget must use it; a toolkit without one composes its
 standard text, menu, or choice widgets. Backend-owned emulation must reuse the
 backend theme and input dispatcher.
 
+An emulated combo uses a compact filled downward arrow on a content-colored
+button. Its popup opens below when space permits and above otherwise, paints
+over ordinary siblings, and
+receives hit testing before every ordinary sibling even when their bounds
+overlap. It consumes the outside click that dismisses it. A selection-only
+field opens from the field or arrow; an editable field keeps ordinary text
+focus when its text area is clicked and opens only from its arrow button. The
+arrow-button paint must not erase the combo's outer border. SDL2's fully owner-drawn
+editable combo opens from either its text or arrow while retaining text-input
+focus. Its open popup tracks the pointer and highlights only the row currently
+under it, returning to the selected-row highlight when the pointer leaves.
+
 `list_box` is an alias of `list`, not a second list implementation. This keeps
 selection semantics, native widgets, drawing extension points, and event
 hooks identical.
+
+`file_icon` owns one exact-size PNG byte sequence for a
+`std::filesystem::path`. `from_path()` uses standard filesystem metadata to
+select file or directory behavior; `for_file()` and `for_directory()` provide
+an explicit type for a path that may not exist. A backend first asks its
+system icon service for the path or file type, renders the result at the
+requested square size, and encodes it as PNG. If no native image is available,
+shared code scales its attributed generic file or folder PNG and records
+that fallback in `file_icon_source`. Native handle and bitmap types never
+cross the private backend boundary.
+
+`special_directory` is a process-owned snapshot of semantic system locations
+expressed as `std::filesystem::path`. `detect()` refreshes it; `count()`,
+`at()`, and `find()` address the latest snapshot. Roles include home, desktop,
+documents, downloads, media, public/templates, applications, fonts,
+configuration, application data, cache, and temporary storage. A backend
+reports only locations its operating system can identify; shared code adds
+the standard temporary directory and normalizes paths without creating them.
+Each entry obtains its icon through the same `file_icon` contract.
 
 The Haiku status-strip painter follows the compact system `StatusView`
 convention and uses `BControlLook` for its background. Do not substitute
@@ -985,13 +1178,37 @@ Unsupported optional multiple selection may reduce to one accepted path, but
 the backend must not substitute an application-painted chooser when its
 platform supplies a standard one.
 
+SDL2 consistently uses Native's themed, keyboard-aware C++ filesystem browser
+for file open, file save, and folder selection. The shared shell provides a
+compact Places table populated from detected special directories, real PNG
+file/folder icons, icon-only back/forward/up history, and a clickable
+horizontal breadcrumb. Double-clicking the breadcrumb toggles direct location
+editing in the same bounds; double-clicking the editor restores the
+breadcrumb without discarding uncommitted text, and Ctrl+L also enters direct
+editing. Entries occupy a multi-column
+Name/Type/Size table with a continuous, draggable classic scrollbar and no
+pagination; file modes add a separate filename field. A single click selects;
+a double click enters a folder or accepts an existing file. The primary action
+validates the mode-specific selection. The browser applies open filters,
+appends a save extension before overwrite validation, and restores its owner
+after either result.
+
 `message_box::show()` is synchronous and owner-modal. It maps the requested
 one-, two-, or three-button set and semantic icon to the platform alert and
 returns a typed `message_box_result`. Closing the native alert maps to
 `cancel` when the button set includes Cancel and otherwise to `none`.
+SDL2 implements that alert as a library-owned modal window so its control font,
+panel background, semantic icon, and real `button` controls match the rest of
+the SDL window. SDL2 and Window Maker use the same attributed, embedded PNG
+badge set for information, warning, error, and question requests; no font glyph
+or procedural approximation participates in those symbols. SDL's nested wait
+continues painting and dispatching dialog input and restores owner focus before
+returning.
 
 A `non_client` object is application-owned and attaches non-owningly to one
-`wnd`. Every visible strip reserves a non-negative extent at one window edge.
+`wnd`. Every visible strip reserves a non-negative extent at one window edge
+of its host's chrome area, not of the raw window bounds, so a host that owns
+its own edge furniture keeps its strips inside that furniture.
 `wnd::get_client_bounds()` returns the remaining host-relative rectangle, and
 layout managers must receive that rectangle. Visibility, extent, attachment,
 detachment, and window resize must trigger layout and paint updates without
@@ -1003,7 +1220,9 @@ Optional pointer tracking uses host-relative motion, updates the cached value,
 and emits once per changed ruler pixel. Status bars occupy the full bottom edge,
 including both lower corners, while side non-client strips stop above them.
 Status bars divide their width into fixed parts and equal shares of remaining
-flexible parts.
+flexible parts. Painted status strips and their parts use the panel/chrome
+surface rather than the white editable-content surface; part edges remain
+visually distinct through the active theme's highlight and shadow roles.
 
 The complete default rendering must occur inside each protected virtual draw
 stage. Derived classes may replace a stage or call its base implementation and

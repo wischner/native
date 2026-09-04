@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -19,10 +20,9 @@
 
 namespace
 {
-    native::image_format format_from_path(const std::string &path) {
-        const std::size_t dot = path.find_last_of('.');
-        std::string extension =
-            dot == std::string::npos ? std::string() : path.substr(dot);
+    native::image_format format_from_path(
+        const std::filesystem::path &path) {
+        std::string extension = path.extension().string();
         std::transform(extension.begin(),
                        extension.end(),
                        extension.begin(),
@@ -71,18 +71,16 @@ namespace native
 
     img::~img() = default;
 
-    img img::load(const std::string &path) {
+    img img::load(const std::filesystem::path &path) {
         std::ifstream stream(path, std::ios::binary);
         if (!stream)
-            throw std::runtime_error("img::load: unable to open " +
-                                     path);
+            throw std::runtime_error("img::load: unable to open file");
 
         auto encoded = std::vector<std::uint8_t>(
             std::istreambuf_iterator<char>(stream),
             std::istreambuf_iterator<char>());
         if (stream.bad())
-            throw std::runtime_error("img::load: unable to read " +
-                                     path);
+            throw std::runtime_error("img::load: unable to read file");
         return decode(encoded.data(), encoded.size());
     }
 
@@ -113,18 +111,17 @@ namespace native
                                     jpeg_quality);
     }
 
-    void img::save(const std::string &path, int jpeg_quality) const {
+    void img::save(const std::filesystem::path &path,
+                   int jpeg_quality) const {
         const auto encoded =
             encode(format_from_path(path), jpeg_quality);
         std::ofstream stream(path, std::ios::binary | std::ios::trunc);
         if (!stream)
-            throw std::runtime_error("img::save: unable to open " +
-                                     path);
+            throw std::runtime_error("img::save: unable to open file");
         stream.write(reinterpret_cast<const char *>(encoded.data()),
                      static_cast<std::streamsize>(encoded.size()));
         if (!stream)
-            throw std::runtime_error("img::save: unable to write " +
-                                     path);
+            throw std::runtime_error("img::save: unable to write file");
     }
 
     coord img::w() const {

@@ -4,6 +4,16 @@ Use `list` for a small, owned sequence of text strings. Use `table_view` when
 rows need multiple columns, headings, images, groups, sorting, multiple
 selection, search, or virtual data.
 
+Columns can be appended with either `add_column()` or builder syntax:
+
+```cpp
+table << native::table_column{1, "Name", 180}
+      << native::table_column{2, "Value", 120};
+```
+
+The operator is only an append shorthand; configuration remains in named
+setters.
+
 ## Define columns and a materialized model
 
 Columns and cells are associated by stable semantic IDs. Rows also have
@@ -36,6 +46,17 @@ table.set_columns({name, size})
      .set_grid_lines(native::table_grid_lines::horizontal);
 ```
 
+The final visible column fills spare viewport width by default on every
+backend. Disable that presentation rule only when trailing blank space is
+intentional:
+
+```cpp
+table.set_fill_last_column(false);
+```
+
+Fitting does not rewrite the configured column width; overflowing tables keep
+their configured widths and scroll horizontally.
+
 Rows use the active backend's native table height by default. Set a complete
 row height when an application needs denser or roomier rows, and clear it to
 return to the native default:
@@ -51,6 +72,16 @@ Its table also receives a final one-pixel inset viewport relief after headers
 are laid out, so edge-aligned header cells cannot erase the black top/left and
 white bottom/right edges. Native scrollbar reservations are excluded from
 that relief because the WINGs scrollers carry their own frames.
+
+Library-painted adapters also draw their outer frame after the row pass, use a
+gentle theme-provided gray for alternating rows, and distribute the last
+visible page through the viewport so every row is complete without leaving a
+fixed empty strip.
+Their final fitted header covers the top-right area above a vertical scrollbar.
+Scrollbars include arrow step buttons and a gripped thumb with matching raised
+relief, and the table frame is drawn after all of them so the right and bottom
+edges remain visible. Platforms with native table widgets retain their system
+scrollbar.
 
 `table_view` borrows its model, and each `table_cell` borrows its optional
 image. Keep both alive longer than the view. `table_store` owns the row and

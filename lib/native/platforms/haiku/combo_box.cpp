@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include <InterfaceDefs.h>
+#include <MenuField.h>
 #include <OptionPopUp.h>
 #include <TextControl.h>
 #include <View.h>
@@ -36,7 +37,7 @@ namespace
     public:
         native_combo_popup(BRect frame, native::combo_box *owner)
             : BOptionPopUp(frame, "native_combo_popup", "",
-                           new BMessage('ncmb'))
+                           new BMessage('ncmb'), true)
             , owner_(owner) {}
 
         status_t Invoke(BMessage *message = nullptr) override {
@@ -84,6 +85,12 @@ namespace
             state->popup->MoveTo(0, 0);
             state->popup->ResizeTo(std::max(1.0f, width),
                                    std::max(1.0f, height));
+            if (BMenuField *field = state->popup->MenuField()) {
+                field->SetDivider(0.0f);
+                field->MoveTo(0, 0);
+                field->ResizeTo(std::max(1.0f, width),
+                                std::max(1.0f, height));
+            }
             if (style == native::combo_box_style::editable) {
                 state->text->MoveTo(0, 0);
                 state->text->ResizeTo(std::max(1.0f, width-height),
@@ -174,9 +181,8 @@ namespace native
         });
     }
 
-    void combo_box::create() const {
-        if (_created) return;
-        auto *self = const_cast<combo_box *>(this);
+    void combo_box::create_native() {
+        auto *self = this;
         BView *parent = haiku::parent_view(get_parent(), self);
         if (!parent || !parent->Window())
             throw std::runtime_error(
@@ -189,6 +195,10 @@ namespace native
         auto *text = new BTextControl(root->Bounds(), "native_combo_text",
                                       "", get_text().c_str(),
                                       new BMessage(text_changed_message));
+        // An empty BTextControl label still reserves its default divider.
+        // Remove it so the editor covers the popup's selected-value area and
+        // leaves only the native disclosure button visible.
+        text->SetDivider(0.0f);
         text->SetModificationMessage(new BMessage(text_changed_message));
         state->view = root;
         state->popup = popup;
@@ -204,22 +214,19 @@ namespace native
             parent->AddChild(root);
             root->configure(get_style());
         });
-        _created = true;
-        self->on_native_create();
     }
 
-    void combo_box::show() const {
-        auto *state = state_for(const_cast<combo_box *>(this));
+    void combo_box::show_native() {
+        auto *state = state_for(this);
         if (!_created || !state || !state->view)
             throw std::runtime_error("Haiku: combo box is not created.");
         locked(state->view->Window(), [&] { state->view->Show(); });
     }
 
-    void combo_box::destroy() const {
+    void combo_box::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<combo_box *>(this);
+        auto *self = this;
         auto *state = state_for(self);
-        self->on_native_destroy();
         if (state) {
             BWindow *window = state->view ? state->view->Window() : nullptr;
             locked(window, [&] {

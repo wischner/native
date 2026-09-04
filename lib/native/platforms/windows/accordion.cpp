@@ -17,9 +17,7 @@ namespace native
 {
     void accordion::apply_items() { invalidate(); }
 
-    void accordion::create() const {
-        if (_created)
-            return;
+    void accordion::create_native() {
         wnd *parent = get_parent();
         HWND parent_hwnd = parent
                                ? windows::wnd_bindings.handle_from_object(
@@ -29,7 +27,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: accordion requires a created parent.");
         windows::register_window_class();
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         HWND hwnd = CreateWindowExW(0,
                                     windows::class_name,
                                     L"",
@@ -46,15 +44,13 @@ namespace native
         if (!hwnd)
             throw std::runtime_error(
                 "Windows: failed to create accordion host.");
-        _created = true;
         self->synchronize_theme_metrics();
         self->refresh();
-        self->on_native_create();
     }
 
-    void accordion::show() const {
+    void accordion::show_native() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(
-            const_cast<accordion *>(this));
+            this);
         if (!_created || !hwnd)
             throw std::runtime_error(
                 "Windows: accordion is not created.");
@@ -62,12 +58,11 @@ namespace native
         UpdateWindow(hwnd);
     }
 
-    void accordion::destroy() const {
+    void accordion::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<accordion *>(this);
+        auto *self = this;
         HWND hwnd = windows::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (hwnd) {
             DestroyWindow(hwnd);
             windows::wnd_bindings.unregister_by_handle(hwnd);

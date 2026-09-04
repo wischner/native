@@ -37,10 +37,8 @@ namespace native
         xv_set(item, PANEL_LABEL_STRING, _text.c_str(), nullptr);
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<button *>(this);
+    void button::create_native() {
+        auto *self = this;
         Panel panel = linux::openlook::parent_panel(self);
         Panel_item item = static_cast<Panel_item>(xv_create(
             panel,
@@ -68,14 +66,12 @@ namespace native
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
         linux::openlook::fit_item_width(item, _bounds.d.w);
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         Panel_item item = static_cast<Panel_item>(
             linux::openlook::wnd_bindings.handle_from_object(
-                const_cast<button *>(this)));
+                this));
         if (!_created || !item) {
             throw std::runtime_error(
                 "OpenLook/XView: button is not created.");
@@ -83,13 +79,12 @@ namespace native
         xv_set(item, XV_SHOW, TRUE, nullptr);
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         Panel_item item = static_cast<Panel_item>(
             linux::openlook::wnd_bindings.handle_from_object(self));
-        self->on_native_destroy();
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
             xv_destroy_safe(item);

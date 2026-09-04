@@ -94,9 +94,8 @@ namespace native
     void split_view::apply_minimums() { apply_ratio(); }
     void split_view::apply_splitter_size() { apply_ratio(); }
 
-    void split_view::create() const {
-        if (_created) return;
-        auto *self = const_cast<split_view *>(this);
+    void split_view::create_native() {
+        auto *self = this;
         NSView *parent = mac::parent_view(get_parent(), self);
         if (!parent)
             throw std::runtime_error(
@@ -120,15 +119,13 @@ namespace native
         [state->view setDelegate:delegate];
         [parent addSubview:state->view];
         mac::split_view_bindings.register_pair(self, state);
-        _created = true;
         self->_content_hosts_are_panes = true;
         self->refresh_contents();
         self->apply_ratio();
-        self->on_native_create();
     }
 
-    void split_view::show() const {
-        auto *state = binding(*const_cast<split_view *>(this));
+    void split_view::show_native() {
+        auto *state = binding(*this);
         if (!_created || !state || !state->view)
             throw std::runtime_error("macOS: split_view is not created.");
         [state->view setHidden:NO];
@@ -136,11 +133,10 @@ namespace native
         get_second().show();
     }
 
-    void split_view::destroy() const {
+    void split_view::destroy_native() {
         if (!_created) return;
-        auto *self = const_cast<split_view *>(this);
+        auto *self = this;
         auto *state = binding(*self);
-        self->on_native_destroy();
         if (state) {
             [state->view setDelegate:nil];
             [state->view removeFromSuperview];

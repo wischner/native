@@ -31,6 +31,9 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_dialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_browser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_browser_navigation.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_browser_widgets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/directory_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp

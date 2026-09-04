@@ -22,6 +22,7 @@ namespace linux::x11
     bool show_file_dialog_fallback(
         native::file_dialog &dialog,
         bool save,
+        bool directory_only,
         const std::string &suggested_name,
         const std::string &default_extension,
         bool confirm_overwrite);

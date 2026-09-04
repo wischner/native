@@ -19,6 +19,16 @@ namespace native
 {
     class tab_view;
 
+    // Describes one tab to append with the builder operator.
+    struct tab_page
+    {
+        // Construct a tab label borrowing an uncreated content window.
+        tab_page(std::string title, wnd &content);
+
+        std::string title;
+        wnd *content;
+    };
+
     namespace detail
     {
         class control_render_access;
@@ -91,6 +101,9 @@ namespace native
         // Append a tab and borrow its uncreated page window.
         tab_item &add_item(const std::string &title, wnd &content);
 
+        // Append one tab-page descriptor.
+        tab_view &operator<<(tab_page page);
+
         // Remove one tab and detach its page window.
         tab_view &remove_item(std::size_t index);
 
@@ -124,14 +137,17 @@ namespace native
         // Accept a backend-originated user selection.
         virtual void on_native_selection(int index);
 
+    protected:
         // Create the backend tab-view resource.
-        void create() const override;
+        void create_native() override;
 
         // Destroy the backend tab-view resource.
-        void destroy() const override;
+        void destroy_native() override;
 
         // Show the backend tab-view resource.
-        void show() const override;
+        void show_native() override;
+
+    public:
 
         // Emits the selected index after a user-originated change.
         signal<int> on_selection_change;

@@ -13,6 +13,7 @@ set(SRC_FILES
     gpx_img.cpp
     img.cpp
     image_codec.cpp
+    filesystem.cpp
     menu.cpp
     message_box.cpp
     button.cpp

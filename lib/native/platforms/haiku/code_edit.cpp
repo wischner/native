@@ -17,22 +17,18 @@
 
 namespace native
 {
-    void code_edit::create() const {
-        if (_created)
-            return;
-        auto *self = const_cast<code_edit *>(this);
+    void code_edit::create_native() {
+        auto *self = this;
         BView *view = haiku::create_collection_view(*self);
         auto *binding = new haiku::haiku_collection();
         binding->view = view;
         haiku::code_edit_bindings.register_pair(self, binding);
-        _created = true;
         self->invalidate();
-        self->on_native_create();
     }
 
-    void code_edit::show() const {
+    void code_edit::show_native() {
         auto *binding = haiku::code_edit_bindings.object_from_handle(
-            const_cast<code_edit *>(this));
+            this);
         if (!_created || !binding || !binding->view)
             throw std::runtime_error("Haiku: code_edit is not created.");
         BWindow *window = binding->view->Window();
@@ -44,13 +40,12 @@ namespace native
         }
     }
 
-    void code_edit::destroy() const {
+    void code_edit::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<code_edit *>(this);
+        auto *self = this;
         auto *binding =
             haiku::code_edit_bindings.object_from_handle(self);
-        self->on_native_destroy();
         if (binding) {
             if (binding->view) {
                 BWindow *window = binding->view->Window();

@@ -17,28 +17,23 @@ namespace native
     void check::apply_checked() {
         invalidate();
     }
-    void check::create() const {
-        if (_created)
-            return;
+    void check::create_native() {
         auto *p = get_parent();
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "GEMix: check requires a created parent.");
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         linux::gemix::checks.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: check is not created.");
         invalidate();
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
-        self->on_native_destroy();
+        auto *self = this;
         linux::gemix::checks.erase(
             std::remove(linux::gemix::checks.begin(),
                         linux::gemix::checks.end(),

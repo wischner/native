@@ -157,12 +157,15 @@ namespace native
         return _document->text();
     }
 
-    code_edit &code_edit::set_path(const std::string &path) {
+    code_edit &code_edit::set_path(
+        const std::filesystem::path &path) {
         _path = path;
         return *this;
     }
 
-    const std::string &code_edit::get_path() const { return _path; }
+    const std::filesystem::path &code_edit::get_path() const {
+        return _path;
+    }
 
     code_edit &code_edit::load() {
         if (_path.empty())
@@ -183,7 +186,7 @@ namespace native
         return *this;
     }
 
-    code_edit &code_edit::load(const std::string &path) {
+    code_edit &code_edit::load(const std::filesystem::path &path) {
         set_path(path);
         return load();
     }
@@ -195,7 +198,8 @@ namespace native
         return *this;
     }
 
-    code_edit &code_edit::save_as(const std::string &path) {
+    code_edit &code_edit::save_as(
+        const std::filesystem::path &path) {
         set_path(path);
         save();
         return *this;
@@ -457,7 +461,7 @@ namespace native
         return replace_selected_text(input.read_text());
     }
 
-    void code_edit::select_all() const { select_all_native(); }
+    void code_edit::select_all() { select_all_native(); }
 
     bool code_edit::on_native_key(code_edit_key key, bool extend) {
         if (_completion_visible) {
@@ -636,8 +640,8 @@ namespace native
         return true;
     }
 
-    void code_edit::select_all_native() const {
-        auto *self = const_cast<code_edit *>(this);
+    void code_edit::select_all_native() {
+        auto *self = this;
         self->_anchor = 0;
         self->_caret = _document->text().size();
         self->reveal_caret();

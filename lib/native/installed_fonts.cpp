@@ -226,19 +226,12 @@ namespace
         return result;
     }
 
-    std::string utf8_path(const std::filesystem::path &path) {
-        const std::u8string encoded = path.u8string();
-        return std::string(
-            reinterpret_cast<const char *>(encoded.data()),
-            encoded.size());
-    }
-
     void append_font_descriptions(
         std::vector<native::font_description> &descriptions,
         const std::filesystem::path &path) {
         const auto bytes = read_font(path);
         auto additions = native::detail::describe_font_data(
-            bytes, utf8_path(path));
+            bytes, path);
         descriptions.insert(
             descriptions.end(),
             std::make_move_iterator(additions.begin()),

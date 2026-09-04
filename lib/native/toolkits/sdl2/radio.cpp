@@ -49,8 +49,11 @@ namespace linux::sdl2
             if (released && b->pressed) {
                 b->pressed = false;
                 used = true;
-                if (h)
+                if (h) {
                     c->on_native_selected();
+                    // User code may mutate the global radio registry.
+                    return true;
+                }
             }
         }
         if (used)
@@ -89,14 +92,12 @@ namespace native
         if (b->parent)
             b->parent->invalidate();
     }
-    void radio::create() const {
-        if (_created)
-            return;
+    void radio::create_native() {
         auto *p = get_parent();
         if (!p || !p->get_created())
             throw std::runtime_error(
                 "SDL2: radio requires a created parent.");
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         auto *b = new linux::sdl2::sdl2_radio();
         b->parent = p;
         b->bounds = _bounds;
@@ -104,24 +105,21 @@ namespace native
         b->selected = _selected;
         linux::sdl2::radio_bindings.register_pair(self, b);
         linux::sdl2::radios.push_back(self);
-        _created = true;
-        self->on_native_create();
     }
-    void radio::show() const {
+    void radio::show_native() {
         auto *b = linux::sdl2::radio_bindings.object_from_handle(
-            const_cast<radio *>(this));
+            this);
         if (!_created || !b)
             throw std::runtime_error("SDL2: radio is not created.");
         b->visible = true;
         if (b->parent)
             b->parent->invalidate();
     }
-    void radio::destroy() const {
+    void radio::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<radio *>(this);
+        auto *self = this;
         auto *b = linux::sdl2::radio_bindings.object_from_handle(self);
-        self->on_native_destroy();
         auto &radios = linux::sdl2::radios;
         radios.erase(std::remove(radios.begin(), radios.end(), self),
                      radios.end());

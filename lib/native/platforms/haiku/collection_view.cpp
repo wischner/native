@@ -118,18 +118,7 @@ namespace
 
         void MakeFocus(bool focused = true) override {
             BView::MakeFocus(focused);
-            if (auto *accordion =
-                    dynamic_cast<native::accordion *>(&_owner))
-                accordion->on_native_focus(focused);
-            if (auto *icons =
-                    dynamic_cast<native::icon_view *>(&_owner))
-                icons->on_native_focus(focused);
-            if (auto *table =
-                    dynamic_cast<native::table_view *>(&_owner))
-                table->on_native_focus(focused);
-            if (auto *editor =
-                    dynamic_cast<native::code_edit *>(&_owner))
-                editor->on_native_focus(focused);
+            _owner.on_native_focus(focused);
         }
 
         void KeyDown(const char *bytes, int32 count) override {

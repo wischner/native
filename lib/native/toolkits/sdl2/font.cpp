@@ -191,7 +191,7 @@ namespace native
                   "sans",
                   nullptr}},
                 {font_role::control,
-                 12,
+                 13,
                  {"Lato",
                   "Roboto",
                   "Noto Sans",

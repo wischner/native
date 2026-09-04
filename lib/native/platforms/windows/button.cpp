@@ -29,10 +29,7 @@ namespace native
         SetWindowTextW(binding->hwnd, wide.c_str());
     }
 
-    void button::create() const {
-        if (_created)
-            return;
-
+    void button::create_native() {
         wnd *p = get_parent();
         if (!p)
             throw std::runtime_error(
@@ -66,7 +63,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: Failed to create button.");
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         windows::wnd_bindings.register_pair(hwnd, self);
 
         auto *h = new windows::win_button();
@@ -78,17 +75,15 @@ namespace native
                      reinterpret_cast<WPARAM>(windows::control_font()),
                      TRUE);
 
-        _created = true;
-        self->on_native_create();
     }
 
-    void button::show() const {
+    void button::show_native() {
         if (!_created)
             throw std::runtime_error(
                 "Windows: Cannot show button before it is created.");
 
         auto *h = windows::button_bindings.object_from_handle(
-            const_cast<button *>(this));
+            this);
         if (!h || !h->hwnd)
             throw std::runtime_error(
                 "Windows: Missing HWND binding for button.");
@@ -97,13 +92,12 @@ namespace native
         UpdateWindow(h->hwnd);
     }
 
-    void button::destroy() const {
+    void button::destroy_native() {
         if (!_created)
             return;
 
-        auto *self = const_cast<button *>(this);
+        auto *self = this;
         auto *h = windows::button_bindings.object_from_handle(self);
-        self->on_native_destroy();
 
         if (h) {
             if (h->hwnd) {

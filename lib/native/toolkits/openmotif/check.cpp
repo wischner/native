@@ -49,15 +49,13 @@ namespace native
             throw std::runtime_error("Motif: Missing check widget.");
         XmToggleButtonSetState(w, _checked ? True : False, False);
     }
-    void check::create() const {
-        if (_created)
-            return;
+    void check::create_native() {
         XmString s =
             XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
         Widget w =
             XtVaCreateWidget("check",
                              xmToggleButtonWidgetClass,
-                             parent_of(const_cast<check *>(this)),
+                             parent_of(this),
                              XmNx,
                              _bounds.p.x,
                              XmNy,
@@ -76,26 +74,23 @@ namespace native
         XmStringFree(s);
         if (!w)
             throw std::runtime_error("Motif: Failed to create check.");
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         XtAddCallback(w, XmNvalueChangedCallback, changed, self);
         linux::openmotif::wnd_bindings.register_pair(w, self);
-        _created = true;
-        self->on_native_create();
     }
-    void check::show() const {
+    void check::show_native() {
         Widget w = linux::openmotif::wnd_bindings.handle_from_object(
-            const_cast<check *>(this));
+            this);
         if (!_created || !w)
             throw std::runtime_error("Motif: check is not created.");
         XtManageChild(w);
     }
-    void check::destroy() const {
+    void check::destroy_native() {
         if (!_created)
             return;
-        auto *self = const_cast<check *>(this);
+        auto *self = this;
         Widget w =
             linux::openmotif::wnd_bindings.handle_from_object(self);
-        self->on_native_destroy();
         if (w) {
             linux::openmotif::wnd_bindings.unregister_by_handle(w);
             XtDestroyWidget(w);
