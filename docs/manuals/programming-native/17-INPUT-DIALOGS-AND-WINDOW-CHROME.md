@@ -148,11 +148,12 @@ const native::message_box_result result = native::message_box::show(
 Button sets contain one, two, or three buttons and return a typed result. The
 dialog remains owner-modal and uses the active platform's alert presentation.
 SDL's alert uses the same font, gray panel, semantic icon, and button drawing
-as its other windows. Its semantic badges come from the same attributed,
-embedded PNG set used by Window Maker, with consistent colored silhouettes and
-white marks. The owner is ready for a normal first click as soon as the call
-returns, and a click that first activates an SDL window is delivered to the
-control under it.
+as its other windows. Its attributed embedded PNG badges use consistent
+colored silhouettes and white marks. Window Maker places the same semantic
+badge in its native WINGs alert while retaining the WINGs fonts and buttons,
+with the requested title on the native frame. The owner is ready for a normal
+first click as soon as the call returns, and a click that first activates an
+SDL window is delivered to the control under it.
 
 ## Rulers and status bar
 

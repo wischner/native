@@ -106,6 +106,11 @@ directly. Ctrl+A/C/X/V, or the corresponding Command shortcuts on macOS, route
 through the same functions. Therefore keyboard paste and direct paste have the
 same validation and signal behavior.
 
+WINGs can select the complete value of a `WMTextField` but has no public query
+for that field selection. Its backend peer retains a programmatic whole-value
+selection until a user key/button edit or replacement changes it, so direct
+Copy/Cut/Paste observes the same complete selection shown by the native field.
+
 `copy()` is available for read-only editors. `cut()` and `paste()` return false
 when editing is disabled, no usable selection/format exists, or the proposed
 replacement is rejected. Clipboard publication completes before a successful

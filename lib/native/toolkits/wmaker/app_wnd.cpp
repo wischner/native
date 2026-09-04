@@ -213,6 +213,13 @@ namespace
         auto *owner = static_cast<native::app_wnd *>(client_data);
         if (!owner || !event)
             return;
+        // WINGs runs private modal loops for file and alert panels. Paint
+        // exposes immediately so moving a panel cannot leave stale pixels
+        // while Native's outer dispatcher is paused.
+        if (event->type == Expose) {
+            dispatch_window_event(owner, *event);
+            return;
+        }
         const XEvent copy = *event;
         linux::wmaker::defer([owner, copy]() {
             dispatch_window_event(owner, copy);
@@ -337,13 +344,17 @@ namespace native
         auto *window_state = linux::wmaker::state(self);
         app_wnd *owner = get_owner();
 
+        // WINGs recursively tears down a window's view tree. Destroy the
+        // portable children while their native parents are still valid so
+        // each child can release its binding exactly once.
+        app_wnd::on_native_destroy();
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         linux::wmaker::window_bindings.unregister_by_handle(self);
         if (window_state && window_state->window)
             WMDestroyWidget(window_state->window);
         delete window_state;
 
-        if (get_modal() && owner && owner->get_created()) {
+        if (owner && owner->get_created()) {
             app_wnd *focus = owner->get_input_enabled()
                                  ? owner
                                  : owner->get_active_modal();
@@ -361,6 +372,7 @@ namespace native
                                    CurrentTime);
                 }
             }
+            owner->invalidate();
         }
         if (self == app::main_wnd())
             linux::wmaker::exit_requested = true;

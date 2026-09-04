@@ -25,6 +25,14 @@ AppKit `NSComboBox`, Motif `XmComboBox`, Haiku `BOptionPopUp`, WINGs popup and
 text controls, and XView choice and text controls. Athena composes its standard
 text, menu-button, and menu widgets. SDL2 and GEMix route the control through
 their existing backend-owned theme and input systems.
+In Window Maker editable mode, the arrow-only native popup button is inset at
+the right edge of the full-width native text field. It does not consume a
+second control-sized region or extend beyond the field. Its WINGs menu remains
+the width of the complete combo; the backend shapes only the visible and
+clickable closed-button region down to the arrow and centers the disclosure
+glyph within that region. Press and release repaint that same centered geometry
+on an input-transparent overlay, so the native popup's synchronous selection
+animation cannot reveal or leave its own off-center indicator behind.
 
 The emulated interaction follows desktop combo conventions. The indicator is
 a compact filled downward arrow on a content-colored button which remains
@@ -135,8 +143,12 @@ icons are semantic requests that the backend maps to its standard alert.
 SDL2 uses a library-owned modal alert with the same stock control font, panel
 surface, semantic icon, and `button` implementation as the rest of its UI. Its
 information, warning, error, and question badges come from an attributed,
-embedded PNG set shared with Window Maker, so they do not depend on SDL_ttf
-glyph coverage or procedurally approximated marks. Its synchronous wait
+embedded PNG set, so they do not depend on SDL_ttf glyph coverage or
+procedurally approximated marks. Window Maker places the same attributed
+semantic badge in its native WINGs alert, preserves the alert's fonts, layout,
+and buttons, and applies the requested title to its native frame. Its private
+modal dispatcher continues owner expose handling and deferred Native
+callbacks. SDL's synchronous wait
 continues to process paint, pointer, keyboard, resize, and close events before
 restoring the owner.
 

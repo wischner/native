@@ -1,6 +1,7 @@
 // Implements tab_view with Window Maker's native WINGs WMTabView.
 
 #include <stdexcept>
+
 #include <WINGs/WINGs.h>
 #include <native.h>
 #include "../../control_render_access.h"
@@ -114,6 +115,13 @@ namespace native
         _gpx = nullptr;
         destroy_host(*this, *state);
         create_host(*this, *state);
+        // A borrowed control can be created as soon as its page is added.
+        // Realize the replacement host first so every page has a realized
+        // WINGs parent before that portable child resolves its native host.
+        WMWidget *host = state->tabs
+            ? reinterpret_cast<WMWidget *>(state->tabs)
+            : reinterpret_cast<WMWidget *>(state->portable->frame);
+        WMRealizeWidget(host);
         state->suppress = true;
         for (std::size_t index = 0; index < get_item_count(); ++index) {
             WMFrame *page = WMCreateFrame(
@@ -137,15 +145,8 @@ namespace native
                 WMResizeWidget(page, content.d.w, content.d.h);
             }
             state->pages.push_back(page);
+            WMRealizeWidget(page);
         }
-        // refresh_contents() creates and shows the selected page's
-        // borrowed control immediately after apply_items().  WINGs cannot
-        // realize that control until both the tab host and its page frame
-        // have been realized, even though the top-level window already is.
-        WMWidget *host = state->tabs
-            ? reinterpret_cast<WMWidget *>(state->tabs)
-            : reinterpret_cast<WMWidget *>(state->portable->frame);
-        WMRealizeWidget(host);
         state->suppress = false;
     }
 

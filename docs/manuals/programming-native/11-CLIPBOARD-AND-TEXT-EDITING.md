@@ -234,5 +234,8 @@ The XView startup resources bind copy, cut, and paste to Ctrl+C, Ctrl+X, and
 Ctrl+V in addition to the historical OPEN LOOK function keys. The backend
 handles Ctrl+A before the native editor action and applies the same validated
 selection replacement used by the direct functions.
+WINGs retains a programmatic whole-field selection in its private peer, so a
+direct Copy Field followed by Paste Text sees the same selected value that its
+native `WMTextField` displays.
 
 Next: [Building, linking, and distributing](12-BUILDING-AND-DISTRIBUTING.md).

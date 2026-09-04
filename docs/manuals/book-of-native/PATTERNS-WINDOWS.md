@@ -98,7 +98,10 @@ on the same shared state through `on_native_destroy()`.
 Resource dependency order is part of the backend hook: SDL releases its
 renderer before `SDL_DestroyWindow`, while the application loop retains
 ownership of process-wide cursor and video shutdown until all callbacks have
-unwound.
+unwound. WINGs recursively destroys a native view tree, so its application
+window hook first destroys each portable child while the corresponding native
+parent is still valid. This child-first order prevents duplicate native
+destruction and stale bindings.
 
 The same rule applies to a window-manager close command. A backend must not
 leave the portable object marked as created after its native window has been
@@ -182,6 +185,9 @@ to the previous eligible application window; the next click is an ordinary
 control action, not a focus-only click. SDL requests focus click-through and,
 for window managers that still consume an activation press while retaining its
 release, reconstructs that one transition for the control under the pointer.
+Window Maker additionally invalidates the surviving owner after either a
+modal or modeless close, because removing a WINGs top-level view may expose
+owner pixels without producing an immediate portable paint request.
 
 Backends express this relationship with their native concept: an owned Win32
 top-level window, an Xt transient shell, an AppKit child window, a Haiku
@@ -235,6 +241,11 @@ contract. Native dialogs do not get a separate nested portable event loop.
 An SDL synchronous alert or chooser may run a backend-local wait while its
 public call is on the stack, but that wait must keep painting and routing the
 active dialog and restore its owner before it returns.
+WINGs file and alert panels likewise run private event dispatch. The Window
+Maker adapter handles owner expose events synchronously and schedules portable
+callbacks through WINGs idle turns, so moving or completing a panel cannot
+starve repaint or leave the owner unresponsive. A returning file panel also
+raises, focuses, and invalidates its owner before reporting its result.
 
 ## File open and save dialogs
 

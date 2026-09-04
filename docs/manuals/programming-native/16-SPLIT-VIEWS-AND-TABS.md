@@ -29,7 +29,9 @@ grip, so the gutter reads as part of the window rather than a framed control.
 The implementation uses Xaw `Paned`, `BSplitView`, `XmPanedWindow`,
 `WMSplitView`, and `NSSplitView` on their respective backends. Other systems
 use their normal native child-host mechanism and the portable divider
-interaction.
+interaction. Window Maker observes its native pane sizes after a divider drag
+and refits both borrowed children to those exact sizes, so neither pane retains
+its old width or clips its trailing border.
 
 `tab_view` borrows one child window per item and creates only the selected
 page. Add pages with `add_item()` or append-only `operator<<`, select with
@@ -72,8 +74,11 @@ the complete boundary between the page and the tab labels. The getter is
 preserves items, selection, and borrowed page contents, and does not emit a
 selection-change signal. Painted tabs overlap the adjoining page or separator
 by one device pixel, so every placement meets its page without a visible gap.
-With the frame enabled, the first tab aligns with the page frame on all four
-placements; strip-only tabs remain flush with the control edge.
+Window Maker retains one page-edge line at selected bottom/right joins, which
+matches selected top/left tabs.
+Window Maker inactive bottom and right tabs suppress the redundant closure
+beside the page edge and shadow the free edge, leaving one light line without
+changing the selected-tab overlap.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.

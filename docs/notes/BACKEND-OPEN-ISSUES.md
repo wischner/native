@@ -35,7 +35,16 @@ This note lists backend-level open issues that are real today.
     Tribblix guests, including divider dragging. Haiku input/chrome controls
     were driven interactively after deployment, including both combo modes.
   - Windows table and native file-open hosts were driven through Wine, and
-    Window Maker's alert panel was driven in its Bookworm guest.
+    Window Maker's alert panel was driven in its Bookworm guest. The same
+    guest was used under GDB for direct text copy/paste, both combo modes,
+    native file-panel movement, modal and modeless close, collection teardown,
+    repeated extreme layout resize, native splitter dragging with complete
+    pane borders, full-width editable-combo popup presentation with a centered
+    inset arrow, semantic alert
+    badges, menu-title hover switching, and top, bottom, and right tab
+    placements, including seam-free selected tabs, single inactive
+    bottom/right page edges; the owner
+    remained responsive and exited normally afterward.
   - The macOS implementation, including
     `lib/native/platforms/mac/surfaces.mm`, compiles and launches through the
     remote `leia` workflow. That SSH session cannot access WindowServer for a

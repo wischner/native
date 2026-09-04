@@ -154,24 +154,24 @@ in those backends.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `WMWindow`/`WMPanel`; portable ownership and input gating supplement WINGs. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `WMWindow`/`WMPanel`; portable ownership and input gating supplement WINGs. Owned windows destroy portable children before the recursive WINGs view tree and restore owner focus and repaint after either modal or modeless close. |
 | `wnd` | **H** | WINGs view/frame host with library paint/input routing. |
-| `main_menu` | **H** | WINGs `WMFrame` menu titles and separator plus a library-managed Xlib popup, mnemonics, and accelerators. |
+| `main_menu` | **H** | WINGs `WMFrame` menu titles and separator plus a library-managed Xlib popup, mnemonics, accelerators, and hover tracking across top-level titles while a menu is open. |
 | `button` | **N** | `WMCommandButton`. |
 | `check` | **N** | `WMSwitchButton`. |
 | `radio` | **N** | `WMRadioButton`. |
 | `list` | **N/H** | `WMList`; supported item drawing aligns selection with the collection palette. |
-| `combo_box` | **H** | `WMPopUpButton` and optional `WMTextField` inside a `WMFrame`. |
-| `text_edit` | **N/H** | `WMTextField` or `WMText`; portable validation and clipboard policy wrap it. |
+| `combo_box` | **H** | `WMPopUpButton` and optional `WMTextField` inside a `WMFrame`; X Shape exposes only the editable field's inset arrow while the native popup retains the complete combo width, and state-aware overlay painting keeps the disclosure glyph centered through press and release. |
+| `text_edit` | **N/H** | `WMTextField` or `WMText`; portable validation and clipboard policy wrap it, including reliable whole-value selection for direct copy/paste commands. |
 | `accordion`, `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content in a `WMFrame`, with native `WMScroller` controls. |
-| `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for framed top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom, side, and strip-only tabs. |
+| `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for framed top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom, side, and strip-only tabs. Selected bottom/right tabs retain the same single joining line as top/left; inactive bottom/right tabs suppress their redundant inner closure and shadow their free edge. |
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
-| `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior. |
+| `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior; native pane-size notifications synchronize the portable ratio and refit both borrowed children to the exact granted pane sizes, preserving every control edge. |
 | `panel` | **N** | `WMFrame` with `WRFlat` relief; WINGs fills it and it is a real parent widget. |
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
-| File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode. |
-| `message_box` | **N/H** | Native WINGs alert panel and modal loop with attributed embedded PNG semantic badges and the WINGs bold system title font. |
+| File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode; owner exposes remain live while their private modal loop moves a panel, and focus returns explicitly when it closes. |
+| `message_box` | **N/H** | Native WINGs alert panel, controls, fonts, and modal loop, with the requested frame title and attributed embedded PNG semantic badge. |
 
 ## Linux GEMix/AES
 

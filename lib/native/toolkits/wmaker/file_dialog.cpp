@@ -95,6 +95,16 @@ namespace linux::wmaker
             path.c_str(),
             nullptr,
             nullptr);
+        WMRaiseWidget(owner_state->window);
+        const Window owner_window = WMWidgetXID(owner_state->window);
+        if (owner_window != None) {
+            XSetInputFocus(display,
+                           owner_window,
+                           RevertToParent,
+                           CurrentTime);
+        }
+        XFlush(display);
+        owner->invalidate();
         if (!accepted) {
             dialog.on_native_cancel();
             return;

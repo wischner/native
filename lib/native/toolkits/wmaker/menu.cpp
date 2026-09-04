@@ -172,6 +172,37 @@ namespace
         return -1;
     }
 
+    int top_at(const linux::wmaker::native_menu &menu,
+               int root_x,
+               int root_y) {
+        for (std::size_t index = 0;
+             index < menu.titles.size(); ++index) {
+            WMFrame *title = menu.titles[index];
+            if (!title || WMWidgetXID(title) == None)
+                continue;
+            int x = 0;
+            int y = 0;
+            Window child = None;
+            XTranslateCoordinates(
+                linux::wmaker::display,
+                WMWidgetXID(title),
+                RootWindow(linux::wmaker::display,
+                           DefaultScreen(linux::wmaker::display)),
+                0,
+                0,
+                &x,
+                &y,
+                &child);
+            if (root_x >= x &&
+                root_x < x + static_cast<int>(WMWidgetWidth(title)) &&
+                root_y >= y &&
+                root_y < y + static_cast<int>(WMWidgetHeight(title))) {
+                return static_cast<int>(index);
+            }
+        }
+        return -1;
+    }
+
     void paint_popup(linux::wmaker::native_menu &menu) {
         if (menu.popup == None || menu.open_top < 0 ||
             menu.open_top >= static_cast<int>(menu.tops.size()))
@@ -660,6 +691,14 @@ namespace linux::wmaker
                 return true;
             }
             if (event.type == MotionNotify) {
+                const int top = top_at(*open_menu,
+                                       event.xmotion.x_root,
+                                       event.xmotion.y_root);
+                if (top >= 0 && top != open_menu->open_top) {
+                    native_menu *menu = open_menu;
+                    open_popup(*menu, static_cast<std::size_t>(top));
+                    return true;
+                }
                 const int next = item_at(*open_menu,
                                          event.xmotion.x_root -
                                              open_menu->popup_x,
@@ -674,6 +713,14 @@ namespace linux::wmaker
             if (event.type == ButtonPress)
                 return true;
             if (event.type == ButtonRelease) {
+                const int top = top_at(*open_menu,
+                                       event.xbutton.x_root,
+                                       event.xbutton.y_root);
+                if (top >= 0 && top != open_menu->open_top) {
+                    native_menu *menu = open_menu;
+                    open_popup(*menu, static_cast<std::size_t>(top));
+                    return true;
+                }
                 const int item = item_at(*open_menu,
                                          event.xbutton.x_root -
                                              open_menu->popup_x,

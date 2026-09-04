@@ -75,18 +75,10 @@ namespace native
         if (!panel)
             throw std::runtime_error(
                 "Window Maker/WINGs: unable to create an alert panel.");
-
+        WMSetWindowTitle(panel->win, title.c_str());
         if (WMPixmap *pixmap = create_message_icon(icon)) {
             WMSetLabelImage(panel->iLbl, pixmap);
             WMReleasePixmap(pixmap);
-        }
-        if (panel->tLbl) {
-            WMFont *title_font = WMBoldSystemFontOfSize(
-                linux::wmaker::screen, 12);
-            if (title_font) {
-                WMSetLabelFont(panel->tLbl, title_font);
-                WMReleaseFont(title_font);
-            }
         }
 
         WMView *owner_view = WMWidgetView(owner_state->window);

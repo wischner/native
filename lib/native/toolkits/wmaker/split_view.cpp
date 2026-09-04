@@ -15,24 +15,65 @@ namespace
         return linux::wmaker::split_view_bindings.object_from_handle(&owner);
     }
 
-    void released(XEvent *event, void *data) {
-        if (!event || event->type != ButtonRelease) return;
+    void fit_child(native::wnd &child, WMFrame *pane) {
+        if (!pane)
+            return;
+        const WMSize dimensions = WMGetViewSize(WMWidgetView(pane));
+        const native::rect bounds(
+            0,
+            0,
+            static_cast<native::dim>(std::max(
+                0, static_cast<int>(dimensions.width))),
+            static_cast<native::dim>(std::max(
+                0, static_cast<int>(dimensions.height))));
+        const native::rect current = child.get_bounds();
+        if (current.p.x != bounds.p.x || current.p.y != bounds.p.y ||
+            current.d.w != bounds.d.w || current.d.h != bounds.d.h) {
+            child.set_bounds(bounds);
+        }
+    }
+
+    void fit_children(native::split_view &owner,
+                      linux::wmaker::native_split_view &state) {
+        fit_child(owner.get_first(), state.first);
+        fit_child(owner.get_second(), state.second);
+    }
+
+    void pane_resized(void *data, WMNotification *) {
         auto *owner = static_cast<native::split_view *>(data);
         auto *state = owner ? binding(*owner) : nullptr;
-        if (!owner || !state || !state->first || !state->split) return;
-        const WMSize first = WMGetViewSize(WMWidgetView(state->first));
-        const native::size total = owner->get_dimensions();
-        const int divider = WMGetSplitViewDividerThickness(state->split);
-        const int available = std::max(
-            1,
-            (owner->get_orientation() == native::split_orientation::horizontal
-                 ? static_cast<int>(total.w)
-                 : static_cast<int>(total.h)) - divider);
-        const int extent = owner->get_orientation() ==
-                                   native::split_orientation::horizontal
-                               ? first.width
-                               : first.height;
-        owner->on_native_ratio(static_cast<float>(extent) / available);
+        if (!owner || !state || !state->first || !state->split ||
+            state->applying_ratio) {
+            return;
+        }
+        linux::wmaker::defer([owner]() {
+            auto *current = binding(*owner);
+            if (!owner->get_created() || !current ||
+                !current->first || !current->split ||
+                current->applying_ratio) {
+                return;
+            }
+            const WMSize first = WMGetViewSize(
+                WMWidgetView(current->first));
+            const native::size total = owner->get_dimensions();
+            const int divider = WMGetSplitViewDividerThickness(
+                current->split);
+            const int available = std::max(
+                1,
+                (owner->get_orientation() ==
+                         native::split_orientation::horizontal
+                     ? static_cast<int>(total.w)
+                     : static_cast<int>(total.h)) - divider);
+            const int extent = owner->get_orientation() ==
+                                       native::split_orientation::horizontal
+                                   ? first.width
+                                   : first.height;
+            owner->on_native_ratio(
+                static_cast<float>(extent) / available);
+            current = binding(*owner);
+            if (current && current->first && current->second)
+                fit_children(*owner, *current);
+        });
     }
 
     void constrain(WMSplitView *split,
@@ -101,6 +142,7 @@ namespace native
         WMSetSplitViewVertical(state->split, vertical);
         WMAdjustSplitViewSubviews(state->split);
         state->applying_ratio = false;
+        fit_children(*this, *state);
     }
 
     void split_view::apply_minimums() { apply_ratio(); }
@@ -130,15 +172,23 @@ namespace native
         state->second = WMCreateFrame(state->split);
         WMSetFrameRelief(state->first, WRFlat);
         WMSetFrameRelief(state->second, WRFlat);
+        WMSetViewNotifySizeChanges(WMWidgetView(state->first), True);
+        WMSetViewNotifySizeChanges(WMWidgetView(state->second), True);
         linux::wmaker::wnd_bindings.register_pair(state->split, self);
         linux::wmaker::split_view_bindings.register_pair(self, state);
         WMSetSplitViewConstrainProc(state->split, constrain);
         WMAddSplitViewSubview(state->split, WMWidgetView(state->first));
         WMAddSplitViewSubview(state->split, WMWidgetView(state->second));
-        WMCreateEventHandler(WMWidgetView(state->split),
-                             ButtonReleaseMask,
-                             released,
-                             self);
+        WMAddNotificationObserver(
+            pane_resized,
+            self,
+            WMViewSizeDidChangeNotification,
+            WMWidgetView(state->first));
+        WMAddNotificationObserver(
+            pane_resized,
+            self,
+            WMViewSizeDidChangeNotification,
+            WMWidgetView(state->second));
         WMRealizeWidget(state->split);
         self->_content_hosts_are_panes = true;
         self->refresh_contents();
@@ -165,6 +215,8 @@ namespace native
         auto *self = this;
         auto *state = binding(*self);
         if (state) {
+            WMRemoveNotificationObserver(self);
+            self->on_native_destroy();
             linux::wmaker::wnd_bindings.unregister_by_object(self);
             if (state->split) WMDestroyWidget(state->split);
             linux::wmaker::split_view_bindings.unregister_by_handle(self);

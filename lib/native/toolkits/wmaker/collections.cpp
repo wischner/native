@@ -739,7 +739,12 @@ namespace
             linux::wmaker::control_position(&owner);
         const native::size dimensions = owner.get_dimensions();
         WMMoveWidget(frame, position.x, position.y);
-        WMResizeWidget(frame, dimensions.w, dimensions.h);
+        WMResizeWidget(
+            frame,
+            static_cast<unsigned int>(std::max(
+                1, static_cast<int>(dimensions.w))),
+            static_cast<unsigned int>(std::max(
+                1, static_cast<int>(dimensions.h))));
         // A table paints an inset relief around its data viewport while its
         // WINGs scrollers retain their own native frames. Framing this common
         // parent would incorrectly combine those independent controls.
@@ -795,6 +800,7 @@ namespace
                                 scroller_action,
                                 &owner);
         }
+        WMRealizeWidget(frame);
         return state;
     }
 

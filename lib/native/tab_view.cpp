@@ -712,15 +712,9 @@ namespace native
             graphics.set_ink(colors.button_highlight);
             if (_tab_placement == tab_placement::top)
                 graphics.draw_line(p(0, page_top), p(right, page_top));
-            else if (_tab_placement == tab_placement::bottom)
-                graphics.draw_line(p(0, page_bottom),
-                                   p(right, page_bottom));
             else if (_tab_placement == tab_placement::left)
                 graphics.draw_line(p(page_left, 0),
                                    p(page_left, bottom));
-            else
-                graphics.draw_line(p(page_right, 0),
-                                   p(page_right, bottom));
             return;
         }
         appearance.draw_surface(bounds, surface_kind::panel, state);
@@ -810,9 +804,14 @@ namespace native
                 _inactive_tab_highlight.a
                     ? _inactive_tab_highlight
                     : colors.button_highlight;
+            const bool trailing_placement =
+                _tab_placement == tab_placement::bottom ||
+                _tab_placement == tab_placement::right;
             const rgba highlight = state.selected
                                        ? colors.button_highlight
-                                       : inactive_highlight;
+                                       : (trailing_placement
+                                              ? colors.button_shadow
+                                              : inactive_highlight);
             graphics.set_pen(1).set_ink(highlight)
                 .draw_line(outline[0], outline[1])
                 .draw_line(outline[1], outline[2])
@@ -822,11 +821,30 @@ namespace native
                 .draw_line(outline[4], outline[5])
                 .set_ink(colors.button_border)
                 .draw_line(outline[5], outline[6])
-                .draw_line(outline[6], outline[7])
-                .set_ink(state.selected
-                             ? colors.button_bg
-                             : colors.button_highlight)
-                .draw_line(outline[0], outline[7]);
+                .draw_line(outline[6], outline[7]);
+            if (state.selected) {
+                graphics.set_ink(colors.button_bg)
+                    .draw_line(outline[0], outline[7]);
+                if (_tab_placement == tab_placement::bottom) {
+                    graphics.draw_line(
+                        point(outline[0].x,
+                              static_cast<coord>(outline[0].y + 1)),
+                        point(outline[7].x,
+                              static_cast<coord>(outline[7].y + 1)));
+                } else if (_tab_placement == tab_placement::right) {
+                    graphics.draw_line(
+                        point(static_cast<coord>(outline[0].x + 1),
+                              outline[0].y),
+                        point(static_cast<coord>(outline[7].x + 1),
+                              outline[7].y));
+                }
+            } else if (_tab_placement == tab_placement::bottom) {
+                graphics.set_ink(colors.button_bg)
+                    .draw_line(outline[0], outline[7]);
+            } else if (_tab_placement == tab_placement::right) {
+                graphics.set_ink(colors.button_bg)
+                    .draw_line(outline[0], outline[7]);
+            }
             return;
         }
         graphics.set_pen(1).set_ink(colors.button_border);

@@ -28,9 +28,12 @@ full-span separator between the page and tabs. Switching the frame at run
 time is silent and retains the item model and selected borrowed page.
 The page edge or strip-only separator paints before the tabs, and the selected
 tab overlaps it by one device pixel. Top, bottom, left, and right placements
-therefore join the page without a one-pixel gap. A framed strip starts on the
-page frame's leading cross-axis edge, while a strip-only strip starts flush
-with the control edge.
+therefore join the page without a one-pixel gap. Rasterized bottom and right
+tabs retain one adjoining page line so the selected join matches native top
+and painted left tabs. Window Maker inactive bottom/right tabs replace the page
+colored closure beneath their joining edge with the surrounding surface,
+leaving the page highlight alone and using a shadowed free edge rather than
+two light lines.
 
 Native adapters retain toolkit behavior and accessibility wherever the
 toolkit provides the widget: Haiku `BSplitView`/`BTabView`, Motif
@@ -42,6 +45,14 @@ meets Native's directional-label contract. Themed hosts use the shared
 portable geometry and renderer. WINGs exposes only top tabs, so Window Maker
 keeps `WMTabView` for framed top placement and uses a WINGs-matched Native
 renderer for bottom, left, right, and strip-only placement.
+
+Window Maker also keeps `WMSplitView` fully native. Size notifications from
+its pane views update the portable ratio after the current WINGs dispatch,
+then resize both borrowed controls to the exact native dimensions of their
+respective pane frames. Using the granted sizes rather than independently
+recomputing them keeps every child border inside its pane.
+Deferring one captured notification batch at a time prevents native constraint
+updates and portable child layout from feeding back inside one event turn.
 
 The portable split renderer dispatches `draw_splitter_background()` and then
 `draw_splitter_grip()`. Each protected virtual has a complete default for only

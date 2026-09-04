@@ -98,13 +98,18 @@ namespace linux::wmaker
         WMText *text = nullptr;
         WMTextFieldDelegate delegate = {};
         bool suppress = false;
+        bool all_selected = false;
     };
     struct native_combo_box
     {
         WMFrame *frame = nullptr;
         WMPopUpButton *popup = nullptr;
         WMTextField *field = nullptr;
+        WMFrame *arrow = nullptr;
         WMTextFieldDelegate delegate = {};
+        WMHandlerID arrow_timer = nullptr;
+        bool arrow_pressed = false;
+        bool arrow_overlay = false;
         bool suppress = false;
     };
 

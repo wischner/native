@@ -23,6 +23,13 @@ namespace linux::wmaker
     namespace
     {
         std::vector<std::function<void()>> deferred_callbacks;
+        WMHandlerID deferred_idle_handler = nullptr;
+        bool dispatching_deferred = false;
+
+        void dispatch_deferred_at_idle(void *) {
+            deferred_idle_handler = nullptr;
+            linux::wmaker::dispatch_deferred();
+        }
     }
 
     bool initialized = false;
@@ -225,16 +232,44 @@ namespace linux::wmaker
     }
 
     void defer(std::function<void()> callback) {
-        if (callback)
-            deferred_callbacks.push_back(std::move(callback));
+        if (!callback)
+            return;
+        deferred_callbacks.push_back(std::move(callback));
+        if (!dispatching_deferred && !deferred_idle_handler) {
+            deferred_idle_handler = WMAddIdleHandler(
+                dispatch_deferred_at_idle, nullptr);
+        }
     }
 
     void dispatch_deferred() {
-        while (!deferred_callbacks.empty()) {
-            std::vector<std::function<void()>> callbacks;
-            callbacks.swap(deferred_callbacks);
+        if (deferred_idle_handler) {
+            WMDeleteIdleHandler(deferred_idle_handler);
+            deferred_idle_handler = nullptr;
+        }
+        if (dispatching_deferred || deferred_callbacks.empty())
+            return;
+
+        std::vector<std::function<void()>> callbacks;
+        callbacks.swap(deferred_callbacks);
+        dispatching_deferred = true;
+        try {
             for (auto &callback : callbacks)
                 callback();
+        } catch (...) {
+            dispatching_deferred = false;
+            if (!deferred_callbacks.empty() && !deferred_idle_handler) {
+                deferred_idle_handler = WMAddIdleHandler(
+                    dispatch_deferred_at_idle, nullptr);
+            }
+            throw;
+        }
+        dispatching_deferred = false;
+        // A callback may cause WINGs to emit another notification. Leave
+        // that work for the next idle turn so mutually adjusting native and
+        // portable layouts cannot spin inside one event dispatch.
+        if (!deferred_callbacks.empty() && !deferred_idle_handler) {
+            deferred_idle_handler = WMAddIdleHandler(
+                dispatch_deferred_at_idle, nullptr);
         }
     }
 } // namespace linux::wmaker

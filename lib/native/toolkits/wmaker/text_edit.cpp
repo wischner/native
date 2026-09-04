@@ -67,6 +67,7 @@ namespace
     void set_native_text(
         linux::wmaker::native_text_edit *binding,
         const std::string &text) {
+        binding->all_selected = false;
         if (binding->field) {
             WMSetTextFieldText(binding->field, text.c_str());
         } else if (binding->text) {
@@ -138,6 +139,11 @@ namespace
         auto *owner = static_cast<native::text_edit *>(client_data);
         if (!owner || !event)
             return;
+        auto *binding = binding_for(owner);
+        if (binding && (event->type == KeyPress ||
+                        event->type == ButtonPress)) {
+            binding->all_selected = false;
+        }
         if ((event->type == KeyPress ||
              event->type == ButtonPress) &&
             !linux::wmaker::permit_input(owner)) {
@@ -171,6 +177,7 @@ namespace native
                 "Window Maker/WINGs: missing text-edit binding.");
         }
         binding->suppress = true;
+        binding->all_selected = false;
         set_native_text(binding, _text);
         binding->suppress = false;
     }
@@ -270,6 +277,8 @@ namespace native
             const_cast<text_edit *>(this));
         if (!binding)
             return {};
+        if (binding->all_selected)
+            return _text;
         if (binding->text) {
             char *value = WMGetTextSelectedStream(binding->text);
             std::string result = value ? value : "";
@@ -294,6 +303,14 @@ namespace native
         auto *binding = binding_for(this);
         if (!binding || _read_only)
             return false;
+        if (binding->all_selected) {
+            if (!validate(replacement))
+                return false;
+            binding->suppress = true;
+            set_native_text(binding, replacement);
+            binding->suppress = false;
+            return on_native_text(replacement);
+        }
         if (binding->field) {
             auto *field = reinterpret_cast<text_field_prefix *>(
                 binding->field);
@@ -342,6 +359,7 @@ namespace native
             this);
         if (!binding)
             return;
+        binding->all_selected = true;
         if (binding->field) {
             WMSelectTextFieldRange(
                 binding->field,

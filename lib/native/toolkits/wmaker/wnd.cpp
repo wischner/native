@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <X11/cursorfont.h>
@@ -82,8 +83,9 @@ namespace native
             height += window_state ? window_state->menu_height : 0;
         }
         WMResizeWidget(widget,
-                       static_cast<unsigned int>(_bounds.d.w),
-                       static_cast<unsigned int>(height));
+                       static_cast<unsigned int>(std::max(
+                           1, static_cast<int>(_bounds.d.w))),
+                       static_cast<unsigned int>(std::max(1, height)));
         if (auto *state = native::detail::peer_state<
                 linux::wmaker::native_tab_view>(*this)) {
             if (state && state->portable) {
@@ -91,7 +93,12 @@ namespace native
                 const rect content = tabs->get_content_bounds();
                 for (WMFrame *page : state->pages) {
                     WMMoveWidget(page, content.p.x, content.p.y);
-                    WMResizeWidget(page, content.d.w, content.d.h);
+                    WMResizeWidget(
+                        page,
+                        static_cast<unsigned int>(std::max(
+                            1, static_cast<int>(content.d.w))),
+                        static_cast<unsigned int>(std::max(
+                            1, static_cast<int>(content.d.h))));
                 }
             }
         }

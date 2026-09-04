@@ -387,6 +387,14 @@ Only the main application window is created as an XView root frame.
 The Window Maker backend uses WINGs windows, command, switch, and radio
 buttons, lists, text fields, text views, file panels, and scrollers. It must
 not replace an available WINGs widget with a custom-painted substitute.
+WINGs recursively destroys a window's native view tree, so the backend must
+destroy and unbind portable children before destroying their native parent.
+Closing any owned WINGs window restores focus and invalidates its surviving
+owner; only destruction of the main application window requests loop exit.
+Expose events are dispatched while WINGs file and alert panels run their
+private modal loops, preventing a moved panel from leaving stale owner pixels.
+When a WINGs file panel returns, the backend raises, focuses, and invalidates
+the owner so its first subsequent click remains an ordinary control action.
 Custom Window Maker visuals use WINGs relief drawing, screen colors, fonts,
 and indicator pixmaps. The reference session normalizes the WINGs panel gray
 to the desktop's `#AAAAAA` inactive-title color; only editable text/document
@@ -399,7 +407,9 @@ Window Maker application menus are click-persistent context-style popups, not
 press-drag WINGs selector buttons. Portable menu text supplies a mnemonic with
 `&`, a literal ampersand with `&&`, and an accelerator label after a tab. The
 backend must size the popup to both columns and support mouse dismissal,
-mnemonics, arrow navigation, and accelerators. `menu_separator` is a
+mnemonics, arrow navigation, and accelerators. After one top-level title opens
+a menu, pointer motion across another top-level title switches the posted
+popup without requiring another click. `menu_separator` is a
 non-command structural entry: every backend maps it to its native separator
 or native-themed separator row, excludes it from command dispatch, and skips
 it during keyboard navigation. A popup uses a black outer box
@@ -590,8 +600,13 @@ A toolkit action callback may run while the toolkit dispatcher still borrows
 the emitting widget. Such a backend must queue portable signals and lifecycle
 actions until the native dispatcher returns. In particular, WINGs callbacks
 must not let application code destroy the active view inside `WMHandleEvent`.
-The backend releases or invalidates any callback binding before a deferred
-signal can destroy its portable or native object.
+WINGs schedules this portable work through its idle dispatcher as well as the
+outer loop, because file panels, alerts, and other WINGs code may temporarily
+run a private event loop. One idle turn processes one captured batch; work
+caused by that batch is deferred to a later turn so native/portable geometry
+feedback cannot spin inside one dispatch. The backend releases or invalidates
+any callback binding before a deferred signal can destroy its portable or
+native object.
 
 ## 9. Screens
 
@@ -850,6 +865,12 @@ Backend controls are selected as follows:
   reclamps retained horizontal scrolling whenever editor bounds change, so a
   temporarily zero-width editor cannot reopen with its value off-screen.
 
+WINGs exposes selection mutation but does not publicly expose a
+`WMTextField` selection query. The Window Maker peer therefore remembers a
+programmatic whole-value selection until the next user key/button edit or
+text replacement. Direct Copy/Cut/Paste operations must observe that logical
+selection exactly as the visible native field does.
+
 Tests must cover both modes, Unicode cursor boundaries, selection replacement,
 read-only behavior, programmatic and native change-signal rules, live
 validation of typing and paste, direct clipboard functions, standard keyboard
@@ -1073,9 +1094,14 @@ Backends use their actual container widget where one exists: Athena Xaw
 `Paned`, Haiku `BSplitView`, Motif `XmPanedWindow`, AppKit `NSSplitView`, and
 Window Maker `WMSplitView`. The Xaw and Motif adapters map portable minimums
 and ratios to native pane constraints and keep both panes adjustable through
-native grips or sashes. Backends without a general-purpose stock splitter use
-a native child host and the shared separator interaction without introducing
-top-level window management.
+native grips or sashes. Window Maker observes native WINGs pane-size changes,
+updates the portable ratio after the current native dispatch, and then fits
+both borrowed child controls to the exact dimensions granted to their pane
+hosts, rather than deriving a second approximation from the portable divider
+size. This preserves all four control borders after creation, resize, and
+dragging. Backends without a general-purpose stock splitter use a native child
+host and the shared separator interaction without introducing top-level
+window management.
 
 An emulated split backend must paint the split host before its pane children,
 register the divider for root-relative hit testing, and retain pointer capture
@@ -1093,9 +1119,15 @@ common controls, and Window Maker `WMTabView`. A backend wrapper may provide a
 page-local content host, but it must remain below the public API boundary.
 Library-painted tabs overlap the adjoining page edge by one device pixel when
 selected. The page frame or strip-only separator paints first, preventing a
-gap on any of the four tab placements. When the page frame is visible, the
-first tab's leading cross-axis edge must align with the corresponding page
-frame edge; strip-only tabs remain flush with the complete control edge.
+gap on any of the four tab placements. Bottom and right selected tabs must
+retain one shared page-edge line so their joining edge matches selected top
+and left tabs. An inactive tab does not repaint that
+shared joining edge unless the native frame would otherwise leave two
+adjacent edge lines; Window Maker bottom and right tabs suppress the redundant
+tab closure, retain the page highlight alone, and shadow the inactive free
+edge. When the page frame is visible,
+the first painted tab's leading cross-axis edge aligns with the corresponding
+page frame edge; strip-only tabs remain flush with the complete control edge.
 
 Split views and tabs compose normally and may be placed by any layout manager.
 Neither control creates floating windows, persists layouts, draws drop targets,
@@ -1119,6 +1151,14 @@ virtual native event hook. The base hooks emit the public signals. A backend
 with a native combo widget must use it; a toolkit without one composes its
 standard text, menu, or choice widgets. Backend-owned emulation must reuse the
 backend theme and input dispatcher.
+
+Window Maker composes its editable mode from a native `WMTextField` and
+`WMPopUpButton`. The arrow-only popup button is inset inside the field's right
+edge; it must not sit beside, enlarge, or extend beyond the text control. The
+native popup menu still spans the complete combo width. X Shape may expose
+only the arrow region of the full-width WINGs button so its visible and popup
+geometry can satisfy both requirements. The disclosure glyph is centered
+within the exposed inset button in both pressed and released states.
 
 An emulated combo uses a compact filled downward arrow on a content-colored
 button. Its popup opens below when space permits and above otherwise, paints
@@ -1199,11 +1239,13 @@ returns a typed `message_box_result`. Closing the native alert maps to
 `cancel` when the button set includes Cancel and otherwise to `none`.
 SDL2 implements that alert as a library-owned modal window so its control font,
 panel background, semantic icon, and real `button` controls match the rest of
-the SDL window. SDL2 and Window Maker use the same attributed, embedded PNG
-badge set for information, warning, error, and question requests; no font glyph
-or procedural approximation participates in those symbols. SDL's nested wait
-continues painting and dispatching dialog input and restores owner focus before
-returning.
+the SDL window. SDL2 uses an attributed, embedded PNG badge set for
+information, warning, error, and question requests; no font glyph or
+procedural approximation participates in those symbols. Window Maker places
+the same attributed semantic badge in its native WINGs alert, retains the
+native fonts, layout, and buttons, and sets the requested title on the native
+frame. SDL's nested wait continues painting and dispatching dialog input and
+restores owner focus before returning.
 
 A `non_client` object is application-owned and attaches non-owningly to one
 `wnd`. Every visible strip reserves a non-negative extent at one window edge

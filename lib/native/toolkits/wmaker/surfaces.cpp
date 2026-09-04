@@ -7,6 +7,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <WINGs/WINGs.h>
@@ -82,7 +83,12 @@ namespace native
 
         const point position = linux::wmaker::control_position(self);
         WMMoveWidget(frame, position.x, position.y);
-        WMResizeWidget(frame, _bounds.d.w, _bounds.d.h);
+        WMResizeWidget(
+            frame,
+            static_cast<unsigned int>(std::max(
+                1, static_cast<int>(_bounds.d.w))),
+            static_cast<unsigned int>(std::max(
+                1, static_cast<int>(_bounds.d.h))));
         // A structural container is visually empty.
         WMSetFrameRelief(frame, WRFlat);
 
@@ -94,6 +100,7 @@ namespace native
                                  ButtonReleaseMask | PointerMotionMask,
                              route_panel_event,
                              self);
+        WMRealizeWidget(frame);
     }
 
     void panel::show_native() {
@@ -116,6 +123,7 @@ namespace native
         auto *self = this;
         auto *frame = static_cast<WMFrame *>(
             linux::wmaker::wnd_bindings.handle_from_object(self));
+        self->on_native_destroy();
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (frame)
             WMDestroyWidget(frame);
