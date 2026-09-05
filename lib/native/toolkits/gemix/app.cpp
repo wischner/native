@@ -23,140 +23,6 @@ namespace
     using linux::gemix::root_bounds;
     using linux::gemix::root_of;
 
-    void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
-        linux::gemix::render_surfaces(owner, graphics);
-        linux::gemix::render_tab_views(owner, graphics);
-        for (auto *button : linux::gemix::buttons) {
-            if (!button || root_of(button) != owner)
-                continue;
-
-            auto painter = native::theme::create(graphics);
-            native::detail::control_render_access::draw(
-                *button,
-                graphics,
-                *painter,
-                root_bounds(*button),
-                native::theme::state{});
-        }
-
-        auto painter = native::theme::create(graphics);
-        for (auto *control : linux::gemix::checks) {
-            if (!control || root_of(control) != owner)
-                continue;
-            native::theme::state state;
-            native::detail::control_render_access::draw(
-                *control,
-                graphics,
-                *painter,
-                root_bounds(*control),
-                state);
-        }
-        for (auto *control : linux::gemix::radios) {
-            if (!control || root_of(control) != owner)
-                continue;
-            native::theme::state state;
-            native::detail::control_render_access::draw(
-                *control,
-                graphics,
-                *painter,
-                root_bounds(*control),
-                state);
-        }
-        for (auto *control : linux::gemix::lists) {
-            if (!control || root_of(control) != owner)
-                continue;
-            native::detail::control_render_access::draw(
-                *control,
-                graphics,
-                *painter,
-                root_bounds(*control),
-                native::theme::state{});
-        }
-        for (auto *control : linux::gemix::combo_boxes) {
-            if (!control || root_of(control) != owner) continue;
-            const native::rect combo_bounds = root_bounds(*control);
-            native::detail::control_render_access::draw(
-                *control, graphics, *painter, combo_bounds,
-                native::theme::state{});
-            auto *state = linux::gemix::combo_box_bindings
-                              .object_from_handle(control);
-            if (!state || !state->open) continue;
-            const int row_height = painter->defaults().list_item_height;
-            const native::rect box(combo_bounds.x1(),
-                combo_bounds.y2(), combo_bounds.w(),
-                static_cast<native::dim>(
-                    control->get_items().size()*row_height));
-            painter->draw_popup_frame(box);
-            for (std::size_t index = 0;
-                 index < control->get_items().size(); ++index) {
-                native::theme::state item_state;
-                item_state.selected = static_cast<int>(index) ==
-                                      control->get_selected_index();
-                painter->draw_list_item(
-                    native::rect(box.x1(),
-                        static_cast<native::coord>(box.y1()+
-                            index*row_height), box.w(),
-                        static_cast<native::dim>(row_height)),
-                    control->get_items()[index], item_state);
-            }
-        }
-        linux::gemix::render_text_edits(owner, graphics);
-        linux::gemix::render_collections(owner, graphics);
-    }
-
-    void paint_window(native::app_wnd *owner,
-                      const native::rect *clip) {
-        WORD handle =
-            linux::gemix::wnd_bindings.handle_from_object(owner);
-        if (handle <= 0)
-            return;
-
-        native::rect work = linux::gemix::work_rect(handle);
-        GRECT box{};
-        wind_get(handle,
-                 WF_FIRSTXYWH,
-                 &box.g_x,
-                 &box.g_y,
-                 &box.g_w,
-                 &box.g_h);
-
-        wind_update(BEG_UPDATE);
-
-        while (box.g_w > 0 && box.g_h > 0) {
-            native::rect piece(box.g_x, box.g_y, box.g_w, box.g_h);
-            if (clip)
-                piece = piece.intersect(*clip);
-
-            if (piece.w() > 0 && piece.h() > 0) {
-                const native::rect local_piece(
-                    piece.p.x - work.p.x,
-                    piece.p.y - work.p.y,
-                    piece.d.w,
-                    piece.d.h);
-                native::gpx_wnd g(owner,
-                                  native::point(work.p.x, work.p.y));
-                g.set_clip(local_piece);
-                g.set_paper(native::rgba(255, 255, 255, 255));
-                g.set_ink(native::rgba(0, 0, 0, 255));
-                g.clear(g.get_paper());
-                native::wnd_paint_event e(local_piece, g);
-                owner->on_native_paint(e);
-                g.set_clip(local_piece);
-                draw_controls(owner, g);
-            }
-
-            wind_get(handle,
-                     WF_NEXTXYWH,
-                     &box.g_x,
-                     &box.g_y,
-                     &box.g_w,
-                     &box.g_h);
-        }
-
-        v_updwk(linux::gemix::runtime.vdi_handle);
-        wind_update(END_UPDATE);
-    }
-
     native::button *button_at(native::app_wnd *owner, native::point p) {
         for (auto *button : linux::gemix::buttons) {
             if (!button || root_of(button) != owner)
@@ -177,8 +43,8 @@ namespace
                 continue;
             const native::rect combo_bounds = root_bounds(*control);
             const int row_height = 20;
-            const native::rect popup(combo_bounds.x1(),
-                combo_bounds.y2(), combo_bounds.w(),
+            const native::rect popup(combo_bounds.x1() + 1,
+                combo_bounds.y2() + 1, std::max(0, int(combo_bounds.w()) - 2),
                 static_cast<native::dim>(
                     control->get_items().size()*row_height));
             if (state->open && popup.contains(p)) {
@@ -224,6 +90,7 @@ namespace
                 (p.y - bounds.p.y - 1) / 20;
             if (index >= 0 &&
                 index < static_cast<int>(control->get_items().size())) {
+                control->invalidate();
                 control->on_native_selection(index);
             }
             return;
@@ -257,35 +124,6 @@ namespace
     }
 } // namespace
 
-namespace linux::gemix
-{
-    void request_repaint(native::wnd *target,
-                         const native::rect *area) {
-        native::wnd *root = target;
-
-        while (root && root->get_parent())
-            root = root->get_parent();
-
-        auto *owner = dynamic_cast<native::app_wnd *>(root);
-        if (!owner)
-            return;
-
-        if (!area) {
-            paint_window(owner, nullptr);
-            return;
-        }
-
-        const WORD handle = wnd_bindings.handle_from_object(owner);
-        const native::rect work = linux::gemix::work_rect(handle);
-        const native::rect screen_area(
-            area->p.x + work.p.x,
-            area->p.y + work.p.y,
-            area->d.w,
-            area->d.h);
-        paint_window(owner, &screen_area);
-    }
-} // namespace linux::gemix
-
 namespace native
 {
     int app::main_loop() {
@@ -313,8 +151,9 @@ namespace native
         // hosted manager omits an initial redraw.
         for (app_wnd *window : linux::gemix::windows) {
             if (window && window->get_created())
-                paint_window(window, nullptr);
+                linux::gemix::request_repaint(window);
         }
+        linux::gemix::flush_repaints();
 
         detail::drain_posted_work();
         while (!linux::gemix::runtime.shutdown_requested) {
@@ -322,7 +161,7 @@ namespace native
                                          MU_TIMER,
                                      1,
                                      1,
-                                     1,
+                                     (prev_mb & 1) == 0 ? 1 : 0,
                                      0,
                                      0,
                                      0,
@@ -334,7 +173,7 @@ namespace native
                                      0,
                                      0,
                                      msg,
-                                     2,
+                                     16,
                                      0,
                                      &mx,
                                      &my,
@@ -343,7 +182,18 @@ namespace native
                                      &kr,
                                      &br);
 
-            const WORD pointer_handle = wind_find(mx, my);
+            WORD pointer_handle = wind_find(mx, my);
+            if ((prev_mb & 1) != 0) {
+                for (auto *owner : linux::gemix::windows) {
+                    auto *state = linux::gemix::window_states.object_from_handle(owner);
+                    if (state && state->capture) {
+                        pointer_handle = linux::gemix::wnd_bindings.handle_from_object(owner);
+                        break;
+                    }
+                }
+                if (auto *pressed = linux::gemix::runtime.pressed_button)
+                    pointer_handle = linux::gemix::wnd_bindings.handle_from_object(root_of(pressed));
+            }
             app_wnd *pointer_window =
                 window_from_handle(pointer_handle);
             if (pointer_window &&
@@ -357,7 +207,8 @@ namespace native
                         pointer_window, local);
                     linux::gemix::update_collection_pointer(
                         pointer_window, local);
-                    if (!linux::gemix::dispatch_surface_move(
+                    if (!linux::gemix::dispatch_drag_move(pointer_window, local) &&
+                        !linux::gemix::dispatch_surface_move(
                             pointer_window, local)) {
                         pointer_window->on_native_mouse_move(
                             local, point(mx, my));
@@ -365,10 +216,14 @@ namespace native
                 }
 
                 if ((prev_mb & 1) == 0 && (mb & 1) != 0) {
+                    linux::gemix::runtime.pressed_button = button_at(pointer_window, local);
+                    if (auto *pressed = linux::gemix::runtime.pressed_button)
+                        pressed->invalidate();
                     linux::gemix::active_window = pointer_window;
                     linux::gemix::focus_text_edit(pointer_window,
                                                   local);
-                    if (!linux::gemix::dispatch_surface_click(
+                    if (!linux::gemix::dispatch_drag_click(pointer_window, local, true) &&
+                        !linux::gemix::dispatch_surface_click(
                             pointer_window, local, true)) {
                         pointer_window->on_native_mouse_click(
                             mouse_event(mouse_button::left,
@@ -378,7 +233,14 @@ namespace native
                 }
 
                 if ((prev_mb & 1) != 0 && (mb & 1) == 0) {
-                    if (linux::gemix::dispatch_surface_click(
+                    auto *pressed = linux::gemix::runtime.pressed_button;
+                    linux::gemix::runtime.pressed_button = nullptr;
+                    if (pressed) {
+                        pressed->invalidate();
+                        linux::gemix::flush_repaints();
+                    }
+                    if (linux::gemix::dispatch_drag_click(pointer_window, local, false) ||
+                        linux::gemix::dispatch_surface_click(
                             pointer_window, local, false)) {
                         // A canvas or panel region owns this
                         // position, so no control activation follows.
@@ -389,8 +251,9 @@ namespace native
                                         local));
                         if (auto *button =
                                 button_at(pointer_window, local)) {
-                            button->on_native_click();
-                        } else if (!linux::gemix::activate_collection(
+                            if (button == pressed)
+                                button->on_native_click();
+                        } else if (!pressed && !linux::gemix::activate_collection(
                                        pointer_window, local)) {
                             activate_selection_control(pointer_window,
                                                        local);
@@ -417,18 +280,18 @@ namespace native
                                    : app::main_wnd();
                 if (top && !top->get_input_enabled()) {
                     raise_active_modal(top);
-                } else if (top && linux::gemix::handle_menu_key(
+                } else if (top && linux::gemix::handle_text_edit_key(
                                       top, ks, kr)) {
-                    // A menu accelerator consumed this key packet.
+                    // A focused editor owns its selection/clipboard commands.
                 } else if (top && linux::gemix::handle_combo_key(
                                       top, ks, kr)) {
                     // The focused combo box consumed this key packet.
-                } else if (top && linux::gemix::handle_text_edit_key(
-                                      top, ks, kr)) {
-                    // The focused editor consumed this key packet.
                 } else if (top && linux::gemix::handle_collection_key(
                                       top, ks, kr)) {
                     // A collection control consumed this key packet.
+                } else if (top && linux::gemix::handle_menu_key(
+                                      top, ks, kr)) {
+                    // Unhandled accelerators remain available to the menu.
                 } else if (top && (kr & 0xff) == 27) {
                     top->destroy();
                 }
@@ -440,7 +303,12 @@ namespace native
                 case WM_REDRAW: {
                     rect clip(msg[4], msg[5], msg[6], msg[7]);
                     if (target)
-                        paint_window(target, &clip);
+                    {
+                        const auto work = linux::gemix::work_rect(msg[3]);
+                        clip.p.x -= work.p.x;
+                        clip.p.y -= work.p.y;
+                        linux::gemix::request_repaint(target, &clip);
+                    }
                     break;
                 }
 
@@ -518,9 +386,9 @@ namespace native
                         const int item_id =
                             linux::gemix::menu_item_id_for(
                                 menu_owner, msg[4]);
+                        menu_tnormal(tree, msg[3], 1);
                         if (item_id != 0)
                             menu_owner->on_native_menu(item_id);
-                        menu_tnormal(tree, msg[3], 1);
                     }
                     break;
                 }
@@ -529,6 +397,8 @@ namespace native
                     break;
                 }
             }
+            detail::drain_posted_work();
+            linux::gemix::flush_repaints();
         }
 
         linux::gemix::shutdown_runtime();

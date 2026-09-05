@@ -224,3 +224,30 @@ Each backend must:
 
 Backends can differ in buffering and presentation, but handlers must observe
 the same event, coordinate, clipping, and lifetime rules.
+
+GEMix merges child invalidations in the root window's peer and flushes them at
+event boundaries. Root invalidation starts at client origin, not at the
+window's screen position. Each flush intersects damage with the work area and
+the AES visible-rectangle list. That screen-space clip is a hard limit for
+every VDI primitive, even when a control changes its local graphics clip.
+Image scanlines are restricted to that visible intersection before VDI calls
+are emitted, avoiding off-clip drawing and unnecessary libgem round trips.
+Container surfaces paint before content; transient combo lists paint last.
+The rasta GEM runtime stages drawing until presentation, so an intermediate
+clear is not exposed to the viewer.
+AES initializes and presents the desktop checker when it first acquires the
+workstation. Subsequent window damage stays regional; Native does not paint
+the desktop or depend on moving a window to expose its initial background.
+AES also repaints the complete newly active title when the top window closes.
+Saved menu-region copies mark their damage and request presentation; a nested
+partial redraw must not cancel the enclosing batch's pending presentation.
+Closing a secondary window encloses AES teardown and repaint of exposed Native
+content in one `BEG_UPDATE`/`END_UPDATE` transaction. Nested paint passes do not
+force `v_updwk`; the outermost update publishes the restored content, without
+first showing the desktop fill. AES regional/title presentation also respects
+this nesting, including when calls cross the gemd connection.
+AES desktop and frame damage also uses the same higher-window subtraction as
+client visible-rectangle enumeration. Opening a window does not clear covered
+client pixels to the desktop pattern or redraw frames behind the new window.
+Only exposed desktop fragments are filled, and fully obscured work areas are
+not sent redundant redraw messages.

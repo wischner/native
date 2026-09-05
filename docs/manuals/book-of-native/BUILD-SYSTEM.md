@@ -6,6 +6,26 @@ control tree and backend-specific build trees.
 
 ## Overview
 
+### GEMix transport selection
+
+`docker-gemix` builds the direct AES/VDI variant in `build/linux-gemix/`.
+`docker-gemix-gemd` uses the same Docker image, sets `GEMIX_USE_GEMD=ON`,
+and builds in `build/linux-gemix-gemd/`. Its executable links `libgem`, not
+`libaes` or `libvdi`; the separate `gemd` process owns AES/VDI and Rasta.
+The SDK headers still come from `gemix-aes` and `gemix-vdi` pkg-config modules.
+
+The image must supply matching proxy libraries and `/opt/gemix/bin/gemd`.
+`scripts/gemix/gemd-session.sh <command> [args...]` starts a private server,
+exports its `GEMD_SOCKET`, runs the command, and cleans up only that server.
+Its inherited framebuffer, dimensions and resource environment configure the
+server. Client and server share filesystem paths for file selectors and scrap.
+The proxy debug configuration invokes this wrapper around GDB, while the
+original direct configuration remains available. Server logs go to stderr,
+not GDB's MI output. GEMix runtime and window API tests also use this wrapper
+when built with the proxy option, retaining their isolated test framebuffers.
+
+### Common build flow
+
 The project uses CMake as its build entry point.
 
 At the root, CMake does three things:
@@ -19,6 +39,7 @@ The top-level build flow is:
 ```bash
 cmake -S . -B build/cmake
 cmake --build build/cmake --target docker-gemix
+cmake --build build/cmake --target docker-gemix-gemd
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
@@ -113,6 +134,7 @@ host-side and Docker-side invocation.
   - Linux OpenMotif under Xvfb in its Docker image
   - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
+  - Linux GEMix through Docker and local rasta
   - Windows MinGW binaries run through Wine
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
   - Apple binaries built and run on the configured remote macOS host
@@ -138,6 +160,7 @@ executables:
 | `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered as a test on SDL2; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
+| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 
 The runtime executables are built on every backend so they keep compiling, but
 only SDL2 registers them with CTest, because it is the backend that runs

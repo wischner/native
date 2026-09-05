@@ -66,6 +66,7 @@ cmake --build build/cmake --target docker-openmotif
 cmake --build build/cmake --target docker-openlook
 cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-gemix
+cmake --build build/cmake --target docker-gemix-gemd
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
@@ -81,6 +82,7 @@ outputs are:
 | `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
 | `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
+| `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
 | `docker-win` | `wischner/gcc-x86_64-windows-mingw-w64:latest` | `build/windows-mingw-w64/src/vision.exe` |
 | `docker-haiku` | `wischner/gcc-x86_64-haiku:1.1.0` | `build/haiku/src/vision` |
 
@@ -453,6 +455,13 @@ The `native` target links the GEMix AES and VDI libraries selected by those
 modules, plus libpng and libjpeg. The current Docker artifact resolves
 `libaes.so`, `libvdi.so`, and `librasta.so`, together with the common Linux
 libraries.
+
+The separate `docker-gemix-gemd` target selects `GEMIX_USE_GEMD=ON` and
+links `libgem` instead of AES/VDI. It requires a matching `gemd` server;
+the **Linux GEMix, gemd proxy** debug configuration starts one automatically.
+Deploy `libgem` and its runtime dependencies to the client, and AES/VDI/Rasta
+and resources to the server. Both processes must see the same file-selector
+and clipboard paths. This changes transport, not the public Native API.
 
 ### Distribute
 

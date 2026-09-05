@@ -115,8 +115,7 @@ namespace
         init_object(&state.tree[root_index],
                     NIL,
                     bar_box_index,
-                    top_count > 0 ? title_indices.front()
-                                  : bar_box_index,
+                    popups_index,
                     G_IBOX,
                     NONE,
                     NORMAL,
@@ -126,7 +125,7 @@ namespace
                     0,
                     0);
         init_object(&state.tree[bar_box_index],
-                    root_index,
+                    popups_index,
                     titles_index,
                     titles_index,
                     G_BOX,

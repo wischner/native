@@ -103,6 +103,7 @@ The top-level CMake project provides:
 
 - `docker-x11`
 - `docker-gemix`
+- `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
 - `docker-sdl2`
 - `docker-openmotif`
 - `docker-openlook`
@@ -126,6 +127,7 @@ The expected workflow is:
 ```bash
 cmake -S . -B build/cmake
 cmake --build build/cmake --target docker-gemix
+cmake --build build/cmake --target docker-gemix-gemd
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
@@ -140,6 +142,7 @@ cmake --build build/cmake --target docker-haiku
 - `build/cmake/` is the host-side CMake control tree.
 - `build/linux-x11/` is the Docker-produced X11 build tree.
 - `build/linux-gemix/` is the Docker-produced GEMix build tree.
+- `build/linux-gemix-gemd/` is the separate libgem/gemd GEMix build tree.
 - `build/linux-sdl2/` is the Docker-produced SDL2 build tree.
 - `build/linux-openmotif/` is the Docker-produced OpenMotif build tree.
 - `build/linux-openlook/` is the Docker-produced OPEN LOOK build tree.

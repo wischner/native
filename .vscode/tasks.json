@@ -27,6 +27,15 @@
             "dependsOn": "CMake Configure Debug (Docker Targets)"
         },
         {
+            "label": "CMake Build Debug (Docker GEMix gemd)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-gemix-gemd"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "CMake Build Debug (Docker X11)",
             "type": "shell",
             "command": "cmake",

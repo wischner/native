@@ -16,6 +16,8 @@
 #include "../../code_render.h"
 #include "../../table_render.h"
 #include "globals.h"
+#include "key_codes.h"
+#include "../../control_render_access.h"
 
 namespace
 {
@@ -86,7 +88,34 @@ namespace linux::gemix
                 root_of(control) == parent) {
                 native::detail::draw_tab_view_at(
                     *control, graphics, origin_in_root(*control));
+                // Flat GEM tabs need an explicit page edge beside inactive
+                // left tabs: their filled outline includes that edge pixel.
+                if (control->get_page_frame_visible() &&
+                    control->get_tab_placement() == native::tab_placement::left) {
+                    auto saved = graphics.save_state();
+                    const auto origin = origin_in_root(*control);
+                    auto appearance = native::theme::create(graphics);
+                    graphics.set_pen(1).set_ink(appearance->native_palette().button_border);
+                    for (std::size_t index = 0; index < control->get_item_count(); ++index) {
+                        if (static_cast<int>(index) == control->get_selected_index()) continue;
+                        const auto tab = control->get_tab_bounds(index);
+                        if (!tab.w() || !tab.h()) continue;
+                        const native::coord x = origin.x + tab.x2() - 1;
+                        graphics.draw_line(native::point(x, origin.y + tab.y1()),
+                            native::point(x, origin.y + tab.y2() - 1));
+                    }
+                }
             }
+        }
+    }
+
+    void render_accordions(native::app_wnd *parent,
+                           native::gpx &graphics) {
+        // Container surfaces precede their icon/table child content.
+        for (auto *control : accordions) {
+            if (control && control->get_created() && root_of(control) == parent)
+                native::detail::draw_accordion_at(
+                    *control, graphics, origin_in_root(*control));
         }
     }
 
@@ -117,15 +146,6 @@ namespace linux::gemix
             if (control && control->get_created() &&
                 root_of(control) == parent) {
                 native::draw_code_edit(
-                    *control, graphics, origin_in_root(*control));
-            }
-        }
-        // Match the native child-window stacking order. Composite controls create
-        // transient empty accordions as its raised guide surfaces.
-        for (auto *control : accordions) {
-            if (control && control->get_created() &&
-                root_of(control) == parent) {
-                native::detail::draw_accordion_at(
                     *control, graphics, origin_in_root(*control));
             }
         }
@@ -297,27 +317,27 @@ namespace linux::gemix
             }
             native::code_edit_key command_key;
             bool handled = true;
-            if (scan == 0x4b)
+            if (scan == key_scan::left)
                 command_key = native::code_edit_key::left;
-            else if (scan == 0x4d)
+            else if (scan == key_scan::right)
                 command_key = native::code_edit_key::right;
-            else if (scan == 0x48)
+            else if (scan == key_scan::up)
                 command_key = native::code_edit_key::up;
-            else if (scan == 0x50)
+            else if (scan == key_scan::down)
                 command_key = native::code_edit_key::down;
-            else if (scan == 0x47)
+            else if (scan == key_scan::home)
                 command_key = native::code_edit_key::home;
-            else if (scan == 0x4f)
+            else if (scan == key_scan::end)
                 command_key = native::code_edit_key::end;
-            else if (scan == 0x49)
+            else if (scan == key_scan::page_up)
                 command_key = native::code_edit_key::page_up;
-            else if (scan == 0x51)
+            else if (scan == key_scan::page_down)
                 command_key = native::code_edit_key::page_down;
             else if (ascii == 8)
                 command_key = native::code_edit_key::backspace;
-            else if (scan == 0x53)
+            else if (scan == key_scan::delete_forward)
                 command_key = native::code_edit_key::delete_forward;
-            else if (ascii == 13)
+            else if ((ascii == 13 || ascii == 10))
                 command_key = native::code_edit_key::enter;
             else if (ascii == 9)
                 command_key = native::code_edit_key::tab;
@@ -337,34 +357,34 @@ namespace linux::gemix
             if (!control || !control->get_created() ||
                 root_of(control) != parent || !control->get_focused())
                 continue;
-            if (scan == 0x48)
+            if (scan == key_scan::up)
                 control->on_native_navigation(
                     native::table_navigation::up);
-            else if (scan == 0x50)
+            else if (scan == key_scan::down)
                 control->on_native_navigation(
                     native::table_navigation::down);
-            else if (scan == 0x47)
+            else if (scan == key_scan::home)
                 control->on_native_navigation(
                     native::table_navigation::home);
-            else if (scan == 0x4f)
+            else if (scan == key_scan::end)
                 control->on_native_navigation(
                     native::table_navigation::end);
-            else if (scan == 0x49)
+            else if (scan == key_scan::page_up)
                 control->on_native_navigation(
                     native::table_navigation::page_up);
-            else if (scan == 0x51)
+            else if (scan == key_scan::page_down)
                 control->on_native_navigation(
                     native::table_navigation::page_down);
-            else if (scan == 0x4b)
+            else if (scan == key_scan::left)
                 control->on_native_navigation(
                     native::table_navigation::collapse);
-            else if (scan == 0x4d)
+            else if (scan == key_scan::right)
                 control->on_native_navigation(
                     native::table_navigation::expand);
             else if (ascii == 32)
                 control->on_native_navigation(
                     native::table_navigation::toggle);
-            else if (ascii == 13)
+            else if ((ascii == 13 || ascii == 10))
                 control->on_native_navigation(
                     native::table_navigation::activate);
             else if (ascii > 32 && ascii < 127)
@@ -379,19 +399,19 @@ namespace linux::gemix
                 root_of(control) != parent ||
                 control->get_focused_index() < 0)
                 continue;
-            if (scan == 0x48)
+            if (scan == key_scan::up)
                 control->on_native_navigation(
                     native::accordion_navigation::previous);
-            else if (scan == 0x50)
+            else if (scan == key_scan::down)
                 control->on_native_navigation(
                     native::accordion_navigation::next);
-            else if (scan == 0x47)
+            else if (scan == key_scan::home)
                 control->on_native_navigation(
                     native::accordion_navigation::first);
-            else if (scan == 0x4f)
+            else if (scan == key_scan::end)
                 control->on_native_navigation(
                     native::accordion_navigation::last);
-            else if (ascii == 13 || ascii == 32)
+            else if ((ascii == 13 || ascii == 10) || ascii == 32)
                 control->on_native_navigation(
                     native::accordion_navigation::toggle);
             else
@@ -402,31 +422,31 @@ namespace linux::gemix
             if (!control || !control->get_created() ||
                 root_of(control) != parent || !control->get_focused())
                 continue;
-            if (scan == 0x4b)
+            if (scan == key_scan::left)
                 control->on_native_navigation(
                     native::icon_view_navigation::left);
-            else if (scan == 0x4d)
+            else if (scan == key_scan::right)
                 control->on_native_navigation(
                     native::icon_view_navigation::right);
-            else if (scan == 0x48)
+            else if (scan == key_scan::up)
                 control->on_native_navigation(
                     native::icon_view_navigation::up);
-            else if (scan == 0x50)
+            else if (scan == key_scan::down)
                 control->on_native_navigation(
                     native::icon_view_navigation::down);
-            else if (scan == 0x47)
+            else if (scan == key_scan::home)
                 control->on_native_navigation(
                     native::icon_view_navigation::home);
-            else if (scan == 0x4f)
+            else if (scan == key_scan::end)
                 control->on_native_navigation(
                     native::icon_view_navigation::end);
-            else if (scan == 0x49)
+            else if (scan == key_scan::page_up)
                 control->on_native_navigation(
                     native::icon_view_navigation::page_up);
-            else if (scan == 0x51)
+            else if (scan == key_scan::page_down)
                 control->on_native_navigation(
                     native::icon_view_navigation::page_down);
-            else if (ascii == 13)
+            else if ((ascii == 13 || ascii == 10))
                 control->on_native_activate(
                     control->get_selected_index());
             else
@@ -437,34 +457,34 @@ namespace linux::gemix
             if (!control || !control->get_created() ||
                 root_of(control) != parent || !control->get_focused())
                 continue;
-            if (scan == 0x48)
+            if (scan == key_scan::up)
                 control->on_native_navigation(
                     native::tree_view_navigation::up);
-            else if (scan == 0x50)
+            else if (scan == key_scan::down)
                 control->on_native_navigation(
                     native::tree_view_navigation::down);
-            else if (scan == 0x4b)
+            else if (scan == key_scan::left)
                 control->on_native_navigation(
                     native::tree_view_navigation::left);
-            else if (scan == 0x4d)
+            else if (scan == key_scan::right)
                 control->on_native_navigation(
                     native::tree_view_navigation::right);
-            else if (scan == 0x47)
+            else if (scan == key_scan::home)
                 control->on_native_navigation(
                     native::tree_view_navigation::home);
-            else if (scan == 0x4f)
+            else if (scan == key_scan::end)
                 control->on_native_navigation(
                     native::tree_view_navigation::end);
-            else if (scan == 0x49)
+            else if (scan == key_scan::page_up)
                 control->on_native_navigation(
                     native::tree_view_navigation::page_up);
-            else if (scan == 0x51)
+            else if (scan == key_scan::page_down)
                 control->on_native_navigation(
                     native::tree_view_navigation::page_down);
             else if (ascii == 32)
                 control->on_native_navigation(
                     native::tree_view_navigation::toggle);
-            else if (ascii == 13)
+            else if ((ascii == 13 || ascii == 10))
                 control->on_native_navigation(
                     native::tree_view_navigation::activate);
             else
@@ -502,6 +522,9 @@ namespace native
         auto *self = this;
         linux::gemix::tab_views.push_back(self);
         self->synchronize_theme_metrics();
+        native::detail::control_render_access::configure_tab_layout(
+            *self, native::theme::create(get_parent()->get_gpx())->defaults().tab_height,
+            0, 24, 0, 2, 2, 0, true);
         self->refresh();
     }
 

@@ -1,7 +1,13 @@
+//
 // Implements the portable splitter in the GEM structural backend.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 
 #include <stdexcept>
 #include <native.h>
+#include "globals.h"
 
 namespace native
 {
@@ -27,5 +33,6 @@ namespace native
 
     void split_view::destroy_native() {
         if (!_created) return;
+        linux::gemix::forget_drag(this);
     }
 } // namespace native

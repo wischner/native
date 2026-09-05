@@ -19,6 +19,8 @@ the same commit.
   - Linux OpenMotif backend
   - Linux OPEN LOOK/XView backend in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
+  - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
+    and serialized libgem/gemd builds
   - Windows backend (MinGW build, run through Wine)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
   - Apple backend

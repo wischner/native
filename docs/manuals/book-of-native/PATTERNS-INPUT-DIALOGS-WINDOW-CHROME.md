@@ -7,6 +7,19 @@ its native widget or to its existing native-theme renderer.
 
 ## Combo boxes and list boxes
 
+GEMix paints open combo lists as the final overlay, inside a separate one-pixel
+frame, so ordinary lists or editors below cannot cover popup choices. Its AES
+menu tree uses the conventional root siblings for the bar and popup container.
+File selectors remain synchronous AES dialogs; the hosted GEM runtime restores
+exposed caller pixels while a selector moves. Native supplies buffers large
+enough for the GEM selector's path/name contract and releases pressed-button
+feedback before entering a blocking dialog.
+Selector buttons themselves remain inverted while held and activate only on
+release inside the original button. GEM list selection invalidates the list's
+own region rather than relying on an application callback to repaint it.
+Window destruction detaches its menu while AES/VDI are still live; AES removes
+the bar and restores popup pixels before their backing tree is released.
+
 `combo_box` supports `drop_down_list` and `editable` styles. Its item model,
 selected index, and displayed text remain available before creation and after
 native resources are destroyed. An index of `-1` means no list item is
@@ -249,5 +262,10 @@ distinct from the smaller scrollbar extent. `BStatusBar` is Haiku's progress
 indicator; it does not represent this text-only multipart window strip.
 
 Vision exposes these APIs under **Window -> Input and window chrome**.
+Its status strip uses `theme::get_status_bar_height()` after window creation.
+GEMix reserves the stock font height plus six pixels, matching AES title/menu
+chrome and keeping centred glyphs clear of the top separator.
+Its GEM status parts draw top and leading divider lines only: the surrounding
+window supplies the bottom/right enclosure.
 For automated desktop smoke tests, `vision --input-chrome` opens the same
 window immediately after the application enters its normal event loop.

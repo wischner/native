@@ -9,6 +9,14 @@ examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitiv
 
 ## Semantic drawing
 
+The GEMix palette is monochrome. Its custom radio primitive uses the same
+circle and selected dot as the live radio; headers retain complete outlines,
+status surfaces carry a top separator, and scrollbar parts use flat GEM-style
+frames, stippled tracks, and arrow buttons. Offscreen stock text reads the same
+immutable GEM bitmap font resource as VDI window text. Unsupported Unicode is
+substituted predictably, including a printable three-dot ellipsis, before both
+measurement and rendering.
+
 The theme API describes what is being drawn rather than how one toolkit draws
 it. Its primitives include complete buttons, checks, radios, lists, menu bars
 and menu items, popup frames, and list items. Reusable advanced parts cover

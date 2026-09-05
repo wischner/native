@@ -49,6 +49,8 @@ namespace native
             handle, this);
         linux::gemix::windows.push_back(
             this);
+        linux::gemix::window_states.register_pair(
+            this, new linux::gemix::gem_window);
         wind_set_str(handle, WF_NAME, _title.c_str());
 
         this->menu.attach(
@@ -94,6 +96,19 @@ namespace native
         WORD handle =
             linux::gemix::wnd_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
+        const rect exposed = handle > 0
+            ? linux::gemix::outer_rect(handle) : rect();
+        // Keep removal and repainting our exposed windows in one AES update.
+        // Nested painting must not publish the intermediate desktop fill.
+        struct update_scope {
+            update_scope() { wind_update(BEG_UPDATE); }
+            ~update_scope() { wind_update(END_UPDATE); }
+        } update;
+        menu.detach();
+        auto *state = linux::gemix::window_states.object_from_handle(this);
+        linux::gemix::window_states.unregister_by_handle(this);
+        delete state;
+        linux::gemix::runtime.pressed_button = nullptr;
         if (handle > 0) {
             wind_close(handle);
             wind_delete(handle);
@@ -126,5 +141,18 @@ namespace native
         }
         if (app::main_wnd() == this)
             linux::gemix::runtime.shutdown_requested = true;
+        else {
+            for (auto *remaining : linux::gemix::windows) {
+                const WORD remaining_handle = linux::gemix::wnd_bindings
+                    .handle_from_object(remaining);
+                const rect work = linux::gemix::work_rect(remaining_handle);
+                rect dirty = exposed.intersect(work);
+                if (!dirty.w() || !dirty.h()) continue;
+                dirty.p.x -= work.p.x;
+                dirty.p.y -= work.p.y;
+                linux::gemix::request_repaint(remaining, &dirty);
+            }
+            linux::gemix::flush_repaints();
+        }
     }
 } // namespace native

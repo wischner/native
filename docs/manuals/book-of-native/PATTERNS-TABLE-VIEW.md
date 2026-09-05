@@ -1,5 +1,11 @@
 # Advanced Table Views
 
+GEMix uses the shared virtual-table geometry and scrollbar drag calculations.
+Its root peer captures a thumb drag through release; painting uses GEM-style
+arrow buttons, a flat outlined thumb, and a stippled track. The hard AES visible
+clip also applies to table rows and borders, preventing owner content from
+overpainting a modeless window above it.
+
 `table_view` is the advanced, model-backed sibling of the lightweight `list`
 control. It presents semantic columns, image-and-text cells, stable row
 selection, headings, sort requests, groups, search, and native scrolling

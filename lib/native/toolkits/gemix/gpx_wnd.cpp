@@ -15,6 +15,7 @@
 #include "gpx_wnd.h"
 #include "gpx_img.h"
 #include "globals.h"
+#include "stock_text.h"
 
 namespace
 {
@@ -41,12 +42,17 @@ namespace
         return bright ? WHITE : BLACK;
     }
 
-    void clip_to_vdi(const native::rect &r) {
+    bool clip_to_vdi(native::rect r) {
+        if (linux::gemix::runtime.painting)
+            r = r.intersect(linux::gemix::runtime.paint_clip);
+        if (r.w() == 0 || r.h() == 0) return false;
         WORD clip[4] = {static_cast<WORD>(r.p.x),
                         static_cast<WORD>(r.p.y),
                         static_cast<WORD>(r.p.x + r.d.w - 1),
                         static_cast<WORD>(r.p.y + r.d.h - 1)};
         vs_clip(linux::gemix::runtime.vdi_handle, 1, clip);
+        vswr_mode(linux::gemix::runtime.vdi_handle, MD_REPLACE);
+        return true;
     }
 } // namespace
 
@@ -76,7 +82,7 @@ namespace native
         rect r = _clip;
         r.p.x += _offset.x;
         r.p.y += _offset.y;
-        clip_to_vdi(r);
+        if (!clip_to_vdi(r)) return *this;
         vsf_interior(linux::gemix::runtime.vdi_handle, FIS_SOLID);
         vsf_color(linux::gemix::runtime.vdi_handle, gem_color(color));
         WORD pxy[4] = {static_cast<WORD>(r.p.x),
@@ -93,7 +99,7 @@ namespace native
                _clip.p.y + _offset.y,
                _clip.d.w,
                _clip.d.h);
-        clip_to_vdi(r);
+        if (!clip_to_vdi(r)) return *this;
         vsl_color(linux::gemix::runtime.vdi_handle,
                   gem_color(get_ink()));
         vsl_width(linux::gemix::runtime.vdi_handle, get_pen());
@@ -107,10 +113,11 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_rect(rect r, bool filled) {
-        clip_to_vdi(rect(_clip.p.x + _offset.x,
+        if (r.w() == 0 || r.h() == 0) return *this;
+        if (!clip_to_vdi(rect(_clip.p.x + _offset.x,
                          _clip.p.y + _offset.y,
                          _clip.d.w,
-                         _clip.d.h));
+                         _clip.d.h))) return *this;
         if (filled) {
             const coord x = r.p.x + _offset.x;
             const coord y = r.p.y + _offset.y;
@@ -143,14 +150,15 @@ namespace native
                _clip.p.y + _offset.y,
                _clip.d.w,
                _clip.d.h);
-        clip_to_vdi(r);
+        if (!clip_to_vdi(r)) return *this;
         vst_color(linux::gemix::runtime.vdi_handle,
                   gem_color(get_ink()));
+        const auto encoded = linux::gemix::stock_text(text);
         v_gtext(linux::gemix::runtime.vdi_handle,
                 static_cast<WORD>(p.x + _offset.x),
                 static_cast<WORD>(p.y + _offset.y +
                                   get_font_metrics().ascent),
-                reinterpret_cast<const BYTE *>(text.c_str()));
+                reinterpret_cast<const BYTE *>(encoded.c_str()));
         vs_clip(linux::gemix::runtime.vdi_handle, 0, nullptr);
         return *this;
     }
@@ -160,7 +168,16 @@ namespace native
                   _clip.p.y + _offset.y,
                   _clip.d.w,
                   _clip.d.h);
-        clip_to_vdi(clip);
+        if (linux::gemix::runtime.painting)
+            clip = clip.intersect(linux::gemix::runtime.paint_clip);
+        const int origin_x = dst.x + _offset.x;
+        const int origin_y = dst.y + _offset.y;
+        clip = clip.intersect(rect(origin_x, origin_y, src.w(), src.h()));
+        if (!clip_to_vdi(clip)) return *this;
+        const int first_x = clip.x1() - origin_x;
+        const int last_x = clip.x2() - origin_x;
+        const int first_y = clip.y1() - origin_y;
+        const int last_y = clip.y2() - origin_y;
         constexpr std::uint8_t bayer[16] = {
             0,  8,  2,  10,
             12, 4,  14, 6,
@@ -195,9 +212,9 @@ namespace native
                                  : native::rgba(0, 0, 0, 255));
         };
         vsl_width(linux::gemix::runtime.vdi_handle, 1);
-        for (int y = 0; y < src.h(); ++y) {
-            int x = 0;
-            while (x < src.w()) {
+        for (int y = first_y; y < last_y; ++y) {
+            int x = first_x;
+            while (x < last_x) {
                 const rgba pixel = src.pixels()[y * src.w() + x];
                 const unsigned threshold =
                     static_cast<unsigned>(bayer[(y & 3) * 4 +
@@ -210,7 +227,7 @@ namespace native
                 const WORD color = display_color(pixel, x, y);
                 const int start = x;
                 ++x;
-                while (x < src.w()) {
+                while (x < last_x) {
                     const rgba next =
                         src.pixels()[y * src.w() + x];
                     const unsigned next_threshold =

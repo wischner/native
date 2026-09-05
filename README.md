@@ -113,6 +113,7 @@ their backend headers and tools come from known images:
 ```bash
 cmake -S . -B build/cmake
 cmake --build build/cmake --target docker-gemix
+cmake --build build/cmake --target docker-gemix-gemd
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
@@ -132,6 +133,7 @@ The Docker-backed targets build:
 
 - `X11` into `build/linux-x11/`
 - `GEMix` into `build/linux-gemix/`
+- `GEMix` with `libgem -> gemd -> AES/VDI` into `build/linux-gemix-gemd/`
 - `SDL2` into `build/linux-sdl2/`
 - `OpenMotif` into `build/linux-openmotif/`
 - `OPENLOOK` into `build/linux-openlook/`
@@ -149,6 +151,8 @@ Current exercised runtime paths are:
 - Linux SDL2
 - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
 - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
+- Linux GEMix through Docker with the local rasta viewer, using either
+  direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration
 - Windows MinGW binaries run through Wine
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
 

@@ -157,6 +157,11 @@ SDL window is delivered to the control under it.
 
 ## Rulers and status bar
 
+For a status strip that matches the current backend's chrome, set its extent
+after window creation to `theme::create(get_gpx())->get_status_bar_height()`.
+Vision's Input and window chrome gallery uses this rule. GEMix matches the
+AES title/menu height, including clearance between text and the top separator.
+
 Rulers and status bars are non-client objects. Constructing one attaches it to
 its window edge and removes that extent from the rectangle passed to the
 window's layout manager:

@@ -37,6 +37,9 @@ namespace linux::gemix
         WORD char_h = 16;
         WORD box_w = 8;
         WORD box_h = 16;
+        bool painting = false;
+        native::rect paint_clip;
+        native::button *pressed_button = nullptr;
     };
 
     // Stores one generated AES menu tree and its stable string storage.
@@ -66,6 +69,24 @@ namespace linux::gemix
     extern std::vector<native::canvas *> canvases;
     extern std::vector<native::app_wnd *> windows;
     extern native::app_wnd *active_window;
+    struct gem_window
+    {
+        native::rect dirty;
+        bool pending = false;
+        native::wnd *capture = nullptr;
+        bool horizontal = false;
+        int grab_offset = 0;
+    };
+    inline constexpr native::detail::peer_bindings<
+        native::app_wnd *, gem_window *> window_states;
+
+    // Drain coalesced invalidation at an event boundary.
+    void flush_repaints();
+    // Drop capture before a borrowed draggable control is destroyed.
+    void forget_drag(native::wnd *control);
+    bool dispatch_drag_click(native::app_wnd *owner, native::point point,
+                             bool pressed);
+    bool dispatch_drag_move(native::app_wnd *owner, native::point point);
     extern std::unordered_map<native::app_wnd *, menu_state>
         menu_states;
 
@@ -130,6 +151,7 @@ namespace linux::gemix
 
     // Draw every created collection descendant of an AES window.
     void render_collections(native::app_wnd *parent, native::gpx &g);
+    void render_accordions(native::app_wnd *parent, native::gpx &g);
     void render_tab_views(native::app_wnd *parent, native::gpx &g);
 
     // Route a local click release to a collection control.

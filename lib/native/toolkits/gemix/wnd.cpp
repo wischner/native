@@ -83,19 +83,12 @@ namespace native
     }
 
     wnd &wnd::invalidate_native() {
-        if (auto *p = get_parent())
-            p->invalidate();
-        else
-            linux::gemix::request_repaint(this);
+        linux::gemix::request_repaint(this);
         return *this;
     }
 
     wnd &wnd::invalidate_native(const rect &area) {
-        if (auto *parent = get_parent())
-            parent->invalidate(area);
-        else
-            linux::gemix::request_repaint(
-                this, &area);
+        linux::gemix::request_repaint(this, &area);
         return *this;
     }
 

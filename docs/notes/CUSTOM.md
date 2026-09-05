@@ -175,6 +175,38 @@ in those backends.
 
 ## Linux GEMix/AES
 
+The 2026-09-05 local-rasta audit retains the classifications below. AES owns
+window stacking and menu tracking; child controls share coalesced damage in
+their root peer. VDI clipping cannot be widened past the current AES visible
+rectangle. Accordion surfaces precede their children, combo popups paint last,
+and framed tab pages suppress the redundant enclosure of their list content.
+Stock text on images uses the same GEM bitmap font as VDI window text.
+Table sliders use the shared drag geometry with flat GEM-style frames,
+stippled tracks, and arrow buttons. The custom radio primitive matches the
+standard library GEM radio indicator.
+The status height uses the same font-plus-six-pixel metric as AES title/menu
+chrome; the gallery requests that theme metric rather than a font-only height.
+Status parts retain their top rule and leading dividers, but omit bottom and
+right borders already supplied by the surrounding window.
+List selection explicitly invalidates its own region, including split panes.
+Focused editors handle clipboard shortcuts before menu accelerators, and the
+event loop requests both press and release edges. Flat left tabs retain their
+page separator beside inactive tabs. AES selector buttons invert until release;
+menu teardown occurs before the workstation closes. The sibling GEM runtime
+restores complete title strips and publishes restored menu-popup pixels.
+
+The same classifications apply to the verified `libgem -> gemd -> AES/VDI`
+transport. It moves AES/VDI execution into the server without replacing any
+control with a different implementation. Image scanline emission is bounded
+by the visible repaint region before crossing the proxy connection.
+The input follow-up retains these classifications: hosted USB navigation codes
+and LF/CR Enter are translated in the GEMix adapter, and AES queued messages
+preserve pointer state across the proxy. Closing an owned window repaints exposed
+Native content inside the same update transaction as teardown.
+AES desktop/frame redraws now share client occlusion clipping; opening windows
+does not erase covered owner content or redraw hidden frames. This is an AES
+implementation repair, with no change to control kinds or public interfaces.
+
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library event dispatcher supplies ownership and modality. |

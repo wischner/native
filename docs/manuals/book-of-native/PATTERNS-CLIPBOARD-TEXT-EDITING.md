@@ -72,6 +72,17 @@ active/inactive selection background and text colors as lists and tables. SDL2
 also reclamps horizontal scrolling after bounds changes, including controls
 temporarily collapsed by a composite view.
 
+GEMix gives a focused editor first refusal of keyboard commands, including
+selection and clipboard shortcuts, before trying application menu accelerators.
+This preserves the editor's selected range instead of invoking a gallery-wide
+Copy/Paste action. Read-only fields still permit copying, but reject typing,
+cutting, and pasting.
+The hosted AES runtime returns current pointer/button/modifier state even when
+`evnt_multi` delivers a queued redraw. This matters for gemd: zero-filled reply
+fields otherwise invent mouse edges that disturb editing focus. The real-server
+regression covers a held button across a redraw and modifier-key bursts; the
+Rasta walkthrough covers typing in both editor modes and clipboard buttons.
+
 ## Live complete-value validation
 
 A validator sees the proposed complete value, so it can enforce rules that

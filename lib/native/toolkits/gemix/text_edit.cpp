@@ -57,7 +57,7 @@ namespace
         binding->cursor = begin + inserted.size();
         binding->anchor = binding->cursor;
         owner->on_native_text(candidate);
-        owner->invalidate(owner->get_bounds());
+        owner->invalidate();
         return true;
     }
 
@@ -68,13 +68,13 @@ namespace
         binding->cursor = std::min(position, owner->get_text().size());
         if (!extend)
             binding->anchor = binding->cursor;
-        owner->invalidate(owner->get_bounds());
+        owner->invalidate();
     }
 
     std::size_t hit_offset(native::text_edit *owner,
                            int x,
                            int y) {
-        const native::rect bounds = owner->get_bounds();
+        const native::rect bounds = linux::gemix::root_bounds(*owner);
         const int char_width = std::max<int>(
             1, linux::gemix::runtime.char_w);
         const int char_height = std::max<int>(
@@ -150,7 +150,7 @@ namespace
                      binding_type *binding,
                      native::gpx &g) {
         const native::rect original_clip = g.get_clip();
-        const native::rect bounds = owner->get_bounds();
+        const native::rect bounds = linux::gemix::root_bounds(*owner);
         auto painter = native::theme::create(g);
         const native::theme::palette colors =
             painter->native_palette();
@@ -223,7 +223,8 @@ namespace
                 const int columns = character_count(
                     text, begin, binding->cursor);
                 const int caret_x = content.p.x + columns * char_width;
-                g.draw_line(native::point(caret_x, y),
+                g.set_ink(colors.content_text)
+                    .draw_line(native::point(caret_x, y),
                             native::point(caret_x,
                                           y + line_height - 1));
             }
@@ -243,28 +244,25 @@ namespace linux::gemix
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && editor->get_parent() == parent)
-                binding->focused = false;
-            if (binding && editor->get_parent() == parent &&
+            if (binding && root_of(editor) == parent &&
                 binding->visible &&
-                editor->get_bounds().contains(point)) {
+                root_bounds(*editor).contains(point)) {
                 hit = editor;
             }
         }
-        if (!hit) {
-            for (native::text_edit *editor : text_edits) {
-                auto *binding =
-                    text_edit_bindings.object_from_handle(editor);
-                if (binding && editor->get_parent() == parent)
-                    parent->invalidate(editor->get_bounds());
+        for (native::text_edit *editor : text_edits) {
+            auto *binding = text_edit_bindings.object_from_handle(editor);
+            if (binding && root_of(editor) == parent && binding->focused && editor != hit) {
+                binding->focused = false;
+                editor->invalidate();
             }
-            return false;
         }
+        if (!hit) return false;
         auto *binding = text_edit_bindings.object_from_handle(hit);
         binding->focused = true;
         binding->cursor = hit_offset(hit, point.x, point.y);
         binding->anchor = binding->cursor;
-        parent->invalidate(hit->get_bounds());
+        hit->invalidate();
         return true;
     }
 
@@ -276,7 +274,7 @@ namespace linux::gemix
         for (native::text_edit *editor : text_edits) {
             auto *candidate =
                 text_edit_bindings.object_from_handle(editor);
-            if (candidate && editor->get_parent() == parent &&
+            if (candidate && root_of(editor) == parent &&
                 candidate->visible && candidate->focused) {
                 owner = editor;
                 binding = candidate;
@@ -385,7 +383,7 @@ namespace linux::gemix
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && editor->get_parent() == parent &&
+            if (binding && root_of(editor) == parent &&
                 binding->visible) {
                 g.set_clip(clip);
                 draw_editor(editor, binding, g);

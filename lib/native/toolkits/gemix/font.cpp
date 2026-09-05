@@ -13,6 +13,7 @@
 
 #include "../../portable_font.h"
 #include "globals.h"
+#include "stock_text.h"
 
 namespace
 {
@@ -100,7 +101,7 @@ namespace native
             return {};
         const font_metrics metrics = get_metrics();
         const int width =
-            static_cast<int>(text.size()) * metrics.max_advance;
+            static_cast<int>(linux::gemix::stock_text(text).size()) * metrics.max_advance;
         return {width, metrics.height, width};
     }
 } // namespace native

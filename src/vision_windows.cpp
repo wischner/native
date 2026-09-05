@@ -1009,7 +1009,7 @@ namespace vision
         , _directory(*this, "Select a Workspace Folder")
         , _horizontal_ruler(*this, native::window_edge::top, 24)
         , _vertical_ruler(*this, native::window_edge::left, 24)
-        , _status_bar(*this, 17) {
+        , _status_bar(*this) {
         _selection_combo.set_selected_index(0);
         _editable_combo.set_text("25 mm");
         _list_box.set_selected_index(1);
@@ -1060,6 +1060,8 @@ namespace vision
     }
 
     bool feature_input_chrome::on_create() {
+        const auto appearance = native::theme::create(get_gpx());
+        _status_bar.set_extent(appearance->get_status_bar_height());
         for (native::wnd *control : {
                  static_cast<native::wnd *>(&_selection_combo),
                  static_cast<native::wnd *>(&_editable_combo),

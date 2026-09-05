@@ -44,6 +44,8 @@ namespace native
             return;
 
         auto *self = this;
+        if (linux::gemix::runtime.pressed_button == this)
+            linux::gemix::runtime.pressed_button = nullptr;
 
         linux::gemix::buttons.erase(
             std::remove(linux::gemix::buttons.begin(),

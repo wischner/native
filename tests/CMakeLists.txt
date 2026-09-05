@@ -25,7 +25,11 @@ target_link_libraries(native_window_api_tests PRIVATE
     native_developer_options
 )
 
-add_test(NAME native_window_api_tests COMMAND native_window_api_tests)
+if(UNIX AND TOOLKIT STREQUAL "GEMIX" AND GEMIX_USE_GEMD)
+    set(gemd_runner bash ${PROJECT_SOURCE_DIR}/scripts/gemix/gemd-session.sh)
+endif()
+add_test(NAME native_window_api_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
 
 add_executable(native_table_model_tests
     native_table_model_tests.cpp
@@ -57,6 +61,25 @@ add_test(NAME native_code_document_tests
 add_executable(native_collection_runtime_tests
     native_collection_runtime_tests.cpp
 )
+
+if(UNIX AND TOOLKIT STREQUAL "GEMIX")
+    add_executable(native_gemix_runtime_tests native_gemix_runtime_tests.cpp)
+    target_include_directories(native_gemix_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_gemix_runtime_tests PRIVATE native native_developer_options)
+    if(GEMIX_USE_GEMD)
+        add_test(NAME native_gemix_runtime_tests
+            COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_runtime_tests>)
+    else()
+        add_test(NAME native_gemix_runtime_tests COMMAND native_gemix_runtime_tests)
+    endif()
+    set_tests_properties(native_gemix_runtime_tests PROPERTIES ENVIRONMENT
+        "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-tests.fb;GEM_RASTA_PORT=5001;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=on;ASAN_OPTIONS=detect_leaks=0")
+    set_tests_properties(native_window_api_tests PROPERTIES ENVIRONMENT
+        "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-api-tests.fb;GEM_RASTA_PORT=5001;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=on;ASAN_OPTIONS=detect_leaks=0")
+    set_tests_properties(native_gemix_runtime_tests native_window_api_tests
+        PROPERTIES TIMEOUT 30)
+endif()
 
 target_link_libraries(native_collection_runtime_tests PRIVATE
     native

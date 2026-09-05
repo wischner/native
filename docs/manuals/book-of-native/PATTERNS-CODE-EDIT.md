@@ -55,6 +55,11 @@ scroll state in the portable editor while backend input services supply typed
 text. Standard copy, cut, paste, select-all, undo, and redo shortcuts call the
 same public operations used directly by applications.
 
+The hosted GEMix adapter uses the USB scan codes supplied by the Linux/Rasta
+input transports for arrows, Home/End, Page Up/Down and forward Delete. It
+accepts both LF and CR for Enter. These translations are private to the backend;
+they do not change the public AES/VDI keyboard interface.
+
 See the application-facing
 [Source Editing](../programming-native/15-SOURCE-EDITING.md) chapter for
 construction, overlays, lexer integration, completion, and file handling.

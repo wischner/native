@@ -9,6 +9,11 @@ fi
 
 IMAGE=$1
 shift
+GEMD_MODE=0
+if [[ ${1:-} == --gemd ]]; then
+    GEMD_MODE=1
+    shift
+fi
 
 # cppdbg may append its MI option to debuggerPath and pass the resulting
 # command as one argument. Docker needs the executable and its options as
@@ -81,5 +86,17 @@ docker run --rm -i \
     -e GEM_RESOURCE_DIR="${GEM_RESOURCE_DIR:-/opt/gemix/share/gem}" \
     -e GEM_RASTA_CURSOR="${RASTA_CURSOR}" \
     -e GEM_RASTA_INVERSE="${RASTA_INVERSE}" \
+    -e GEM_VDI_WIDTH="${EFFECTIVE_WIDTH}" \
+    -e GEM_VDI_HEIGHT="${RASTA_HEIGHT}" \
+    -e GEM_RASTA_FRAMEBUFFER="${RASTA_FB}" \
+    -e GEM_RASTA_HOST=127.0.0.1 \
+    -e GEM_RASTA_PORT="${RASTA_PORT}" \
+    -e ASAN_OPTIONS=detect_leaks=0 \
     -w "${WORKSPACE_DIR}" \
-    "${IMAGE}" "${DEBUGGER_COMMAND[@]}"
+    "${IMAGE}" bash -c '
+        mode=$1; workspace=$2; shift 2
+        if [[ $mode == 1 ]]; then
+            exec bash "$workspace/scripts/gemix/gemd-session.sh" "$@"
+        fi
+        exec "$@"
+    ' bash "${GEMD_MODE}" "${WORKSPACE_DIR}" "${DEBUGGER_COMMAND[@]}"

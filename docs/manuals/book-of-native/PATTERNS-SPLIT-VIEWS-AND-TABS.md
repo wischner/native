@@ -1,5 +1,15 @@
 # Patterns: split views and tabs
 
+GEMix keeps drag capture in the root peer until release, including movement
+outside the window, and clears capture when its borrowed splitter is destroyed.
+Its tabs use white paper with black labels in every placement. Selected tabs
+overlap the framed page, while a list used as page content does not add another
+enclosure across that join. Rotated labels use the GEM stock bitmap font and
+reserve enough padding to avoid ellipsizing otherwise fitting labels.
+List panes repaint their selection independently of divider movement. The
+flat left-tab page edge remains visible beside inactive tabs; the selected
+tab alone keeps an open join to its content.
+
 Use a split view for two simultaneously visible work areas whose boundary the
 user may resize. Use a tab view when only one page should be live at a time.
 They compose: either split pane may itself contain tabs, and a tab page may

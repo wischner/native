@@ -14,6 +14,7 @@
 #include "../../software_image.h"
 #include "../../software_text.h"
 #include "globals.h"
+#include "stock_text.h"
 
 namespace native
 {
@@ -49,6 +50,8 @@ namespace native
 
     gpx &gpx_img::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
+            return *this;
+        if (linux::gemix::draw_stock_text(_img, _clip, text, p, _ink))
             return *this;
         const int advance = linux::gemix::runtime.initialized
                                 ? linux::gemix::runtime.char_w

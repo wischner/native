@@ -39,6 +39,7 @@ namespace native
         if (!_created)
             return;
         auto *self = this;
+        linux::gemix::forget_drag(self);
         linux::gemix::table_views.erase(
             std::remove(linux::gemix::table_views.begin(),
                         linux::gemix::table_views.end(), self),

@@ -17,6 +17,7 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "../../table_render.h"
 
 namespace
 {
@@ -56,6 +57,57 @@ namespace
 
 namespace linux::gemix
 {
+    void forget_drag(native::wnd *control) {
+        auto *root = dynamic_cast<native::app_wnd *>(root_of(control));
+        auto *state = root ? window_states.object_from_handle(root) : nullptr;
+        if (state && state->capture == control) state->capture = nullptr;
+    }
+
+    bool dispatch_drag_click(native::app_wnd *owner, native::point point,
+                             bool pressed) {
+        auto *state = window_states.object_from_handle(owner);
+        if (!state) return false;
+        if (!pressed && state->capture) {
+            auto *control = state->capture;
+            state->capture = nullptr;
+            if (dynamic_cast<native::split_view *>(control))
+                control->on_native_mouse_click(native::mouse_event(
+                    native::mouse_button::left, native::mouse_action::release,
+                    local_point(*control, point)));
+            return true;
+        }
+        if (!pressed) return false;
+        auto *control = native::detail::deepest_at(*owner, point);
+        if (auto *split = dynamic_cast<native::split_view *>(control)) {
+            if (!split->get_splitter_bounds().contains(local_point(*split, point)))
+                return false;
+            state->capture = split;
+            split->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left, native::mouse_action::press,
+                local_point(*split, point)));
+            return true;
+        }
+        if (auto *table = dynamic_cast<native::table_view *>(control)) {
+            if (native::detail::begin_table_scrollbar_drag(*table,
+                local_point(*table, point), state->horizontal, state->grab_offset)) {
+                state->capture = table;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool dispatch_drag_move(native::app_wnd *owner, native::point point) {
+        auto *state = window_states.object_from_handle(owner);
+        if (!state || !state->capture) return false;
+        auto *control = state->capture;
+        if (auto *table = dynamic_cast<native::table_view *>(control))
+            native::detail::drag_table_scrollbar(*table, local_point(*table, point),
+                state->horizontal, state->grab_offset);
+        else control->on_native_mouse_move(local_point(*control, point));
+        return true;
+    }
+
     void render_surfaces(native::app_wnd *parent, native::gpx &) {
         // Regions are painted parent first so a container never erases
         // the descendants drawn inside it.
@@ -76,11 +128,14 @@ namespace linux::gemix
 
         for (native::wnd *region : regions) {
             const native::rect bounds = root_bounds(*region);
+            const auto work = work_rect(wnd_bindings.handle_from_object(parent));
+            const native::point screen_origin(bounds.p.x + work.p.x,
+                                               bounds.p.y + work.p.y);
             if (!bounds.d.w || !bounds.d.h)
                 continue;
 
             if (auto *host = dynamic_cast<native::panel *>(region)) {
-                native::gpx_wnd region_gpx(parent, bounds.p);
+                native::gpx_wnd region_gpx(parent, screen_origin);
                 const native::rect invalid(
                     0, 0, bounds.d.w, bounds.d.h);
                 region_gpx.set_clip(invalid);
@@ -97,7 +152,7 @@ namespace linux::gemix
             // canvas-local coordinates. A context carrying the
             // region's origin supplies that without translating the
             // window context every other control shares.
-            native::gpx_wnd region_gpx(parent, bounds.p);
+            native::gpx_wnd region_gpx(parent, screen_origin);
             const native::rect invalid(0,
                                        0,
                                        surface->get_dimensions().w,

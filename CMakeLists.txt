@@ -149,6 +149,8 @@ if(UNIX AND NOT APPLE)
 
         add_docker_cmake_build_target(docker-gemix build/linux-gemix ${DOCKER_IMAGE_GEMIX}
             -DTOOLKIT=GEMIX)
+        add_docker_cmake_build_target(docker-gemix-gemd build/linux-gemix-gemd ${DOCKER_IMAGE_GEMIX}
+            -DTOOLKIT=GEMIX -DGEMIX_USE_GEMD=ON)
         add_docker_cmake_build_target(docker-x11 build/linux-x11 ${DOCKER_IMAGE_X11}
             -DTOOLKIT=X11)
         add_docker_cmake_build_target(docker-sdl2 build/linux-sdl2 ${DOCKER_IMAGE_SDL2}

@@ -7,6 +7,7 @@
 //
 
 #include "file_dialog_common.h"
+#include "globals.h"
 
 #include <algorithm>
 #include <array>
@@ -21,7 +22,7 @@
 namespace
 {
     constexpr std::size_t path_capacity = 1024;
-    constexpr std::size_t name_capacity = 256;
+    constexpr std::size_t name_capacity = 1024;
 
     // AES exposes one wildcard at a time. Prefer an unrestricted filter
     // when the portable dialog offers one, so callers can still reach
@@ -97,6 +98,7 @@ namespace linux::gemix
 
         WORD button = 0;
         file_dialog_response response;
+        flush_repaints();
         if (fsel_input(path.data(), name.data(), &button) == 0 ||
             button == 0 || name[0] == '\0')
             return response;

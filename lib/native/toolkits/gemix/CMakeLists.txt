@@ -5,14 +5,18 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GEMIX_AES REQUIRED gemix-aes)
 pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi)
 
+option(GEMIX_USE_GEMD "Link libgem instead of in-process AES/VDI" OFF)
+
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/painting.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/stock_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
@@ -42,9 +46,13 @@ target_include_directories(native PRIVATE
     ${GEMIX_VDI_INCLUDE_DIRS}
 )
 
-target_link_libraries(native PRIVATE
-    ${GEMIX_AES_LIBRARIES}
-    ${GEMIX_VDI_LIBRARIES}
-)
-
-message(STATUS "GEMix toolkit configured with native AES/VDI dependencies only.")
+if(GEMIX_USE_GEMD)
+    find_library(GEMIX_CLIENT_LIBRARY NAMES gem REQUIRED)
+    target_link_libraries(native PRIVATE ${GEMIX_CLIENT_LIBRARY})
+    message(STATUS "GEMix calls use libgem -> gemd -> AES/VDI.")
+else()
+    target_link_libraries(native PRIVATE
+        ${GEMIX_AES_LIBRARIES}
+        ${GEMIX_VDI_LIBRARIES})
+    message(STATUS "GEMix calls use in-process AES/VDI.")
+endif()

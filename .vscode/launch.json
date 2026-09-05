@@ -112,6 +112,26 @@
             "preLaunchTask": "CMake Build Debug (Docker GEMix)"
         },
         {
+            "name": "Debug Vision (Linux GEMix, gemd proxy)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-gemix-gemd/src/vision",
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "MIMode": "gdb",
+            "externalConsole": false,
+            "environment": [
+                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
+            ],
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
+                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest", "--gemd"],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "CMake Build Debug (Docker GEMix gemd)"
+        },
+        {
             "name": "Debug Vision (OpenMotif, Tribblix CDE VM)",
             "type": "cppdbg",
             "request": "launch",
