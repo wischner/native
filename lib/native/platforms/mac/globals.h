@@ -99,6 +99,7 @@ namespace mac
     };
     struct mac_accordion
     {
+        NSScrollView *scroll = nil;
         NSStackView *stack = nil;
         id target = nil;
         std::vector<NSButton *> headers;
@@ -106,7 +107,6 @@ namespace mac
     struct mac_tab_view
     {
         NSTabView *view = nil;
-        NSView *page_host = nil;
         id delegate = nil;
         bool suppress = false;
     };
@@ -142,6 +142,7 @@ namespace mac
         NSTableView *table = nil;
         NSTableHeaderView *header = nil;
         id adapter = nil;
+        CGFloat default_row_height = 0;
         std::unordered_map<const native::img *, NSImage *> images;
         bool suppress = false;
     };
@@ -188,7 +189,7 @@ namespace mac
     }
 
     inline void *peer_content(mac_accordion *state) {
-        return state ? reinterpret_cast<void *>(state->stack) : nullptr;
+        return state ? reinterpret_cast<void *>(state->scroll) : nullptr;
     }
 
     inline void *peer_content(mac_tab_view *state) {

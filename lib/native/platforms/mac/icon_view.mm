@@ -9,11 +9,13 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <typeinfo>
 
 #include <native.h>
 
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "native_cells.h"
 
 namespace
 {
@@ -25,39 +27,7 @@ namespace
     }
 
     NSImage *native_image(const native::img &source) {
-        NSBitmapImageRep *representation =
-            [[NSBitmapImageRep alloc]
-                initWithBitmapDataPlanes:nullptr
-                              pixelsWide:source.w()
-                              pixelsHigh:source.h()
-                           bitsPerSample:8
-                         samplesPerPixel:4
-                                hasAlpha:YES
-                                isPlanar:NO
-                          colorSpaceName:NSCalibratedRGBColorSpace
-                             bitmapFormat:0
-                              bytesPerRow:source.w() * 4
-                             bitsPerPixel:32];
-        if (!representation)
-            return nil;
-        std::uint8_t *target = [representation bitmapData];
-        for (int y = 0; y < source.h(); ++y) {
-            for (int x = 0; x < source.w(); ++x) {
-                const native::rgba color =
-                    source.pixels()[y * source.w() + x];
-                const std::size_t offset =
-                    (static_cast<std::size_t>(y) * source.w() + x) * 4;
-                target[offset] = color.r;
-                target[offset + 1] = color.g;
-                target[offset + 2] = color.b;
-                target[offset + 3] = color.a;
-            }
-        }
-        NSImage *image = [[NSImage alloc]
-            initWithSize:NSMakeSize(source.w(), source.h())];
-        [image addRepresentation:representation];
-        [representation release];
-        return image;
+        return [mac::cell_image(&source) retain];
     }
 }
 
@@ -66,6 +36,7 @@ namespace
     void *_owner;
     NSInteger _index;
     BOOL _selected;
+    NSBox *_selection;
 }
 @end
 
@@ -73,6 +44,7 @@ namespace
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::icon_view *>(_owner);
     if (!owner || !owner->get_created() || _index < 0 ||
+        typeid(*owner) == typeid(native::icon_view) ||
         _index >= static_cast<NSInteger>(owner->get_items().size())) {
         [super drawRect:dirty];
         return;
@@ -113,6 +85,32 @@ namespace
 - (void)loadView {
     native_icon_item_view *container = [[native_icon_item_view alloc]
         initWithFrame:NSMakeRect(0, 0, 96, 92)];
+    NSBox *selection = [[NSBox alloc] initWithFrame:[container bounds]];
+    [selection setBoxType:NSBoxCustom];
+    [selection setBorderWidth:0];
+    [selection setTitlePosition:NSNoTitle];
+    [selection setCornerRadius:5];
+    [selection setFillColor:[NSColor selectedContentBackgroundColor]];
+    [selection setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [selection setHidden:YES];
+    [container addSubview:selection];
+    container->_selection = selection;
+    [selection release];
+    NSImageView *image = [[NSImageView alloc] initWithFrame:NSZeroRect];
+    [image setImageScaling:NSImageScaleProportionallyDown];
+    [container addSubview:image];
+    [self setImageView:image];
+    [image release];
+    NSTextField *label = [[NSTextField alloc] initWithFrame:NSZeroRect];
+    [label setBezeled:NO];
+    [label setEditable:NO];
+    [label setSelectable:NO];
+    [label setDrawsBackground:NO];
+    [label setFont:[NSFont systemFontOfSize:0]];
+    [[label cell] setLineBreakMode:NSLineBreakByTruncatingTail];
+    [container addSubview:label];
+    [self setTextField:label];
+    [label release];
     [self setView:container];
     [container release];
 }
@@ -121,6 +119,14 @@ namespace
     native_icon_item_view *view =
         static_cast<native_icon_item_view *>([self view]);
     view->_selected = selected;
+    const auto *owner = static_cast<native::icon_view *>(view->_owner);
+    const bool custom = owner && typeid(*owner) != typeid(native::icon_view);
+    [view->_selection setHidden:!selected || custom];
+    const bool enabled = owner && view->_index >= 0 &&
+        view->_index < static_cast<NSInteger>(owner->get_items().size()) &&
+        owner->get_items()[view->_index].enabled;
+    [[self textField] setTextColor:!enabled ? [NSColor disabledControlTextColor] :
+        selected ? [NSColor alternateSelectedControlTextColor] : [NSColor controlTextColor]];
     [view setNeedsDisplay:YES];
 }
 @end
@@ -134,7 +140,8 @@ namespace
 @implementation native_icon_collection_view
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::icon_view *>(_owner);
-    if (!owner || !owner->get_created()) {
+    if (!owner || !owner->get_created() ||
+        typeid(*owner) == typeid(native::icon_view)) {
         [super drawRect:dirty];
         return;
     }
@@ -182,6 +189,31 @@ namespace
 @end
 
 @implementation native_icon_adapter
+- (NSSet<NSIndexPath *> *)collectionView:(NSCollectionView *)view
+    shouldSelectItemsAtIndexPaths:(NSSet<NSIndexPath *> *)paths {
+    (void)view;
+    auto *owner = static_cast<native::icon_view *>(_owner);
+    NSMutableSet<NSIndexPath *> *enabled = [NSMutableSet set];
+    for (NSIndexPath *path in paths) {
+        if (owner && [path item] >= 0 &&
+            [path item] < static_cast<NSInteger>(owner->get_items().size()) &&
+            owner->get_items()[[path item]].enabled)
+            [enabled addObject:path];
+    }
+    return enabled;
+}
+- (void)collectionView:(NSCollectionView *)view
+    didSelectItemsAtIndexPaths:(NSSet<NSIndexPath *> *)paths {
+    (void)paths;
+    [self collectionViewSelectionDidChange:
+        [NSNotification notificationWithName:@"native_selection" object:view]];
+}
+- (void)collectionView:(NSCollectionView *)view
+    didDeselectItemsAtIndexPaths:(NSSet<NSIndexPath *> *)paths {
+    (void)paths;
+    [self collectionViewSelectionDidChange:
+        [NSNotification notificationWithName:@"native_selection" object:view]];
+}
 - (NSInteger)numberOfSectionsInCollectionView:(NSCollectionView *)view {
     (void)view;
     return 1;
@@ -212,6 +244,10 @@ namespace
     item_view->_owner = owner;
     item_view->_index = index;
     item_view->_selected = [item isSelected];
+    const bool custom = typeid(*owner) != typeid(native::icon_view);
+    [item.imageView setHidden:custom];
+    [item.textField setHidden:custom];
+    [item setSelected:[item isSelected]];
     [item_view setNeedsDisplay:YES];
     [item.imageView setImage:
                         index < static_cast<NSInteger>(binding->images.size())
@@ -222,9 +258,9 @@ namespace
                                     native::icon_view_label_mode::hidden
                                 ? @""
                                 : native_string(value.text)];
-    [item.textField setTextColor:value.enabled
-                                     ? [NSColor controlTextColor]
-                                     : [NSColor disabledControlTextColor]];
+    [item.textField setTextColor:!value.enabled ? [NSColor disabledControlTextColor] :
+        [item isSelected] ? [NSColor alternateSelectedControlTextColor] :
+        [NSColor controlTextColor]];
     const native::size icon = owner->get_icon_size();
     const NSRect frame = [[item view] bounds];
     if (owner->get_label_mode() ==

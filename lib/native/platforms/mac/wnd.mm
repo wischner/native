@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <native.h>
 #include <native/wnd.h>
 #include <bindings.h>
@@ -18,6 +19,27 @@ namespace
 {
     char cursor_area_key;
     char cursor_target_key;
+
+    // AppKit containers allocate page/pane bounds. Do not replace those
+    // with the shared fallback's approximation of native edge metrics.
+    NSRect content_frame(native::wnd &owner, NSView *view, NSRect proposed) {
+        auto *parent = owner.get_parent();
+        if ([view superview] &&
+            (dynamic_cast<native::tab_view *>(parent) ||
+             dynamic_cast<native::split_view *>(parent))) {
+            const NSSize size = [[view superview] bounds].size;
+            const native::size actual(
+                static_cast<native::dim>(std::clamp<CGFloat>(size.width, 0, 65535)),
+                static_cast<native::dim>(std::clamp<CGFloat>(size.height, 0, 65535)));
+            if (owner.get_position().x || owner.get_position().y)
+                owner.on_native_move(native::point(0, 0));
+            if (owner.get_dimensions().w != actual.w ||
+                owner.get_dimensions().h != actual.h)
+                owner.on_native_resize(actual);
+            return NSMakeRect(0, 0, actual.w, actual.h);
+        }
+        return proposed;
+    }
 
     NSCursor *cursor_for(native::mouse_cursor cursor) {
         if (cursor == native::mouse_cursor::ibeam)
@@ -68,8 +90,9 @@ namespace native
 {
     void wnd::apply_position() {
         if (NSView *control = mac::view_from_control(this)) {
-            [control
-                setFrameOrigin:NSMakePoint(_bounds.p.x, _bounds.p.y)];
+            NSRect frame = [control frame];
+            frame.origin = NSMakePoint(_bounds.p.x, _bounds.p.y);
+            [control setFrame:content_frame(*this, control, frame)];
             return;
         }
 
@@ -82,7 +105,9 @@ namespace native
 
     void wnd::apply_dimensions() {
         if (NSView *control = mac::view_from_control(this)) {
-            [control setFrameSize:NSMakeSize(_bounds.d.w, _bounds.d.h)];
+            NSRect frame = [control frame];
+            frame.size = NSMakeSize(_bounds.d.w, _bounds.d.h);
+            [control setFrame:content_frame(*this, control, frame)];
             return;
         }
 
@@ -98,7 +123,7 @@ namespace native
             _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h);
 
         if (NSView *control = mac::view_from_control(this)) {
-            [control setFrame:frame];
+            [control setFrame:content_frame(*this, control, frame)];
             return;
         }
 

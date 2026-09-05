@@ -17,6 +17,14 @@ examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitiv
 
 ## Semantic drawing
 
+macOS follows the same stock-versus-derived distinction as Windows. Ordinary
+buttons/checks/radios call AppKit's renderer. Table and outline rows use native
+`NSTableCellView` text and image subviews, and headers use `NSTableHeaderCell`.
+`NSCollectionView` items compose `NSImageView`, `NSTextField` and a native
+selection box. A stock accordion uses its native disclosure stack without
+calling the portable accordion painter. Explicitly derived controls retain
+the protected stages; theme primitives remain available for custom visuals.
+
 Motif list primitives use the native list's `XmFontList` and `XmStringDraw`,
 not the button font. Content foreground and background are read as a pair
 from list resources, preserving CDE's light text on slate data surfaces.

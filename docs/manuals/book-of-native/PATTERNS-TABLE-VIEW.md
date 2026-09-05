@@ -53,7 +53,22 @@ rather than becoming a million-widget allocation.
   uses faint themed lines otherwise, and cannot select just one grid axis.
   `LVS_EX_GRIDLINES` stays disabled to avoid a second, inconsistent grid pass.
 - macOS uses `NSTableView`, reusable cell views, native columns, stripes, grid
-  styles, selection, and sort descriptors.
+  styles, selection, and sort descriptors. Stock cells use native text/image
+  subviews rather than repainting them through the portable theme. Native
+  group rows supply a spanning label and a disclosure button; stock headers
+  retain `NSTableHeaderCell` painting. Derived controls retain the explicit
+  drawing extension. Both data modes use AppKit's full-width table style and
+  independently selectable native horizontal and vertical grid axes.
+  Grid colors blend the system content background toward the label color
+  by 24%; alternating row backgrounds use 9%. Dynamic colors retain contrast
+  in light and dark appearances. The backend assigns `gridColor` and native
+  `NSTableRowView.backgroundColor`; it does not override row or grid painting.
+  Clip-view notifications update the portable first-row
+  cache without feeding rounded row positions back into native scrolling.
+  Explicit scrolling uses native row rectangles, including at the end of a
+  million-row virtual model. Removing an explicit row height restores the
+  native default. Group labels preserve the model title without appending a
+  second count, and cell/viewport clipping prevents content crossing borders.
 - OpenMotif uses one buffered Motif-themed viewport for both data modes,
   retaining real `XmScrollBar` peers. Headers, column widths, grouping,
   selection, grid lines and row colors therefore follow the same path.

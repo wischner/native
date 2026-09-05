@@ -15,6 +15,25 @@ Legend:
 
 ## Backend status
 
+The 2026-09-05 macOS native-control audit replaces default portable drawing
+inside AppKit button/check/radio, table, outline, icon and accordion hosts.
+`native_mac_runtime_tests` verifies native rendering without entering the
+portable painter, retained derived-button drawing, native cell subviews and
+disclosure/selection actions. All six CTests pass on `leia`, including the
+now-registered collection runtime test, both normally and with address and
+undefined-behavior sanitizers. The gallery has been inspected in a desktop
+screenshot after enabling Screen Recording. Accessibility input now works;
+the live walkthrough reproduced an empty split view and overflowing tab pages.
+The fixes use native pane allocation and `NSTabViewItem` page hosts. Expanded
+regressions cover both split orientations, all tab placements and resizing,
+native grid toggling, virtual million-row scrolling and row-height reset.
+Tables use full-width AppKit grids and native row views with stronger dynamic
+system-derived grid/stripe colors; native scroll state updates the portable
+viewport cache. Follow-up regressions cover upright image glyph pixels and
+straight-alpha text blending, single-open accordion scrollbar ownership and
+light/dark grid contrast. These three reported issues received targeted
+desktop checks; the earlier complete-gallery walkthrough remains incomplete.
+
 The 2026-09-05 OPEN LOOK follow-up exercises native radio exclusion,
 intrinsic button height, partial-exposure theme pixels, coalesced invalidation,
 editor keyboard/completion routing, chrome construction, resized list panes,

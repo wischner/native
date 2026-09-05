@@ -16,6 +16,7 @@ target_sources(native PRIVATE
     globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/native_window.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/native_app.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/native_cells.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/font.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_img.mm

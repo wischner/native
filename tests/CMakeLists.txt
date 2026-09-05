@@ -16,6 +16,16 @@ target_link_libraries(native_core_tests PRIVATE
 
 add_test(NAME native_core_tests COMMAND native_core_tests)
 
+if(APPLE)
+    add_executable(native_mac_runtime_tests native_mac_runtime_tests.mm)
+    target_include_directories(native_mac_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_mac_runtime_tests PRIVATE
+        native native_developer_options "-framework AppKit")
+    add_test(NAME native_mac_runtime_tests COMMAND native_mac_runtime_tests)
+    set_tests_properties(native_mac_runtime_tests PROPERTIES TIMEOUT 30)
+endif()
+
 if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
     add_executable(native_openlook_runtime_tests native_openlook_runtime_tests.cpp)
     target_include_directories(native_openlook_runtime_tests PRIVATE
@@ -126,7 +136,7 @@ target_link_libraries(native_collection_runtime_tests PRIVATE
     native_developer_options
 )
 
-if(UNIX AND (TOOLKIT STREQUAL "MOTIF" OR TOOLKIT STREQUAL "OPENLOOK"))
+if(APPLE OR (UNIX AND (TOOLKIT STREQUAL "MOTIF" OR TOOLKIT STREQUAL "OPENLOOK")))
     add_test(NAME native_collection_runtime_tests
         COMMAND native_collection_runtime_tests)
     set_tests_properties(native_collection_runtime_tests PROPERTIES

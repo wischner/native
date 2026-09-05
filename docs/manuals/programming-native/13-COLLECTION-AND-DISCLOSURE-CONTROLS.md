@@ -184,7 +184,13 @@ that control's normal keyboard handling.
 ## Native mappings and accessibility
 
 Windows icon views use `WC_LISTVIEW`; macOS uses `NSCollectionView`, and the
-macOS accordion uses an `NSStackView` with disclosure buttons. Trees map to
+macOS accordion uses an `NSStackView` with native disclosure buttons and labels
+inside `NSScrollView`. In single-open mode the expanded page fits the actual
+native viewport and provides its own scrollbar; the outer stack scrolls only
+if its headers cannot fit. Multiple-open mode retains outer scrolling.
+Stock Mac icon and tree items use native image/text
+views; application-derived controls retain the custom-drawing extension.
+Trees map to
 `WC_TREEVIEW`, `NSOutlineView`, Motif `XmContainer`, and Haiku
 `BOutlineListView`; toolkits without an outline widget compose their native
 focus/input host and semantic theme parts. The portable API hides those

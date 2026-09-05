@@ -12,11 +12,13 @@
 #include <algorithm>
 #include <functional>
 #include <stdexcept>
+#include <typeinfo>
 
 #include <native.h>
 
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "native_cells.h"
 
 namespace
 {
@@ -26,39 +28,7 @@ namespace
     }
 
     NSImage *native_image(const native::img &source) {
-        NSBitmapImageRep *representation =
-            [[NSBitmapImageRep alloc]
-                initWithBitmapDataPlanes:nullptr
-                              pixelsWide:source.w()
-                              pixelsHigh:source.h()
-                           bitsPerSample:8
-                         samplesPerPixel:4
-                                hasAlpha:YES
-                                isPlanar:NO
-                          colorSpaceName:NSCalibratedRGBColorSpace
-                             bitmapFormat:0
-                              bytesPerRow:source.w() * 4
-                             bitsPerPixel:32];
-        if (!representation)
-            return nil;
-        std::uint8_t *target = [representation bitmapData];
-        for (int y = 0; y < source.h(); ++y) {
-            for (int x = 0; x < source.w(); ++x) {
-                const native::rgba color =
-                    source.pixels()[y * source.w() + x];
-                const std::size_t offset =
-                    (static_cast<std::size_t>(y) * source.w() + x) * 4;
-                target[offset] = color.r;
-                target[offset + 1] = color.g;
-                target[offset + 2] = color.b;
-                target[offset + 3] = color.a;
-            }
-        }
-        NSImage *image = [[NSImage alloc]
-            initWithSize:NSMakeSize(source.w(), source.h())];
-        [image addRepresentation:representation];
-        [representation release];
-        return image;
+        return [mac::cell_image(&source) retain];
     }
 
     native::tree_item_id item_id(id item) {
@@ -111,7 +81,7 @@ namespace
 }
 @end
 
-@interface native_tree_cell_view : NSView {
+@interface native_tree_cell_view : native_content_cell {
 @public
     void *_owner;
     native::tree_item_id _item;
@@ -124,6 +94,7 @@ namespace
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::tree_view *>(_owner);
     if (!owner || !owner->get_created() ||
+        typeid(*owner) == typeid(native::tree_view) ||
         _item == native::invalid_tree_item_id) {
         [super drawRect:dirty];
         return;
@@ -239,6 +210,14 @@ namespace
     }
     cell->_owner = owner;
     cell->_item = id;
+    const bool custom = typeid(*owner) != typeid(native::tree_view);
+    auto *binding = mac::tree_view_bindings.object_from_handle(owner);
+    const auto image = binding->images.find(id);
+    mac::configure_cell(cell, native_string(owner->get_item(id).text),
+        image == binding->images.end() ? nil : image->second,
+        NSTextAlignmentLeft, owner->get_item(id).enabled);
+    [[cell textField] setHidden:custom];
+    [[cell imageView] setHidden:custom];
     [cell setNeedsDisplay:YES];
     return cell;
 }

@@ -7,6 +7,7 @@
 #import <AppKit/AppKit.h>
 #include <algorithm>
 #include <stdexcept>
+#include <typeinfo>
 #include <native.h>
 #include <native/check.h>
 #include "../../control_render_access.h"
@@ -21,7 +22,8 @@
 @implementation native_check_view
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::check *>(_nativeOwner);
-    if (!owner || !owner->get_created()) {
+    if (!owner || !owner->get_created() ||
+        typeid(*owner) == typeid(native::check)) {
         [super drawRect:dirty];
         return;
     }

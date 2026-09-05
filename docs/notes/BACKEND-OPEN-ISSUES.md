@@ -165,8 +165,14 @@ This note lists backend-level open issues that are real today.
     remained responsive and exited normally afterward.
   - The macOS implementation, including
     `lib/native/platforms/mac/surfaces.mm`, compiles and launches through the
-    remote `leia` workflow. That SSH session cannot access WindowServer for a
-    screenshot or interactive visual pass.
+    remote `leia` workflow. Screen Recording permission now allows desktop
+    screenshots, and the updated gallery has been inspected. Remote
+    Accessibility input now works and exposed splitter/tab geometry bugs,
+    covered by native regression tests. A subsequent unlocked-session check
+    verified upright image text, single-open accordion scrollbar ownership,
+    and clearer native table grid/stripe colors. The earlier complete-gallery
+    interactive walkthrough remains incomplete.
+    All six Mac CTests pass normally and with ASan/UBSan.
 
 ## Why this note exists
 

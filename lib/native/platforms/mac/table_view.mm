@@ -11,15 +11,30 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <typeinfo>
 
 #include <native.h>
 
 #include "../../control_render_access.h"
 #include "../../table_visible_rows.h"
 #include "globals.h"
+#include "native_cells.h"
 
 namespace
 {
+    // Dynamic system-derived colors keep contrast in light and dark mode.
+    // NSTableView/NSTableRowView still perform all grid/background painting.
+    NSColor *table_tint(CGFloat amount) {
+        return [NSColor colorWithName:nil dynamicProvider:^NSColor *(NSAppearance *appearance) {
+            __block NSColor *color = nil;
+            [appearance performAsCurrentDrawingAppearance:^{
+                color = [[NSColor textBackgroundColor]
+                    blendedColorWithFraction:amount ofColor:[NSColor labelColor]];
+            }];
+            return color;
+        }];
+    }
+
     NSString *native_string(const std::string &value) {
         NSString *result = [NSString stringWithUTF8String:value.c_str()];
         return result ? result : @"";
@@ -71,7 +86,7 @@ namespace
 }
 @end
 
-@interface native_table_cell_view : NSView {
+@interface native_table_cell_view : native_content_cell {
 @public
     void *_owner;
     NSInteger _row;
@@ -85,6 +100,7 @@ namespace
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::table_view *>(_owner);
     if (!owner || !owner->get_created() || !owner->get_model() ||
+        typeid(*owner) == typeid(native::table_view) ||
         _row < 0 || static_cast<std::size_t>(_row) >=
                         owner->get_display_row_count()) {
         [super drawRect:dirty];
@@ -146,7 +162,8 @@ namespace
     native::table_model *model = owner ? owner->get_model() : nullptr;
     const auto group = model ? group_by_id(*model, _group)
                              : std::nullopt;
-    if (!owner || !owner->get_created() || !group) {
+    if (!owner || !owner->get_created() || !group ||
+        typeid(*owner) == typeid(native::table_view)) {
         [super drawRect:dirty];
         return;
     }
@@ -185,7 +202,8 @@ namespace
 @implementation native_table_header_cell
 - (void)drawWithFrame:(NSRect)frame inView:(NSView *)view {
     auto *owner = static_cast<native::table_view *>(_owner);
-    if (!owner || !owner->get_created()) {
+    if (!owner || !owner->get_created() ||
+        typeid(*owner) == typeid(native::table_view)) {
         [super drawWithFrame:frame inView:view];
         return;
     }
@@ -227,6 +245,32 @@ namespace
 @end
 
 @implementation native_table_adapter
+- (void)tableView:(NSTableView *)table
+    didAddRowView:(NSTableRowView *)view forRow:(NSInteger)row {
+    (void)table;
+    auto *owner = static_cast<native::table_view *>(_owner);
+    if (!owner || row < 0 ||
+        static_cast<std::size_t>(row) >= owner->get_display_row_count()) return;
+    const auto display = owner->get_display_row(static_cast<std::size_t>(row));
+    if (!display.group) {
+        [view setBackgroundColor:owner->get_alternating_rows() && (display.model_row % 2)
+            ? table_tint(0.09) : [NSColor textBackgroundColor]];
+    }
+}
+- (void)clipBoundsChanged:(NSNotification *)note {
+    auto *owner = static_cast<native::table_view *>(_owner);
+    auto *state = owner
+        ? mac::table_view_bindings.object_from_handle(owner) : nullptr;
+    if (!state || state->suppress || !owner->get_created()) return;
+    const NSPoint origin = [[note object] bounds].origin;
+    const NSInteger row = [state->table rowAtPoint:origin];
+    if (row < 0) return;
+    // Cache native scrolling without feeding rounded rows back to AppKit.
+    state->suppress = true;
+    owner->on_native_scroll(static_cast<std::size_t>(row),
+        static_cast<int>(origin.x));
+    state->suppress = false;
+}
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)table {
     (void)table;
     auto *owner = static_cast<native::table_view *>(_owner);
@@ -261,7 +305,7 @@ namespace
     const native::table_display_row display =
         owner->get_display_row(static_cast<std::size_t>(row));
     if (display.group) {
-        if (column != [[table tableColumns] firstObject])
+        if (column && column != [[table tableColumns] firstObject])
             return nil;
         NSString *identifier = @"native_table_group";
         NSTableCellView *cell = [table
@@ -275,12 +319,24 @@ namespace
                 initWithFrame:NSMakeRect(2, 1, 190, 20)];
             [button setButtonType:NSButtonTypeOnOff];
             [button setBezelStyle:NSBezelStyleDisclosure];
-            [button setBordered:NO];
+            [button setBordered:YES];
             [button setTarget:self];
             [button setAction:@selector(toggleGroup:)];
             [button setAlignment:NSTextAlignmentLeft];
             [cell addSubview:button];
             [button release];
+            NSTextField *label = [[NSTextField alloc]
+                initWithFrame:NSMakeRect(22, 1, 176, 20)];
+            [label setBezeled:NO];
+            [label setEditable:NO];
+            [label setSelectable:NO];
+            [label setDrawsBackground:NO];
+            [label setFont:[NSFont boldSystemFontOfSize:0]];
+            [[label cell] setLineBreakMode:NSLineBreakByTruncatingTail];
+            [label setAutoresizingMask:NSViewWidthSizable];
+            [cell addSubview:label];
+            [cell setTextField:label];
+            [label release];
         }
         native::table_model *model = owner->get_model();
         const auto group = group_by_id(*model, display.group_id);
@@ -289,7 +345,11 @@ namespace
                 [[cell subviews] firstObject]);
         button->_owner = owner;
         button->_group = display.group_id;
-        [button setTitle:group ? native_string(group->title) : @""];
+        const bool custom = typeid(*owner) != typeid(native::table_view);
+        [button setTitle:custom && group ? native_string(group->title) : @""];
+        [button setFrame:NSMakeRect(2, 1, custom ? 190 : 16, 20)];
+        [[cell textField] setHidden:custom];
+        [[cell textField] setStringValue:group ? native_string(group->title) : @""];
         [button setTag:static_cast<NSInteger>(display.group_id)];
         [button setEnabled:group && group->collapsible];
         [button setState:group && owner->get_group_expanded(group->id)
@@ -311,6 +371,24 @@ namespace
     cell->_owner = owner;
     cell->_row = row;
     cell->_column = column_id(column);
+    const auto value = owner->get_model()->cell(display.model_row,
+        cell->_column);
+    const auto found = std::find_if(owner->get_columns().begin(),
+        owner->get_columns().end(), [&](const native::table_column &candidate) {
+            return candidate.id == cell->_column;
+        });
+    const auto alignment = found == owner->get_columns().end()
+        ? native::table_alignment::start : found->alignment;
+    const bool allow_image = found != owner->get_columns().end() &&
+        found->allow_image;
+    const bool custom = typeid(*owner) != typeid(native::table_view);
+    mac::configure_cell(cell, native_string(value.text),
+        allow_image ? mac::cell_image(value.image) : nil,
+        alignment == native::table_alignment::end ? NSTextAlignmentRight :
+        alignment == native::table_alignment::center ? NSTextAlignmentCenter :
+        NSTextAlignmentLeft);
+    [[cell textField] setHidden:custom];
+    [[cell imageView] setHidden:custom];
     [cell setNeedsDisplay:YES];
     return cell;
 }
@@ -373,7 +451,7 @@ namespace
     if (!owner || !new_index)
         return;
     const NSInteger index = [new_index integerValue];
-    if (index >= 0 && index < [[table tableColumns] count]) {
+    if (index >= 0 && static_cast<NSUInteger>(index) < [[table tableColumns] count]) {
         owner->on_native_column_move(
             column_id([[table tableColumns] objectAtIndex:index]),
             static_cast<std::size_t>(index));
@@ -497,8 +575,9 @@ namespace
         }
         [binding.table setGridStyleMask:
             static_cast<NSTableViewGridLineStyle>(style)];
-        if (owner.get_row_height())
-            [binding.table setRowHeight:*owner.get_row_height()];
+        [binding.table setGridColor:table_tint(0.24)];
+        [binding.table setRowHeight:owner.get_row_height()
+            ? *owner.get_row_height() : binding.default_row_height];
         [binding.scroll setHasVerticalScroller:
             owner.get_vertical_scrollbar_policy() !=
                 native::scrollbar_policy::never];
@@ -517,7 +596,11 @@ namespace
 
 namespace native
 {
-    void table_view::apply_table() { rebuild(*this); }
+    void table_view::apply_table() {
+        rebuild(*this);
+        auto &state = binding_for(*this);
+        _native_row_height = static_cast<int>([state.table rowHeight]);
+    }
 
     void table_view::apply_selection() {
         auto &binding = binding_for(*this);
@@ -539,14 +622,15 @@ namespace native
 
     void table_view::apply_scroll() {
         auto &binding = binding_for(*this);
-        if (_vertical_row < get_display_row_count())
-            [binding.table scrollRowToVisible:_vertical_row];
+        if (binding.suppress) return;
+        binding.suppress = true;
+        const CGFloat y = _vertical_row < get_display_row_count()
+            ? [binding.table rectOfRow:_vertical_row].origin.y : 0;
         [[binding.scroll contentView]
-            scrollToPoint:NSMakePoint(_horizontal_offset,
-                                      [[binding.scroll contentView]
-                                          bounds].origin.y)];
+            scrollToPoint:NSMakePoint(_horizontal_offset, y)];
         [binding.scroll reflectScrolledClipView:
             [binding.scroll contentView]];
+        binding.suppress = false;
     }
 
     void table_view::create_native() {
@@ -561,9 +645,14 @@ namespace native
                                      _bounds.d.w,
                                      _bounds.d.h)];
         [scroll setBorderType:NSBezelBorder];
+        [scroll setClipsToBounds:YES];
+        [[scroll contentView] setClipsToBounds:YES];
         native_table_widget *table = [[native_table_widget alloc]
             initWithFrame:NSMakeRect(0, 0, _bounds.d.w, _bounds.d.h)];
         table->_owner = self;
+        if (@available(macOS 11.0, *))
+            [table setStyle:NSTableViewStyleFullWidth];
+        [table setIntercellSpacing:NSMakeSize(1, 0)];
         [table setColumnAutoresizingStyle:
             NSTableViewNoColumnAutoresizing];
         [table setSelectionHighlightStyle:
@@ -583,9 +672,14 @@ namespace native
         binding->table = table;
         binding->header = [[table headerView] retain];
         binding->adapter = adapter;
+        binding->default_row_height = [table rowHeight];
         mac::table_view_bindings.register_pair(self, binding);
+        [[scroll contentView] setPostsBoundsChangedNotifications:YES];
+        [[NSNotificationCenter defaultCenter] addObserver:adapter
+            selector:@selector(clipBoundsChanged:)
+            name:NSViewBoundsDidChangeNotification object:[scroll contentView]];
         self->synchronize_theme_metrics();
-        rebuild(*self);
+        self->apply_table();
         self->apply_selection();
         self->apply_scroll();
     }
@@ -606,6 +700,7 @@ namespace native
         auto *binding =
             mac::table_view_bindings.object_from_handle(self);
         if (binding) {
+            [[NSNotificationCenter defaultCenter] removeObserver:binding->adapter];
             [binding->table setDataSource:nil];
             [binding->table setDelegate:nil];
             clear_images(*binding);

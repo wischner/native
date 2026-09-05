@@ -50,63 +50,64 @@ namespace native
     }
 
     gpx &gpx_img::draw_native_text(const std::string &text, point p) {
-        if (_font && !_font->valid())
+        if (text.empty() || (_font && !_font->valid()))
             return *this;
-        // Create CGBitmapContext from our RGBA buffer
-        CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
-        CGContextRef context = CGBitmapContextCreate(
-            const_cast<rgba *>(_img.pixels()),
-            _img.w(),
-            _img.h(),
-            8,
-            _img.w() * 4,
-            color_space,
-            static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) |
-                static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
-
-        if (!context) {
-            CGColorSpaceRelease(color_space);
+        const rect clip = _clip.intersect(rect(0, 0, _img.w(), _img.h()));
+        if (!clip.d.w || !clip.d.h)
             return *this;
-        }
 
-        // Set clip region
-        CGRect clip_rect =
-            CGRectMake(_clip.p.x, _clip.p.y, _clip.d.w, _clip.d.h);
-        CGContextClipToRect(context, clip_rect);
-
-        // Convert text to NSString and draw
-        NSString *ns_text =
-            [NSString stringWithUTF8String:text.c_str()];
-        NSColor *color = [NSColor colorWithRed:_ink.r / 255.0
-                                         green:_ink.g / 255.0
-                                          blue:_ink.b / 255.0
-                                         alpha:_ink.a / 255.0];
-        auto *font_binding =
-            mac::font_bindings.object_from_handle(get_font().id());
-        NSFont *font =
-            font_binding && font_binding->ns_font
-                ? font_binding->ns_font
-                : [NSFont systemFontOfSize:[NSFont systemFontSize]];
+        NSString *ns_text = [NSString stringWithUTF8String:text.c_str()];
+        if (!ns_text)
+            return *this;
+        auto *binding = mac::font_bindings.object_from_handle(get_font().id());
+        NSFont *font = binding && binding->ns_font
+            ? binding->ns_font : [NSFont systemFontOfSize:0];
         NSDictionary *attributes = @{
-            NSForegroundColorAttributeName : color,
-            NSFontAttributeName : font
+            NSForegroundColorAttributeName: [NSColor colorWithRed:_ink.r / 255.0
+                green:_ink.g / 255.0 blue:_ink.b / 255.0 alpha:_ink.a / 255.0],
+            NSFontAttributeName: font
         };
 
-        NSGraphicsContext *ns_context =
-            [NSGraphicsContext graphicsContextWithCGContext:context
-                                                    flipped:YES];
+        // Quartz needs premultiplied pixels. Render a transparent layer,
+        // leaving the target's straight-RGBA pixels untouched until blending.
+        img layer(clip.d.w, clip.d.h);
+        const rect layer_bounds(0, 0, clip.d.w, clip.d.h);
+        detail::clear_image(layer, layer_bounds, rgba(0, 0, 0, 0));
+        auto *pixels = const_cast<rgba *>(layer.pixels());
+        CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+        CGContextRef context = CGBitmapContextCreate(pixels,
+            layer.w(), layer.h(), 8, layer.w() * 4, space,
+            static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedLast) |
+                static_cast<CGBitmapInfo>(kCGBitmapByteOrder32Big));
+        CGColorSpaceRelease(space);
+        if (!context)
+            return *this;
+
+        // A flipped AppKit context also needs a flipped Quartz transform.
+        // The flag alone leaves glyphs mirrored in the top-down pixel rows.
+        CGContextTranslateCTM(context, 0, layer.h());
+        CGContextScaleCTM(context, 1, -1);
+        NSGraphicsContext *graphics = [NSGraphicsContext
+            graphicsContextWithCGContext:context flipped:YES];
         [NSGraphicsContext saveGraphicsState];
-        [NSGraphicsContext setCurrentContext:ns_context];
-
-        [ns_text drawAtPoint:NSMakePoint(p.x, p.y)
-              withAttributes:attributes];
-
+        [NSGraphicsContext setCurrentContext:graphics];
+        [ns_text drawAtPoint:NSMakePoint(p.x - clip.p.x, p.y - clip.p.y)
+            withAttributes:attributes];
         [NSGraphicsContext restoreGraphicsState];
-
-        // Cleanup
         CGContextRelease(context);
-        CGColorSpaceRelease(color_space);
 
+        for (std::size_t index = 0; index < static_cast<std::size_t>(layer.w()) * layer.h(); ++index) {
+            auto &pixel = pixels[index];
+            if (!pixel.a) continue;
+            const auto straight = [alpha = pixel.a](std::uint8_t channel) {
+                return static_cast<std::uint8_t>(std::min(255U,
+                    (static_cast<unsigned>(channel) * 255U + alpha / 2U) / alpha));
+            };
+            pixel.r = straight(pixel.r);
+            pixel.g = straight(pixel.g);
+            pixel.b = straight(pixel.b);
+        }
+        detail::copy_image(_img, clip, layer, clip.p);
         return *this;
     }
 

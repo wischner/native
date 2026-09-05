@@ -33,6 +33,7 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Athena collection/table/canvas scrolling | **H**, stock Xaw `Scrollbar` children | Portable content, row ranges and chrome reservations; peer-owned adapters preserve endpoints while Athena owns the stippled thumb and pointer behavior. |
 | Motif `tree_view` | **N/H**, `XmContainer` outline in both presentation modes | Stable IDs, hierarchy data, icon ownership, and signals. Presentation mode now changes gadget relief instead of changing to a painted `XmDrawingArea`. |
 | Motif `icon_view` | **N/H**, spatial `XmContainer` with `XmIconGadget` entries | Item model, stable selection index, images, label mode, disabled state, activation, and scroll offset. The collection is materialized, which matches `icon_view`'s owned-vector contract. |
+| macOS stock controls | **N/H**, AppKit button drawing and native text/image table, outline and collection cells | Portable models, native actions, validation and derived-control drawing hooks. Stock accordions use a native scrolling disclosure stack without a duplicate painted stack. |
 
 ## Reviewed proposals deliberately retained
 
@@ -46,7 +47,9 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
 | Motif `table_view` | Keep **H**: one buffered Motif-themed table viewport with native `XmScrollBar` peers. `XmContainer` detail view cannot provide virtual rows, grid lines, or matching portable column sizing; using it only for materialized data produced incompatible tables and rebuild flicker. Native tree and icon controls retain `XmContainer`. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
-| macOS and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| macOS derived controls | Keep staged rendering only for explicitly derived controls. Exact stock buttons, checks, radios, tables, trees, icons and accordions use AppKit painting. |
+| macOS `code_edit` and `status_bar` | Keep **C**. `NSTextView` alone does not implement the portable source editor's document, folding, gutter, marker and completion contract. AppKit has no stock window footer matching the in-client multipart status strip. |
 | Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls retain native painting, as with `status_bar`. |
 | Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` uses portable scrolling with `BControlLook` scrollbar parts and the system thumb preference. |
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
@@ -341,22 +344,38 @@ registration is complete, preventing early custom-draw callbacks.
 
 ## Apple macOS
 
+The 2026-09-05 audit found portable drawing overrides inside several native
+containers. Exact stock controls now bypass them: AppKit paints the buttons,
+table/outline labels and images, headers, disclosure buttons and collection
+content. Collection item selection uses a native `NSBox` with semantic colors.
+Explicit derived controls retain their custom stages. Accordion headers and
+borrowed pages occupy an `NSStackView` inside a native `NSScrollView`; the
+portable accordion painter no longer overlays the stock stack.
+The follow-up uses genuine `NSTabViewItem` page hierarchies rather than a
+shared overlay, and native `NSSplitView` thick/thin dividers with correctly
+sized panes. Full-width `NSTableView` grids and native row backgrounds use
+stronger, dynamically system-derived colors and native clipping; no drawing
+override is needed. Single-open accordions fit their expanded page to the
+native viewport and leave scrolling to that page, without a second outer
+scrollbar unless even the headers cannot fit. Collection image conversion consistently preserves straight
+RGBA alpha for native image views.
+
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `NSWindow`; portable ownership/result state wraps sheets and modal sessions. |
 | `wnd` | **H** | `NSView` child host with portable paint/input routing. |
 | `main_menu` | **N** | `NSMenu`/`NSMenuItem`, separators, mnemonics, and key equivalents. |
-| `button`, `check`, `radio` | **H** | `NSButton` subclasses retain native control behavior but override drawing through the portable theme. |
+| `button`, `check`, `radio` | **N/H** | Stock `NSButton` painting and interaction; only derived controls route to portable drawing hooks. |
 | `list` | **N/H** | One-column `NSTableView` in `NSScrollView`, adapted to the portable list model. |
 | `combo_box` | **N** | `NSComboBox`. |
 | `text_edit` | **N/H** | `NSTextField` or `NSTextView` in `NSScrollView`; delegates enforce portable validation. |
-| `accordion` | **N/H** | `NSStackView` with disclosure-style `NSButton` headers and portable page routing. |
-| `tab_view` | **N/H** | `NSTabView`/`NSTabViewItem` with portable borrowed-page hosts; strip-only mode disables the page background and draws one separator. |
-| `icon_view` | **N/H** | `NSCollectionView` in `NSScrollView`, adapted to the portable model. |
-| `tree_view` | **N/H** | `NSOutlineView` in `NSScrollView`, with portable data source and images. |
-| `table_view` | **N/H** | Data-source-driven `NSTableView` in `NSScrollView`, retaining native headers, reuse, grids, and stripes. |
+| `accordion` | **N/H** | `NSScrollView` and `NSStackView` with native disclosure buttons, labels, images and portable borrowed-page routing. |
+| `tab_view` | **N/H** | Stock `NSTabView`/`NSTabViewItem`, one native page hierarchy per item, native layout and all four placements; no owner-drawn separator or page overlay. |
+| `icon_view` | **N/H** | `NSCollectionView` in `NSScrollView`; stock items compose native image/text views and selection boxes. Native selection delegates reject disabled items. |
+| `tree_view` | **N/H** | `NSOutlineView` in `NSScrollView`, with reusable native text/image cells and native disclosure/selection. |
+| `table_view` | **N/H** | Data-source-driven `NSTableView` in `NSScrollView`, with native headers, reusable text/image cells, grouped disclosure controls, grids, stripes and selection. |
 | `code_edit` | **C** | Portable document/editor painted in a custom `NSView`. |
-| `split_view` | **N** | `NSSplitView`. |
+| `split_view` | **N** | `NSSplitView` owns divider appearance, tracking and pane allocation; borrowed controls fill the actual panes. |
 | `panel` | **N** | Child `NSView` filling `windowBackgroundColor`; a real AppKit parent for every control. |
 | `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler` | **C** | Shared library-painted non-client strip; `NSRulerView` is not currently used. |

@@ -54,6 +54,22 @@ toolkit provides the widget: Haiku `BSplitView`/`BTabView`, Motif
 `XmPanedWindow`/`XmNotebook`, Window Maker `WMSplitView`/`WMTabView`, and
 AppKit `NSSplitView`/`NSTabView`.
 
+AppKit owns its complete divider and tab rendering. Split views initialize
+full-sized native panes and use `adjustSubviews` before applying the ratio;
+borrowed controls follow the actual pane sizes during dragging and resizing.
+A requested one-pixel divider selects the native thin style; larger extents
+select the native thick style and resolve to its system thickness. No painted
+grip or overlay replaces the system divider.
+
+Each `NSTabViewItem` owns a separate native page host. There is no shared page
+overlay covering the tab control. Selected content fills AppKit's allocated
+page bounds, including after resize, switching pages and changing placement.
+The Mac geometry bridge reports the allocated dimensions back to portable
+state instead of imposing fallback edge metrics. All four placements use the
+stock `NSTabView` appearance (which looks segmented on current macOS), not
+independent buttons. Hiding the page background maps to `drawsBackground`;
+the backend does not paint an additional separator to simulate another style.
+
 X11 retains Athena `Paned` but disables its square XOR grips. The complete
 separator uses the surrounding background and accepts captured pointer motion.
 A small centered four-mark grip identifies the movable strip; it is painted

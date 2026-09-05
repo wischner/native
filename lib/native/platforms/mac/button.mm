@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <typeinfo>
 #include <utility>
 
 #include <native.h>
@@ -27,7 +28,8 @@
 @implementation native_button_view
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::button *>(_nativeOwner);
-    if (!owner || !owner->get_created()) {
+    if (!owner || !owner->get_created() ||
+        typeid(*owner) == typeid(native::button)) {
         [super drawRect:dirty];
         return;
     }

@@ -32,9 +32,19 @@ namespace mac
     NSView *parent_view(native::wnd *parent, native::wnd *child) {
         if (!parent || !parent->get_created())
             return nil;
+        if (auto *accordion = dynamic_cast<native::accordion *>(parent)) {
+            auto *binding = accordion_bindings.object_from_handle(accordion);
+            return binding ? binding->stack : nil;
+        }
         if (auto *tabs = dynamic_cast<native::tab_view *>(parent)) {
             auto *binding = tab_view_bindings.object_from_handle(tabs);
-            return binding ? binding->page_host : nil;
+            if (!binding) return nil;
+            for (std::size_t index = 0; index < tabs->get_item_count(); ++index) {
+                if (&tabs->get_item(index).get_content() == child &&
+                    index < static_cast<std::size_t>([binding->view numberOfTabViewItems]))
+                    return [[binding->view tabViewItemAtIndex:index] view];
+            }
+            return nil;
         }
         if (auto *split = dynamic_cast<native::split_view *>(parent)) {
             auto *binding = split_view_bindings.object_from_handle(split);

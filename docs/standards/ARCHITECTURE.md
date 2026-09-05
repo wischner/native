@@ -546,11 +546,16 @@ Every new control event and every new painted part requires corresponding
 virtual behavior and painting coverage in all backends plus a derived-control
 test that overrides and calls base.
 
-On Windows, exact stock control types retain the operating system's default
+On Windows and macOS, exact stock control types retain the operating system's default
 painting. Derived controls select the owner/custom-draw extension path, as
 with derived status bars. Do not owner-draw an ordinary Windows button,
 check, radio, tree, icon view or table header just to invoke portable base
 stages. Unsupported virtual group rows are a documented exception.
+AppKit tables and outlines use native text/image cell subviews and native
+headers; collection items compose native image/text views and selection
+decoration. Stock accordions compose native disclosure controls in a scrolling
+stack, without a second portable paint pass. Derived classes retain staged
+drawing for intentional application customization.
 
 The default application and container surface is the backend's `panel` role;
 editable text and item-bearing views use the contrasting `content` role.
@@ -1146,6 +1151,11 @@ direction satisfy that contract,
 including Motif `XmNotebook`, Haiku `BTabView`, AppKit `NSTabView`, Win32 tab
 common controls, and Window Maker `WMTabView`. A backend wrapper may provide a
 page-local content host, but it must remain below the public API boundary.
+AppKit uses each `NSTabViewItem`'s own view hierarchy, not an overlay or
+button-based substitute. Both AppKit tab pages and split panes fill the
+dimensions allocated by their native container; the backend reports those
+dimensions back to the portable cache. Native divider thickness and tab
+appearance remain system-owned, with no extra painted separator.
 Library-painted tabs overlap the adjoining page edge by one device pixel when
 selected. The page frame or strip-only separator paints first, preventing a
 gap on any of the four tab placements. Bottom and right selected tabs must

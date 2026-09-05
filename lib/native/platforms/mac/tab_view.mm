@@ -1,276 +1,165 @@
 //
-// Implements tab_view with NSTabView and NSTabViewItem.
+// Implements tabs using NSTabView and each NSTabViewItem's own page view.
+// AppKit owns tab painting, hit testing, placement and page geometry.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
 
 #import <AppKit/AppKit.h>
-
 #include <algorithm>
 #include <stdexcept>
-
 #include <native.h>
-
 #include "globals.h"
-
-@interface native_tab_delegate : NSObject <NSTabViewDelegate> {
-@public
-    void *_owner;
-}
-@end
-
-@interface native_tab_view : NSTabView {
-@public
-    native::tab_view *_owner;
-}
-@end
 
 @interface native_tab_page_host : NSView {
 @public
-    CGFloat _tabHeight;
+    native::wnd *_content;
 }
+- (void)fitContent;
 @end
 
 @implementation native_tab_page_host
 - (BOOL)isFlipped { return YES; }
-- (NSView *)hitTest:(NSPoint)point {
-    if (point.y < _tabHeight)
-        return nil;
-    return [super hitTest:point];
+- (void)fitContent {
+    if (_content && _content->get_created()) {
+        const NSSize size = [self bounds].size;
+        _content->set_bounds(native::rect(0, 0,
+            static_cast<native::dim>(std::clamp<CGFloat>(size.width, 0, 65535)),
+            static_cast<native::dim>(std::clamp<CGFloat>(size.height, 0, 65535))));
+    }
+}
+- (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
+    [super resizeSubviewsWithOldSize:oldSize];
+    [self fitContent];
 }
 @end
 
-@implementation native_tab_view
-- (void)drawRect:(NSRect)dirtyRect {
-    [super drawRect:dirtyRect];
-    if (!_owner || _owner->get_page_frame_visible())
-        return;
-
-    const NSRect bounds = [self bounds];
-    const native::rect content = _owner->get_content_bounds();
-    native::rect separator;
-    switch (_owner->get_tab_placement()) {
-    case native::tab_placement::top:
-        separator = native::rect(
-            0, static_cast<native::coord>(content.p.y - 1),
-            _owner->get_dimensions().w, 1);
-        break;
-    case native::tab_placement::bottom:
-        separator = native::rect(
-            0, static_cast<native::coord>(content.y2()),
-            _owner->get_dimensions().w, 1);
-        break;
-    case native::tab_placement::left:
-        separator = native::rect(
-            static_cast<native::coord>(content.p.x - 1), 0, 1,
-            _owner->get_dimensions().h);
-        break;
-    case native::tab_placement::right:
-        separator = native::rect(
-            static_cast<native::coord>(content.x2()), 0, 1,
-            _owner->get_dimensions().h);
-        break;
-    }
-    const CGFloat height = NSHeight(bounds);
-    const NSRect native_separator = NSMakeRect(
-        separator.p.x,
-        height - separator.p.y - separator.d.h,
-        separator.d.w,
-        separator.d.h);
-    [[NSColor separatorColor] setFill];
-    NSRectFill(NSIntersectionRect(native_separator, bounds));
+@interface native_tab_delegate : NSObject <NSTabViewDelegate> {
+@public
+    native::tab_view *_owner;
 }
 @end
 
 @implementation native_tab_delegate
 - (BOOL)tabView:(NSTabView *)view
     shouldSelectTabViewItem:(NSTabViewItem *)item {
-    auto *owner = static_cast<native::tab_view *>(_owner);
     const NSInteger index = [view indexOfTabViewItem:item];
-    return owner && index >= 0 &&
-        owner->get_item(static_cast<std::size_t>(index)).get_enabled();
+    return _owner && index >= 0 &&
+        _owner->get_item(static_cast<std::size_t>(index)).get_enabled();
 }
-
 - (void)tabView:(NSTabView *)view
     didSelectTabViewItem:(NSTabViewItem *)item {
-    auto *owner = static_cast<native::tab_view *>(_owner);
-    auto *binding = owner
-        ? mac::tab_view_bindings.object_from_handle(owner)
-        : nullptr;
-    if (!owner || !binding || binding->suppress)
-        return;
+    auto *state = _owner
+        ? mac::tab_view_bindings.object_from_handle(_owner) : nullptr;
+    if (!_owner || !state || state->suppress) return;
     const NSInteger index = [view indexOfTabViewItem:item];
     if (index >= 0)
-        owner->on_native_selection(static_cast<int>(index));
+        _owner->on_native_selection(static_cast<int>(index));
 }
 @end
 
 namespace
 {
-    NSString *native_string(const std::string &value) {
-        NSString *text = [NSString stringWithUTF8String:value.c_str()];
-        return text ? text : @"";
-    }
-
-    mac::mac_tab_view *binding(native::tab_view &owner) {
-        return mac::tab_view_bindings.object_from_handle(&owner);
-    }
-
     NSTabViewType native_placement(native::tab_placement placement) {
         switch (placement) {
-        case native::tab_placement::top:
-            return NSTopTabsBezelBorder;
-        case native::tab_placement::bottom:
-            return NSBottomTabsBezelBorder;
-        case native::tab_placement::left:
-            return NSLeftTabsBezelBorder;
-        case native::tab_placement::right:
-            return NSRightTabsBezelBorder;
+        case native::tab_placement::bottom: return NSBottomTabsBezelBorder;
+        case native::tab_placement::left: return NSLeftTabsBezelBorder;
+        case native::tab_placement::right: return NSRightTabsBezelBorder;
+        default: return NSTopTabsBezelBorder;
         }
-        return NSTopTabsBezelBorder;
     }
 
-    NSRect page_host_frame(native::tab_view &owner,
-                           NSTabView *view) {
-        if (owner.get_page_frame_visible())
-            return [view contentRect];
-        const native::rect content = owner.get_content_bounds();
-        return NSMakeRect(
-            content.p.x,
-            static_cast<CGFloat>(owner.get_dimensions().h) -
-                content.p.y - content.d.h,
-            content.d.w,
-            content.d.h);
-    }
-
-    void apply_placement(native::tab_view &owner,
-                         mac::mac_tab_view &state) {
-        [state.view setTabViewType:
-            native_placement(owner.get_tab_placement())];
-        [state.view setDrawsBackground:owner.get_page_frame_visible()];
-        if (state.page_host) {
-            [state.page_host setFrame:page_host_frame(owner, state.view)];
-            [state.page_host setNeedsDisplay:YES];
-        }
-        [state.view setNeedsDisplay:YES];
+    mac::mac_tab_view &binding(native::tab_view &owner) {
+        auto *state = mac::tab_view_bindings.object_from_handle(&owner);
+        if (!state || !state->view)
+            throw std::runtime_error("macOS: missing tab-view binding.");
+        return *state;
     }
 }
 
 namespace native
 {
     void tab_view::apply_items() {
-        auto *state = binding(*this);
-        if (!state || !state->view)
-            throw std::runtime_error("macOS: missing tab-view binding.");
-        apply_placement(*this, *state);
-        const NSRect content = [state->view contentRect];
-        _tab_height = std::max(
-            1,
-            static_cast<int>(
-                get_tab_placement() == tab_placement::left ||
-                        get_tab_placement() == tab_placement::right
-                    ? _bounds.d.w - content.size.width
-                    : _bounds.d.h - content.size.height));
-        state->suppress = true;
-        while ([state->view numberOfTabViewItems] > 0)
-            [state->view removeTabViewItem:
-                [state->view tabViewItemAtIndex:0]];
+        auto &state = binding(*this);
+        state.suppress = true;
+        [state.view setTabViewType:native_placement(get_tab_placement())];
+        [state.view setDrawsBackground:get_page_frame_visible()];
+        // Keep old hosts alive until existing portable pages are moved.
+        NSArray *previous = [[state.view tabViewItems] copy];
+        for (NSTabViewItem *item in previous)
+            [state.view removeTabViewItem:item];
         for (std::size_t index = 0; index < get_item_count(); ++index) {
+            auto &content = get_item(index).get_content();
             NSTabViewItem *item = [[NSTabViewItem alloc]
                 initWithIdentifier:[NSNumber numberWithUnsignedLong:index]];
-            [item setLabel:native_string(get_item(index).get_title())];
-            NSView *placeholder = [[NSView alloc]
-                initWithFrame:[state->view contentRect]];
-            [item setView:placeholder];
-            [placeholder release];
-            [state->view addTabViewItem:item];
+            NSString *title = [NSString stringWithUTF8String:
+                get_item(index).get_title().c_str()];
+            [item setLabel:title ? title : @""];
+            native_tab_page_host *host = [[native_tab_page_host alloc]
+                initWithFrame:[state.view contentRect]];
+            host->_content = &content;
+            [host setAutoresizesSubviews:YES];
+            [host setClipsToBounds:YES];
+            [item setView:host];
+            [state.view addTabViewItem:item];
+            if (NSView *child = mac::view_from_control(&content))
+                [host addSubview:child];
+            [host fitContent];
+            [host release];
             [item release];
         }
-        state->suppress = false;
-        [state->view setNeedsDisplay:YES];
+        [previous release];
+        state.suppress = false;
     }
 
     void tab_view::apply_selected_index() {
-        auto *state = binding(*this);
-        if (!state || !state->view)
-            throw std::runtime_error("macOS: missing tab-view binding.");
-        if (get_selected_index() < 0)
-            return;
-        state->suppress = true;
-        [state->view selectTabViewItemAtIndex:get_selected_index()];
-        state->suppress = false;
+        auto &state = binding(*this);
+        if (get_selected_index() < 0) return;
+        state.suppress = true;
+        [state.view selectTabViewItemAtIndex:get_selected_index()];
+        auto *host = static_cast<native_tab_page_host *>(
+            [[state.view selectedTabViewItem] view]);
+        [host fitContent];
+        state.suppress = false;
     }
 
     void tab_view::create_native() {
-        auto *self = this;
-        NSView *parent = mac::parent_view(get_parent(), self);
+        NSView *parent = mac::parent_view(get_parent(), this);
         if (!parent)
-            throw std::runtime_error(
-                "macOS: tab_view requires a created parent.");
-        native_tab_view *view = [[native_tab_view alloc]
-            initWithFrame:NSMakeRect(_bounds.p.x,
-                                     _bounds.p.y,
-                                     _bounds.d.w,
-                                     _bounds.d.h)];
-        view->_owner = self;
-        [view setTabViewType:native_placement(get_tab_placement())];
-        native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
-        delegate->_owner = self;
-        [view setDelegate:delegate];
-        [parent addSubview:view];
-        native_tab_page_host *page_host = [[native_tab_page_host alloc]
-            initWithFrame:[view contentRect]];
-        page_host->_tabHeight = 0;
-        [page_host setAutoresizingMask:
-            NSViewWidthSizable | NSViewHeightSizable];
-        [view addSubview:page_host positioned:NSWindowAbove relativeTo:nil];
-        [page_host release];
+            throw std::runtime_error("macOS: tabs require a created parent.");
         auto *state = new mac::mac_tab_view();
-        state->view = view;
-        state->page_host = page_host;
+        state->view = [[NSTabView alloc] initWithFrame:NSMakeRect(
+            _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h)];
+        native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
+        delegate->_owner = this;
         state->delegate = delegate;
-        mac::tab_view_bindings.register_pair(self, state);
-        apply_placement(*self, *state);
-        self->synchronize_theme_metrics();
-        self->configure_page_host(true, false);
-        const NSRect content = [view contentRect];
-        self->_tab_height = std::max(
-            1,
-            static_cast<int>(
-                get_tab_placement() == tab_placement::left ||
-                        get_tab_placement() == tab_placement::right
-                    ? _bounds.d.w - content.size.width
-                    : _bounds.d.h - content.size.height));
-        self->refresh();
+        [state->view setDelegate:delegate];
+        [parent addSubview:state->view];
+        mac::tab_view_bindings.register_pair(this, state);
+        configure_page_host(true, false);
+        apply_items();
+        refresh_contents();
+        apply_selected_index();
     }
 
     void tab_view::show_native() {
-        auto *state = binding(*this);
-        if (!_created || !state || !state->view)
-            throw std::runtime_error("macOS: tab_view is not created.");
-        [state->view setHidden:NO];
-        const int selected = get_selected_index();
-        if (selected >= 0) {
-            wnd &content = get_item(
-                static_cast<std::size_t>(selected)).get_content();
-            if (content.get_created())
-                content.show();
-        }
+        auto &state = binding(*this);
+        [state.view setHidden:NO];
+        refresh_contents();
+        apply_selected_index();
+        if (get_selected_index() >= 0)
+            get_item(get_selected_index()).get_content().show();
     }
 
     void tab_view::destroy_native() {
-        if (!_created)
-            return;
-        auto *self = this;
-        auto *state = binding(*self);
-        if (state) {
-            [state->view setDelegate:nil];
-            [state->view removeFromSuperview];
-            [state->view release];
-            [state->delegate release];
-            mac::tab_view_bindings.unregister_by_handle(self);
-            delete state;
-        }
+        auto *state = mac::tab_view_bindings.object_from_handle(this);
+        if (!state) return;
+        [state->view setDelegate:nil];
+        [state->view removeFromSuperview];
+        [state->view release];
+        [state->delegate release];
+        mac::tab_view_bindings.unregister_by_handle(this);
+        delete state;
     }
-} // namespace native
+}

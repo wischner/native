@@ -23,6 +23,12 @@ This chapter expands Section 6 of the architectural standards. Native uses one
 portable drawing interface while allowing each backend to prepare, cache, and
 present graphics in the way its platform requires.
 
+Mac image text uses a flipped Quartz transform together with AppKit's flipped
+context flag so glyphs remain upright in top-down image rows. Text is drawn
+into a transparent, clip-sized premultiplied layer, then converted to straight
+RGBA and composited into the portable image. This preserves existing image
+pixels and partially transparent text without mirroring or dark fringes.
+
 For the application-facing operation list and complete window/image examples,
 see [Drawing Primitives](DRAWING-PRIMITIVES.md).
 
