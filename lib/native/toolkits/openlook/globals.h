@@ -37,6 +37,8 @@ namespace linux::openlook
         Panel content = XV_NULL;
         Xv_Window paint_window = XV_NULL;
         int menu_height = 0;
+        bool repaint_pending = false;
+        bool items_repaint_pending = false;
     };
 
     // Owns Xlib drawing state and the window backbuffer.
@@ -101,6 +103,7 @@ namespace linux::openlook
         Scrollbar vertical_scrollbar = XV_NULL;
         Scrollbar horizontal_scrollbar = XV_NULL;
         bool synchronizing_scrollbars = false;
+        bool repaint_pending = false;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =
@@ -199,7 +202,8 @@ namespace linux::openlook
     //
     void fit_item_width(Xv_opaque item, native::dim width);
 
-    // Repaint a window synchronously without clearing its live Panel.
+    // Coalesce repainting into the next notifier turn, without clearing
+    // the live Panel or reentering application constructors/layout.
     void repaint_window(native::app_wnd *window,
                         const native::rect &area);
 

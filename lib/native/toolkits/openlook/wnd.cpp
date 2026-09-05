@@ -74,6 +74,8 @@ namespace
             xv_set(state->text,
                    XV_X, bounds.p.x,
                    XV_Y, bounds.p.y,
+                   PANEL_VALUE_DISPLAY_WIDTH, std::max(1,
+                       static_cast<int>(bounds.d.w)-choice_width),
                    XV_WIDTH, std::max(1,
                        static_cast<int>(bounds.d.w)-choice_width),
                    XV_HEIGHT, bounds.d.h,
@@ -98,10 +100,11 @@ namespace
             return;
         const int chrome = std::max(
             0, native_height - rows * row_height);
+        // Rounding up clips the list's own bottom border in a page host.
+        // Keep whole native rows, including their surrounding chrome.
         const int fitted_rows = std::max(
             1,
-            (std::max(0, requested_height - chrome) + row_height / 2) /
-                row_height);
+            std::max(0, requested_height - chrome) / row_height);
         if (fitted_rows != rows) {
             xv_set(item,
                    PANEL_LIST_DISPLAY_ROWS,
@@ -179,11 +182,20 @@ namespace native
 
         Panel_item item = control_item(this);
         if (item) {
+            int y = _bounds.p.y;
+            // XView lists have integral rows. Keep the bottom-facing tab
+            // join flush with the list's real border, not its allocation.
+            const auto *tabs = dynamic_cast<tab_view *>(get_parent());
+            if (dynamic_cast<list *>(this) && tabs &&
+                tabs->get_tab_placement() == tab_placement::bottom) {
+                y += std::max(0, static_cast<int>(_bounds.d.h) -
+                    static_cast<int>(xv_get(item, XV_HEIGHT)));
+            }
             xv_set(item,
                    XV_X,
                    _bounds.p.x,
                    XV_Y,
-                   _bounds.p.y,
+                   y,
                    nullptr);
         }
     }
@@ -221,6 +233,17 @@ namespace native
 
         Panel_item item = control_item(this);
         if (item) {
+            if (dynamic_cast<list *>(this)) {
+                const auto scrollbar = xv_get(item, PANEL_LIST_SCROLLBAR);
+                const int scrollbar_width = scrollbar
+                    ? static_cast<int>(xv_get(scrollbar, XV_WIDTH)) : 0;
+                xv_set(item, PANEL_LIST_WIDTH,
+                    std::max(1, static_cast<int>(_bounds.d.w) -
+                        scrollbar_width), nullptr);
+                fit_list_height(item, _bounds.d.h);
+                apply_position();
+                return;
+            }
             xv_set(item,
                    XV_WIDTH,
                    _bounds.d.w,
@@ -233,8 +256,6 @@ namespace native
             // disturb their native geometry.
             if (dynamic_cast<button *>(this))
                 linux::openlook::fit_item_width(item, _bounds.d.w);
-            if (dynamic_cast<list *>(this))
-                fit_list_height(item, _bounds.d.h);
         }
     }
 

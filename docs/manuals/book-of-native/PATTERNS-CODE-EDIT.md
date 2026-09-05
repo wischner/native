@@ -9,6 +9,11 @@ source viewport, while retaining CDE chrome. Default lexer colors are dark
 and are not readable on CDE's slate list/text background. Other Motif data
 controls retain their native resource palette.
 
+OPEN LOOK's editor host sets `PANEL_ACCEPT_KEYSTROKE` so XView permits it to
+take keyboard focus even without native text items. Native key events deliver
+text, editing commands, Shift-extended navigation and completion acceptance.
+The application still owns insertion of an accepted completion.
+
 ## Document and file boundaries
 
 The document is always well-formed UTF-8 with `\n` line endings. Public

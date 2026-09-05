@@ -153,8 +153,9 @@ namespace
         Panel_item item = static_cast<Panel_item>(xv_get(
             panel, PANEL_CARET_ITEM));
         auto *owner = item
-                          ? reinterpret_cast<native::text_edit *>(
-                                xv_get(item, PANEL_CLIENT_DATA))
+                          ? dynamic_cast<native::text_edit *>(
+                                linux::openlook::wnd_bindings
+                                    .object_from_handle(item))
                           : nullptr;
         Event *input = reinterpret_cast<Event *>(event);
         if (owner && !linux::openlook::permit_input(owner))
@@ -455,8 +456,16 @@ namespace native
         auto *self = this;
         auto *binding = binding_for(self);
         if (binding) {
+            if (binding->multiline) {
+                const auto view = xv_get(binding->item,
+                    PANEL_ITEM_NTH_WINDOW, static_cast<Attr_attribute>(0));
+                if (view)
+                    xv_set(view, XV_KEY_DATA, text_edit_event_key(),
+                        nullptr, nullptr);
+            }
             linux::openlook::wnd_bindings.unregister_by_handle(
                 binding->item);
+            xv_set(binding->item, PANEL_CLIENT_DATA, nullptr, nullptr);
             xv_destroy_safe(binding->item);
             linux::openlook::text_edit_bindings
                 .unregister_by_handle(self);

@@ -15,6 +15,30 @@ Legend:
 
 ## Backend status
 
+The 2026-09-05 OPEN LOOK follow-up exercises native radio exclusion,
+intrinsic button height, partial-exposure theme pixels, coalesced invalidation,
+editor keyboard/completion routing, chrome construction, resized list panes,
+and repeated modal/modeless teardown in `native_openlook_runtime_tests`.
+Tab regressions cover all four placements, page switching and several heights:
+native list borders stay inside the host, bottom pages meet the tab strip,
+and spare page space does not retain provisional list borders. Pixel checks
+verify separate splitter grip ribs in both orientations. The Tribblix
+visual checks also cover bottom/side joins and live dragging with the ribbed,
+unboxed splitter grip beside native scrollbars.
+`native_collection_runtime_tests` is also registered for OPEN LOOK. The tests
+run in the native Tribblix VM and the Docker XView build with ASan/UBSan.
+All six CTests pass in both environments; the focused OPEN LOOK regression
+also passes ten consecutive runs after the final tab-page repaint fix.
+Gallery walkthroughs use the VM and retain native left-aligned, fixed-height
+OPEN LOOK buttons; theme primitives use matching OLGX button/choice geometry.
+Explicit pane cleanup and deferred, callback-detached window destruction
+prevent stale XView handles during subsequent window openings. A centered
+painted grip marks the captured splitter, and both native lists reserve their
+scrollbars when resized. Editable combo fields use XView's display-width
+attribute so their underline does not extend beneath neighboring controls.
+Tab page switches repaint the new native items after old-page cleanup, with
+a pixel regression preventing blank content after switching in either direction.
+
 The 2026-09-05 X11 follow-up passes six CTests under a private Xvfb server.
 `native_x11_runtime_tests` checks pre-show graphics/theme lookup, full-row
 list selection before/after resize, full accordion geometry, idle repaint

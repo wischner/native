@@ -83,6 +83,24 @@ sash and the full divider route pointer dragging through the portable ratio
 transaction, so pane sizes and saved state agree. Panes allow native resize
 requests and enforce positive minimums; the sash is not hidden.
 
+OPEN LOOK uses two private XView Panel hosts for its borrowed controls. Live
+list sizing uses `PANEL_LIST_WIDTH` and reserves the native scrollbar width;
+`XV_WIDTH` alone does not resize a Panel list's rows. Short raised grip ribs,
+without a surrounding box, identify the divider beside the native scrollbar;
+the ribs rotate with the split and pointer capture lasts until release. XView
+destroys a Panel's items but not its nested Panels, so teardown explicitly
+releases both pane hosts before their containing host, after current callbacks
+and queued native item cleanup have returned.
+Tab page changes likewise repaint the current page's native items after the
+old page's queued deletion has cleared its former area, including spare space
+left by native row fitting. List heights round down to complete native rows
+so their lower borders stay inside the page host. Bottom-facing tabs align
+their list page to the allocated bottom edge; other placements keep top
+alignment. The row height and native scrollbar remain unchanged.
+Retired list pages hide immediately before deferred deletion. Resizing reuses
+the paint window's existing event registration instead of repeatedly adding
+the same handler to XView's notifier chain.
+
 Windows uses the native classic `WC_TABCONTROL` renderer on all four edges.
 Visual styles are disabled only for the tab HWND because the themed renderer
 does not support bottom or vertical placement. This keeps tab borders and

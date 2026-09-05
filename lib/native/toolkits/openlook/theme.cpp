@@ -48,6 +48,10 @@ extern "C"
                        int height,
                        int state,
                        int fill);
+    void olgx_draw_choice_item(graphics_info *information,
+                               Window drawable,
+                               int x, int y, int width, int height,
+                               void *label, int state);
     void olgx_draw_check_box(graphics_info *information,
                              Window drawable,
                              int x,
@@ -400,7 +404,7 @@ namespace
                 bounds.p.x,
                 bounds.p.y,
                 bounds.d.w,
-                bounds.d.h,
+                0,
                 const_cast<char *>(text.c_str()),
                 native_state(element_state));
             return *this;
@@ -500,7 +504,17 @@ namespace
         theme &draw_radio(const native::rect &bounds,
                           const std::string &text,
                           const state &element_state) override {
-            return draw_button(bounds, text, element_state);
+            saved_state saved(_g);
+            openlook_target target = native_target(bounds);
+            if (!target.information)
+                return emulated_theme::draw_radio(
+                    bounds, text, element_state);
+            olgx_draw_choice_item(target.information,
+                target.cache->backbuffer,
+                bounds.p.x, bounds.p.y, bounds.d.w, bounds.d.h,
+                const_cast<char *>(text.c_str()),
+                native_state(element_state));
+            return *this;
         }
 
         theme &draw_list(const native::rect &bounds,

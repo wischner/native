@@ -169,21 +169,36 @@ destruction, not a timeout that could outlive their parent.
 
 ## Linux OPEN LOOK/XView
 
+The 2026-09-05 follow-up retains native Panel items. OLGX button primitives
+use the intrinsic native button height, and radio primitives use rectangular
+choice-item geometry. Radio peers clear selection through `PANEL_TOGGLE_VALUE`
+rather than relying on a negative ordinal. Invalidation is coalesced into the
+notifier; partial exposures retain the same off-screen native primitives.
+Container teardown releases children before posting dependent Panel/Frame
+destruction, including the splitter's two explicitly owned nested Panels.
+Deferred native callbacks lose their C++ client pointers before teardown;
+new tab pages repaint after old native items have been removed. Lists fit
+whole rows without clipping their lower border, and bottom tab list pages
+align their real lower edge to the tab strip. Splitter grips use short raised
+ribs without a box, leaving the adjoining native scrollbar unchanged.
+Repeated collection resizing reuses the existing paint-window event handler;
+retired native list pages hide before their deferred destruction.
+
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | XView `Frame`/subframe and notifier; portable owner-busy and result handling. |
 | `wnd` | **H** | XView panel/canvas host with OLGX-assisted library drawing. |
 | `main_menu` | **N/H** | XView `Menu`/`Menu_item` attached to `PANEL_BUTTON` items in a composed menu panel. |
-| `button` | **N** | `PANEL_BUTTON`. |
+| `button` | **N** | `PANEL_BUTTON`, retaining native intrinsic height and left-aligned labels while adapting width. |
 | `check` | **N** | `PANEL_CHECK_BOX`. |
-| `radio` | **N** | `PANEL_CHOICE`. |
-| `list` | **N** | `PANEL_LIST`. |
+| `radio` | **N** | `PANEL_CHOICE` with explicit per-choice selection and portable sibling exclusion. |
+| `list` | **N** | `PANEL_LIST`; live width changes reserve its native scrollbar and height uses complete native rows. |
 | `combo_box` | **H** | `PANEL_TEXT` plus `PANEL_CHOICE_STACK`; XView has no single combo widget matching both public modes. |
 | `text_edit` | **N/H** | `PANEL_TEXT` or `PANEL_MULTILINE_TEXT`; portable validation and clipboard policy wrap it. |
 | `accordion`, `tab_view` | **C/H** | Library-painted OLGX collection/tab chrome, including framed/strip-only pages, in XView panel hosts. |
 | `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content with native XView `SCROLLBAR` objects. |
-| `code_edit` | **C/H** | Portable editor painted in an XView host with native XView scrollbars. |
-| `split_view` | **H** | Two XView child `Panel` panes; the current implementation is not `OPENWIN_SPLIT` and has portable geometry. |
+| `code_edit` | **C/H** | Portable editor painted in a keyboard-accepting XView Panel; key events route navigation, Shift selection, text and completion through the portable editor. |
+| `split_view` | **H** | Two private XView `Panel` panes with captured live dragging, scrollbar-aware list resizing and an exposure-painted centered grip; not `OPENWIN_SPLIT`. |
 | `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
 | `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using the OPEN LOOK theme. |

@@ -137,30 +137,8 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: failed to create list.");
         }
-        // PANEL_LIST sizes itself in complete native rows and treats
-        // XV_HEIGHT as advisory.  Derive its non-row chrome from the first
-        // layout, then choose the closest row count so tall lists fill their
-        // requested pane instead of leaving a conspicuous strip below them.
-        const int row_height = static_cast<int>(xv_get(
-            item, PANEL_LIST_ROW_HEIGHT));
-        const int native_height = static_cast<int>(xv_get(
-            item, XV_HEIGHT));
-        if (row_height > 0) {
-            const int chrome = std::max(
-                0, native_height - rows * row_height);
-            const int fitted_rows = std::max(
-                1,
-                (std::max(0, static_cast<int>(_bounds.d.h) - chrome) +
-                 row_height / 2) /
-                    row_height);
-            if (fitted_rows != rows) {
-                xv_set(item,
-                       PANEL_LIST_DISPLAY_ROWS,
-                       fitted_rows,
-                       nullptr);
-            }
-        }
         linux::openlook::wnd_bindings.register_pair(item, self);
+        apply_dimensions();
         replace_items(item, _items);
         if (_selected_index >= 0) {
             xv_set(item,
@@ -187,6 +165,10 @@ namespace native
         Panel_item item = item_for(self);
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
+            xv_set(item,
+                   PANEL_CLIENT_DATA, nullptr,
+                   XV_SHOW, FALSE,
+                   nullptr);
             xv_destroy_safe(item);
         }
     }

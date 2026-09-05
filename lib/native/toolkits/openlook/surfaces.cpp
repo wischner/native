@@ -105,9 +105,10 @@ namespace native
         auto *self = this;
         auto host = static_cast<Panel>(
             linux::openlook::wnd_bindings.handle_from_object(self));
+        destroy_children();
         if (host) {
             linux::openlook::wnd_bindings.unregister_by_handle(host);
-            xv_destroy_safe(host);
+            app::post([host] { xv_destroy(host); });
         }
     }
 

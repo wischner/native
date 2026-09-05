@@ -153,6 +153,16 @@ metrics, accessibility settings, theme version, and interaction conventions.
 It should not be approximated in shared code when the platform already exposes
 the correct operation.
 
+OPEN LOOK button primitives retain XView's intrinsic text-button height and
+left-aligned labels; allocating a taller layout cell does not stretch a native
+text button. Exclusive choices use OLGX's rectangular choice-item primitive,
+not an oblong command button or a circular radio from another toolkit.
+OPEN LOOK rebuilds its complete off-screen scene for a partial exposure and
+copies only the exposed rectangle. This keeps OLGX geometry and colors stable
+instead of switching to a different fallback when an exposed rectangle cuts
+through a control. Explicit invalidations are coalesced into the next notifier
+turn, avoiding painting during construction or repeated layout setters.
+
 ## Portable fallback
 
 A suitable native primitive is not always available. It may be unable to draw

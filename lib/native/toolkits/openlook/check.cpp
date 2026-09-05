@@ -109,6 +109,7 @@ namespace native
         Panel_item item = item_for(self);
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
+            xv_set(item, PANEL_CLIENT_DATA, nullptr, nullptr);
             xv_destroy_safe(item);
         }
     }

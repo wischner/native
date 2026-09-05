@@ -23,14 +23,14 @@ namespace
         if (!linux::openlook::permit_input(owner)) {
             if (owner) {
                 xv_set(item,
-                       PANEL_VALUE,
-                       owner->get_selected() ? 0 : PANEL_NONE,
+                       PANEL_TOGGLE_VALUE, 0,
+                       owner->get_selected() ? TRUE : FALSE,
                        nullptr);
             }
         } else if (value == 0) {
             owner->on_native_selected();
         } else if (owner->get_selected()) {
-            xv_set(item, PANEL_VALUE, 0, nullptr);
+            xv_set(item, PANEL_TOGGLE_VALUE, 0, TRUE, nullptr);
         }
     }
 
@@ -62,8 +62,8 @@ namespace native
                 "OpenLook/XView: missing radio binding.");
         }
         xv_set(item,
-               PANEL_VALUE,
-               _selected ? 0 : PANEL_NONE,
+               PANEL_TOGGLE_VALUE, 0,
+               _selected ? TRUE : FALSE,
                nullptr);
     }
 
@@ -80,8 +80,8 @@ namespace native
             PANEL_CHOICE_STRINGS,
             _text.c_str(),
             nullptr,
-            PANEL_VALUE,
-            _selected ? 0 : PANEL_NONE,
+            PANEL_TOGGLE_VALUE, 0,
+            _selected ? TRUE : FALSE,
             PANEL_NOTIFY_PROC,
             changed,
             PANEL_CLIENT_DATA,
@@ -120,6 +120,7 @@ namespace native
         Panel_item item = item_for(self);
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
+            xv_set(item, PANEL_CLIENT_DATA, nullptr, nullptr);
             xv_destroy_safe(item);
         }
     }

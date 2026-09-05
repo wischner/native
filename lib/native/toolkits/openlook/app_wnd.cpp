@@ -77,10 +77,6 @@ namespace
         cache->buffer_height = height;
     }
 
-    // True while the panel repaint procedure runs, so restoring the
-    // items below cannot re-enter it.
-    bool repainting_panel = false;
-
     void repaint_panel(Panel panel,
                        Xv_Window paint_window,
                        Rectlist *areas) {
@@ -109,9 +105,13 @@ namespace
 
         native::gpx &graphics = owner->get_gpx();
         ensure_backbuffer(owner, width, height);
-        graphics.set_clip(invalid);
+        // OLGX has its own GCs. Rebuild the complete off-screen scene
+        // so a partial exposure cannot select a different theme path;
+        // only the exposed rectangle is copied to the live Panel.
+        const native::rect scene(0, 0, width, height);
+        graphics.set_clip(scene);
         graphics.clear(graphics.get_paper());
-        native::wnd_paint_event event(invalid, graphics);
+        native::wnd_paint_event event(scene, graphics);
         owner->on_native_paint(event);
 
         auto *cache = linux::openlook::wnd_gpx_bindings
@@ -138,14 +138,22 @@ namespace
         // item overlapping it is now erased and nothing would draw it
         // again. Put the items back on top.
         //
-        // PANEL_NO_CLEAR paints without clearing, so this cannot
-        // come back round through panel_default_clear_item(); the
-        // guard covers the case where a paint handler itself
-        // triggers another repaint.
-        if (!repainting_panel) {
-            repainting_panel = true;
-            panel_paint(panel, PANEL_NO_CLEAR);
-            repainting_panel = false;
+        // An item also requests background clearing during destruction,
+        // after its subclass data has been freed but before it is unlinked
+        // from the Panel. Defer item painting until that stack returns.
+        auto *state = linux::openlook::window_state(owner);
+        if (state && !state->items_repaint_pending) {
+            state->items_repaint_pending = true;
+            native::app::post([panel] {
+                auto *current_owner = dynamic_cast<native::app_wnd *>(
+                    linux::openlook::wnd_bindings.object_from_handle(panel));
+                auto *current = current_owner
+                    ? linux::openlook::window_state(current_owner) : nullptr;
+                if (!current)
+                    return;
+                current->items_repaint_pending = false;
+                panel_paint(panel, PANEL_NO_CLEAR);
+            });
         }
     }
 
@@ -332,11 +340,20 @@ namespace linux::openlook
             return;
         }
 
-        repaint_panel(state->content,
-                      state->paint_window,
-                      nullptr);
-        panel_paint(state->content, PANEL_NO_CLEAR);
-        XFlush(cached_display);
+        if (state->repaint_pending)
+            return;
+        state->repaint_pending = true;
+        const Panel panel = state->content;
+        native::app::post([panel] {
+            auto *owner = dynamic_cast<native::app_wnd *>(
+                wnd_bindings.object_from_handle(panel));
+            auto *current = owner ? window_state(owner) : nullptr;
+            if (!current)
+                return;
+            current->repaint_pending = false;
+            repaint_panel(panel, current->paint_window, nullptr);
+            XFlush(cached_display);
+        });
     }
 } // namespace linux::openlook
 
@@ -538,6 +555,19 @@ namespace native
         // a panel whose items are half destroyed. Without the
         // binding the procedure has no owner to find and returns.
         linux::openlook::wnd_bindings.unregister_by_object(self);
+        if (state) {
+            if (state->paint_window)
+                xv_set(state->paint_window, WIN_CLIENT_DATA, nullptr, nullptr);
+            if (state->frame)
+                xv_set(state->frame, WIN_CLIENT_DATA, nullptr, nullptr);
+        }
+
+        // XView does not order separately queued safe destruction by
+        // dependency. Release portable children first, then destroy the
+        // native frame in the next posted turn, after item callbacks and
+        // their queued safe cleanup have returned.
+        destroy_owned_windows();
+        destroy_children();
 
         linux::openlook::frame_bindings.unregister_by_object(self);
         linux::openlook::window_bindings.unregister_by_handle(self);
@@ -549,7 +579,7 @@ namespace native
             state->paint_window = XV_NULL;
             delete state;
             if (frame)
-                xv_destroy_safe(frame);
+                app::post([frame] { xv_destroy(frame); });
         }
         if (self == app::main_wnd()) {
             linux::openlook::exit_requested = true;

@@ -272,9 +272,10 @@ namespace
 
         auto &graphics = owner.get_gpx();
         ensure_backbuffer(owner, width, height);
-        graphics.set_clip(invalid);
+        const native::rect scene(0, 0, width, height);
+        graphics.set_clip(scene);
         owner.on_native_paint(native::wnd_paint_event(
-            invalid, graphics));
+            scene, graphics));
 
         auto *cache = linux::openlook::wnd_gpx_bindings
                           .object_from_handle(&owner);
@@ -368,7 +369,7 @@ namespace
         paint_and_copy(*owner, *state, invalid);
     }
 
-    void navigate(native::wnd &owner, KeySym symbol) {
+    void navigate(native::wnd &owner, KeySym symbol, bool extend = false) {
         if (auto *editor =
                 dynamic_cast<native::code_edit *>(&owner)) {
             native::code_edit_key key;
@@ -402,7 +403,7 @@ namespace
             else
                 handled = false;
             if (handled)
-                editor->on_native_key(key);
+                editor->on_native_key(key, extend);
             return;
         }
         if (auto *table =
@@ -655,7 +656,7 @@ namespace
                             extend ? native::code_edit_key::redo
                                    : native::code_edit_key::undo);
                 } else {
-                    navigate(*owner, symbol);
+                    navigate(*owner, symbol, extend);
                     const bool command =
                         symbol == XK_Left || symbol == XK_Right ||
                         symbol == XK_Up || symbol == XK_Down ||
@@ -715,6 +716,10 @@ namespace
         if (!paint_window)
             throw std::runtime_error(
                 "OpenLook/XView: collection has no paint window.");
+        // Resize commonly reuses the same paint window. Reinstalling the
+        // safe-event procedure stacks XView notifier interpositions.
+        if (state.paint_window == paint_window)
+            return;
         if (state.paint_window && state.paint_window != paint_window) {
             linux::openlook::collection_paint_bindings
                 .unregister_by_handle(state.paint_window);
@@ -768,6 +773,8 @@ namespace
             PANEL_HORIZONTAL,
             PANEL_BORDER,
             FALSE,
+            PANEL_ACCEPT_KEYSTROKE,
+            TRUE,
             PANEL_REPAINT_PROC,
             repaint,
             XV_X,
@@ -879,13 +886,17 @@ namespace
         if (!state)
             return;
         if (state->panel) {
-            if (state->content_panel)
-                xv_destroy_safe(state->content_panel);
+            const Panel content = state->content_panel;
+            const Panel panel = state->panel;
             linux::openlook::collection_paint_bindings
                 .unregister_by_handle(state->paint_window);
             linux::openlook::wnd_bindings.unregister_by_handle(
                 state->panel);
-            xv_destroy_safe(state->panel);
+            native::app::post([content, panel] {
+                if (content)
+                    xv_destroy(content);
+                xv_destroy(panel);
+            });
         }
         delete state;
     }
@@ -905,8 +916,25 @@ namespace linux::openlook
     void repaint_collection(native::wnd &owner,
                             const native::rect &area) {
         openlook_collection *state = state_for(owner);
-        if (state)
-            paint_and_copy(owner, *state, area);
+        if (!state || state->repaint_pending || !area.d.w || !area.d.h)
+            return;
+        state->repaint_pending = true;
+        const Panel panel = state->panel;
+        native::app::post([panel] {
+            auto *current_owner = wnd_bindings.object_from_handle(panel);
+            auto *current = current_owner ? state_for(*current_owner) : nullptr;
+            if (!current)
+                return;
+            current->repaint_pending = false;
+            paint_and_copy(*current_owner, *current,
+                native::rect(native::point(0, 0), current_owner->get_dimensions()));
+            // Removing the old page clears its native Panel item area.
+            // Restore the new page after that deferred item cleanup.
+            // Clear spare row-fitting space too: a moved native list may
+            // have painted its provisional border there during creation.
+            if (current->content_panel)
+                panel_paint(current->content_panel, PANEL_CLEAR);
+        });
     }
 
     void resize_collection_panel(native::wnd &owner,

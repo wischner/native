@@ -87,6 +87,7 @@ namespace native
             linux::openlook::wnd_bindings.handle_from_object(self));
         if (item) {
             linux::openlook::wnd_bindings.unregister_by_handle(item);
+            xv_set(item, PANEL_CLIENT_DATA, nullptr, nullptr);
             xv_destroy_safe(item);
         }
     }

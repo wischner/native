@@ -99,6 +99,8 @@ namespace
             edited,
             PANEL_CLIENT_DATA,
             owner,
+            PANEL_VALUE_DISPLAY_WIDTH,
+            std::max(1, static_cast<int>(bounds.d.w) - choice_width),
             XV_X,
             bounds.p.x,
             XV_Y,
@@ -336,6 +338,17 @@ namespace native
         linux::openlook::combo_box_bindings.unregister_by_handle(self);
         linux::openlook::wnd_bindings.unregister_by_object(self);
         if (binding) {
+            if (binding->choice)
+                xv_set(binding->choice, PANEL_CLIENT_DATA, nullptr, nullptr);
+            if (binding->text)
+                xv_set(binding->text, PANEL_CLIENT_DATA, nullptr, nullptr);
+            if (binding->menu) {
+                const int count = xv_get(binding->menu, MENU_NITEMS);
+                for (int index = 1; index <= count; ++index) {
+                    const auto item = xv_get(binding->menu, MENU_NTH_ITEM, index);
+                    xv_set(item, MENU_CLIENT_DATA, nullptr, nullptr);
+                }
+            }
             if (binding->choice) xv_destroy_safe(binding->choice);
             if (binding->text) xv_destroy_safe(binding->text);
             if (binding->menu) xv_destroy_safe(binding->menu);

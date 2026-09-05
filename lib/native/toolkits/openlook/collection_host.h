@@ -26,9 +26,8 @@ namespace linux::openlook
     void destroy_collection_panel(native::wnd &owner,
                                   openlook_collection *state);
 
-    // Paint an invalid collection region into its backing pixmap and copy
-    // it to the live XView paint window without first exposing a cleared
-    // Panel while hover and selection state changes.
+    // Coalesce collection invalidations into the next notifier turn.
+    // Paint into its backing pixmap without exposing a cleared Panel.
     void repaint_collection(native::wnd &owner,
                             const native::rect &area);
 
