@@ -535,6 +535,7 @@ namespace native
         rgba border = colors.separator;
         switch (kind) {
         case surface_kind::panel:
+        case surface_kind::ruler_corner:
             fill = colors.button_bg;
             break;
         case surface_kind::content:
@@ -549,6 +550,7 @@ namespace native
             border = colors.menu_popup_border;
             break;
         case surface_kind::header:
+        case surface_kind::ruler:
         case surface_kind::table_header:
             fill = element_state.pressed
                        ? colors.button_pressed_bg

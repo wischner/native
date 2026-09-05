@@ -379,6 +379,27 @@ namespace native
     }
 
     void wnd::draw_non_client(gpx &graphics) {
+        // Perpendicular rulers leave a shared, non-interactive corner.
+        // Give that paper its own theme role before drawing either ruler.
+        for (non_client *horizontal : _non_client) {
+            if (!horizontal || !horizontal->_visible ||
+                !dynamic_cast<ruler *>(horizontal) ||
+                (horizontal->get_edge() != window_edge::top &&
+                 horizontal->get_edge() != window_edge::bottom))
+                continue;
+            for (non_client *vertical : _non_client) {
+                if (!vertical || !vertical->_visible ||
+                    !dynamic_cast<ruler *>(vertical) ||
+                    (vertical->get_edge() != window_edge::left &&
+                     vertical->get_edge() != window_edge::right))
+                    continue;
+                const auto h = non_client_bounds(horizontal);
+                const auto v = non_client_bounds(vertical);
+                const rect corner(v.p.x, h.p.y, v.d.w, h.d.h);
+                auto appearance = theme::create(graphics);
+                appearance->draw_surface(corner, surface_kind::ruler_corner, {});
+            }
+        }
         for (non_client *element : _non_client) {
             if (element && element->_visible)
                 element->draw(graphics, non_client_bounds(element));

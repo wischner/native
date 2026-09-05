@@ -30,7 +30,11 @@ namespace native
         table_header,
         // Native status-strip background and individual cell divider.
         status,
-        status_part
+        status_part,
+        // Ruler paper; defaults to header styling on other backends.
+        ruler,
+        // Corner shared by perpendicular rulers; defaults to panel paper.
+        ruler_corner
     };
 
     // Selects row-shaped or tile-shaped native selection painting.

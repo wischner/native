@@ -142,15 +142,29 @@ namespace linux::openmotif
                 theme_pixel_color(reference, foreground);
             result.menu_hot_text =
                 theme_pixel_color(reference, background);
+            result.content_text = theme_pixel_color(reference, foreground);
         }
         result.content_bg = result.menu_popup_bg;
-        result.content_text = result.button_text;
+        if (!list)
+            result.content_text = result.button_text;
         result.selection_bg = result.menu_hot_bg;
         result.selection_text = result.menu_hot_text;
         result.selection_inactive_bg = result.button_shadow;
         result.selection_inactive_text = result.content_text;
         result.separator = result.button_shadow;
         result.focus = result.button_text;
+        // CDE gives menu bars a different color set from push buttons.
+        // Read the real bar rather than assuming the panel palette.
+        Widget main = main_wnd_bindings.handle_from_object(native::app::main_wnd());
+        Widget menu = nullptr;
+        if (main)
+            XtVaGetValues(main, XmNmenuBar, &menu, nullptr);
+        if (menu) {
+            XtVaGetValues(menu, XmNbackground, &background,
+                          XmNforeground, &foreground, nullptr);
+            result.menu_bar_bg = theme_pixel_color(menu, background);
+            result.menu_text = theme_pixel_color(menu, foreground);
+        }
         return result;
     }
 

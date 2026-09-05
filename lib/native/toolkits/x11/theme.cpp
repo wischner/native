@@ -201,6 +201,8 @@ namespace
 
         native::theme &draw_surface(const native::rect &bounds,
             native::surface_kind kind, const state &element_state) override {
+            if (kind == native::surface_kind::ruler)
+                kind = native::surface_kind::header;
             saved_state saved(_g);
             draw_surface_fallback(bounds, kind, element_state);
             if (kind == native::surface_kind::header && bounds.d.h)

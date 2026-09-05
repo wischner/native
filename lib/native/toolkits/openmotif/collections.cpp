@@ -312,6 +312,8 @@ namespace
                       &height,
                       nullptr);
         auto &graphics = owner.get_gpx();
+        // Buffered hosts present complete frames; never clear them first.
+        XSetWindowBackgroundPixmap(XtDisplay(widget), XtWindow(widget), None);
         if (auto *state = binding(owner))
             synchronize_scrollbars(owner, *state);
         resize_backbuffer(owner, widget, width, height);
@@ -695,6 +697,8 @@ namespace
             bounds.d.h,
             XmNresizePolicy,
             XmRESIZE_NONE,
+            XmNmarginWidth, 0,
+            XmNmarginHeight, 0,
             XmNnavigationType,
             XmTAB_GROUP,
             nullptr);

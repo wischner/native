@@ -82,8 +82,9 @@ selection, keyboard handling, and scrolling. The three-dimensional choice
 uses the same container and changes native gadget relief rather than swapping
 in a separately painted tree.
 
-On CDE, icon views use spatial `XmContainer`, trees use outline
-`XmContainer`, and materialized tables use detail `XmContainer`. Their native
+On CDE, icon views use spatial `XmContainer` and trees use outline
+`XmContainer`; tree icons are centered relative to their labels. Advanced
+tables use a matching Motif-themed viewport for both data modes. Their native
 scrollbars remain synchronized with portable scroll state, so wheel, keyboard,
 and scrollbar navigation reveal the same items.
 

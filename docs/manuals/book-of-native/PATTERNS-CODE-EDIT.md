@@ -4,6 +4,11 @@ This chapter expands Architecture Section 14. `code_edit` combines a portable
 plain-text document with a source-oriented view; language tools remain in the
 application.
 
+The Motif backend uses white editor paper and black default text for the
+source viewport, while retaining CDE chrome. Default lexer colors are dark
+and are not readable on CDE's slate list/text background. Other Motif data
+controls retain their native resource palette.
+
 ## Document and file boundaries
 
 The document is always well-formed UTF-8 with `\n` line endings. Public

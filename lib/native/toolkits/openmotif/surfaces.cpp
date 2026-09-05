@@ -126,6 +126,7 @@ namespace native
     void panel::destroy_native() {
         if (!_created)
             return;
+        destroy_children();
 
         auto *self = this;
         Widget widget =

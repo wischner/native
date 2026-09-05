@@ -1,4 +1,9 @@
-// Implements tab_view with Motif's native XmNotebook.
+//
+// Implements tab_view with Motif's native XmNotebook and attached pages.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 
 #include <stdexcept>
 
@@ -120,6 +125,29 @@ namespace
              static_cast<native::dim>(height)});
         XFreeGC(display, gc);
         return pixmap;
+    }
+
+    // Lazy pages can be created while their Form still has its initial
+    // tiny size. Attach all edges so the notebook's subsequent geometry
+    // negotiation also resizes that first-created native child.
+    void attach_page_contents(native::tab_view &owner) {
+        auto *state = binding(owner);
+        if (!state)
+            return;
+        for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
+            Widget content = linux::openmotif::wnd_bindings.handle_from_object(
+                &owner.get_item(index).get_content());
+            if (!content || index >= state->pages.size() ||
+                XtParent(content) != state->pages[index])
+                continue;
+            XtVaSetValues(content,
+                XmNleftAttachment, XmATTACH_FORM,
+                XmNrightAttachment, XmATTACH_FORM,
+                XmNtopAttachment, XmATTACH_FORM,
+                XmNbottomAttachment, XmATTACH_FORM,
+                XmNleftOffset, 0, XmNrightOffset, 0,
+                XmNtopOffset, 0, XmNbottomOffset, 0, nullptr);
+        }
     }
 
     void page_changed(Widget, XtPointer data, XtPointer call_data) {
@@ -381,6 +409,7 @@ namespace native
                       XmNcurrentPageNumber,
                       get_selected_index()+1,
                       nullptr);
+        attach_page_contents(*this);
         state->suppress = false;
     }
 
@@ -428,6 +457,7 @@ namespace native
         if (!_created || !state || !state->notebook)
             throw std::runtime_error("Motif: tab_view is not created.");
         XtManageChild(state->notebook);
+        attach_page_contents(*this);
         hide_page_scroller(state->notebook);
         XtAppAddTimeOut(linux::openmotif::app_instance,
                         0,
@@ -445,6 +475,7 @@ namespace native
     void tab_view::destroy_native() {
         if (!_created)
             return;
+        destroy_children();
         auto *self = this;
         auto *state = binding(*self);
         if (state && state->notebook) {

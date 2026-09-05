@@ -125,7 +125,8 @@ namespace native
             return;
         auto appearance = theme::create(graphics);
         const theme::state state{};
-        const theme::palette colors = appearance->native_palette();
+        theme::palette colors = appearance->native_palette();
+        colors.button_text = colors.menu_text;
         graphics.set_font(font_t::stock(font_role::small));
         draw_background(graphics, *appearance, bounds, state);
 
@@ -190,7 +191,7 @@ namespace native
                                 theme &appearance,
                                 const rect &bounds,
                                 const theme::state &state) {
-        appearance.draw_surface(bounds, surface_kind::header, state);
+        appearance.draw_surface(bounds, surface_kind::ruler, state);
     }
 
     void ruler::draw_tick(gpx &graphics,
@@ -245,7 +246,7 @@ namespace native
                              const rect &bounds,
                              int axis_position,
                              const theme::palette &colors) {
-        graphics.set_ink(colors.focus);
+        graphics.set_ink(colors.button_text);
         if (get_orientation() == ruler_orientation::horizontal) {
             const coord x = static_cast<coord>(bounds.x1()+axis_position);
             graphics.draw_line({x, bounds.y1()},

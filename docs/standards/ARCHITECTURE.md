@@ -214,6 +214,8 @@ A control that owns edge chrome, such as canvas scrollbars, overrides only the
 first step, and both the client area and the strip geometry stay consistent.
 Backend resize notifications must update the cache and layout without
 requesting the same resize again.
+Non-client painting fills the shared corners of perpendicular visible
+rulers with the ruler-corner theme role before drawing the individual strips.
 Portable layout may temporarily assign a child zero width or zero height. A
 backend whose native window system requires non-zero dimensions must use its
 minimum native backing size without changing the cached portable bounds.
@@ -966,8 +968,9 @@ that child merely to recover row or header geometry.
 
 Windows uses report-mode `WC_LISTVIEW`, `LVS_OWNERDATA` for virtual data, and
 native ListView groups for explicitly materialized data. macOS uses
-`NSTableView`. OpenMotif uses `XmContainer` detail view for explicitly
-materialized data and its native-look compact host for virtual data. Haiku
+`NSTableView`. OpenMotif uses one Motif-themed viewport with native
+`XmScrollBar` peers for both materialized and virtual data. `XmContainer`
+does not provide the virtual-row and grid-line contract. Haiku
 uses its Open Tracker-licensed `BColumnListView` library for materialized data
 and a `BControlLook` viewport host for virtual data. Athena, XView, WINGs,
 SDL2, and GEM use their own toolkit host, focus path, theme resources, and
@@ -1083,9 +1086,10 @@ Every library-painted collection scrollbar uses the same classic arrow,
 trough, and gripped-thumb composition as a painted table. Its arrow and page
 areas scroll immediately, and a backend with pointer input must keep thumb
 capture active until release so dragging remains responsive outside the
-track. The flat Motif `list` is hosted by an `XmScrolledWindow`; Motif icon views,
-materialized tables, and both tree presentations use `XmContainer` with its
-toolkit-owned automatic scrollbars. Scrollbar value callbacks update portable
+track. The flat Motif `list` is hosted by an `XmScrolledWindow`; Motif icon
+views and both tree presentations use `XmContainer` with toolkit-owned
+automatic scrollbars. Both table data modes use the same buffered viewport
+and native `XmScrollBar` peers. Scrollbar value callbacks update portable
 scroll state without synthesizing selection or activation.
 Connector visibility remains an explicit portable tree property and defaults
 off on every backend. Indentation and the platform's compact right/down
@@ -1286,6 +1290,12 @@ its own edge furniture keeps its strips inside that furniture.
 layout managers must receive that rectangle. Visibility, extent, attachment,
 detachment, and window resize must trigger layout and paint updates without
 moving the top-level native frame.
+
+Ruler paper uses `surface_kind::ruler`; the shared corner of perpendicular
+rulers uses `surface_kind::ruler_corner`, painted before the strips. Other
+backends retain header/panel defaults. OpenMotif uses native menu-bar ruler
+paper including the corner, independently of table and accordion headers.
+Ruler ticks, labels, edges and tracking marks use the menu foreground.
 
 Rulers may occupy all four edges. Orientation follows the edge. Origins,
 units-per-pixel, and positive minor/major intervals are finite doubles.

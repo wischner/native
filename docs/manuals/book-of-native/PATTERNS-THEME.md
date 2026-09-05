@@ -4,10 +4,24 @@ This chapter expands Section 7 of the architectural standards. Custom drawing
 that represents a familiar control should use the public `native::theme`
 facade instead of copying the appearance of one operating system.
 
+Rulers have separate `surface_kind::ruler` and `ruler_corner` paper roles.
+Their default treatment is header and panel paper respectively; OpenMotif
+uses the actual native menu-bar background for both, with menu-foreground
+ticks and labels. Table and accordion
+headers keep their original colors. Motif table alternate rows blend 10%
+of the native data foreground into its background; grid lines blend 65%,
+so both remain distinguishable in CDE's dark data palette.
+
 For a table of the available control parts, state fields, and application
 examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitives).
 
 ## Semantic drawing
+
+Motif list primitives use the native list's `XmFontList` and `XmStringDraw`,
+not the button font. Content foreground and background are read as a pair
+from list resources, preserving CDE's light text on slate data surfaces.
+Radio indicators honor `XmNindicatorType` and the display's
+`XmNenableToggleVisual`, selecting Motif's own circle or diamond primitive.
 
 Windows stock buttons, checks, radios, trees, icon views and table headers
 retain native control painting, metrics and interaction. A Common Controls v6

@@ -1,5 +1,11 @@
 # Patterns: Windows And App Windows
 
+OpenMotif modal windows use `XmDialogShell`, so CDE supplies the same base
+palette to their controls and theme probes as to native message boxes.
+The main work widget receives its requested dimensions before management;
+an empty intermediate widget must not shrink the dialog during creation.
+Perpendicular rulers share a themed corner painted before either strip.
+
 Windows top-level hosts clip background painting around native child HWNDs.
 Geometry changes use `SWP_NOACTIVATE`, so relayout and splitter dragging do
 not steal activation. Beginning and ending a modal session synchronizes
@@ -225,6 +231,14 @@ client caption instead. Compact OPEN LOOK tool windows use this hook so
 the draggable tool caption is not duplicated by an outer OLWM title.
 
 ## Modal dialogs
+
+Motif top-level shells use explicit keyboard focus. Native text fields keep
+typing until another control is clicked or keyboard traversal moves focus;
+moving the pointer across a second editor does not redirect keystrokes.
+Motif shells, notebooks, split views and panels release portable child peers
+before Xt recursively destroys their native descendants. This lets icon and
+tree peers detach their pixmaps safely. Owned-shell destruction relies on
+Xt's callback-safe destruction phase rather than a separate timeout.
 
 `modal_wnd` adds a result-bearing owner-modal session. It uses the same
 construct, create, and show lifecycle as other windows:

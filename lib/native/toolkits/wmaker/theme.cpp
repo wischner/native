@@ -436,6 +436,7 @@ namespace
             const state &element_state) override {
             const theme_target target = target_from(_g);
             const bool native_header =
+                kind == native::surface_kind::ruler ||
                 kind == native::surface_kind::header ||
                 kind == native::surface_kind::table_header;
             if (!target.graphics || !native_header) {

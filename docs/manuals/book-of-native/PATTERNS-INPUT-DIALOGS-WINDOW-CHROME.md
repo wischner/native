@@ -1,5 +1,13 @@
 # Patterns: Input, Standard Dialogs, and Window Chrome
 
+Ruler paper and shared corners use the distinct `ruler` and `ruler_corner`
+surface roles. Motif gives both native menu-bar paper, with menu-foreground
+ticks, labels and edge marks; other backends retain header/panel defaults.
+Native Motif modal windows inherit `XmDialogShell`
+colors just like message boxes, including the foreground. Custom dialog
+labels should obtain `theme::get_button_foreground_color()`, not hard-code
+black; Vision's modal demonstration follows that rule.
+
 This chapter describes the portable contracts for combo boxes, list boxes,
 standard directory and message dialogs, and edge-attached rulers and status
 bars. Public objects keep their state in C++; each backend adapts that state to

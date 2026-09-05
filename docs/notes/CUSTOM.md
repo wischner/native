@@ -44,6 +44,7 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | OPEN LOOK/XView `split_view` | Keep **H**. `OPENWIN_SPLIT` creates another view of one `CANVAS`/`TEXTSW`; it cannot host two arbitrary borrowed controls. |
 | OPEN LOOK/XView `status_bar` | Keep **C**. Frame footers live outside and resize the content panel, while `non_client` reserves an in-host edge; combining both would reserve the strip twice. OLIT `FooterPanel` is not linked by this XView backend. |
 | Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
+| Motif `table_view` | Keep **H**: one buffered Motif-themed table viewport with native `XmScrollBar` peers. `XmContainer` detail view cannot provide virtual rows, grid lines, or matching portable column sizing; using it only for materialized data produced incompatible tables and rebuild flicker. Native tree and icon controls retain `XmContainer`. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | macOS and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
 | Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls retain native painting, as with `status_bar`. |
@@ -129,9 +130,23 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 
 ## Linux OpenMotif
 
+The CDE follow-up retains native icon gadgets with complete scaled images
+and private label metrics raised by two pixels. Accordion disclosures use
+the same flat triangle and raised frame as the tree's native disclosure
+buttons. Both table modes have visible foreground-derived alternating
+paper and light grid lines on dark backgrounds. Notebook pages attach on
+all four edges from their first selection. Modal shells use CDE's dialog
+palette, including white text; rulers and their corner use native menu-bar
+paper and menu-foreground marks.
+
+Shells, notebooks, split hosts and panels destroy portable children before
+Xt recursively frees their widget trees. Native icon/tree pixmaps are thus
+detached while their gadgets remain valid. Owned shells use Xt's own deferred
+destruction, not a timeout that could outlive their parent.
+
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Xt shells with `XmMainWindow`; portable ownership/result state wraps Motif modality. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Xt shells with `XmMainWindow`; explicit keyboard focus keeps typing with the clicked editor. Portable ownership/result state wraps Motif modality; drawing-area geometry is not enlarged by theme probe children. |
 | `wnd` | **H** | `XmDrawingArea` child host with library paint/input routing. |
 | `main_menu` | **N** | `XmMenuBar`, `XmPulldownMenu`, `XmCascadeButton`, `XmPushButton`, and `XmSeparator`. |
 | `button` | **N** | `XmPushButton`. |
@@ -142,10 +157,10 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `accordion` | **C** | Library-painted collection in `XmDrawingArea`. |
 | `tab_view` | **N/H** | `XmNotebook`; side-tab labels are rotated, page hosts use Motif forms, and strip-only mode uses `XmSeparatorGadget`. |
 | `icon_view` | **N/H** | Spatial `XmContainer` and `XmIconGadget` entries in `XmScrolledWindow`; portable code materializes the owned item vector and images. |
-| `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget`; the mode changes native gadget relief rather than selecting a custom painter. |
-| `table_view` | **N/H** | Materialized mode uses `XmContainer` detail view; virtual models use the library-painted collection fallback. |
+| `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget` with centered image/label alignment; the mode changes native gadget relief rather than selecting a custom painter. |
+| `table_view` | **H** | Both data modes use the same buffered Motif-themed viewport and native `XmScrollBar` peers, with matching columns, colors, grouping, grids and scrolling. |
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
-| `split_view` | **N** | `XmPanedWindow`, including native sash behavior and pane minimum resources. |
+| `split_view` | **N/H** | `XmPanedWindow` with a centered native sash and resizable panes. Sash and full-divider pointer dragging share the portable ratio transaction. |
 | `panel` | **N** | `XmForm` child with `XmRESIZE_NONE`; Motif fills it and it is a real Xt parent. |
 | `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using Motif theme resources. |

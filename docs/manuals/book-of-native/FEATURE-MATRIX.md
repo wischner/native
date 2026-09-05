@@ -85,7 +85,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (tested) | Win32 classic tab control (four-edge pages tested; strip-only build tested) | `BTabView` on all four sides with native rotated labels (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
 | Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline for both presentations (tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
-| Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
+| Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | Unified Motif-themed viewport and native scrollbars (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
 | UTF-8 source `code_edit` with gutter and overlays | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (build tested) | Custom themed HWND (tested) | Native-look BView (tested) | Native-look NSView (tested) | WIP |
 | Two-pane `split_view` | Xaw `Paned` (tested) | Emulated host (tested) | `XmPanedWindow` (tested) | XView pane host (tested) | `WMSplitView` with pane notifications (tested) | GEM host (tested) | Win32 splitter host (build tested) | `BSplitView` (tested) | `NSSplitView` (build tested) | WIP |
 | Typed UTF-8 text clipboard | Yes (build tested) | Yes (tested) | Yes (build tested) | XView Selection (tested) | WINGs Selection (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
@@ -185,7 +185,8 @@ passed in the preceding review after the shared tab-text contrast correction.
   and maps `icon_view` to `NSCollectionView`.
 - `table_view` remains model-backed on every backend. Windows uses report-mode
   ListView with owner data for virtual models, macOS uses `NSTableView`, and
-  OpenMotif uses `XmContainer` detail view for explicit materialized mode.
+  OpenMotif uses the same Motif-themed viewport with native scrollbars for
+  both data modes; `XmContainer` remains the native tree/icon peer.
   Other toolkit ports request only viewport rows through their native-look
   table hosts. Every adapter fills unused width with the final visible column
   by default; library-painted hosts also fill the header corner above the
@@ -248,6 +249,20 @@ passed in the preceding review after the shared tab-text contrast correction.
   Its theme also uses Motif `Xme` shadow primitives for native-window targets.
   If resource lookup or native drawing is unavailable, the backend supplies a
   Motif-specific emulation.
+  The 2026-09-05 CDE VM walkthrough checked list-font/palette and round-radio
+  primitives, the accordion's visible scrollbar, centered tree icons, both
+  table modes with grids and a jump to virtual row 900,001, text-field focus,
+  splitter movement, and creation of Input and Window Chrome. Motif peer
+  regressions run both in Docker/Xvfb and in the native CDE session; they
+  cover early graphics, native editor input isolation, native scrollbars,
+  table grid pixels, bounded repainting, code contrast and native sashes.
+  The collection lifecycle suite also runs under Motif and guards against
+  freeing an Xt parent before its portable child peers detach native gadgets.
+  The follow-up also covers whole-image tree scaling, raised native label
+  baselines, matching accordion/tree disclosures, visible alternating rows
+  and contrast-sensitive grids, first-selection notebook layout, modal
+  palette/size, and menu-colored ruler paper/marks including the shared corner. The ruler
+  surface roles retain existing header/panel defaults on other backends.
 - Window Maker uses WINGs screen resources, including stipple and shadow
   colors, system and bold fonts, button relief, native switch/radio indicator
   pixmaps, and actual WINGs scrollers for collection/table hosts. Its reference

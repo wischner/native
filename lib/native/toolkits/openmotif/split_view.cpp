@@ -1,4 +1,9 @@
-// Implements split_view with Motif's native XmPanedWindow.
+//
+// Implements split_view with Motif's native XmPanedWindow and sash.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 
 #include <algorithm>
 #include <stdexcept>
@@ -19,7 +24,9 @@ namespace
             .object_from_handle(&owner);
     }
 
-    void hide_sashes(Widget paned) {
+    void splitter_event(Widget, XtPointer, XEvent *, Boolean *);
+
+    void show_sashes(Widget paned, native::split_view *owner) {
         WidgetList children = nullptr;
         Cardinal count = 0;
         XtVaGetValues(paned,
@@ -30,40 +37,49 @@ namespace
             if (!XmIsSash(children[index]))
                 continue;
             XtVaSetValues(children[index],
-                          XmNwidth, 1,
-                          XmNheight, 1,
+                          XmNwidth, 8,
+                          XmNheight, 8,
                           XmNborderWidth, 0,
-                          XmNtraversalOn, False,
+                          XmNtraversalOn, True,
                           nullptr);
-            XtSetMappedWhenManaged(children[index], False);
-            if (XtIsManaged(children[index]))
-                XtUnmanageChild(children[index]);
-            if (XtIsRealized(children[index]))
-                XtUnmapWidget(children[index]);
+            XtSetMappedWhenManaged(children[index], True);
+            if (!XtIsManaged(children[index]))
+                XtManageChild(children[index]);
+            XtAddEventHandler(children[index],
+                ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                False, splitter_event, owner);
         }
     }
 
-    // Let the complete quiet divider act as the drag target. Motif's
-    // default sash is a small bordered square at one end of the divider,
-    // which is easy to miss and visually separates the splitter from the
-    // surrounding window.
-    void splitter_event(Widget paned,
+    // Both the native sash and the full divider use one portable drag
+    // transaction, keeping native pane geometry and saved ratio in sync.
+    void splitter_event(Widget source,
                         XtPointer data,
                         XEvent *event,
-                        Boolean *) {
+                        Boolean *dispatch) {
         auto *owner = static_cast<native::split_view *>(data);
         auto *state = owner ? binding(*owner) : nullptr;
         if (!owner || !state || !event)
             return;
-        const native::point position(
+        Widget paned = state->paned;
+        native::point position(
             event->type == MotionNotify ? event->xmotion.x
                                         : event->xbutton.x,
             event->type == MotionNotify ? event->xmotion.y
                                         : event->xbutton.y);
+        if (source != paned && XtIsRealized(source)) {
+            Window child = None;
+            int x = 0, y = 0;
+            XTranslateCoordinates(XtDisplay(paned), XtWindow(source),
+                XtWindow(paned), position.x, position.y, &x, &y, &child);
+            position = native::point(x, y);
+        }
         if (event->type == ButtonPress &&
             event->xbutton.button == Button1 &&
             owner->get_splitter_bounds().contains(position)) {
             state->dragging = true;
+            if (dispatch)
+                *dispatch = False;
             owner->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 native::mouse_action::press,
@@ -78,10 +94,14 @@ namespace
                          None,
                          event->xbutton.time);
         } else if (event->type == MotionNotify && state->dragging) {
+            if (dispatch)
+                *dispatch = False;
             owner->on_native_mouse_move(position);
         } else if (event->type == ButtonRelease &&
                    event->xbutton.button == Button1 &&
                    state->dragging) {
+            if (dispatch)
+                *dispatch = False;
             owner->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
                 native::mouse_action::release,
@@ -107,6 +127,10 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->paned)
             return;
+        const int cross = get_orientation() == split_orientation::horizontal
+            ? get_dimensions().h : get_dimensions().w;
+        XtVaSetValues(state->paned, XmNsashIndent,
+                      std::max(0, cross / 2 - 4), nullptr);
         Widget first = linux::openmotif::wnd_bindings
             .handle_from_object(&get_first());
         if (!first)
@@ -131,15 +155,17 @@ namespace native
             .handle_from_object(&get_second());
         if (first)
             XtVaSetValues(first,
-                          XmNpaneMinimum, get_first_minimum(),
+                          XmNpaneMinimum, std::max<int>(1, get_first_minimum()),
+                          XmNallowResize, True,
                           XmNskipAdjust, False,
-                          XmNshowSash, False,
+                          XmNshowSash, True,
                           nullptr);
         if (second)
             XtVaSetValues(second,
-                          XmNpaneMinimum, get_second_minimum(),
+                          XmNpaneMinimum, std::max<int>(1, get_second_minimum()),
+                          XmNallowResize, True,
                           XmNskipAdjust, False,
-                          XmNshowSash, False,
+                          XmNshowSash, True,
                           nullptr);
     }
 
@@ -187,7 +213,7 @@ namespace native
         self->refresh_contents();
         self->apply_minimums();
         self->apply_ratio();
-        hide_sashes(paned);
+        show_sashes(paned, self);
         XtAddEventHandler(paned,
                           ButtonPressMask | ButtonReleaseMask |
                               PointerMotionMask,
@@ -208,12 +234,13 @@ namespace native
                       XmNheight, get_dimensions().h,
                       nullptr);
         apply_ratio();
-        hide_sashes(state->paned);
+        show_sashes(state->paned, this);
     }
 
     void split_view::destroy_native() {
         if (!_created)
             return;
+        destroy_children();
         auto *self = this;
         auto *state = binding(*self);
         if (state && state->paned) {

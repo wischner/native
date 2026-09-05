@@ -12,6 +12,7 @@
 #include <optional>
 
 #include <Xm/DrawP.h>
+#include <Xm/Display.h>
 #include <Xm/List.h>
 #include <Xm/PushB.h>
 #include <Xm/ToggleB.h>
@@ -62,6 +63,7 @@ namespace
         Dimension size = 16;
         Dimension shadow = 1;
         XtEnum indicator = XmINDICATOR_FILL;
+        bool round = false;
     };
 
     class motif_theme final : public linux::emulated_theme
@@ -91,10 +93,20 @@ namespace
             m.menu_item_height = 20;
             m.popup_width = 180;
             m.text_padding_x = 3;
-            m.list_item_height = text_height() + 2;
+            Widget list = list_probe(
+                linux::openmotif::theme_reference_widget(_g));
+            XmFontList fonts = nullptr;
+            if (list)
+                XtVaGetValues(list, XmNfontList, &fonts, nullptr);
+            XmString sample = XmStringCreateLocalized(
+                const_cast<char *>("Mg"));
+            m.list_item_height = (fonts ? XmStringHeight(fonts, sample)
+                                       : text_height()) + 2;
+            XmStringFree(sample);
             m.table_row_height = m.list_item_height;
             m.header_height = text_height() + 8;
             m.tab_height = m.header_height;
+            m.disclosure_size = infolib_disclosure_side + 4;
             if (native_infolib_tree()) {
                 // Dtinfo's OutlineList is a compact, indentation-only tree.
                 m.disclosure_size = infolib_disclosure_side;
@@ -115,6 +127,31 @@ namespace
             Widget list = list_probe(reference);
             palette result = linux::openmotif::theme_palette(
                 reference, button, list);
+            // The default lexer supplies dark syntax colors. CDE's slate
+            // data palette cannot provide readable contrast for them.
+            const auto target = linux::openmotif::theme_target_from(_g);
+            if (dynamic_cast<native::table_view *>(target.owner)) {
+                // Keep the CDE data palette, with a visible neutral tint
+                // and grid contrast derived from its actual foreground.
+                const auto tint = [&](int weight) {
+                    const auto mix = [weight](int bg, int fg) {
+                        return static_cast<std::uint8_t>(
+                            (bg * (100 - weight) + fg * weight) / 100);
+                    };
+                    return native::rgba(
+                        mix(result.content_bg.r, result.content_text.r),
+                        mix(result.content_bg.g, result.content_text.g),
+                        mix(result.content_bg.b, result.content_text.b), 255);
+                };
+                result.content_alt_bg = tint(10);
+                result.separator = tint(65);
+            }
+            if (dynamic_cast<native::code_edit *>(target.owner)) {
+                result.content_bg = native::rgba(255, 255, 255, 255);
+                result.content_text = native::rgba(0, 0, 0, 255);
+                result.selection_bg = result.button_shadow;
+                result.selection_text = native::rgba(255, 255, 255, 255);
+            }
             if (native_infolib_tree()) {
                 result.content_bg = x_resource_color(
                     "OpenWindows",
@@ -302,6 +339,54 @@ namespace
             return *this;
         }
 
+        theme &draw_list_item(const native::rect &r,
+                              const std::string &text,
+                              const state &s) override {
+            const auto target = linux::openmotif::theme_target_from(_g);
+            Widget probe = list_probe(
+                linux::openmotif::theme_reference_widget(_g));
+            if (!probe || !target.cache || !target.cache->backbuffer)
+                return emulated_theme::draw_list_item(r, text, s);
+            saved_state saved(_g);
+            const auto colors = native_palette();
+            _g.set_ink(s.selected ? colors.selection_bg : colors.content_bg)
+                .draw_rect(r, true);
+            Pixel foreground = 0, background = 0;
+            XmFontList fonts = nullptr;
+            XtVaGetValues(probe, XmNforeground, &foreground,
+                          XmNbackground, &background,
+                          XmNfontList, &fonts, nullptr);
+            XmString label = XmStringCreateLocalized(
+                const_cast<char *>(text.c_str()));
+            GC gc = linux::openmotif::theme_gc(target,
+                s.selected ? background : foreground,
+                _g.get_clip().intersect(r));
+            if (gc && fonts) {
+                const int height = XmStringHeight(fonts, label);
+                XmStringDraw(linux::openmotif::cached_display,
+                    target.cache->backbuffer, fonts, label, gc,
+                    r.p.x, r.p.y + std::max(0, (int(r.d.h) - height) / 2),
+                    r.d.w, XmALIGNMENT_BEGINNING, XmSTRING_DIRECTION_L_TO_R,
+                    nullptr);
+            }
+            if (gc)
+                XFreeGC(linux::openmotif::cached_display, gc);
+            XmStringFree(label);
+            return *this;
+        }
+
+        theme &draw_surface(const native::rect &bounds,
+                            native::surface_kind kind,
+                            const state &s) override {
+            if (kind != native::surface_kind::ruler &&
+                kind != native::surface_kind::ruler_corner)
+                return emulated_theme::draw_surface(bounds, kind, s);
+            saved_state saved(_g);
+            _g.set_ink(native_palette().menu_bar_bg)
+                .draw_rect(bounds, true);
+            return *this;
+        }
+
         theme &draw_text_edit_frame(
             const native::rect &r,
             const state &s) override {
@@ -314,13 +399,19 @@ namespace
             const native::rect &r,
             native::disclosure_state disclosure,
             const state &s) override {
-            if (native_infolib_tree()) {
+            {
                 saved_state saved(_g);
                 const palette colors = native_palette();
-                const int left = r.p.x;
-                const int top = r.p.y;
-                const int right = r.x2() - 1;
-                const int bottom = r.y2() - 1;
+                const bool flat = native_infolib_tree();
+                const int inset = flat ? 0 : 2;
+                if (!flat) {
+                    _g.set_ink(colors.button_bg).draw_rect(r, true);
+                    draw_shadow(r, s.pressed ? XmSHADOW_IN : XmSHADOW_OUT, 2);
+                }
+                const int left = r.p.x + inset;
+                const int top = r.p.y + inset;
+                const int right = r.x2() - 1 - inset;
+                const int bottom = r.y2() - 1 - inset;
                 const int horizontal_middle = (left + right) / 2;
                 const int vertical_middle = (top + bottom) / 2;
                 std::vector<native::point> triangle;
@@ -351,18 +442,11 @@ namespace
                     .set_ink(s.disabled
                                  ? colors.selection_inactive_text
                                  : (s.selected ? colors.selection_text
-                                               : colors.content_text))
+                                               : (flat ? colors.content_text
+                                                       : colors.button_text)))
                     .draw_polygon(triangle, true);
                 return *this;
             }
-            return draw_native_arrow(
-                r,
-                disclosure == native::disclosure_state::expanded
-                    ? XmARROW_DOWN
-                    : XmARROW_RIGHT,
-                s,
-                disclosure,
-                std::nullopt);
         }
 
         theme &draw_focus(const native::rect &r,
@@ -539,6 +623,15 @@ namespace
                           XmNindicatorOn,
                           &target.indicator,
                           nullptr);
+            if (radio) {
+                unsigned char type = XmONE_OF_MANY;
+                Boolean modern = False;
+                XtVaGetValues(probe, XmNindicatorType, &type, nullptr);
+                XtVaGetValues(XmGetXmDisplay(XtDisplay(probe)),
+                              XmNenableToggleVisual, &modern, nullptr);
+                target.round = type == XmONE_OF_MANY_ROUND ||
+                    (type == XmONE_OF_MANY && modern);
+            }
             return true;
         }
 
@@ -658,7 +751,8 @@ namespace
                     ? (s.disabled ? target.bottom : target.select)
                     : target.background,
                 _g.get_clip());
-            XmeDrawDiamond(
+            const auto draw = target.round ? XmeDrawCircle : XmeDrawDiamond;
+            draw(
                 linux::openmotif::cached_display,
                 target.drawing.cache->backbuffer,
                 top_gc,

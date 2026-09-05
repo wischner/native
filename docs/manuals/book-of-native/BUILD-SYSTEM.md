@@ -154,11 +154,12 @@ executables:
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
+| `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and CDE VM |
 | `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
 | `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
-| `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered as a test on SDL2; run on Haiku over SSH |
+| `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif parent/child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2 and Motif; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
 | `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |

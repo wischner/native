@@ -3,6 +3,13 @@
 This chapter combines the standard choice controls, operating-system dialogs,
 and edge-attached window elements used by a typical document window.
 
+When custom-painting modal labels, use the theme's
+`get_button_foreground_color()` so light and dark native dialog palettes
+remain readable. Rulers use `surface_kind::ruler` for their paper; the
+library paints shared perpendicular corners with `ruler_corner`. Motif's
+menu-colored ruler paper and marks do not change ordinary headers or
+window backgrounds.
+
 ## Combo box and list box
 
 A selection-only combo accepts text from its item model. An editable combo

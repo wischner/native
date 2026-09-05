@@ -37,7 +37,67 @@ namespace
         return *state;
     }
 
+    // Keep the native face, charset coverage and line height, but move
+    // the label baseline up two pixels. All metrics below belong to
+    // private font queries/font sets, never to Motif's shared defaults.
+    void align_label(collection_state &state, Widget item) {
+        if (!state.tree_label_fonts) {
+            XmFontList original = nullptr;
+            XtVaGetValues(item, XmNfontList, &original, nullptr);
+            XmFontContext context;
+            if (!XmFontListInitFontContext(&context, original))
+                return;
+            while (XmFontListEntry entry = XmFontListNextEntry(context)) {
+                XmFontType type;
+                XtPointer font = XmFontListEntryGetFont(entry, &type);
+                XtPointer adjusted = font;
+                if (type == XmFONT_IS_FONT) {
+                    auto *copy = XQueryFont(linux::openmotif::cached_display,
+                        static_cast<XFontStruct *>(font)->fid);
+                    if (copy) {
+                        copy->ascent -= 2;
+                        copy->descent += 2;
+                        state.tree_fonts.push_back(copy);
+                        adjusted = copy;
+                    }
+                } else if (type == XmFONT_IS_FONTSET) {
+                    char **missing = nullptr, *fallback = nullptr;
+                    int missing_count = 0;
+                    XFontSet copy = XCreateFontSet(linux::openmotif::cached_display,
+                        XBaseFontNameListOfFontSet(static_cast<XFontSet>(font)),
+                        &missing, &missing_count, &fallback);
+                    if (missing)
+                        XFreeStringList(missing);
+                    if (copy) {
+                        XFontStruct **fonts = nullptr;
+                        char **names = nullptr;
+                        const int count = XFontsOfFontSet(copy, &fonts, &names);
+                        for (int index = 0; index < count; ++index) {
+                            fonts[index]->ascent -= 2;
+                            fonts[index]->descent += 2;
+                        }
+                        XExtentsOfFontSet(copy)->max_logical_extent.y += 2;
+                        state.tree_font_sets.push_back(copy);
+                        adjusted = copy;
+                    }
+                }
+                char *tag = XmFontListEntryGetTag(entry);
+                XmFontListEntry replacement = XmFontListEntryCreate(tag, type, adjusted);
+                state.tree_label_fonts = XmFontListAppendEntry(
+                    state.tree_label_fonts, replacement);
+                XmFontListEntryFree(&replacement);
+                XtFree(tag);
+            }
+            XmFontListFreeFontContext(context);
+        }
+        if (state.tree_label_fonts)
+            XtVaSetValues(item, XmNfontList, state.tree_label_fonts, nullptr);
+    }
+
     void clear_items(collection_state &state) {
+        XmFontList default_fonts = nullptr;
+        if (!state.items.empty())
+            XtVaGetValues(state.content, XmNrenderTable, &default_fonts, nullptr);
         // XmIconGadget keeps using its icon pixmap while destruction and
         // relayout expose work is pending.  Detach every pixmap before the
         // gadget is destroyed; otherwise a subsequent presentation switch
@@ -45,6 +105,7 @@ namespace
         // freed drawable.
         for (Widget item : state.items) {
             XtVaSetValues(item,
+                          XmNfontList, default_fonts,
                           XmNsmallIconPixmap,
                           XmUNSPECIFIED_PIXMAP,
                           nullptr);
@@ -62,6 +123,15 @@ namespace
                 XFreePixmap(linux::openmotif::cached_display, pixmap);
         }
         state.pixmaps.clear();
+        if (state.tree_label_fonts)
+            XmFontListFree(state.tree_label_fonts);
+        state.tree_label_fonts = nullptr;
+        for (XFontSet fonts : state.tree_font_sets)
+            XFreeFontSet(linux::openmotif::cached_display, fonts);
+        state.tree_font_sets.clear();
+        for (XFontStruct *font : state.tree_fonts)
+            XFreeFontInfo(nullptr, font, 1);
+        state.tree_fonts.clear();
     }
 
     void clear_disclosure_pixmaps(collection_state &state) {
@@ -172,11 +242,17 @@ namespace
                        0,
                        dimensions.w,
                        dimensions.h);
+        // The native pixmap is the requested icon size, not a crop of
+        // the source's upper-left corner (often transparent padding).
+        native::img scaled(dimensions.w, dimensions.h);
+        scaled.get_gpx().clear(native::rgba(0, 0, 0, 0))
+            .draw_img(*image, native::rect(0, 0, dimensions.w, dimensions.h),
+                      native::image_filter::linear);
         native::detail::blend_x_image(
             display,
             pixmap,
             gc,
-            *image,
+            scaled,
             {0, 0},
             native::rect(0, 0, dimensions.w, dimensions.h),
             dimensions);
@@ -294,6 +370,8 @@ namespace
                     label,
                     XmNviewType,
                     XmSMALL_ICON,
+                    XmNalignment,
+                    XmALIGNMENT_CENTER,
                     XmNsmallIconPixmap,
                     icon,
                     XmNentryParent,
@@ -317,6 +395,7 @@ namespace
                     XmNsensitive,
                     item.enabled ? True : False,
                     nullptr);
+                align_label(state, native_item);
                 XmStringFree(label);
                 state.items.push_back(native_item);
                 state.tree_ids.push_back(item.id);

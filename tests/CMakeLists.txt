@@ -16,6 +16,16 @@ target_link_libraries(native_core_tests PRIVATE
 
 add_test(NAME native_core_tests COMMAND native_core_tests)
 
+if(UNIX AND TOOLKIT STREQUAL "MOTIF")
+    add_executable(native_motif_runtime_tests native_motif_runtime_tests.cpp)
+    target_include_directories(native_motif_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_motif_runtime_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_motif_runtime_tests COMMAND native_motif_runtime_tests)
+    set_tests_properties(native_motif_runtime_tests PROPERTIES TIMEOUT 30)
+endif()
+
 if(WIN32)
     add_executable(native_windows_runtime_tests native_windows_runtime_tests.cpp)
     target_include_directories(native_windows_runtime_tests PRIVATE
@@ -105,6 +115,13 @@ target_link_libraries(native_collection_runtime_tests PRIVATE
     native
     native_developer_options
 )
+
+if(UNIX AND TOOLKIT STREQUAL "MOTIF")
+    add_test(NAME native_collection_runtime_tests
+        COMMAND native_collection_runtime_tests)
+    set_tests_properties(native_collection_runtime_tests PROPERTIES
+        TIMEOUT 30 ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+endif()
 
 if(UNIX AND TOOLKIT STREQUAL "X11")
     add_executable(native_x11_runtime_tests native_x11_runtime_tests.cpp)

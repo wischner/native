@@ -291,7 +291,8 @@ namespace
             const native::rect &bounds,
             native::surface_kind kind,
             const state &element_state) override {
-            if (kind != native::surface_kind::header &&
+            if (kind != native::surface_kind::ruler &&
+                kind != native::surface_kind::header &&
                 kind != native::surface_kind::table_header) {
                 return emulated_theme::draw_surface(
                     bounds, kind, element_state);

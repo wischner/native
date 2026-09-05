@@ -107,31 +107,33 @@ namespace native
 
         Widget canvas =
             linux::openmotif::wnd_bindings.handle_from_object(_wnd);
-        if (!canvas || !XtIsRealized(canvas))
+        if (!canvas)
             throw std::runtime_error(
-                "Motif: Drawing widget is not realized.");
+                "Motif: Drawing widget is missing.");
 
         auto *cache =
             linux::openmotif::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache) {
             cache = new linux::openmotif::motif_gpx();
+            const Drawable drawable = XtIsRealized(canvas)
+                ? XtWindow(canvas) : RootWindowOfScreen(XtScreen(canvas));
             cache->gc = XCreateGC(linux::openmotif::cached_display,
-                                  XtWindow(canvas),
+                                  drawable,
                                   0,
                                   nullptr);
 
-            XWindowAttributes attrs;
-            XGetWindowAttributes(linux::openmotif::cached_display,
-                                 XtWindow(canvas),
-                                 &attrs);
+            Dimension width = 1, height = 1;
+            int depth = DefaultDepthOfScreen(XtScreen(canvas));
+            XtVaGetValues(canvas, XmNwidth, &width, XmNheight, &height,
+                          XmNdepth, &depth, nullptr);
             cache->backbuffer =
                 XCreatePixmap(linux::openmotif::cached_display,
-                              XtWindow(canvas),
-                              static_cast<unsigned int>(attrs.width),
-                              static_cast<unsigned int>(attrs.height),
-                              static_cast<unsigned int>(attrs.depth));
-            cache->buf_w = attrs.width;
-            cache->buf_h = attrs.height;
+                              drawable,
+                              std::max<unsigned int>(1, width),
+                              std::max<unsigned int>(1, height),
+                              static_cast<unsigned int>(depth));
+            cache->buf_w = std::max<int>(1, width);
+            cache->buf_h = std::max<int>(1, height);
 
             Pixel background = WhitePixelOfScreen(XtScreen(canvas));
             Pixel foreground = BlackPixelOfScreen(XtScreen(canvas));

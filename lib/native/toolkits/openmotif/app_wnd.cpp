@@ -11,6 +11,7 @@
 #include <X11/Intrinsic.h>
 #include <X11/Shell.h>
 #include <Xm/DrawingA.h>
+#include <Xm/DialogS.h>
 #include <Xm/MainW.h>
 #include <Xm/Protocols.h>
 
@@ -211,13 +212,6 @@ namespace
             owner->destroy();
     }
 
-    // Release an owned shell after the Xt callback that closed it has
-    // returned to the application context.
-    void destroy_owned_shell(XtPointer client_data, XtIntervalId *) {
-        Widget shell = static_cast<Widget>(client_data);
-        if (shell)
-            XtDestroyWidget(shell);
-    }
 } // namespace
 
 namespace native
@@ -263,7 +257,7 @@ namespace native
             if (get_modal()) {
                 shell = XtVaCreatePopupShell(
                     const_cast<char *>("native"),
-                    transientShellWidgetClass,
+                    xmDialogShellWidgetClass,
                     owner_shell,
                     XtNtransientFor,
                     owner_shell,
@@ -290,6 +284,8 @@ namespace native
         }
 
         XtVaSetValues(shell,
+                      XmNkeyboardFocusPolicy,
+                      XmEXPLICIT,
                       XtNx,
                       _bounds.p.x,
                       XtNy,
@@ -307,11 +303,12 @@ namespace native
         // one-child rule of the shell widget.
         Widget main_win = XmCreateMainWindow(
             shell, const_cast<char *>("main_window"), nullptr, 0);
-        XtManageChild(main_win);
 
         Widget canvas = XmCreateDrawingArea(
             main_win, const_cast<char *>("canvas"), nullptr, 0);
         XtVaSetValues(canvas,
+                      XmNresizePolicy,
+                      XmRESIZE_NONE,
                       XmNwidth,
                       _bounds.d.w,
                       XmNheight,
@@ -322,6 +319,9 @@ namespace native
                       0,
                       nullptr);
         XtManageChild(canvas);
+        XtVaSetValues(main_win, XmNwidth, _bounds.d.w,
+                      XmNheight, _bounds.d.h, nullptr);
+        XtManageChild(main_win);
 
         XtAddEventHandler(canvas,
                           ExposureMask | StructureNotifyMask |
@@ -398,6 +398,11 @@ namespace native
         if (!_created)
             return;
 
+        // Xt recursively destroys its widget tree. Portable peers must
+        // release their child gadgets/pixmaps while those widgets are live.
+        destroy_owned_windows();
+        destroy_children();
+
         app_wnd *self = this;
         Widget shell =
             linux::openmotif::shell_bindings.handle_from_object(self);
@@ -408,20 +413,12 @@ namespace native
         linux::openmotif::shell_bindings.unregister_by_object(self);
 
         if (shell) {
-            if (owner) {
+            if (owner)
                 XtPopdown(shell);
-                if (linux::openmotif::app_instance) {
-                    XtAppAddTimeOut(
-                        linux::openmotif::app_instance,
-                        0,
-                        destroy_owned_shell,
-                        static_cast<XtPointer>(shell));
-                } else {
-                    XtDestroyWidget(shell);
-                }
-            } else {
-                XtDestroyWidget(shell);
-            }
+            // Xt already defers destruction safely during event dispatch.
+            // A separate timeout could outlive an owner that deletes this
+            // popup recursively and then dereference its freed widget.
+            XtDestroyWidget(shell);
         }
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()

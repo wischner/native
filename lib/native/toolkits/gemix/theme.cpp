@@ -101,6 +101,8 @@ namespace
 
         theme &draw_surface(const native::rect &r, native::surface_kind kind,
                             const state &s) override {
+            if (kind == native::surface_kind::ruler)
+                kind = native::surface_kind::header;
             if (kind == native::surface_kind::status_part) {
                 if (!r.w() || !r.h()) return *this;
                 auto saved = _g.save_state();

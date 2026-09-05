@@ -54,8 +54,12 @@ rather than becoming a million-widget allocation.
   `LVS_EX_GRIDLINES` stays disabled to avoid a second, inconsistent grid pass.
 - macOS uses `NSTableView`, reusable cell views, native columns, stripes, grid
   styles, selection, and sort descriptors.
-- OpenMotif uses `XmContainer` in `XmDETAIL` layout for explicit materialized
-  mode and the Motif-themed compact host for virtual mode.
+- OpenMotif uses one buffered Motif-themed viewport for both data modes,
+  retaining real `XmScrollBar` peers. Headers, column widths, grouping,
+  selection, grid lines and row colors therefore follow the same path.
+  This replaces the incompatible materialized `XmContainer` detail path,
+  which could not supply virtual rows or grid lines. Only visible rows are
+  requested, and invalidation does not clear the window before presentation.
 - Haiku links its Open Tracker-licensed `BColumnListView` implementation for
   materialized data and uses a `BControlLook` viewport host for virtual data.
   Materialized group fields paint clipped portions of one full-width row;

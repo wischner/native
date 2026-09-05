@@ -76,14 +76,13 @@ namespace linux::openmotif
         Widget vertical_scrollbar = nullptr;
         Widget horizontal_scrollbar = nullptr;
         std::vector<Widget> items;
-        std::vector<native::table_row_id> row_ids;
         std::vector<native::tree_item_id> tree_ids;
-        std::vector<Widget> group_items;
-        std::vector<native::table_group_id> group_ids;
         std::vector<Pixmap> pixmaps;
+        XmFontList tree_label_fonts = nullptr;
+        std::vector<XFontSet> tree_font_sets;
+        std::vector<XFontStruct *> tree_fonts;
         Pixmap collapsed_tree_pixmap = XmUNSPECIFIED_PIXMAP;
         Pixmap expanded_tree_pixmap = XmUNSPECIFIED_PIXMAP;
-        bool native_table = false;
         bool native_tree = false;
         bool native_scroll_callbacks = false;
         bool synchronizing_scrollbars = false;

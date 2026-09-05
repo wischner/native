@@ -1,5 +1,9 @@
 # Patterns: split views and tabs
 
+Motif notebook content attaches to all four edges of its native page Form.
+This includes lazily created pages selected for the first time: the Form's
+initial geometry cannot leave a tiny child after the notebook lays it out.
+
 GEMix keeps drag capture in the root peer until release, including movement
 outside the window, and clears capture when its borrowed splitter is destroyed.
 Its tabs use white paper with black labels in every placement. Selected tabs
@@ -73,6 +77,11 @@ meets Native's directional-label contract. Themed hosts use the shared
 portable geometry and renderer. WINGs exposes only top tabs, so Window Maker
 keeps `WMTabView` for framed top placement and uses a WINGs-matched Native
 renderer for bottom, left, right, and strip-only placement.
+
+Motif split views retain `XmPanedWindow` and a centered native sash. Both the
+sash and the full divider route pointer dragging through the portable ratio
+transaction, so pane sizes and saved state agree. Panes allow native resize
+requests and enforce positive minimums; the sash is not hidden.
 
 Windows uses the native classic `WC_TABCONTROL` renderer on all four edges.
 Visual styles are disabled only for the tab HWND because the themed renderer

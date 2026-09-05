@@ -1,5 +1,9 @@
 # Patterns: Window Painting
 
+Before drawing edge strips, `wnd::draw_non_client()` fills the shared
+corners of visible perpendicular rulers with the `ruler_corner` theme role.
+This does not extend tick/label painting or pointer tracking into a corner.
+
 Win32 routed hosts compose each `WM_PAINT` off screen and present only its
 invalid rectangle through the `BeginPaint` DC. Top-level windows use
 `WS_CLIPCHILDREN`, so parent background and label painting cannot erase native
@@ -7,6 +11,13 @@ child controls. Owner/custom-draw callbacks borrow the supplied native DC;
 ordinary stock controls paint themselves. Native status-bar synchronization
 changes geometry and parts only when their values change, avoiding a repaint
 feedback loop.
+
+Motif graphics can allocate their GC and backing pixmap against the screen
+root before a widget is realized, allowing creation-time font and chrome
+metrics without showing the window. Buffered collection hosts disable the
+X window background pixmap before presentation, so invalidation does not
+flash a cleared surface. Their drawing areas have zero layout margins and
+do not grow to accommodate temporary theme-probe children.
 
 This chapter expands Section 6 of the architectural standards. Native uses one
 portable drawing interface while allowing each backend to prepare, cache, and

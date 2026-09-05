@@ -1211,7 +1211,8 @@ namespace vision
     }
 
     bool feature_dialog::on_paint(native::wnd_paint_event event) {
-        event.g.set_ink(native::rgba(0, 0, 0, 255));
+        const auto appearance = native::theme::create(event.g);
+        event.g.set_ink(appearance->native_palette().button_text);
         event.g.draw_text(
             "This dialog owns focus and blocks its owner.",
                           native::point(24, 28));
