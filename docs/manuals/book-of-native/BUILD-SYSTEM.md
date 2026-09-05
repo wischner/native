@@ -160,7 +160,8 @@ executables:
 | `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered as a test on SDL2; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
-| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
 
 The runtime executables are built on every backend so they keep compiling, but
 only SDL2 registers them with CTest, because it is the backend that runs

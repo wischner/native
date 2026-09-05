@@ -19,6 +19,9 @@ release inside the original button. GEM list selection invalidates the list's
 own region rather than relying on an application callback to repaint it.
 Window destruction detaches its menu while AES/VDI are still live; AES removes
 the bar and restores popup pixels before their backing tree is released.
+GEM modal windows and AES message boxes use untitled `1011` enclosures
+(black/white/black/black from outside inward). File selectors retain their
+native titled, movable AES hosts.
 
 `combo_box` supports `drop_down_list` and `editable` styles. Its item model,
 selected index, and displayed text remain available before creation and after

@@ -170,6 +170,17 @@ namespace linux::gemix
             !wind_get(handle, WF_WORKXYWH, &x, &y, &w, &h))
             return {};
 
+        // Untitled AES hosts reserve their GEM dialog frame inside the
+        // native work area; every portable paint/input origin excludes it.
+        auto *owner = dynamic_cast<native::app_wnd *>(
+            wnd_bindings.object_from_handle(handle));
+        if (owner && owner->get_modal()) {
+            x += dialog_frame_width;
+            y += dialog_frame_width;
+            w = std::max(0, int(w) - 2 * dialog_frame_width);
+            h = std::max(0, int(h) - 2 * dialog_frame_width);
+        }
+
         return native::rect(
             x,
             y,
@@ -196,6 +207,11 @@ namespace linux::gemix
 
     native::size outer_size_for(WORD handle,
                                 const native::size &work) {
+        auto *owner = dynamic_cast<native::app_wnd *>(
+            wnd_bindings.object_from_handle(handle));
+        if (owner && owner->get_modal())
+            return native::size(work.w + 2 * dialog_frame_width,
+                                work.h + 2 * dialog_frame_width);
         WORD kind = 0;
         WORD ignored_y = 0;
         WORD ignored_w = 0;

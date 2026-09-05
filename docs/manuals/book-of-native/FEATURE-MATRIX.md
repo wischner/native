@@ -246,7 +246,7 @@ This matrix is the contract for documentation quality:
 - when runtime checks expand, this table should be updated immediately
 
 GEMix's 2026-09-05 rasta pass uses the updated sibling GEM runtime as well
-as Native. Five CTest executables pass, including the GEM-specific framebuffer
+as Native. Six CTest executables pass, including the GEM-specific framebuffer
 regressions, including the untouched desktop checker on a fresh launch.
 The visual pass covers the initial desktop, pressed buttons, collection icons and
 borders, table-thumb and splitter dragging, overlapping/modeless and modal
@@ -259,7 +259,7 @@ inactive left-tab separators, full title restoration, and menu/popup removal
 on Exit. Local rasta does not forward wheel events; wheel scrolling is not
 claimed by this pass.
 
-The separate libgem/gemd build passes the same five Native tests. The GEM
+The separate libgem/gemd build passes the same six Native tests. The GEM
 repository's real-server RPC regression also passes, including fragmented and
 malformed requests, output arrays, reconnects, menu replacement and abrupt
 menu-client exit. Visual proxy checks cover editing/clipboard, file and
@@ -283,3 +283,23 @@ AES title strip; the gallery uses that metric to keep text below its top rule.
 GEM status-part painting omits the redundant bottom/right enclosure while
 retaining the top separator and leading part dividers.
 Pixel regressions check all four status-part edges independently.
+
+The sibling GEM security pass retains six passing Native CTests in each
+transport and adds five passing hosted GEM tests. Three real Native processes
+share one local-Rasta gemd desktop; automated RPC checks verify separate
+window ownership, VDI attributes/clips and focused keyboard queues, plus
+menu-owner teardown and stalled-client recovery. Standard AES alerts/selectors
+service background clients while retaining classic shared input modality.
+Viewer checks include a selector, an alert, editing/copy/paste and a modeless
+window. Public AES/VDI interfaces are unchanged. These are resilience checks
+for a same-user service, not a claim of isolation from hostile same-UID code.
+
+The modal-frame follow-up checks gadget-free modal hosts, four-pixel client
+insets and `1011` pixels on every edge in both transports. AES message-box
+edges have an additional real-server pixel regression. The runtime now
+returns actual flags from `wind_get(WF_KIND)`, not work-area coordinates.
+`native_gemix_input_tests` drives real Rasta packets through `app::run`,
+covering rapid clicks, both text modes, clipboard buttons/shortcuts and input
+after modal, modeless and file-selector closure. These cases pass in both
+transports; the renewed report of dead fields/copy-paste did not reproduce in
+fresh viewer sessions, and is not claimed as a separately diagnosed fix.

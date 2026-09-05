@@ -69,6 +69,7 @@ namespace linux::gemix
     extern std::vector<native::canvas *> canvases;
     extern std::vector<native::app_wnd *> windows;
     extern native::app_wnd *active_window;
+    inline constexpr int dialog_frame_width = 4;
     struct gem_window
     {
         native::rect dirty;

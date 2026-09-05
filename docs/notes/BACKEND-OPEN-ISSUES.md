@@ -24,7 +24,7 @@ This note lists backend-level open issues that are real today.
   text editing and copy/paste after file open/save, overlapping modeless
   windows, modal close, extreme layout resize, collection disclosure/icons,
   table borders and thumb dragging, splitter dragging, combo popups, rotated
-  stock text, four-edge tabs, and status chrome. Five CTest executables pass,
+  stock text, four-edge tabs, and status chrome. Six CTest executables pass,
   including `native_gemix_runtime_tests`. These checks use the matching GEM
   runtime fixes in the sibling GEM source tree: staged rasta presentation,
   clipped AES pattern drawing, bitmap-copy damage tracking, and synchronous
@@ -34,10 +34,11 @@ This note lists backend-level open issues that are real today.
   file open/save followed by copy/paste completed without a sanitizer report.
   On this review host, the repaired runtime and resources are installed in
   the local `wischner/gcc-x86_64-gemix:latest` image, also tagged
-  `open-review-20260905`. This includes the follow-up fix that paints the
+  `input-dialog-review-20260905`. This includes the follow-up fix that paints the
   desktop on AES workstation startup; its fresh-launch framebuffer regression
   failed before the fix and passes afterward. The preceding review image is
-  retained under `desktop-review-20260905` and `native-review-20260905`, and the
+  retained under `security-review-20260905`, `open-review-20260905`, `desktop-review-20260905` and
+  `native-review-20260905`, and the
   original image as
   `wischner/gcc-x86_64-gemix:before-native-review-20260905`. No image was
   pushed to a registry. The separate gemd launch profile preserves the original
@@ -65,7 +66,7 @@ This note lists backend-level open issues that are real today.
   source-editor navigation codes and LF Enter, and intermediate desktop
   presentation during window close. Viewer-driven typing, both text modes,
   clipboard buttons and source-editor rendering/navigation pass. Five Native
-  CTests pass in each transport; all three hosted GEM tests pass, including the
+  CTests pass in each transport; all five hosted GEM tests pass, including the
   held-button/redraw and keyboard-modifier RPC regression. A wholly blank source
   editor did not reproduce in the restarted session; its initial/reopen drawing
   was checked without claiming a separate diagnosed blank-editor defect.
@@ -73,6 +74,32 @@ This note lists backend-level open issues that are real today.
   modeless windows, fully or partly overlapping their owner, preserve covered
   pixels until client painting. The intermediate-frame regression fails with
   `input-review-20260905` and passes with `open-review-20260905`.
+
+- The sibling GEM security follow-up (2026-09-05) adds peer/ownership checks,
+  nonblocking bounded RPC transport, per-client VDI state and visible-region
+  clipping, menu graph validation, lock/disconnect cleanup and cooperative
+  standard-panel waits. Three separate Native processes were displayed in
+  local Rasta; closing one left the others running. Real-server regressions
+  additionally check three-client keyboard focus, menu/desktop-owner exit,
+  malformed/stalled peers, and hostile font/framebuffer inputs. All five
+  Native CTests pass in both direct and proxy modes against the local
+  `security-review-20260905` runtime. AES/VDI public interfaces and F5 profiles
+  are unchanged. This is a same-user shared desktop, not a sandbox: scrap,
+  cursor and standard-panel input remain shared, and the private transport
+  is not a network ABI. The sibling GEM `docs/SECURITY.md` records limits and
+  remaining trust assumptions; the local image has not been registry-pushed.
+
+- The renewed GEMix dead-field/copy-paste report did not reproduce in fresh
+  direct or proxy viewer sessions. The new `native_gemix_input_tests` sends
+  actual Rasta packets through the full application loop, including rapid
+  focus clicks, both text modes, clipboard buttons and Ctrl+A/C/V, and input
+  after modal/modeless and file-selector closure. All six Native tests pass
+  in each transport; exact failing launch/interaction steps remain needed.
+  The modal-frame changes are verified separately: untitled hosts reserve
+  four client-excluded pixels for the `1011` enclosure, and AES alerts use
+  the same edge pattern. The matching GEM runtime fixes `WF_KIND` queries
+  that incorrectly returned work coordinates. Public AES/VDI APIs and F5
+  configurations are unchanged.
 
 - Other toolkit ports are still work in progress.
   They should stay out of the normal user workflow until they are built and

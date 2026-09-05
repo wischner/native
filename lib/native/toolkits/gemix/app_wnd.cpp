@@ -34,7 +34,7 @@ namespace native
 
         rect desktop = linux::gemix::desktop_rect();
         const WORD features =
-            get_modal() ? NAME | CLOSER | MOVER
+            get_modal() ? 0
                         : NAME | CLOSER | FULLER | MOVER | SIZER;
         WORD handle =
             wind_create(features,
@@ -42,7 +42,7 @@ namespace native
                         desktop.p.y,
                         desktop.d.w,
                         desktop.d.h);
-        if (handle < 0)
+        if (handle <= 0)
             throw std::runtime_error("GEMix: failed to create window.");
 
         linux::gemix::wnd_bindings.register_pair(

@@ -23,6 +23,25 @@ namespace
     using linux::gemix::root_bounds;
     using linux::gemix::root_of;
 
+    // GEM dialog edge, outside to inside: black, white, black, black.
+    // It belongs to the host, never to its child controls or paint callback.
+    void draw_dialog_frame(native::app_wnd *owner,
+                           const native::rect &visible) {
+        if (!owner->get_modal()) return;
+        const auto outer = linux::gemix::outer_rect(
+            linux::gemix::wnd_bindings.handle_from_object(owner));
+        native::gpx_wnd g(owner, outer.p);
+        g.set_clip(native::rect(visible.x1() - outer.x1(),
+            visible.y1() - outer.y1(), visible.w(), visible.h()));
+        for (int inset = 0; inset < linux::gemix::dialog_frame_width; ++inset) {
+            const int value = inset == 1 ? 255 : 0;
+            g.set_ink(native::rgba(value, value, value, 255));
+            g.draw_rect(native::rect(inset, inset,
+                std::max(0, int(outer.w()) - 2 * inset),
+                std::max(0, int(outer.h()) - 2 * inset)), false);
+        }
+    }
+
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
         linux::gemix::render_surfaces(owner, graphics);
         linux::gemix::render_accordions(owner, graphics);
@@ -147,6 +166,7 @@ namespace
 
         while (box.g_w > 0 && box.g_h > 0) {
             native::rect piece(box.g_x, box.g_y, box.g_w, box.g_h);
+            draw_dialog_frame(owner, piece);
             piece = piece.intersect(work);
             if (clip)
                 piece = piece.intersect(*clip);

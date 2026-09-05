@@ -206,10 +206,13 @@ Native content inside the same update transaction as teardown.
 AES desktop/frame redraws now share client occlusion clipping; opening windows
 does not erase covered owner content or redraw hidden frames. This is an AES
 implementation repair, with no change to control kinds or public interfaces.
+The modal-frame follow-up keeps the **N/H** classification: AES owns an
+untitled, gadget-free host and Native draws its four-pixel `1011` enclosure.
+Both direct and proxy pixel tests check every edge and the client inset.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library event dispatcher supplies ownership and modality. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library dispatcher supplies ownership/modality and the untitled modal `1011` frame. |
 | `wnd` | **C/H** | AES work-area registration with VDI library painting and dispatch. |
 | `main_menu` | **N/H** | The library builds an AES `OBJECT` tree and installs it with `menu_bar`; AES owns normal menu interaction while portable code maps commands and shortcuts. |
 | `button`, `check`, `radio` | **C** | GEM-themed library painting and AES event handling. |

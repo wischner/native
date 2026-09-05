@@ -35,6 +35,12 @@ types and do not erase each control's specialized navigation contract.
 bases are `modeless_wnd` and `modal_wnd`; neither is a control or a layout
 child.
 
+GEMix modal windows use untitled AES hosts without title-bar gadgets. Their
+four-pixel border reads black, white, black, black from outside inward. The
+backend excludes this enclosure from portable client geometry and input
+coordinates, and clips its painting to AES-visible rectangles. Modeless and
+ordinary application windows retain their normal titled AES chrome.
+
 These controls are real `wnd` subclasses. Backends use native widgets where
 the platform supplies them: Athena Toggle/List/AsciiText, Motif
 ToggleButton/List/Text, XView Panel controls, Win32 BUTTON/LISTBOX/EDIT, Haiku

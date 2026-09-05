@@ -252,6 +252,23 @@ namespace
                     const auto painted = framebuffer();
                     expect(!pixel(painted, interior.x1() + 10, interior.y1() + 10),
                            "new window client paints over owner or desktop");
+                    if (opened->get_modal()) {
+                        const auto edge = outer_rect(wnd_bindings.handle_from_object(opened));
+                        WORD kind = -1, ignored = 0;
+                        wind_get(wnd_bindings.handle_from_object(opened), WF_KIND,
+                            &kind, &ignored, &ignored, &ignored);
+                        expect(kind == 0 && interior.x1() - edge.x1() == 4 &&
+                            interior.y1() - edge.y1() == 4,
+                            "modal host has no title and reserves its four-pixel frame");
+                        for (int inset = 0; inset < 4; ++inset) {
+                            const bool ink = inset != 1;
+                            expect(pixel(painted, edge.x1() + 20, edge.y1() + inset) == ink &&
+                                pixel(painted, edge.x1() + 20, edge.y2() - 1 - inset) == ink &&
+                                pixel(painted, edge.x1() + inset, edge.y1() + 20) == ink &&
+                                pixel(painted, edge.x2() - 1 - inset, edge.y1() + 20) == ink,
+                                "all modal edges use the 1011 frame");
+                        }
+                    }
                     opened->destroy();
                 }
 
