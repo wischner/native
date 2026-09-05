@@ -21,7 +21,7 @@ the same commit.
   - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
     and serialized libgem/gemd builds
-  - Windows backend (MinGW build, run through Wine)
+  - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
   - Apple backend
 - Work in progress:

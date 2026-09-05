@@ -11,7 +11,7 @@ verified.
   - Linux OpenMotif under Xvfb in its Docker image
   - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
-  - Windows build through MinGW, run through Wine
+  - Windows build through MinGW, run natively in the Windows 11 VM
   - Haiku cross-build, copied to a Haiku machine and run over SSH
   - Apple on the configured remote macOS host
 - Other toolkits/ports:
@@ -113,7 +113,7 @@ cmake --build build/cmake --target docker-haiku
 Note:
 
 - `docker-win` is part of the current verified workflow.
-  It produces MinGW Windows binaries, and those binaries are run through Wine in this workflow.
+  It produces MinGW Windows binaries for native execution in the Windows 11 VM.
 - `docker-openmotif` is part of the current build-verified workflow.
   It produces OpenMotif-linked Linux binaries in a separate build tree.
 - `docker-openlook` produces the reproducible XView-linked binary in
@@ -174,15 +174,25 @@ the VM-native F5 workflow documented in [Build System](BUILD-SYSTEM.md).
 
 The Windows cross-build produces
 `build/windows-mingw-w64/src/vision.exe`. MinGW runtime DLLs must be beside
-the executable when it is launched through Wine.
+the executable in Windows. The **Debug Vision (Windows 11 VM)** F5 profile
+deploys the program, matching DLLs and native debug server to the autologon
+desktop. It does not use Wine. See the
+[Windows VM note](../../notes/WINDOWS-VM-RUNTIME.md) for one-time SSH setup.
 
 The Haiku cross-build produces `build/haiku/src/vision`. Copy that binary to
 the Haiku machine before running it.
 
+The X11 F5 profile, **Debug Vision (Linux X11, Xephyr/TWM mono)**, builds
+through Docker and starts GDB inside a dedicated monochrome Xephyr/TWM
+session. It chooses a free nested display and removes its session when
+debugging ends; other backend profiles keep their existing environments.
+See [Build System](BUILD-SYSTEM.md#monochrome-x11-runtime-session) for host tools
+and the equivalent standalone launcher.
+
 Status:
 
 - Linux X11/SDL2, OPEN LOOK in Tribblix, Window Maker in Bookworm,
-  Windows/Wine, and Haiku SSH runs are currently exercised.
+  Windows, and Haiku SSH runs are currently exercised.
 - Linux OpenMotif lifecycle checks run in the Motif Docker image under
   Xvfb.
 - Apple builds, startup smoke tests, and lifecycle assertions run on the

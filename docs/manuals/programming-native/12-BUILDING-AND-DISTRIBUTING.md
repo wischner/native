@@ -191,6 +191,13 @@ GCC-linked artifact resolves `libX11`, `libXext`, `libXaw.so.7`, `libXt`,
 `libpixman-1`, `libXrandr`, `libSM`, and `libICE`, in addition to the common
 Linux libraries.
 
+The repository's X11 F5 profile runs the Docker-built program under GDB in
+a monochrome TWM desktop inside Xephyr. The launcher picks a free nested
+display, loads display-local resources and cleans up that session when GDB
+ends. This is a development setup, not a requirement for distributed X11
+applications. See [Build System](../book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session)
+for the host tools and standalone launch command.
+
 ### Distribute
 
 The target system must provide:
@@ -538,8 +545,12 @@ x86_64-w64-mingw32-g++ -print-file-name=libwinpthread-1.dll
 ```
 
 Recheck every release with `objdump -p`; changing toolchain flags can add,
-remove, or statically link compiler runtimes. Wine is useful for development
-tests but is not a dependency of a Windows deployment.
+remove, or statically link compiler runtimes. The maintained F5 workflow
+deploys the Docker-built executable and these runtime DLLs to the native
+Windows 11 VM, with an interactive desktop debug server and SSH tunnel.
+Neither execution nor debugging uses Wine. See
+[Windows VM Runtime](../../notes/WINDOWS-VM-RUNTIME.md) for the one-time guest
+setup and debugger lifecycle.
 
 ## Haiku
 

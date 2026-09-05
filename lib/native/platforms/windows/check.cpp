@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include <stdexcept>
+#include <typeinfo>
 #include <windows.h>
 #include <native.h>
 #include <native/check.h>
@@ -38,7 +39,8 @@ namespace native
                                  L"BUTTON",
                                  s.c_str(),
                                  WS_CHILD | WS_VISIBLE | WS_TABSTOP |
-                                     BS_OWNERDRAW,
+                                     (typeid(*this) == typeid(check)
+                                          ? BS_CHECKBOX : BS_OWNERDRAW),
                                  _bounds.p.x,
                                  _bounds.p.y,
                                  _bounds.d.w,

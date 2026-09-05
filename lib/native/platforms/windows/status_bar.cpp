@@ -84,13 +84,44 @@ namespace
                              TRUE);
             }
 
-            MoveWindow(_window,
-                       bounds.x1(),
-                       bounds.y1(),
-                       bounds.w(),
-                       bounds.h(),
-                       TRUE);
-            synchronize_parts(parts, bounds.w());
+            RECT actual{};
+            GetWindowRect(_window, &actual);
+            MapWindowPoints(nullptr, parent,
+                reinterpret_cast<POINT *>(&actual), 2);
+            if (actual.left != bounds.x1() ||
+                actual.top != bounds.y1() ||
+                actual.right != bounds.x2() ||
+                actual.bottom != bounds.y2()) {
+                SetWindowPos(_window, nullptr,
+                    bounds.x1(), bounds.y1(), bounds.w(), bounds.h(),
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            // Edge chrome is above document children even with absolute
+            // layouts that extend outside the reserved client rectangle.
+            // Sibling clipping also prevents their own native repaint from
+            // painting through this higher-z-order status bar.
+            for (HWND child = GetWindow(parent, GW_CHILD); child;
+                 child = GetWindow(child, GW_HWNDNEXT)) {
+                const LONG_PTR style = GetWindowLongPtrW(child, GWL_STYLE);
+                if ((style & WS_CLIPSIBLINGS) == 0)
+                    SetWindowLongPtrW(child, GWL_STYLE,
+                                      style | WS_CLIPSIBLINGS);
+            }
+            if (GetWindow(parent, GW_CHILD) != _window)
+                SetWindowPos(_window, HWND_TOP, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            const bool changed = _width != bounds.w() ||
+                _parts.size() != parts.size() ||
+                !std::equal(_parts.begin(), _parts.end(), parts.begin(),
+                    [](const auto &left, const auto &right) {
+                        return left.text == right.text &&
+                               left.width == right.width;
+                    });
+            if (changed) {
+                synchronize_parts(parts, bounds.w());
+                _parts = parts;
+                _width = bounds.w();
+            }
             ShowWindow(_window,
                        bar.get_visible() ? SW_SHOWNA : SW_HIDE);
             return true;
@@ -98,11 +129,15 @@ namespace
 
     private:
         HWND _window = nullptr;
+        std::vector<native::status_bar_part> _parts;
+        int _width = -1;
 
         void destroy() {
             if (_window && IsWindow(_window))
                 DestroyWindow(_window);
             _window = nullptr;
+            _parts.clear();
+            _width = -1;
         }
 
         void synchronize_parts(

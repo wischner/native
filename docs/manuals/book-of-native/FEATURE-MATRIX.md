@@ -44,7 +44,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Linux Window Maker/WINGs | `docker-wmaker` + Bookworm VM native build | Yes (tested) |
 | Linux GEMix | `docker-gemix` + local rasta | Yes (tested) |
 | Linux GEMix via gemd | `docker-gemix-gemd` + local rasta | Yes (tested) |
-| MS Windows (MinGW) | `docker-win` + Wine | Yes (tested) |
+| MS Windows (MinGW) | `docker-win` + native Windows 11 VM | Yes (tested) |
 | Haiku | `docker-haiku` + SSH deploy/run | Yes (tested) |
 | Apple | remote build and runtime checks | Yes (tested) |
 | Other toolkit ports | varies | WIP |
@@ -60,7 +60,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Typed special-directory detection | XDG/C++ (build tested) | XDG/C++ (tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | Known Folders (tested) | `find_directory` (build tested) | Foundation (tested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Central non-const lifecycle and visible-state contract | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
-| Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Owner-blocking, focus-taking `modal_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Nested modal stack and `dialog_result` | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Standard `open_file_dialog` | Desktop/Xaw (tested) | Themed C++ browser (tested) | Motif (build tested) | XView (tested) | WINGs (tested) | AES (tested) | Common Item Dialog (tested) | BFilePanel (build tested) | NSOpenPanel (untested) | WIP |
@@ -82,7 +82,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Paintable `canvas` surface | Athena drawable host (build tested) | Emulated nested region (tested) | Motif `XmDrawingArea` (build tested) | XView Panel with paint window (build tested) | WINGs flat frame (build tested) | GEM offset region (build tested) | Child HWND (build tested) | Child `BView` (build tested) | Child `NSView` (build tested) | WIP |
 | Canvas 32-bit content bounds, clamping, and themed scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
-| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (tested) | Win32 tab control and separator (build tested) | `BTabView` on all four sides with native rotated labels (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
+| Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (tested) | Win32 classic tab control (four-edge pages tested; strip-only build tested) | `BTabView` on all four sides with native rotated labels (tested) | `NSTabView` + `NSTabViewItem` (build tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
 | Classic hierarchical `tree_view` | Athena themed tree (build tested) | Emulated themed tree (tested) | XmContainer outline for both presentations (tested) | XView/OLGX tree (build tested) | WINGs themed tree (build tested) | GEM themed tree (tested) | WC_TREEVIEW (build tested) | BOutlineListView (tested) | NSOutlineView (build tested) | WIP |
 | Virtual multi-column `table_view` | Athena themed table (tested) | Emulated themed table (tested) | XmContainer plus virtual fallback (tested) | XView/OLGX table (tested) | WINGs themed table (tested) | GEM themed table (tested) | Report ListView/owner data (tested) | BColumnListView plus virtual fallback (tested) | NSTableView (tested) | WIP |
@@ -223,8 +223,27 @@ passed in the preceding review after the shared tab-text contrast correction.
 - Portable file/memory fonts use the same vendored TrueType rasterizer on all
   backends. Installed-font enumeration remains machine-specific and returns
   file paths and collection face indices for explicit selection.
-- Windows runtime checks in this workflow use Wine and require MinGW runtime
-  DLLs for MinGW-built executables.
+- Windows runtime checks use the native Windows 11 VM, with MinGW runtime
+  DLLs beside the executable. The 2026-09-05 walkthrough checked native
+  button/check/radio and theme samples, multiline typing, collection icons
+  and trees, native table headers and selection, splitter dragging and pane
+  selection, layout maximize/restore, combo selection, tab switching,
+  folder selection and a native message box. Five test executables pass:
+  core, window API, table model, code document, and Windows native peers.
+  The peer regression runs in the interactive desktop session and covers
+  native styles, retained derived drawing, list row metrics, keyboard and
+  clipboard, splitter capture, paint clipping/GDI lifetime and modal siblings.
+  Additional regressions verify grouped and owner-data table grid pixels,
+  horizontal/vertical grid toggling and virtual-row scrolling,
+  all four native classic tab orientations, page insets and compact vertical
+  label padding, status-strip
+  sibling clipping and hit-testing through repeated resizes, and independent
+  modeless stacking without losing modal exclusion.
+  The Windows F5 profile uses
+  an interactive native GDBserver task and an SSH tunnel; see
+  [Windows VM Runtime](../../notes/WINDOWS-VM-RUNTIME.md) for setup and checks.
+  Source breakpoints work; interruption of the running GUI remains an open
+  debugger issue, so the Windows workflow is not fully debugger-validated.
 - OpenMotif uses widget resource colors when they are available through Motif/Xt.
   Its theme also uses Motif `Xme` shadow primitives for native-window targets.
   If resource lookup or native drawing is unavailable, the backend supplies a
@@ -234,7 +253,11 @@ passed in the preceding review after the shared tab-text contrast correction.
   pixmaps, and actual WINGs scrollers for collection/table hosts. Its reference
   session aligns WINGs panel gray with the desktop inactive-title gray and
   reserves white content for text/document editing.
-- Windows themes use native GDI control primitives and system colors. Haiku
+- Windows stock controls use native Win32 painting and Common Controls v6
+  visual styles; derived controls retain the custom-draw extension path.
+  Tabs alone use the native classic renderer consistently across all four
+  edges because visual styles do not support bottom or vertical tabs.
+  Theme samples use matching UxTheme parts and native list metrics. Haiku
   themes use `BControlLook`, and macOS themes use AppKit cells and colors.
 - X11/Athena, SDL2, and GEMix keep their native-look emulation in their own
   toolkit backends because they do not expose a suitable painter for every

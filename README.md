@@ -147,13 +147,18 @@ lives in `src/`.
 
 Current exercised runtime paths are:
 
-- Linux X11
+- Linux X11 in monochrome TWM inside Xephyr. Select **Debug Vision (Linux X11,
+  Xephyr/TWM mono)** for F5, or run `bash scripts/linux/x11/run-twm.sh` after
+  the Docker build. Host tools and session details are in
+  [Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session).
 - Linux SDL2
 - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
 - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
 - Linux GEMix through Docker with the local rasta viewer, using either
   direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration
-- Windows MinGW binaries run through Wine
+- Windows MinGW binaries run natively in the Windows 11 VM; select
+  **Debug Vision (Windows 11 VM)** for F5. See the
+  [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
 
 Current additional build-verified path is:

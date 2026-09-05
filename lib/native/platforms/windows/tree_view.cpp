@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <functional>
 #include <stdexcept>
+#include <typeinfo>
 
 #include <windows.h>
 #include <commctrl.h>
+#include <uxtheme.h>
 
 #include <native.h>
 
@@ -222,6 +224,8 @@ namespace windows
             return 0;
         }
         if (notification->code == NM_CUSTOMDRAW) {
+            if (typeid(*tree) == typeid(native::tree_view))
+                return CDRF_DODEFAULT;
             auto *drawing = reinterpret_cast<NMTVCUSTOMDRAW *>(
                 notification);
             windows::scoped_gpx_dc custom_draw_context(
@@ -462,6 +466,9 @@ namespace native
             throw std::runtime_error(
                 "Windows: failed to create Tree-View tree_view.");
         windows::wnd_bindings.register_pair(hwnd, self);
+        SetWindowTheme(hwnd, L"Explorer", nullptr);
+        SendMessageW(hwnd, TVM_SETEXTENDEDSTYLE,
+                     TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
         auto *binding = new windows::win_tree_view();
         binding->hwnd = hwnd;
         windows::tree_view_bindings.register_pair(self, binding);

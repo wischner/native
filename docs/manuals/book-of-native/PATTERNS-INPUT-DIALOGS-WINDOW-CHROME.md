@@ -279,7 +279,10 @@ and item views.
 
 Windows hosts `STATUSCLASSNAME` for the exact base `status_bar`, maps portable
 parts through `SB_SETPARTS` and `SB_SETTEXT`, and lets the common control own
-the size grip and painting. Derived status bars stay on the painted path so
+the size grip and painting. The peer stays above its sibling controls and
+enables sibling clipping, protecting both painting and hit-testing in the
+reserved strip when the host becomes smaller than its controls.
+Derived status bars stay on the painted path so
 their protected-stage overrides continue to work.
 
 The Haiku backend uses its native compact status-view recipe: a system

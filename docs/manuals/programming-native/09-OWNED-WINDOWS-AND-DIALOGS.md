@@ -17,6 +17,10 @@ Both classes derive from `owned_wnd`, which derives from `app_wnd`. Their
 owned top-level window is not a child control and does not enter the owner's
 layout.
 
+On Windows, modeless windows stack independently: activating the main window
+can bring it in front of a modeless window. This does not change `get_owner()`,
+owned-window cleanup, or exclusion while an owner-modal dialog is open.
+
 ## A modeless owned window
 
 Derive a reusable window in the same way as an application window:

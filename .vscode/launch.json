@@ -2,18 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Vision (Linux X11, local)",
+            "name": "Debug Vision (Linux X11, Xephyr/TWM mono)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-x11/src/vision",
             "cwd": "${workspaceFolder}",
+            "environment": [
+                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
+            ],
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-linux-x11:latest"],
+                "pipeProgram": "/bin/bash",
+                "pipeArgs": ["${workspaceFolder}/scripts/linux/x11/run-twm.sh"],
                 "debuggerPath": "/usr/bin/gdb"
             },
             "preLaunchTask": "CMake Build Debug (Docker X11)"
@@ -154,18 +157,26 @@
             "preLaunchTask": "Build Vision Debug (OpenMotif Tribblix CDE)"
         },
         {
-            "name": "Debug Vision (Windows, local Wine)",
+            "name": "Debug Vision (Windows 11 VM)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
             "cwd": "${workspaceFolder}/build/windows-mingw-w64/src",
             "stopAtEntry": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "${workspaceFolder}/scripts/windows/gdb.sh",
-            "miDebuggerServerAddress": "localhost:31337",
+            "miDebuggerPath": "${workspaceFolder}/scripts/windows/vm/debug-pipe.sh",
+            "miDebuggerServerAddress": "127.0.0.1:31337",
+            "setupCommands": [
+                {"text": "-gdb-set mi-async on", "ignoreFailures": false}
+            ],
+            "targetArchitecture": "x64",
+            "sourceFileMap": {
+                "/": {"editorPath": "/", "useForBreakpoints": true}
+            },
             "launchCompleteCommand": "exec-continue",
             "externalConsole": false,
-            "preLaunchTask": "Start Vision Debug Server (Wine)"
+            "preLaunchTask": "Deploy Vision Debug (Windows VM)",
+            "postDebugTask": "Stop Vision Debug (Windows VM)"
         },
         {
             "name": "Debug Vision (Haiku VM)",

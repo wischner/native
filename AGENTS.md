@@ -164,6 +164,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
   headers.
 - The Docker X11 image must provide Xt and Athena, and must compile the X11
   backend without OpenMotif installed.
+- The X11 F5 profile runs Docker GDB through `scripts/linux/x11/run-twm.sh`
+  in a dedicated monochrome Xephyr/TWM display, never directly on the host
+  desktop. Keep GDB/MI stdout clean and other backend profiles independent.
 
 ### SDL2 backend
 
@@ -187,6 +190,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ## Windows backend rules
 
 - Files under `lib/native/platforms/windows/` are for Win32 integration only.
+- Windows F5 runs `vision.exe` natively in the Windows VM through the
+  `scripts/windows/vm/` deployment and interactive-desktop debug scripts,
+  not Wine. The Docker MinGW build remains the build source.
 - Keep Win32 handle types and message-loop details out of `include/native.h`.
 - Mouse press/release/move/wheel events must map to the same `native` semantics used by Linux backends.
 - `painter` behavior must match Linux stable backends:
@@ -327,6 +333,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
 | [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, the `MAC_REMOTE_*` environment variables, and the driving scripts. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |
+| [WINDOWS-VM-RUNTIME.md](docs/notes/WINDOWS-VM-RUNTIME.md) | Native Windows 11 VM deployment, key-only SSH, interactive desktop GDBserver and the F5 tunnel lifecycle. |
 | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md) | Inventory of TODO markers in `include/`, `lib/native/`, and `src/`. Must be updated in the same commit that adds or removes a production TODO. |
 | [LAB-SOURCE-TODOS.md](docs/notes/LAB-SOURCE-TODOS.md) | Inventory of TODOs in the legacy `lab/` tree. That tree is not currently present in the repository; treat this note as historical until it returns or is removed. |
 

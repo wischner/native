@@ -12,6 +12,7 @@
 
 #include <windows.h>
 #include <commctrl.h>
+#include <uxtheme.h>
 
 #include <native.h>
 
@@ -200,6 +201,8 @@ namespace native
             throw std::runtime_error(
                 "Windows: failed to create List-View icon_view.");
         windows::wnd_bindings.register_pair(hwnd, self);
+        SetWindowTheme(hwnd, L"Explorer", nullptr);
+        ListView_SetExtendedListViewStyle(hwnd, LVS_EX_DOUBLEBUFFER);
         auto *binding = new windows::win_icon_view();
         binding->hwnd = hwnd;
         windows::icon_view_bindings.register_pair(self, binding);

@@ -23,19 +23,22 @@ static void apply_gdi_state(HDC hdc,
     // Set pen if color or thickness changed
     if (cache->current_fg != self->get_ink() ||
         cache->current_thickness != self->get_pen()) {
+        SelectObject(hdc, GetStockObject(BLACK_PEN));
         if (cache->pen)
             DeleteObject(cache->pen);
 
         native::rgba c = self->get_ink();
         COLORREF color = RGB(c.r, c.g, c.b);
         cache->pen = CreatePen(PS_SOLID, self->get_pen(), color);
-        SelectObject(hdc, cache->pen);
 
         cache->current_fg = self->get_ink();
         cache->current_thickness = self->get_pen();
     }
+    if (cache->pen)
+        SelectObject(hdc, cache->pen);
 
     // Set brush
+    SelectObject(hdc, GetStockObject(NULL_BRUSH));
     if (cache->brush)
         DeleteObject(cache->brush);
 

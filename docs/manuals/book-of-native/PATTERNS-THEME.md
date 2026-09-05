@@ -9,6 +9,14 @@ examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitiv
 
 ## Semantic drawing
 
+Windows stock buttons, checks, radios, trees, icon views and table headers
+retain native control painting, metrics and interaction. A Common Controls v6
+manifest enables visual styles. Theme samples use matching UxTheme button
+parts (with classic GDI fallback) and native list font metrics. Derived control
+types retain owner/custom-draw stages for application overrides. Virtual table
+group rows retain an adapter because Windows does not support group view
+with `LVS_OWNERDATA`.
+
 X11/Athena uses its native flat two-color control resources. Its table
 alternate-row color equals the white content surface instead of synthesizing
 gray stripes. Collection image drawing thresholds scaled pixels to black or

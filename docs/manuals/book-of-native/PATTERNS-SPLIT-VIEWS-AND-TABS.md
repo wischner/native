@@ -74,6 +74,16 @@ portable geometry and renderer. WINGs exposes only top tabs, so Window Maker
 keeps `WMTabView` for framed top placement and uses a WINGs-matched Native
 renderer for bottom, left, right, and strip-only placement.
 
+Windows uses the native classic `WC_TABCONTROL` renderer on all four edges.
+Visual styles are disabled only for the tab HWND because the themed renderer
+does not support bottom or vertical placement. This keeps tab borders and
+page joins consistent without owner-drawing tabs. Top-page metrics use
+`TCM_ADJUSTRECT`; the other edges use native tab item rectangles, since that
+message supports top placement only.
+Vertical tabs use content-sized native item widths with the default minimum
+removed, so short labels retain symmetric padding rather than sitting at
+one end of an enlarged tab. Horizontal placement restores the native minimum.
+
 Haiku uses `BTabView` on all four edges. Its own rotated-label renderer draws
 side-tab text directly, and label-sized widths keep short vertical strips
 usable. Split pane hosts and painted lists request full repaint on resize so

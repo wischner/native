@@ -45,7 +45,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | OPEN LOOK/XView `status_bar` | Keep **C**. Frame footers live outside and resize the content panel, while `non_client` reserves an in-host edge; combining both would reserve the strip twice. OLIT `FooterPanel` is not linked by this XView backend. |
 | Motif `status_bar` | Keep **C**. `XmNmessageWindow` likewise participates in `XmMainWindow` geometry and only directly represents one message, not the portable in-host multi-part strip. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
-| Windows, macOS, and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| macOS and Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
+| Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls retain native painting, as with `status_bar`. |
 | Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` uses portable scrolling with `BControlLook` scrollbar parts and the system thumb preference. |
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
 | X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
@@ -254,24 +255,24 @@ Both direct and proxy pixel tests check every edge and the client inset.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Win32 top-level `HWND`; portable ownership/result state wraps owner enablement and modal dispatch. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Win32 top-level `HWND`; modeless HWNDs stack independently without native ownership, while the portable owner graph retains lifetime and modal exclusion. Modal HWNDs retain native ownership. |
 | `wnd` | **H** | Child `HWND` registered by the library for portable paint/input routing. |
 | `main_menu` | **N** | `HMENU`, menu separators, mnemonic labels, and `HACCEL` accelerators. |
-| `button`, `check`, `radio` | **H** | Win32 `BUTTON` windows with `BS_OWNERDRAW`; Win32 owns focus/messages while the theme paints them. |
+| `button`, `check`, `radio` | **N** | Win32 `BUTTON` with `BS_PUSHBUTTON`, `BS_CHECKBOX`, and `BS_RADIOBUTTON`; native painting, metrics, focus, and input. Derived controls retain `BS_OWNERDRAW` for protected overrides. |
 | `list` | **N** | Win32 `LISTBOX`. |
 | `combo_box` | **N** | Win32 `COMBOBOX`. |
 | `text_edit` | **N/H** | Win32 `EDIT`; portable validation and clipboard policy subclass it. |
 | `accordion` | **C** | Library child-window class and theme painting. |
-| `tab_view` | **N/H** | Common-controls `WC_TABCONTROL`; portable borrowed-page routing and a post-paint separator for strip-only pages. |
-| `icon_view` | **N/H** | Common-controls `WC_LISTVIEW` in icon mode with portable images/model mapping. |
-| `tree_view` | **N/H** | Common-controls `WC_TREEVIEW` with custom draw for portable theme/details. |
-| `table_view` | **N/H** | Report `WC_LISTVIEW`, owner-data virtualization, groups, and custom draw. |
+| `tab_view` | **N/H** | Common-controls `WC_TABCONTROL` with native classic painting on all four edges, since visual styles do not support bottom/vertical placement. Vertical items use content-sized widths for centered short labels; portable borrowed-page routing and a post-paint separator for strip-only pages. |
+| `icon_view` | **N** | Common-controls v6 `WC_LISTVIEW` with native image-list, label, focus and selection painting. Derived controls retain custom stages. |
+| `tree_view` | **N** | Double-buffered, Explorer-themed `WC_TREEVIEW` with native glyphs, rows and selection. Derived controls retain custom stages. |
+| `table_view` | **N/H** | Report `WC_LISTVIEW` with native headers, cells, selection, images and scrolling. Optional alternating rows supply only a background color. One item post-paint grid-edge pass gives materialized and virtual rows identical line contrast and supports single-axis grids; native grids are omitted in groups and otherwise too faint. Virtual group rows remain custom because `LVS_OWNERDATA` does not support native group view; materialized groups are native. Derived tables retain custom stages. |
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
 | `panel` | **N** | Child window of a Native class whose background brush is `COLOR_BTNFACE`; Win32 fills it and it is a real parent HWND. |
 | `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
 | `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
-| `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. |
+| `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. Top sibling Z order and sibling clipping protect the strip from oversized controls after resize. |
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
 | `message_box` | **N** | Win32 `MessageBoxW`. |
 

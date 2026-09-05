@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <typeinfo>
 
 #include <windows.h>
 
@@ -49,7 +50,8 @@ namespace native
                             L"BUTTON",
                             text_w.c_str(),
                             WS_CHILD | WS_VISIBLE | WS_TABSTOP |
-                                BS_OWNERDRAW,
+                                (typeid(*this) == typeid(button)
+                                     ? BS_PUSHBUTTON : BS_OWNERDRAW),
                             _bounds.p.x,
                             _bounds.p.y,
                             _bounds.d.w,

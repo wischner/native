@@ -11,7 +11,7 @@ This note lists backend-level open issues that are real today.
   - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix in Docker with local rasta
-  - MS Windows binaries built with MinGW and run through Wine
+  - MS Windows binaries built with MinGW and run natively in the Windows 11 VM
   - Haiku binaries built through Docker, copied to a Haiku machine, and run
     there
   - Apple
@@ -20,6 +20,19 @@ This note lists backend-level open issues that are real today.
 
 ## Current open issues
 
+- The Windows runtime workflow now targets the `Windows` libvirt guest,
+  not Wine. The 2026-09-05 console check verified the native feature gallery
+  and button activation. See [Windows VM Runtime](WINDOWS-VM-RUNTIME.md) for
+  the SSH and interactive desktop debugging setup.
+  Five native Windows tests pass (including interactive native-peer
+  regressions), and VS Code source breakpoints work. Stock Win32 controls
+  now keep native painting and visual styles; the gallery walkthrough covers
+  collections, tables, input/dialogs, splitter dragging and layout resizing.
+  Pause/Stop while the GUI runs remains unverified as working: remote
+  interrupts do not stop it with GDBserver 10.2 or 17.2. Closing Vision's
+  window ends the session normally. The maintained deployment keeps 10.2
+  from the Docker image.
+
 - The X11 follow-up (2026-09-05) reproduces the Input/Window Chrome exception
   from graphics lookup before realization. Created-but-unshown graphics now
   work, also synchronizing initial table/collection metrics with painting.
@@ -27,8 +40,10 @@ This note lists backend-level open issues that are real today.
   competing layout. Full-row lists, complete borders, scrollbar separators,
   filled table viewports and live background-colored splitters have regression
   coverage. Six X11 CTests pass under Xvfb; visual checks now run in monochrome
-  TWM inside Xephyr. The installed Xaw library and F5 profiles are
-  unchanged. Seven SDL2 CTests pass after the shared tab-label contrast fix.
+  TWM inside Xephyr. The installed Xaw library is unchanged. The X11 F5
+  profile now starts that nested monochrome session automatically; other
+  backend profiles are unchanged. Seven SDL2 CTests pass after the shared
+  tab-label contrast fix.
   The second X11 pass adds full-width, bordered combo menus with single-click
   selection and text synchronization, private splitter pane hosts preserving
   borders, an explicit divider grab including its leading pixel, monochrome

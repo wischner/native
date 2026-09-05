@@ -46,6 +46,12 @@ rather than becoming a million-widget allocation.
 
 - Windows uses `WC_LISTVIEW` report mode. Virtual mode adds `LVS_OWNERDATA`;
   explicit materialized mode uses native ListView groups.
+  Native painting still owns headers, cells and selection. All data modes
+  add only the requested grid edges in item post-paint, using native
+  row/header rectangles and system shadow color. This keeps materialized and
+  virtual grids equally visible: ListView omits native grids in group view,
+  uses faint themed lines otherwise, and cannot select just one grid axis.
+  `LVS_EX_GRIDLINES` stays disabled to avoid a second, inconsistent grid pass.
 - macOS uses `NSTableView`, reusable cell views, native columns, stripes, grid
   styles, selection, and sort descriptors.
 - OpenMotif uses `XmContainer` in `XmDETAIL` layout for explicit materialized

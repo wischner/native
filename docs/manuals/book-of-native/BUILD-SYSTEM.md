@@ -135,7 +135,7 @@ host-side and Docker-side invocation.
   - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix through Docker and local rasta
-  - Windows MinGW binaries run through Wine
+  - Windows MinGW binaries run natively in the Windows 11 VM
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
   - Apple binaries built and run on the configured remote macOS host
 - Other backends/toolkits:
@@ -154,6 +154,7 @@ executables:
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
+| `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
 | `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
@@ -180,16 +181,21 @@ After `docker-x11`, launch the gallery under TWM inside a dedicated Xephyr:
 bash scripts/linux/x11/run-twm.sh
 ```
 
-The host needs `Xephyr`, `twm`, `xrdb`, `xdpyinfo`, `xsetroot`, and Docker.
-The script starts a normal 1280x900 Xephyr display (default `:10`), loads only
+The host needs `Xephyr`, `twm`, `xrdb`, `xdpyinfo`, `xwininfo`, `xsetroot`, and Docker.
+The script starts a normal 1280x900 Xephyr on the first free display from
+`:10` through `:99`, loads only
 that display's black/white resources and the repository's TWM configuration,
 then runs Docker-built Vision. `NATIVE_X11_DISPLAY=:11` selects another free
-display; an occupied display is refused. No host X resources, personal TWM
-files, Vision source, or F5 profiles are changed. TWM uses automatic placement
+display; an explicitly requested occupied display is refused. No host X
+resources or personal TWM files are changed. TWM uses automatic placement
 and a monochrome stippled root; Xephyr retains normal color depth so application
 images remain usable. The local server accepts local clients without X
 authentication (`-ac`) and disables TCP listening; use only on a trusted host.
-Closing Vision ends this session and cleans up its TWM and Xephyr processes.
+Without arguments it runs Vision. With arguments it runs the supplied
+debugger through Docker, keeping stdout exclusively for GDB/MI and session
+diagnostics on stderr. The X11 F5 configuration uses this same wrapper and
+waits for TWM before starting GDB. Closing Vision in standalone mode, or
+ending GDB in debug mode, cleans up only that session's TWM and Xephyr processes.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.
@@ -259,21 +265,27 @@ the VS Code Run and Debug view and press F5.
 
 | Configuration | Execution target | Debugger |
 | --- | --- | --- |
-| Linux X11 | Local Docker container and local display | GDB through Docker |
+| Linux X11 | Local Docker container, dedicated monochrome Xephyr/TWM display | GDB through Docker |
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
 | Linux OPEN LOOK | `Tribblix-OpenLook` KVM guest | GDB over SSH |
 | Linux Window Maker | `Bookworm-WindowMaker` KVM guest | GDB over SSH |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
 | OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
-| Windows | Local Wine installation | GDB connected to WineDbg's proxy |
+| Windows | Windows 11 VM, interactive autologon desktop | Docker MinGW GDB through SSH to native Win64 GDBserver |
 | Haiku | `Haiku` KVM guest | GDB over SSH |
 | macOS | Remote host `leia` | LLDB over SSH |
 
 The X11 and SDL2 debugger pipes keep the program inside their build images.
 This is important because a Debug binary can depend on the sanitizer runtime
 supplied by that image rather than the version installed on the host. The X11
-and SDL2 pipes forward `DISPLAY`, the X11 socket, and the active Xauthority
-file. The GEMix pipe starts Rasta locally and shares its framebuffer with the
+pipe first creates the nested monochrome session and forwards that `DISPLAY`;
+SDL2 keeps the host display. Both forward the X11 socket and active Xauthority
+file. Select **Debug Vision (Linux X11, Xephyr/TWM mono)** for this X11 F5
+workflow; its Docker build task and executable path are unchanged.
+The X11 profile disables LeakSanitizer's exit-time leak scan under GDB
+(`ASAN_OPTIONS=detect_leaks=0`), since it cannot run under ptrace; address
+and undefined-behavior checks remain enabled.
+The GEMix pipe starts Rasta locally and shares its framebuffer with the
 container. OPEN LOOK and Window Maker synchronize and build the source in
 their desktop guests, then run GDB against display `:0`.
 
@@ -282,14 +294,38 @@ their desktop guests, then run GDB against display `:0`.
 The development host needs:
 
 - VS Code with the Microsoft C/C++ extension for `cppdbg` configurations.
-- CMake, Docker, GDB, Wine/WineDbg, SSH, SCP, rsync, and libvirt's `virsh`.
-- TCP port 31337 available on loopback for the WineDbg GDB proxy.
+- CMake, Docker, GDB, SSH, SCP, rsync, and libvirt's `virsh`.
+- TCP port 31337 available on loopback for the Windows VM SSH debug tunnel.
 - Permission to use Docker and to start the required libvirt domains.
 - The Rasta executable at `/home/tstih/data/tstih/rasta/bin/rasta`, or a
   different executable selected through `RASTA_BIN`.
 - The Docker images named by the top-level CMake project. In particular, the
   GEMix image must contain its runtime resources; Native does not mount a
   repository-owned resource directory.
+
+### Windows VM preparation
+
+The Windows library propagates a Common Controls v6 manifest resource into
+consuming executables. This enables operating-system visual styles, not a
+library-painted skin. The backend uses Windows 7-or-newer API declarations.
+
+**Debug Vision (Windows 11 VM)** retains the `docker-win` Debug build and
+deploys its executable, MinGW DLLs and native Win64 GDBserver through SSH.
+The `Windows` guest is identified by UUID so a name change does not break F5.
+`Native-Vision-Debug` is an interactive-user scheduled task: Vision runs on
+the visible Windows desktop, not SSH's session 0 and not Wine. The debugger
+wrapper owns a loopback SSH tunnel and cleans up only its deployed debug
+processes when GDB exits; a post-debug task also handles forced adapter
+termination. It leaves Windows running. Source breakpoints work, but
+interrupting a running GUI remains an open debugger issue; close Vision's
+window to end a running session cleanly.
+
+The one-time key-only SSH setup, host-key verification, guest firewall rule,
+connection overrides and exact deployed paths are documented in
+[Windows VM Runtime](../../notes/WINDOWS-VM-RUNTIME.md). `prepare.sh` copies
+the exact runtime DLLs reported by the Docker cross-compiler; no host Wine
+installation is involved. The original Wine helper scripts remain historical
+tools and are not referenced by any F5 configuration or task.
 
 ### Tribblix OPEN LOOK preparation
 
@@ -417,5 +453,5 @@ those defaults.
 - Backend build trees are separate on purpose.
 - The root project builds the library and Vision, not generated API docs.
 - Runtime verification currently covers Linux X11/SDL2/OpenMotif, OPEN LOOK in
-  Tribblix, Window Maker in Bookworm, Windows/Wine, Haiku deploy-and-run over
+  Tribblix, Window Maker in Bookworm, the native Windows VM, Haiku deploy-and-run over
   SSH, and Apple on the configured remote host.

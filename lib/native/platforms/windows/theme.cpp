@@ -79,6 +79,8 @@ namespace
                 select_control_font(hdc);
                 TEXTMETRICW metric{};
                 if (GetTextMetricsW(hdc, &metric)) {
+                    m.list_item_height = std::max(
+                        1, static_cast<int>(metric.tmHeight));
                     m.header_height = std::max(
                         20, static_cast<int>(metric.tmHeight) + 8);
                     m.popup_width = std::max(
@@ -147,6 +149,10 @@ namespace
 
             apply_clip(hdc, _g);
             RECT bounds = windows::to_rect(r);
+            HTHEME visual = OpenThemeData(hwnd, L"Button");
+            const int visual_state = s.disabled ? PBS_DISABLED
+                : s.pressed ? PBS_PRESSED : s.hot ? PBS_HOT
+                : s.focused ? PBS_DEFAULTED : PBS_NORMAL;
             UINT flags = DFCS_BUTTONPUSH;
             if (s.pressed)
                 flags |= DFCS_PUSHED;
@@ -154,7 +160,13 @@ namespace
                 flags |= DFCS_HOT;
             if (s.disabled)
                 flags |= DFCS_INACTIVE;
-            DrawFrameControl(hdc, &bounds, DFC_BUTTON, flags);
+            if (visual) {
+                DrawThemeBackground(visual, hdc, BP_PUSHBUTTON,
+                                    visual_state, &bounds, nullptr);
+                CloseThemeData(visual);
+            } else {
+                DrawFrameControl(hdc, &bounds, DFC_BUTTON, flags);
+            }
 
             if (s.pressed)
                 OffsetRect(&bounds, 1, 1);
@@ -250,8 +262,9 @@ namespace
                     RECT bounds = windows::to_rect(r);
                     FillRect(
                         hdc, &bounds, GetSysColorBrush(COLOR_WINDOW));
-                    DrawEdge(
-                        hdc, &bounds, EDGE_SUNKEN, BF_RECT | BF_ADJUST);
+                    FrameRect(hdc, &bounds,
+                              GetSysColorBrush(COLOR_WINDOWFRAME));
+                    InflateRect(&bounds, -1, -1);
                     content = native::rect(
                         bounds.left,
                         bounds.top,
@@ -456,13 +469,20 @@ namespace
         }
 
         native::rect indicator_bounds(const native::rect &r) const {
-            const int system_side =
-                std::max(GetSystemMetrics(SM_CXMENUCHECK),
-                         GetSystemMetrics(SM_CYMENUCHECK));
+            int system_side = 13;
+            if (HTHEME visual = OpenThemeData(
+                    windows::hwnd_from_gpx(_g), L"Button")) {
+                SIZE size{};
+                if (SUCCEEDED(GetThemePartSize(visual, nullptr,
+                        BP_CHECKBOX, CBS_UNCHECKEDNORMAL, nullptr,
+                        TS_TRUE, &size)))
+                    system_side = size.cx;
+                CloseThemeData(visual);
+            }
             const int side = std::max(
                 7, std::min(system_side, static_cast<int>(r.d.h) - 2));
             return native::rect(
-                r.p.x + 2,
+                r.p.x,
                 r.p.y +
                     std::max(0, (static_cast<int>(r.d.h) - side) / 2),
                 side,
@@ -494,7 +514,16 @@ namespace
                 flags |= DFCS_HOT;
             if (s.disabled)
                 flags |= DFCS_INACTIVE;
-            DrawFrameControl(hdc, &mark, DFC_BUTTON, flags);
+            if (HTHEME visual = OpenThemeData(hwnd, L"Button")) {
+                const int visual_state = (s.selected ? 4 : 0) +
+                    (s.disabled ? 4 : s.pressed ? 3 : s.hot ? 2 : 1);
+                DrawThemeBackground(visual, hdc,
+                    radio ? BP_RADIOBUTTON : BP_CHECKBOX,
+                    visual_state, &mark, nullptr);
+                CloseThemeData(visual);
+            } else {
+                DrawFrameControl(hdc, &mark, DFC_BUTTON, flags);
+            }
 
             RECT label = windows::to_rect(r);
             label.left = indicator.x2() + 5;
@@ -717,7 +746,7 @@ namespace
                      &bounds,
                      GetSysColorBrush(s.selected ? COLOR_HIGHLIGHT
                                                  : COLOR_WINDOW));
-            bounds.left += defaults().text_padding_x;
+            bounds.left += 2;
             select_control_font(hdc);
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(

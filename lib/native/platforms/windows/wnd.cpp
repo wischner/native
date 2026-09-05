@@ -6,6 +6,7 @@
 //
 
 #include <stdexcept>
+#include <typeinfo>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -172,6 +173,7 @@ namespace windows
             break;
 
         case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
         case WM_XBUTTONDOWN:
@@ -395,10 +397,32 @@ namespace windows
                            static_cast<native::dim>(ps.rcPaint.bottom -
                                                     ps.rcPaint.top));
 
-            auto &g = wnd->get_gpx().set_clip(r);
-            g.clear(native::rgba(255, 255, 255, 255));
-            native::wnd_paint_event e{r, g};
-            wnd->on_native_paint(e);
+            // Compose a paint transaction off screen. Present only the
+            // invalid region through BeginPaint's child-clipped DC.
+            RECT client{};
+            GetClientRect(hwnd, &client);
+            HDC buffer = CreateCompatibleDC(ps.hdc);
+            HBITMAP bitmap = buffer ? CreateCompatibleBitmap(
+                ps.hdc, std::max(1L, client.right),
+                std::max(1L, client.bottom)) : nullptr;
+            HGDIOBJ previous = bitmap
+                ? SelectObject(buffer, bitmap) : nullptr;
+            {
+                auto &g = wnd->get_gpx().set_clip(r);
+                windows::scoped_gpx_dc paint_context(
+                    g, bitmap ? buffer : ps.hdc);
+                g.clear(windows::rgba_from_sys_color(COLOR_WINDOW));
+                native::wnd_paint_event e{r, g};
+                wnd->on_native_paint(e);
+            }
+            if (bitmap) {
+                BitBlt(ps.hdc, r.p.x, r.p.y, r.d.w, r.d.h,
+                       buffer, r.p.x, r.p.y, SRCCOPY);
+                SelectObject(buffer, previous);
+                DeleteObject(bitmap);
+            }
+            if (buffer)
+                DeleteDC(buffer);
 
             EndPaint(hwnd, &ps);
             return 0;
@@ -472,7 +496,8 @@ namespace windows
                             control)) {
                     if (auto *btn =
                             dynamic_cast<native::button *>(child)) {
-                        btn->on_native_click();
+                        if (HIWORD(wparam) == BN_CLICKED)
+                            btn->on_native_click();
                         return 0;
                     }
                     if (auto *check =
@@ -638,6 +663,11 @@ namespace windows
                                         .object_from_handle(icons);
                     if (!binding)
                         return 0;
+                    // Stock List-View owns image, label, focus and selection
+                    // painting. Only derived controls enter owner stages.
+                    if (notification->code == NM_CUSTOMDRAW &&
+                        typeid(*icons) == typeid(native::icon_view))
+                        return CDRF_DODEFAULT;
                     if (notification->code == NM_CUSTOMDRAW) {
                         auto *drawing =
                             reinterpret_cast<NMLVCUSTOMDRAW *>(
@@ -760,10 +790,10 @@ namespace windows
             if (dynamic_cast<native::check *>(child) ||
                 dynamic_cast<native::radio *>(child)) {
                 HDC hdc = reinterpret_cast<HDC>(wparam);
-                SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
+                SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
                 SetBkMode(hdc, TRANSPARENT);
                 return reinterpret_cast<LRESULT>(
-                    GetSysColorBrush(COLOR_WINDOW));
+                    GetSysColorBrush(COLOR_BTNFACE));
             }
             break;
         }
@@ -801,7 +831,7 @@ namespace native
                          _bounds.p.y,
                          0,
                          0,
-                         SWP_NOSIZE | SWP_NOZORDER);
+                         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
     }
 
@@ -818,7 +848,7 @@ namespace native
                          0,
                          width,
                          height,
-                         SWP_NOMOVE | SWP_NOZORDER);
+                         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
     }
 
@@ -835,7 +865,7 @@ namespace native
                          _bounds.p.y,
                          width,
                          height,
-                         SWP_NOZORDER);
+                         SWP_NOZORDER | SWP_NOACTIVATE);
         }
     }
 

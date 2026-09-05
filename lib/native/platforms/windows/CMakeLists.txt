@@ -1,5 +1,10 @@
 # lib/native/platforms/windows/CMakeLists.txt
 
+enable_language(RC)
+# Resources must be linked into the consuming executable, not discarded
+# inside the static library. Common Controls v6 supplies native visual styles.
+target_sources(native INTERFACE ${CMAKE_CURRENT_LIST_DIR}/visual_styles.rc)
+
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/theme.cpp
     ${CMAKE_CURRENT_LIST_DIR}/screen.cpp
@@ -29,6 +34,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/icon_view.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tree_view.cpp
     ${CMAKE_CURRENT_LIST_DIR}/table_view.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/table_grid.cpp
     ${CMAKE_CURRENT_LIST_DIR}/clipboard.cpp
     ${CMAKE_CURRENT_LIST_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_LIST_DIR}/code_edit.cpp
@@ -42,7 +48,8 @@ target_sources(native PRIVATE
 # helper macros (TabCtrl_*, ListView_*, and related notifications) on their
 # Unicode variants as well; mixing LVITEMW/TCITEMW structures with the ANSI
 # macros truncates labels to their first character.
-target_compile_definitions(native PRIVATE UNICODE _UNICODE)
+target_compile_definitions(native PRIVATE UNICODE _UNICODE
+    _WIN32_WINNT=0x0601)
 
 # Windows windowing, graphics, registry, shell, COM, and codec libraries.
 target_link_libraries(native PRIVATE

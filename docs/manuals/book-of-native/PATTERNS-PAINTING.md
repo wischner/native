@@ -1,5 +1,13 @@
 # Patterns: Window Painting
 
+Win32 routed hosts compose each `WM_PAINT` off screen and present only its
+invalid rectangle through the `BeginPaint` DC. Top-level windows use
+`WS_CLIPCHILDREN`, so parent background and label painting cannot erase native
+child controls. Owner/custom-draw callbacks borrow the supplied native DC;
+ordinary stock controls paint themselves. Native status-bar synchronization
+changes geometry and parts only when their values change, avoiding a repaint
+feedback loop.
+
 This chapter expands Section 6 of the architectural standards. Native uses one
 portable drawing interface while allowing each backend to prepare, cache, and
 present graphics in the way its platform requires.

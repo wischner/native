@@ -16,6 +16,18 @@ target_link_libraries(native_core_tests PRIVATE
 
 add_test(NAME native_core_tests COMMAND native_core_tests)
 
+if(WIN32)
+    add_executable(native_windows_runtime_tests native_windows_runtime_tests.cpp)
+    target_include_directories(native_windows_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(native_windows_runtime_tests PRIVATE
+        UNICODE _UNICODE _WIN32_WINNT=0x0601)
+    target_link_libraries(native_windows_runtime_tests PRIVATE
+        native native_developer_options uxtheme)
+    add_test(NAME native_windows_runtime_tests COMMAND native_windows_runtime_tests)
+    set_tests_properties(native_windows_runtime_tests PROPERTIES TIMEOUT 30)
+endif()
+
 add_executable(native_window_api_tests
     native_window_api_tests.cpp
 )

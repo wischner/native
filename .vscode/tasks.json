@@ -117,37 +117,19 @@
             "dependsOn": "CMake Configure Debug (Docker Targets)"
         },
         {
-            "label": "Prepare Vision Debug Runtime (Wine DLLs)",
-            "type": "shell",
-            "command": "bash",
-            "args": [
-                "-lc",
-                "docker run --rm -u \"$(id -u):$(id -g)\" -v \"${workspaceFolder}:/src\" -w /src wischner/gcc-x86_64-windows-mingw-w64 cp -f /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/10-posix/libstdc++-6.dll /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll build/windows-mingw-w64/src/"
-            ],
+            "label": "Deploy Vision Debug (Windows VM)",
+            "type": "process",
+            "command": "/bin/bash",
+            "args": ["${workspaceFolder}/scripts/windows/vm/prepare.sh"],
             "problemMatcher": [],
             "dependsOn": "CMake Build Debug (Docker Windows)"
         },
         {
-            "label": "Start Vision Debug Server (Wine)",
+            "label": "Stop Vision Debug (Windows VM)",
             "type": "process",
-            "command": "${workspaceFolder}/scripts/windows/wine-debug-server.sh",
-            "args": [
-                "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
-                "31337"
-            ],
-            "isBackground": true,
-            "problemMatcher": {
-                "owner": "wine",
-                "pattern": {
-                    "regexp": "^(?!)$"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^Starting Wine GDB proxy .*$",
-                    "endsPattern": "^Wine GDB proxy ready at localhost:31337\\.$"
-                }
-            },
-            "dependsOn": "Prepare Vision Debug Runtime (Wine DLLs)"
+            "command": "/bin/bash",
+            "args": ["${workspaceFolder}/scripts/windows/vm/stop.sh"],
+            "problemMatcher": []
         },
         {
             "label": "Start Debug Target (Tribblix CDE)",

@@ -17,6 +17,16 @@
 
 namespace windows
 {
+    // Mirror the portable modal branch into native input enablement for
+    // every top-level peer, including modeless siblings of the modal.
+    static BOOL CALLBACK synchronize_modal_window(HWND hwnd, LPARAM) {
+        auto *window = dynamic_cast<native::app_wnd *>(
+            wnd_bindings.object_from_handle(hwnd));
+        if (window)
+            EnableWindow(hwnd, window->get_input_enabled());
+        return TRUE;
+    }
+
     const wchar_t class_name[] = L"native_window_class";
 
     void register_window_class() {
@@ -62,9 +72,13 @@ namespace native
                               ? windows::wnd_bindings
                                     .handle_from_object(owner)
                               : nullptr;
+        // Keep the C++ lifetime/modal graph, but ordinary modeless windows
+        // must stack independently. A Win32 owner would pin them above it.
+        if (dynamic_cast<modeless_wnd *>(this))
+            owner_hwnd = nullptr;
         const DWORD extended_style =
             get_modal() ? WS_EX_DLGMODALFRAME : 0;
-        const DWORD style = WS_OVERLAPPEDWINDOW;
+        const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
         RECT framed_bounds = {
             0, 0, _bounds.d.w, _bounds.d.h};
         if (!AdjustWindowRectEx(
@@ -117,7 +131,8 @@ namespace native
                                     .handle_from_object(owner)
                               : nullptr;
         if (get_modal() && owner_hwnd)
-            EnableWindow(owner_hwnd, FALSE);
+            EnumThreadWindows(GetCurrentThreadId(),
+                              windows::synchronize_modal_window, 0);
 
         ShowWindow(hwnd, SW_SHOW);
         if (get_modal()) {
@@ -145,6 +160,8 @@ namespace native
         }
 
         if (get_modal() && owner && owner_hwnd) {
+            EnumThreadWindows(GetCurrentThreadId(),
+                              windows::synchronize_modal_window, 0);
             if (owner->get_input_enabled()) {
                 EnableWindow(owner_hwnd, TRUE);
                 SetActiveWindow(owner_hwnd);

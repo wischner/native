@@ -1,5 +1,11 @@
 # Patterns: Windows And App Windows
 
+Windows top-level hosts clip background painting around native child HWNDs.
+Geometry changes use `SWP_NOACTIVATE`, so relayout and splitter dragging do
+not steal activation. Beginning and ending a modal session synchronizes
+native enablement across the thread's library top-level windows, including
+modeless siblings; the active modal branch alone remains interactive.
+
 This chapter expands Section 5 of the architectural standards. `wnd` defines
 the portable behavior shared by top-level windows and child controls. Backend
 code supplies native resources without changing that behavior.
@@ -205,8 +211,11 @@ Window Maker additionally invalidates the surviving owner after either a
 modal or modeless close, because removing a WINGs top-level view may expose
 owner pixels without producing an immediate portable paint request.
 
-Backends express this relationship with their native concept: an owned Win32
-top-level window, an Xt transient shell, an AppKit child window, a Haiku
+Windows modeless windows have independent, unowned native HWNDs: either the
+main window or a modeless window can be brought to the front. Their portable
+owner still controls lifetime and modal exclusion. Modal HWNDs retain native
+ownership. Other backends express the relationship with an Xt transient
+shell, an AppKit child window, a Haiku
 floating subset, a WINGs top-level window tracked through the portable owner
 graph, or an event-loop association on toolkits without native ownership.
 

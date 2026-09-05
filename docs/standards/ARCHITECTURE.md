@@ -240,6 +240,9 @@ object must safely detach the non-owning relationship.
   equivalent top-level relationship. It remains in the normal application
   event loop, accepts controls through that loop, and does not disable its
   owner.
+- On Windows, modeless windows use independent, unowned top-level HWNDs so
+  they can move behind the main window. The portable owner relationship still
+  governs lifetime and modal exclusion; modal HWNDs retain native ownership.
 - A `modal_wnd` is an owner-modal dialog. Showing it starts a modal session,
   moves focus to the dialog, and prevents input to its owner and the owner's
   other owned branches. The event loop must continue to dispatch paint and
@@ -540,6 +543,12 @@ need access to protected stages; public headers never expose native handles.
 Every new control event and every new painted part requires corresponding
 virtual behavior and painting coverage in all backends plus a derived-control
 test that overrides and calls base.
+
+On Windows, exact stock control types retain the operating system's default
+painting. Derived controls select the owner/custom-draw extension path, as
+with derived status bars. Do not owner-draw an ordinary Windows button,
+check, radio, tree, icon view or table header just to invoke portable base
+stages. Unsupported virtual group rows are a documented exception.
 
 The default application and container surface is the backend's `panel` role;
 editable text and item-bearing views use the contrasting `content` role.
@@ -1226,7 +1235,10 @@ Native non-client peers must preserve the same in-host edge reservation; they
 must not ask a top-level layout manager to reserve a second strip. Windows
 maps `status_bar` parts to the common-controls `STATUSCLASSNAME` child with
 `SB_SETPARTS` and `SB_SETTEXT`, while portable code retains part text, order,
-widths, visibility, and reserved geometry. XView frame footers and Motif's
+widths, visibility, and reserved geometry. The Windows peer stays above child
+controls in sibling Z order, with sibling clipping enabled, so oversized
+controls cannot paint or receive input over its reserved strip after resize.
+XView frame footers and Motif's
 `XmNmessageWindow` remain unsuitable for this contract because both alter the
 outer content geometry. A backend with no exact peer keeps the themed painter.
 

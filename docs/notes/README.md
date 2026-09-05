@@ -31,3 +31,4 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)
 - [Windows Wine runtime note](WINDOWS-WINE-RUNTIME.md)
+- [Windows 11 VM runtime and debugging](WINDOWS-VM-RUNTIME.md)

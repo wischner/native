@@ -1,7 +1,8 @@
 # Windows Wine Runtime Note
 
-This note records the current runtime constraint for Windows binaries in the
-Linux development workflow.
+This historical note records the DLL requirement of the earlier Wine checks.
+The maintained Windows F5/runtime workflow now uses the
+[native Windows 11 VM](WINDOWS-VM-RUNTIME.md), not Wine.
 
 ## Current behavior
 

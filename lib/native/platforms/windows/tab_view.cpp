@@ -10,6 +10,7 @@
 
 #include <windows.h>
 #include <commctrl.h>
+#include <uxtheme.h>
 
 #include <native.h>
 
@@ -50,6 +51,14 @@ namespace native
         SetWindowPos(tabs, nullptr, 0, 0, 0, 0,
                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
                          SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        // The themed common control does not support all four placements.
+        // Use its native classic renderer consistently, never owner drawing.
+        SetWindowTheme(tabs, L"", L"");
+        // The native minimum width leaves short vertical labels at one end
+        // of a padded tab. Content-sized tabs retain symmetric native padding.
+        const bool vertical = get_tab_placement() == tab_placement::left ||
+                              get_tab_placement() == tab_placement::right;
+        TabCtrl_SetMinTabWidth(tabs, vertical ? 0 : -1);
         TabCtrl_DeleteAllItems(tabs);
         for (std::size_t index = 0; index < get_item_count(); ++index) {
             const std::wstring title = windows::utf8_to_wide(
@@ -59,28 +68,43 @@ namespace native
             item.pszText = const_cast<wchar_t *>(title.c_str());
             TabCtrl_InsertItem(tabs, static_cast<int>(index), &item);
         }
+        const int inset = std::max(1, GetSystemMetrics(SM_CXEDGE) * 2);
+        _page_inset = inset;
+        _page_trailing = inset;
+        _page_tab_gap = 0;
         RECT page{0, 0,
                   static_cast<LONG>(_bounds.d.w),
                   static_cast<LONG>(_bounds.d.h)};
-        if (TabCtrl_AdjustRect(tabs, FALSE, &page)) {
-            switch (get_tab_placement()) {
-            case tab_placement::top:
-                _tab_height = std::max(1L, page.top);
-                break;
-            case tab_placement::bottom:
-                _tab_height = std::max(
-                    1L,
-                    static_cast<LONG>(_bounds.d.h) - page.bottom);
-                break;
-            case tab_placement::left:
-                _tab_height = std::max(1L, page.left);
-                break;
-            case tab_placement::right:
-                _tab_height = std::max(
-                    1L,
-                    static_cast<LONG>(_bounds.d.w) - page.right);
-                break;
+        if (get_tab_placement() == tab_placement::top) {
+            // TCM_ADJUSTRECT has no return value and supports only top tabs.
+            TabCtrl_AdjustRect(tabs, FALSE, &page);
+            _tab_height = std::max(1L, page.top);
+            _page_inset = std::max(0L, page.left);
+            _page_trailing = std::max(0L,
+                static_cast<LONG>(_bounds.d.w) - page.right);
+        } else {
+            int extent = 0;
+            for (int index = 0; index < TabCtrl_GetItemCount(tabs); ++index) {
+                RECT item{};
+                if (!TabCtrl_GetItemRect(tabs, index, &item))
+                    continue;
+                switch (get_tab_placement()) {
+                case tab_placement::bottom:
+                    extent = std::max(extent, static_cast<int>(
+                        _bounds.d.h - item.top));
+                    break;
+                case tab_placement::left:
+                    extent = std::max(extent, static_cast<int>(item.right));
+                    break;
+                case tab_placement::right:
+                    extent = std::max(extent, static_cast<int>(
+                        _bounds.d.w - item.left));
+                    break;
+                case tab_placement::top:
+                    break;
+                }
             }
+            _tab_height = std::max(1, extent + inset);
         }
         InvalidateRect(tabs, nullptr, TRUE);
     }

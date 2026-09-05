@@ -12,15 +12,18 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <typeinfo>
 
 #include <windows.h>
 #include <commctrl.h>
+#include <uxtheme.h>
 
 #include <native.h>
 
 #include "../../control_render_access.h"
 #include "../../table_visible_rows.h"
 #include "globals.h"
+#include "table_grid.h"
 
 namespace
 {
@@ -263,9 +266,7 @@ namespace
             return;
         int available = std::max(
             0, static_cast<int>(client.right - client.left));
-        if ((GetWindowLongPtrW(binding.hwnd, GWL_STYLE) & WS_VSCROLL) != 0)
-            available = std::max(
-                0, available - GetSystemMetrics(SM_CXVSCROLL));
+        // GetClientRect already excludes the native scrollbar.
 
         int total = 0;
         int last_width = 0;
@@ -383,8 +384,8 @@ namespace
         reset_images(table);
         DWORD extended = LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER |
                          LVS_EX_SUBITEMIMAGES;
-        if (table.get_grid_lines() == native::table_grid_lines::both)
-            extended |= LVS_EX_GRIDLINES;
+        // Use the same grid-edge pass for owner-data and grouped rows.
+        // Native grid lines are absent in groups and too faint otherwise.
         if (table.get_columns_reorderable())
             extended |= LVS_EX_HEADERDRAGDROP;
         ListView_SetExtendedListViewStyle(binding.hwnd, extended);
@@ -536,6 +537,8 @@ namespace windows
                 table->get_gpx(), native_draw->hdc);
             HWND header = ListView_GetHeader(binding.hwnd);
             if (notification->hwndFrom == header) {
+                if (typeid(*table) == typeid(native::table_view))
+                    return CDRF_DODEFAULT;
                 auto *draw = reinterpret_cast<NMCUSTOMDRAW *>(
                     notification);
                 if (draw->dwDrawStage == CDDS_PREPAINT)
@@ -619,6 +622,15 @@ namespace windows
                         }
                         return CDRF_SKIPDEFAULT;
                     }
+                }
+                if (typeid(*table) == typeid(native::table_view)) {
+                    // Supply only the optional unselected row tint. The
+                    // common control paints text, images and selection.
+                    draw->clrTextBk = table->get_alternating_rows() &&
+                            item % 2 != 0
+                        ? RGB(247, 247, 247) : GetSysColor(COLOR_WINDOW);
+                    return windows::needs_table_grid(*table)
+                        ? CDRF_NOTIFYPOSTPAINT : CDRF_DODEFAULT;
                 }
                 return CDRF_NOTIFYSUBITEMDRAW |
                        CDRF_NOTIFYPOSTPAINT;
@@ -705,6 +717,11 @@ namespace windows
             if (draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT) {
                 const int item =
                     static_cast<int>(draw->nmcd.dwItemSpec);
+                if (typeid(*table) == typeid(native::table_view)) {
+                    windows::draw_table_grid(*table, binding.hwnd,
+                                             draw->nmcd.hdc, item);
+                    return CDRF_DODEFAULT;
+                }
                 std::size_t model_row = 0;
                 native::table_row_id row_id =
                     native::invalid_table_row_id;
@@ -858,6 +875,7 @@ namespace native
             throw std::runtime_error(
                 "Windows: failed to create report ListView.");
         windows::wnd_bindings.register_pair(hwnd, self);
+        SetWindowTheme(hwnd, L"Explorer", nullptr);
         auto *binding = new windows::win_table_view();
         binding->hwnd = hwnd;
         binding->owner_data = owner_data;

@@ -1,0 +1,4 @@
+// Opt native applications into Windows Common Controls v6.
+// MIT License (see: LICENSE), Copyright (C) 2026 Tomaz Stih
+#include <windows.h>
+1 RT_MANIFEST "visual_styles.manifest"
