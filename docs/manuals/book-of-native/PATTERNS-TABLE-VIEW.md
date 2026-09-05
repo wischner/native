@@ -68,7 +68,12 @@ rather than becoming a million-widget allocation.
   revealed completely. Paging, painting, and native scrollbar placement use
   the same body geometry, including both scrollbar reservations.
 - Athena, XView/OLGX, WINGs, SDL2, and GEM use backend-owned hosts and theme
-  resources when their toolkit has no complete table widget. The XView host
+  resources when their toolkit has no complete table widget. Athena attaches
+  genuine Xaw `Scrollbar` children in the reserved strips. Its native stippled
+  thumb, button-1/button-3 relative scrolling and button-2 dragging map to
+  portable row and pixel offsets; both endpoints remain reachable without
+  materializing virtual rows. Its scrollbar border also separates the table
+  body from the track, while the header spans the full table width. The XView host
   attaches genuine east-side and bottom `Scrollbar` objects to the exact
   extents reserved by the semantic renderer and obtains alternating-row
   grey/white colors from its control CMS. The WINGs host likewise attaches

@@ -21,6 +21,8 @@
 
 #include "../emulated_theme.h"
 #include "globals.h"
+#include "scrollbars.h"
+#include "../../gpx_wnd.h"
 
 namespace
 {
@@ -143,7 +145,9 @@ namespace
             palette result;
             result.button_bg = resources.background;
             result.button_border = resources.border;
-            result.button_highlight = resources.background;
+            // Athena uses a flat enclosure, not a white lower/right
+            // bevel that disappears against its white content surface.
+            result.button_highlight = resources.border;
             result.button_shadow = resources.border;
             result.button_text = resources.foreground;
             result.button_disabled_text = native::rgba(128, 128, 128,
@@ -152,6 +156,12 @@ namespace
             result.button_hot_text = resources.foreground;
             result.button_pressed_bg = resources.foreground;
             result.button_pressed_text = resources.background;
+            const auto *window_graphics = dynamic_cast<native::gpx_wnd *>(&_g);
+            if (window_graphics &&
+                dynamic_cast<native::tab_view *>(window_graphics->window())) {
+                result.button_pressed_bg = resources.background;
+                result.button_pressed_text = resources.foreground;
+            }
             result.menu_bar_bg = resources.background;
             result.menu_bar_line_top = resources.background;
             result.menu_bar_line_bottom = resources.background;
@@ -162,6 +172,7 @@ namespace
             result.menu_popup_bg = resources.background;
             result.menu_popup_border = resources.border;
             result.content_bg = resources.background;
+            result.content_alt_bg = resources.background;
             result.content_text = resources.foreground;
             result.selection_bg = resources.foreground;
             result.selection_text = resources.background;
@@ -185,6 +196,28 @@ namespace
             _g.set_pen(1)
                 .set_ink(native_palette().menu_bar_bg)
                 .draw_rect(bounds, true);
+            return *this;
+        }
+
+        native::theme &draw_surface(const native::rect &bounds,
+            native::surface_kind kind, const state &element_state) override {
+            saved_state saved(_g);
+            draw_surface_fallback(bounds, kind, element_state);
+            if (kind == native::surface_kind::header && bounds.d.h)
+                _g.set_pen(1).set_ink(native_palette().separator)
+                    .draw_line(bounds.p,
+                        native::point(bounds.x2() - 1, bounds.y1()));
+            const auto *window_graphics = dynamic_cast<native::gpx_wnd *>(&_g);
+            const auto *tabs = window_graphics
+                ? dynamic_cast<native::tab_view *>(window_graphics->window()) : nullptr;
+            if (tabs && tabs->get_page_frame_visible() &&
+                kind == native::surface_kind::content) {
+                // The frame belongs to the tab host, outside its page child.
+                // The selected tab paints over the adjoining edge afterward.
+                _g.set_pen(1).set_ink(native_palette().button_border)
+                    .draw_rect(native::rect(bounds.x1() - 1, bounds.y1() - 1,
+                        bounds.d.w + 2, bounds.d.h + 2), false);
+            }
             return *this;
         }
 
@@ -314,6 +347,23 @@ namespace
                 .draw_rect(bounds, true)
                 .set_ink(colors.menu_popup_border)
                 .draw_rect(bounds, false);
+            return *this;
+        }
+
+        native::theme &draw_scrollbar_part(
+            const native::rect &bounds,
+            native::scrollbar_orientation orientation,
+            native::scrollbar_part part,
+            const state &element_state) override {
+            const auto *window_graphics = dynamic_cast<native::gpx_wnd *>(&_g);
+            if (window_graphics &&
+                linux::x11::has_native_scrollbars(*window_graphics->window()))
+                return *this;
+            saved_state saved(_g);
+            draw_scrollbar_part_fallback(bounds, orientation, part, element_state);
+            if (part == native::scrollbar_part::track)
+                _g.set_pen(1).set_ink(native_palette().button_border)
+                    .draw_rect(bounds, false);
             return *this;
         }
 

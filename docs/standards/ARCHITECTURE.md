@@ -1066,6 +1066,10 @@ selection, disclosure, keyboard interaction, layout, and scrolling. Athena,
 XView, WINGs, SDL2, and GEM use their toolkit-owned focus and event paths with
 the shared semantic selection, disclosure, focus, connector, image, and
 scrollbar painter because they have no adequate interactive outline widget.
+Athena replaces the scrollbar painter with stock Xaw `Scrollbar` children
+for trees, icon grids, tables and canvases. Peer-owned range adapters map
+native callbacks into portable scroll hooks; native children own track
+painting, stippled thumbs and grabs, with no duplicate themed parts beneath.
 Every library-painted collection scrollbar uses the same classic arrow,
 trough, and gripped-thumb composition as a painted table. Its arrow and page
 areas scroll immediately, and a backend with pointer input must keep thumb
@@ -1100,8 +1104,13 @@ ratio first and then emits one `on_ratio_change` notification.
 Backends use their actual container widget where one exists: Athena Xaw
 `Paned`, Haiku `BSplitView`, Motif `XmPanedWindow`, AppKit `NSSplitView`, and
 Window Maker `WMSplitView`. The Xaw and Motif adapters map portable minimums
-and ratios to native pane constraints and keep both panes adjustable through
-native grips or sashes. Window Maker observes native WINGs pane-size changes,
+and ratios to native pane constraints. Motif keeps its native sash; Xaw uses
+the full background-colored separator for captured live dragging, disabling
+XOR grips and committing both pane sizes through public constraint/refigure
+APIs. A small normally painted centered grip identifies the live strip.
+Xaw's private Form pane hosts keep native child borders intact;
+applications still supply two ordinary controls without wrapper panels.
+Window Maker observes native WINGs pane-size changes,
 updates the portable ratio after the current native dispatch, and then fits
 both borrowed child controls to the exact dimensions granted to their pane
 hosts, rather than deriving a second approximation from the portable divider
@@ -1135,6 +1144,9 @@ tab closure, retain the page highlight alone, and shadow the inactive free
 edge. When the page frame is visible,
 the first painted tab's leading cross-axis edge aligns with the corresponding
 page frame edge; strip-only tabs remain flush with the complete control edge.
+X11's monochrome tabs have a white selected face with black text and no line
+at the selected page join. Their host owns the page frame; a native List used
+as a page suppresses its redundant enclosure so it cannot close that join.
 
 Split views and tabs compose normally and may be placed by any layout manager.
 Neither control creates floating windows, persists layouts, draws drop targets,
@@ -1363,7 +1375,9 @@ axis scrolls it, and the normalized `on_mouse_wheel` event is still emitted
 exactly once. Thumb size and position represent the viewport inside the full
 32-bit range and must let both endpoints be reached exactly. Scrollbar
 appearance, hit geometry, minimum thumb size, and extents come from theme
-metrics and `theme::draw_scrollbar_part`.
+metrics and `theme::draw_scrollbar_part`, or the backend's actual scrollbar
+widget in the same reserved geometry. Native range adaptation must preserve
+the exact endpoints and must not leak native types into the public contract.
 
 One backend paint notification dispatches exactly one logical
 `wnd_paint_event`. The supplied drawer is clipped to the viewport and must not

@@ -1,0 +1,13 @@
+! xresources-bw
+*customization: -mono
+*Foreground: black
+*Background: white
+*borderColor: black
+XTerm*foreground: black
+XTerm*background: white
+XTerm*cursorColor: black
+XTerm*colorMode: false
+XClock*foreground: black
+XClock*background: white
+XClock*hands: black
+XClock*highlight: black

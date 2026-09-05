@@ -23,6 +23,10 @@ namespace linux::x11
 {
     // Convert a portable dimension to the non-zero size required by X11.
     Dimension widget_dimension(int value);
+    // Athena container that leaves size ownership to portable layout.
+    WidgetClass layout_host_class();
+    // Resolve a child's actual host, including private native split panes.
+    Widget parent_widget(const native::wnd *child);
 
     // Xt callbacks carry widgets, so process-wide registries recover
     // the corresponding C++ objects during event dispatch.
@@ -104,6 +108,7 @@ namespace linux::x11
         Widget button = nullptr;
         Widget menu = nullptr;
         Pixmap arrow = None;
+        bool opening_press = false;
         std::vector<xaw_combo_callback *> callbacks;
         bool suppress = false;
     };

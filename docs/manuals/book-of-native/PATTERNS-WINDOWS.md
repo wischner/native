@@ -57,6 +57,16 @@ private bindings.
 
 ## Window lifecycle
 
+X11's Native-owned client, panel and collection containers specialize Athena
+Form geometry. Child preferred sizes cannot resize or unmap their parent;
+portable layout owns their bounds. Standard Athena controls retain native
+input and painting, with native borders included inside assigned rectangles.
+Configure handling reads current Xt dimensions instead of feeding stale
+queued sizes into a new layout pass.
+Zero native geometry requests use the assigned portable extent (with a
+minimum one-pixel backing). This also handles Paned's temporary zero-size
+sentinel during orientation changes without sending an invalid X request.
+
 A window moves through a small, consistent lifecycle:
 
 ```text

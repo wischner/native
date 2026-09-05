@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include <X11/Intrinsic.h>
+#include <X11/Shell.h>
 #include <X11/StringDefs.h>
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Form.h>
@@ -36,19 +37,109 @@ namespace
         return linux::x11::combo_box_bindings.object_from_handle(owner);
     }
 
+    void fit_children(linux::x11::xaw_combo_box *binding) {
+        Dimension width = 1, height = 1;
+        XtVaGetValues(binding->root, XtNwidth, &width, XtNheight, &height, nullptr);
+        const int button_width = std::min<int>(width, height + 4);
+        const int child_height = std::max(1, int(height) - 2);
+        XFontStruct *font = nullptr;
+        XtVaGetValues(XawTextGetSink(binding->text), XtNfont, &font, nullptr);
+        const int text_height = font ? font->ascent + font->descent : 13;
+        const int margin = std::max(0, (child_height - text_height) / 2);
+        XtVaSetValues(binding->text,
+            XtNwidth, std::max(1, int(width) - button_width - 1),
+            XtNtopMargin, margin, XtNbottomMargin, margin,
+            XtNheight, child_height, nullptr);
+        XtVaSetValues(binding->button,
+            XtNwidth, std::max(1, button_width - 2),
+            XtNheight, child_height, nullptr);
+    }
+
+    void resized(Widget, XtPointer data, XEvent *event, Boolean *) {
+        auto *binding = state(static_cast<native::combo_box *>(data));
+        if (binding && event && event->type == ConfigureNotify)
+            fit_children(binding);
+    }
+
+    // MenuButton normally anchors its popup at the arrow. Override only
+    // that geometry; SimpleMenu still owns grabs, tracking and dismissal.
+    void opening(Widget menu, XtPointer data, XtPointer) {
+        auto *owner = static_cast<native::combo_box *>(data);
+        auto *binding = state(owner);
+        if (!binding) return;
+        Dimension width = 1, height = 1, popup_height = 1;
+        XtVaGetValues(binding->root, XtNwidth, &width, XtNheight, &height, nullptr);
+        XtVaGetValues(menu, XtNheight, &popup_height, nullptr);
+        WidgetList entries = nullptr;
+        Cardinal count = 0;
+        XtVaGetValues(menu, XtNchildren, &entries, XtNnumChildren, &count, nullptr);
+        for (Cardinal index = 0; index < count; ++index) {
+            XFontStruct *font = nullptr;
+            char *label = nullptr;
+            Dimension left = 0;
+            XtVaGetValues(entries[index], XtNfont, &font, XtNlabel, &label,
+                XtNleftMargin, &left, nullptr);
+            const int text_width = font && label
+                ? XTextWidth(font, label, static_cast<int>(std::char_traits<char>::length(label))) : 0;
+            XtVaSetValues(entries[index], XtNrightMargin,
+                std::max(0, int(width) - 2 - left - text_width), nullptr);
+        }
+        Position x = 0, y = 0;
+        XtTranslateCoords(binding->root, 0, 0, &x, &y);
+        const int screen_width = WidthOfScreen(XtScreen(menu));
+        const int screen_height = HeightOfScreen(XtScreen(menu));
+        const int top = y + height + popup_height + 2 <= screen_height
+            ? y + height : y - popup_height - 2;
+        XtVaSetValues(menu,
+            XtNwidth, std::max(1, int(width) - 2),
+            XtNx, std::clamp<int>(x, 0, std::max(0, screen_width - width)),
+            XtNy, std::max(0, top), nullptr);
+        binding->opening_press = true;
+        owner->on_native_drop_down(true);
+    }
+
+    // A combo supports click-then-click as well as Athena's press/drag.
+    // Releasing the opening click over the field must not dismiss it.
+    void menu_release(Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+        auto *binding = state(static_cast<native::combo_box *>(data));
+        if (!binding || event->type != ButtonRelease ||
+            !binding->opening_press) return;
+        binding->opening_press = false;
+        Position x = 0, y = 0;
+        Dimension width = 1, height = 1;
+        XtTranslateCoords(binding->root, 0, 0, &x, &y);
+        XtVaGetValues(binding->root, XtNwidth, &width, XtNheight, &height, nullptr);
+        if (event->xbutton.x_root >= x && event->xbutton.x_root < x + width &&
+            event->xbutton.y_root >= y && event->xbutton.y_root < y + height)
+            *dispatch = False;
+    }
+
+    void closed(Widget, XtPointer data, XtPointer) {
+        static_cast<native::combo_box *>(data)->on_native_drop_down(false);
+    }
+
     void selected(Widget, XtPointer data, XtPointer) {
         auto *callback = static_cast<linux::x11::xaw_combo_callback *>(data);
         if (!callback || !callback->owner) return;
-        callback->owner->on_native_selection(callback->index);
-        callback->owner->on_native_drop_down(false);
+        auto *owner = callback->owner;
+        const int index = callback->index;
+        if (auto *binding = state(owner))
+            XtVaSetValues(binding->text, XtNstring,
+                owner->get_items().at(index).c_str(), nullptr);
+        owner->on_native_selection(index);
     }
 
     void text_event(Widget widget, XtPointer data,
                     XEvent *event, Boolean *) {
         auto *owner = static_cast<native::combo_box *>(data);
         auto *binding = state(owner);
-        if (!owner || !binding || binding->suppress ||
-            !event || event->type != KeyRelease) return;
+        if (!owner || !binding || binding->suppress || !event) return;
+        if (event->type == ButtonPress && event->xbutton.button == Button1 &&
+            owner->get_style() != native::combo_box_style::editable) {
+            XtCallActionProc(binding->button, "PopupMenu", event, nullptr, 0);
+            return;
+        }
+        if (event->type != KeyRelease) return;
         char *value = nullptr;
         XtVaGetValues(widget, XtNstring, &value, nullptr);
         owner->on_native_text(value ? value : "");
@@ -61,13 +152,25 @@ namespace
 
     void create_menu(native::combo_box *owner,
                      linux::x11::xaw_combo_box *binding) {
+        Pixel border = BlackPixelOfScreen(XtScreen(binding->root));
+        XtVaGetValues(binding->text, XtNborderColor, &border, nullptr);
         binding->menu = XtVaCreatePopupShell(
             "comboMenu",
             simpleMenuWidgetClass,
             binding->root,
             XtNborderWidth,
             1,
+            XtNborderColor, border,
+            XtNallowShellResize, False,
+            XtNwidth, std::max(1, int(owner->get_dimensions().w) - 2),
             nullptr);
+        XtAddCallback(binding->menu, XtNpopupCallback, opening, owner);
+        XtAddCallback(binding->menu, XtNpopdownCallback, closed, owner);
+        // SimpleMenu tracks BtnMotion by default; a combo remains open
+        // after release and must also track ordinary pointer motion.
+        XtOverrideTranslations(binding->menu,
+            XtParseTranslationTable("<Motion>: highlight()"));
+        XtAddEventHandler(binding->menu, ButtonReleaseMask, False, menu_release, owner);
         for (std::size_t index = 0;
              index < owner->get_items().size();
              ++index) {
@@ -121,16 +224,14 @@ namespace native
     }
 
     void combo_box::create_native() {
-        Widget parent = get_parent()
-            ? linux::x11::wnd_bindings.handle_from_object(get_parent())
-            : nullptr;
+        Widget parent = linux::x11::parent_widget(this);
         if (!parent || !get_parent()->get_created())
             throw std::runtime_error(
                 "X11: combo box requires a created parent.");
         auto *self = this;
         auto *binding = new linux::x11::xaw_combo_box;
         binding->root = XtVaCreateWidget(
-            "comboBox", formWidgetClass, parent,
+            "comboBox", linux::x11::layout_host_class(), parent,
             XtNhorizDistance, _bounds.p.x,
             XtNvertDistance, _bounds.p.y,
             XtNwidth, linux::x11::widget_dimension(_bounds.d.w),
@@ -147,7 +248,7 @@ namespace native
         const int child_height = std::max(1,
             static_cast<int>(_bounds.d.h)-2);
         const int text_width = std::max(1,
-            static_cast<int>(_bounds.d.w)-button_width-2);
+            static_cast<int>(_bounds.d.w)-button_width-1);
         const int arrow_width = std::max(1, button_width-2);
         binding->text = XtVaCreateManagedWidget(
             "comboText", asciiTextWidgetClass, binding->root,
@@ -165,12 +266,13 @@ namespace native
         binding->button = XtVaCreateManagedWidget(
             "comboButton", menuButtonWidgetClass, binding->root,
             XtNfromHoriz, binding->text,
-            XtNhorizDistance, 0,
+            XtNhorizDistance, -1,
             XtNvertDistance, 0,
             XtNwidth, arrow_width,
             XtNheight, child_height,
             XtNborderWidth, 1,
             XtNlabel, "", XtNmenuName, "comboMenu",
+            XtNresize, False,
             XtNleft, XtChainRight, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,
             nullptr);
@@ -194,10 +296,12 @@ namespace native
             clear_callbacks(binding); delete binding;
             throw std::runtime_error("X11: Failed to create combo box.");
         }
-        XtAddEventHandler(binding->text, KeyReleaseMask, False,
+        fit_children(binding);
+        XtAddEventHandler(binding->text, KeyReleaseMask | ButtonPressMask, False,
                           text_event, self);
         linux::x11::wnd_bindings.register_pair(binding->root, self);
         linux::x11::combo_box_bindings.register_pair(self, binding);
+        XtAddEventHandler(binding->root, StructureNotifyMask, False, resized, self);
     }
 
     void combo_box::show_native() {

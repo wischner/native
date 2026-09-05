@@ -23,12 +23,15 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/message_box.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/alert_icons.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/collection_host.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scrollbars.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/layout_host.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/panel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/canvas.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/accordion.cpp

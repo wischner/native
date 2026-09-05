@@ -132,7 +132,7 @@ namespace native
         XtVaGetValues(main_window, XtNwidth, &menu_width, nullptr);
 
         Widget menu_bar = XtVaCreateManagedWidget("menu_bar",
-                                                  boxWidgetClass,
+                                                  linux::x11::layout_host_class(),
                                                   main_window,
                                                   XtNorientation,
                                                   XtorientHorizontal,
@@ -154,9 +154,16 @@ namespace native
                                                   XtChainRight,
                                                   XtNtop,
                                                   XtChainTop,
+                                                  XtNbottom,
+                                                  XtChainTop,
                                                   nullptr);
         if (!menu_bar)
             return;
+        Widget buttons = XtVaCreateManagedWidget("menu_buttons",
+            boxWidgetClass, menu_bar, XtNhSpace, 0, XtNvSpace, 0,
+            XtNwidth, menu_width,
+            XtNhorizDistance, 0, XtNvertDistance, 0,
+            XtNborderWidth, 0, nullptr);
 
         auto *native_menu = new linux::x11::xaw_menu();
         native_menu->menu_bar = menu_bar;
@@ -168,19 +175,26 @@ namespace native
                           accelerator_event,
                           native_menu);
 
+        Dimension button_height = 1;
         for (const auto &top : _tops) {
             Widget menu_button =
                 XtVaCreateManagedWidget("menu_button",
                                         menuButtonWidgetClass,
-                                        menu_bar,
+                                        buttons,
                                         XtNlabel,
                                         top.title.c_str(),
                                         XtNmenuName,
                                         "menu",
                                         nullptr);
+            Dimension height = 1, border = 0;
+            XtVaGetValues(menu_button, XtNheight, &height,
+                XtNborderWidth, &border, nullptr);
+            button_height = std::max<Dimension>(button_height, height + 2 * border);
 
             Widget popup = XtVaCreatePopupShell(
-                "menu", simpleMenuWidgetClass, menu_button, nullptr);
+                "menu", simpleMenuWidgetClass, menu_button,
+                XtNborderWidth, 1,
+                XtNborderColor, BlackPixelOfScreen(XtScreen(menu_button)), nullptr);
 
             for (const auto &item : top.items) {
                 if (item.separator) {
@@ -207,6 +221,9 @@ namespace native
                     entry, XtNcallback, menu_activate, callback);
             }
         }
+
+        XtVaSetValues(buttons, XtNwidth, menu_width, XtNheight, button_height, nullptr);
+        XtVaSetValues(menu_bar, XtNheight, button_height, nullptr);
 
         _owner = &owner;
         _id = next_id();

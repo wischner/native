@@ -21,7 +21,7 @@ namespace
             throw std::runtime_error(
                 "X11/Athena: check requires a created parent.");
         Widget widget =
-            linux::x11::wnd_bindings.handle_from_object(parent);
+            linux::x11::parent_widget(control);
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: check parent has no widget.");

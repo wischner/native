@@ -1,7 +1,7 @@
 //
 // Implements the X11 structural container with an Athena Form. The
-// Form is a real Xt composite, so every Native control can name it as
-// its parent widget, and the X server paints its background.
+// Form subclass retains Xt child hosting and server-painted background,
+// while Native owns geometry instead of negotiating child preferred sizes.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -23,7 +23,7 @@ namespace
     // Route only the notifications a structural container needs. Keys
     // and focus belong to the children, and the server repaints the
     // Form background, so no expose handler is installed.
-    void route_event(Widget,
+    void route_event(Widget widget,
                      XtPointer client_data,
                      XEvent *event,
                      Boolean *) {
@@ -32,11 +32,14 @@ namespace
             return;
 
         switch (event->type) {
-        case ConfigureNotify:
+        case ConfigureNotify: {
+            Dimension width = 1, height = 1;
+            XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height, nullptr);
             owner->on_native_resize(native::size(
-                static_cast<native::dim>(event->xconfigure.width),
-                static_cast<native::dim>(event->xconfigure.height)));
+                static_cast<native::dim>(width),
+                static_cast<native::dim>(height)));
             break;
+        }
         case MotionNotify:
             owner->on_native_mouse_move(
                 native::point(event->xmotion.x, event->xmotion.y));
@@ -80,7 +83,7 @@ namespace native
                 "X11/Athena: panel parent is not created.");
 
         Widget parent_widget =
-            linux::x11::wnd_bindings.handle_from_object(parent);
+            linux::x11::parent_widget(this);
         if (!parent_widget)
             throw std::runtime_error(
                 "X11/Athena: panel parent has no widget.");
@@ -88,7 +91,7 @@ namespace native
         auto *self = this;
         Widget widget = XtVaCreateWidget(
             "panel",
-            formWidgetClass,
+            linux::x11::layout_host_class(),
             parent_widget,
             XtNhorizDistance,
             _bounds.p.x,

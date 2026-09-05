@@ -9,6 +9,16 @@ examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitiv
 
 ## Semantic drawing
 
+X11/Athena uses its native flat two-color control resources. Its table
+alternate-row color equals the white content surface instead of synthesizing
+gray stripes. Collection image drawing thresholds scaled pixels to black or
+white, including transparency, so interpolated icons do not introduce color
+or gray fringes. This happens only in X11 collection windows: source images,
+image graphics and application canvases retain full RGBA color. Accordion
+headers draw a top separator; selected tabs use white paper, black labels and
+an open page join. Xaw alerts receive locally copied monochrome bitmap assets
+through their native icon resource.
+
 The GEMix palette is monochrome. Its custom radio primitive uses the same
 circle and selected dot as the live radio; headers retain complete outlines,
 status surfaces carry a top separator, and scrollbar parts use flat GEM-style
@@ -176,6 +186,12 @@ collection and table scrollbars share one classic composition: matching raised
 decrement/increment buttons, a page trough, and a gripped thumb. Disclosure
 size remains a backend metric so SDL2 and other compact themes can avoid bulky
 hierarchy marks.
+Athena tables, icon grids, trees and canvases instead own stock Xaw
+`Scrollbar` children. Their stippled thumbs and pointer interaction are
+native; the theme suppresses duplicate portable scrollbar parts only in
+those window contexts. Standalone theme primitives and image drawing retain
+the painted fallback. Menu titles and popups have individual borders without
+an additional full-width menu-bar rule.
 Haiku icon grids replace fallback scrollbar parts with `BControlLook` drawing
 and read the system knob preference. Both table modes instead own actual
 `BScrollBar` widgets. Their extent includes the final pixel of Haiku's

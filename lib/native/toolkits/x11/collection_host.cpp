@@ -20,6 +20,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "scrollbars.h"
 
 namespace
 {
@@ -64,6 +65,7 @@ namespace
         graphics.set_clip(invalid);
         native::wnd_paint_event event(invalid, graphics);
         owner.on_native_paint(event);
+        linux::x11::synchronize_scrollbars(owner, widget);
 
         auto *cache = linux::x11::wnd_gpx_bindings.object_from_handle(
             &owner);
@@ -357,18 +359,28 @@ namespace
             return;
         switch (event->type) {
         case Expose:
-            if (event->xexpose.count == 0)
+            if (event->xexpose.count == 0) {
+                XEvent pending;
+                while (XCheckTypedWindowEvent(XtDisplay(widget),
+                    XtWindow(widget), Expose, &pending)) {}
                 paint(*owner, widget);
+            }
             break;
-        case ConfigureNotify:
+        case ConfigureNotify: {
+            // A queued ConfigureNotify may describe an older layout.
+            // Feeding it back into portable layout creates resize loops.
+            Dimension width = 1, height = 1;
+            XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height,
+                          nullptr);
             resize_backbuffer(*owner,
                               widget,
-                              event->xconfigure.width,
-                              event->xconfigure.height);
+                              width,
+                              height);
             owner->on_native_resize(native::size(
-                static_cast<native::dim>(event->xconfigure.width),
-                static_cast<native::dim>(event->xconfigure.height)));
+                static_cast<native::dim>(width),
+                static_cast<native::dim>(height)));
             break;
+        }
         case FocusIn:
             owner->on_native_focus(true);
             break;
@@ -488,14 +500,14 @@ namespace linux::x11
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "X11/Athena: collection requires a created parent.");
-        Widget parent_widget = wnd_bindings.handle_from_object(parent);
+        Widget parent_widget = linux::x11::parent_widget(&owner);
         if (!parent_widget)
             throw std::runtime_error(
                 "X11/Athena: collection parent has no widget.");
         const native::rect bounds = owner.get_bounds();
         Widget widget = XtVaCreateWidget(
             name,
-            formWidgetClass,
+            layout_host_class(),
             parent_widget,
             XtNhorizDistance,
             bounds.p.x,
@@ -507,6 +519,8 @@ namespace linux::x11
             linux::x11::widget_dimension(bounds.d.h),
             XtNborderWidth,
             0,
+            XtNbackgroundPixmap,
+            None,
             XtNdefaultDistance,
             0,
             XtNleft,

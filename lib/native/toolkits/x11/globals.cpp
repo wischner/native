@@ -16,6 +16,16 @@
 
 namespace linux::x11
 {
+    Widget parent_widget(const native::wnd *child) {
+        auto *parent = child ? child->get_parent() : nullptr;
+        if (!parent) return nullptr;
+        if (auto *split = dynamic_cast<native::split_view *>(parent)) {
+            if (auto *state = split_view_bindings.object_from_handle(split))
+                return child == &split->get_first() ? state->first : state->second;
+        }
+        return wnd_bindings.handle_from_object(parent);
+    }
+
     Dimension widget_dimension(int value) {
         return static_cast<Dimension>(value > 0 ? value : 1);
     }

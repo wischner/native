@@ -162,12 +162,34 @@ executables:
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
 | `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
+| `native_x11_runtime_tests` | Pre-show graphics, full-row selection, grow/shrink layout, idle repaint counts, collection/table edges, bottom rows, bordered full-width combo menus with hover/selection, four open tab joins, individual menu borders without a full-width rule, teardown, centered message buttons/shells with edge and hidden-owner placement, and live bordered-pane drag | X11; X server (including private Xvfb) and the image's XTest runtime |
+| `native_x11_scrollbar_tests` | Stock Xaw widget identity, table/icon/tree/canvas ranges, million-row endpoints, horizontal scrolling, signed canvas origins, real middle-button dragging and automatic/policy hiding | X11; X server and the image's XTest runtime |
 
-The runtime executables are built on every backend so they keep compiling, but
-only SDL2 registers them with CTest, because it is the backend that runs
-unattended under `SDL_VIDEODRIVER=dummy`. Toolkit sessions can still run the
-binaries by hand: each one closes its own window and returns a process exit
-code.
+Portable runtime executables are built on each applicable backend; SDL2
+registers them with `SDL_VIDEODRIVER=dummy`. GEMix and X11-specific tests are
+registered only for their respective builds. Toolkit sessions can also run
+portable runtime binaries by hand; each closes its own window. When using
+the X11 image's `xvfb-run` as a Docker command, pass Docker `--init` so X-server
+readiness signals are delivered normally.
+
+### Monochrome X11 runtime session
+
+After `docker-x11`, launch the gallery under TWM inside a dedicated Xephyr:
+
+```bash
+bash scripts/linux/x11/run-twm.sh
+```
+
+The host needs `Xephyr`, `twm`, `xrdb`, `xdpyinfo`, `xsetroot`, and Docker.
+The script starts a normal 1280x900 Xephyr display (default `:10`), loads only
+that display's black/white resources and the repository's TWM configuration,
+then runs Docker-built Vision. `NATIVE_X11_DISPLAY=:11` selects another free
+display; an occupied display is refused. No host X resources, personal TWM
+files, Vision source, or F5 profiles are changed. TWM uses automatic placement
+and a monochrome stippled root; Xephyr retains normal color depth so application
+images remain usable. The local server accepts local clients without X
+authentication (`-ac`) and disables TCP listening; use only on a trusted host.
+Closing Vision ends this session and cleans up its TWM and Xephyr processes.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.

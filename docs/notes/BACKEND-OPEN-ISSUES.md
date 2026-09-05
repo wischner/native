@@ -20,6 +20,27 @@ This note lists backend-level open issues that are real today.
 
 ## Current open issues
 
+- The X11 follow-up (2026-09-05) reproduces the Input/Window Chrome exception
+  from graphics lookup before realization. Created-but-unshown graphics now
+  work, also synchronizing initial table/collection metrics with painting.
+  A private Athena Form specialization prevents content-driven shrinkage and
+  competing layout. Full-row lists, complete borders, scrollbar separators,
+  filled table viewports and live background-colored splitters have regression
+  coverage. Six X11 CTests pass under Xvfb; visual checks now run in monochrome
+  TWM inside Xephyr. The installed Xaw library and F5 profiles are
+  unchanged. Seven SDL2 CTests pass after the shared tab-label contrast fix.
+  The second X11 pass adds full-width, bordered combo menus with single-click
+  selection and text synchronization, private splitter pane hosts preserving
+  borders, an explicit divider grab including its leading pixel, monochrome
+  collection imagery, accordion top rules, white table rows, open selected-tab
+  joins and copied alert artwork. Menu titles/popups retain their own borders
+  without an additional full-width bar rule. The current pass adds ordinary
+  combo hover highlighting, centered native message buttons, a small splitter
+  grip and actual Xaw scrollbars for tables, icon grids, trees and canvases.
+  Native scrollbar tests cover exact endpoints, real middle-button dragging
+  and visibility changes. The server-input
+  regression also covers menu teardown before Xt destroys the callback owner.
+
 - GEMix's local-rasta review exercises button feedback, check/radio parity,
   text editing and copy/paste after file open/save, overlapping modeless
   windows, modal close, extreme layout resize, collection disclosure/icons,

@@ -4,6 +4,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include <algorithm>
 #include <stdexcept>
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
@@ -15,13 +16,27 @@
 
 namespace
 {
+    // Xaw highlights the column width, which otherwise defaults to the
+    // longest label. Keep its native column as wide as the list viewport.
+    int column_width(Widget widget) {
+        Dimension width = 1, margin = 0, spacing = 0;
+        XtVaGetValues(widget, XtNwidth, &width, XtNinternalWidth, &margin,
+            XtNcolumnSpacing, &spacing, nullptr);
+        return std::max(1, int(width) - 2 * margin - spacing);
+    }
+
+    void resized(Widget widget, XtPointer, XEvent *event, Boolean *) {
+        if (event && event->type == ConfigureNotify)
+            XtVaSetValues(widget, XtNlongest, column_width(widget), nullptr);
+    }
+
     Widget list_parent(native::list *control) {
         auto *parent = control->get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
                 "X11/Athena: list requires a created parent.");
         Widget widget =
-            linux::x11::wnd_bindings.handle_from_object(parent);
+            linux::x11::parent_widget(control);
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: list parent has no widget.");
@@ -48,7 +63,7 @@ namespace
                           ? nullptr
                           : binding->pointers.data(),
                       static_cast<int>(binding->pointers.size()),
-                      0,
+                      column_width(binding->widget),
                       False);
     }
 } // namespace
@@ -88,6 +103,8 @@ namespace native
                              True,
                              XtNverticalList,
                              True,
+                             XtNrowSpacing,
+                             2,
                              XtNleft,
                              XtChainLeft,
                              XtNright,
@@ -108,6 +125,7 @@ namespace native
         linux::x11::wnd_bindings.register_pair(widget, self);
         linux::x11::list_bindings.register_pair(self, binding);
         XtAddCallback(widget, XtNcallback, list_changed, self);
+        XtAddEventHandler(widget, StructureNotifyMask, False, resized, self);
         refresh_list(self);
         if (_selected_index >= 0)
             XawListHighlight(widget, _selected_index);

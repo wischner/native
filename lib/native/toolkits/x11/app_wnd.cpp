@@ -124,6 +124,9 @@ namespace
         case Expose: {
             if (event->xexpose.count != 0)
                 return;
+            XEvent pending;
+            while (XCheckTypedWindowEvent(XtDisplay(widget),
+                XtWindow(widget), Expose, &pending)) {}
 
             auto &g = owner->get_gpx();
             auto *cache =
@@ -179,8 +182,9 @@ namespace
         }
 
         case ConfigureNotify: {
-            const int width = event->xconfigure.width;
-            const int height = event->xconfigure.height;
+            Dimension width = 1, height = 1;
+            XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height,
+                          nullptr);
             ensure_backbuffer(owner, widget, width, height);
 
             native::size dimensions(static_cast<native::dim>(width),
@@ -437,7 +441,7 @@ namespace native
         Widget canvas = nullptr;
         if (menu_bar) {
             canvas = XtVaCreateManagedWidget("canvas",
-                                             formWidgetClass,
+                                             linux::x11::layout_host_class(),
                                              main_window,
                                              XtNfromVert,
                                              menu_bar,
@@ -468,7 +472,7 @@ namespace native
                                              nullptr);
         } else {
             canvas = XtVaCreateManagedWidget("canvas",
-                                             formWidgetClass,
+                                             linux::x11::layout_host_class(),
                                              main_window,
                                              XtNhorizDistance,
                                              0,
@@ -566,6 +570,8 @@ namespace native
             linux::x11::shell_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
 
+        // Detach while Xt widgets and their callback lists are still live.
+        menu.detach();
         linux::x11::wnd_bindings.unregister_by_object(self);
         linux::x11::main_wnd_bindings.unregister_by_object(self);
         linux::x11::shell_bindings.unregister_by_object(self);

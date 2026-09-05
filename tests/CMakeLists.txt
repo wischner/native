@@ -94,6 +94,25 @@ target_link_libraries(native_collection_runtime_tests PRIVATE
     native_developer_options
 )
 
+if(UNIX AND TOOLKIT STREQUAL "X11")
+    add_executable(native_x11_runtime_tests native_x11_runtime_tests.cpp)
+    target_include_directories(native_x11_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_x11_runtime_tests PRIVATE native native_developer_options
+        ${CMAKE_DL_LIBS})
+    add_test(NAME native_x11_runtime_tests COMMAND native_x11_runtime_tests)
+    set_tests_properties(native_x11_runtime_tests PROPERTIES TIMEOUT 20
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+    add_executable(native_x11_scrollbar_tests native_x11_scrollbar_tests.cpp)
+    target_include_directories(native_x11_scrollbar_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_x11_scrollbar_tests PRIVATE native native_developer_options
+        ${CMAKE_DL_LIBS})
+    add_test(NAME native_x11_scrollbar_tests COMMAND native_x11_scrollbar_tests)
+    set_tests_properties(native_x11_scrollbar_tests PROPERTIES TIMEOUT 20
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+endif()
+
 if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
     add_test(NAME native_collection_runtime_tests
         COMMAND native_collection_runtime_tests)

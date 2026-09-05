@@ -15,6 +15,26 @@ Legend:
 
 ## Backend status
 
+The 2026-09-05 X11 follow-up passes six CTests under a private Xvfb server.
+`native_x11_runtime_tests` checks pre-show graphics/theme lookup, full-row
+list selection before/after resize, full accordion geometry, idle repaint
+counts, collection/table borders, scrollbar separators, bottom-row coverage,
+growing/shrinking grid children, combo sizing, full-width popup placement,
+single-click native selection/text synchronization, pointer-hover highlighting,
+centered message buttons and parent-centered shells (including moved/off-screen
+and hidden-owner cases), all four open tab joins, individual menu borders
+without a full-width bar rule, and server-delivered two-pane separator movement with preserved
+child borders, vertical/zero-ratio native backing, monochrome collection pixels,
+unaltered canvas images and all four copied alert bitmaps. X11 collections
+display monochrome icons and white alternating rows; alerts use copied local
+monochrome artwork. `native_x11_scrollbar_tests` verifies actual Xaw widgets
+for tables, icon grids, trees and canvases, native middle-button dragging,
+horizontal ranges, million-row endpoints, signed canvas origins and hiding.
+Gallery checks run under monochrome TWM inside Xephyr and cover combo hover,
+table/accordion dragging, centered message buttons, the splitter grip and
+menu borders. Seven SDL2 CTests
+passed in the preceding review after the shared tab-text contrast correction.
+
 | Backend | Build path | Runtime status |
 | --- | --- | --- |
 | Linux X11 | `docker-x11` | Yes (tested) |

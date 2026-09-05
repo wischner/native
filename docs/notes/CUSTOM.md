@@ -29,7 +29,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Backend and control | Result | Portable behavior retained in C++ |
 | --- | --- | --- |
 | Windows `status_bar` | **N/H**, `STATUSCLASSNAME` with `SB_SETPARTS` and `SB_SETTEXT` | Text, part ordering, fixed/flexible widths, visibility, edge reservation, and fallback for an unsupported part count. The common control owns drawing and the size grip; derived bars retain the painted path so drawing overrides still work. |
-| Athena `split_view` | **N**, Xaw `Paned` | Orientation, ratio, minimums, borrowed pane ownership, and ratio-change signal. `XawPanedSetMinMax` and pane constraints drive the native grips. |
+| Athena `split_view` | **N/H**, Xaw `Paned` | Native pane constraints commit live full-separator dragging; XOR grips are disabled. Portable ratio, minimums and borrowed lifetimes are retained. |
+| Athena collection/table/canvas scrolling | **H**, stock Xaw `Scrollbar` children | Portable content, row ranges and chrome reservations; peer-owned adapters preserve endpoints while Athena owns the stippled thumb and pointer behavior. |
 | Motif `tree_view` | **N/H**, `XmContainer` outline in both presentation modes | Stable IDs, hierarchy data, icon ownership, and signals. Presentation mode now changes gadget relief instead of changing to a painted `XmDrawingArea`. |
 | Motif `icon_view` | **N/H**, spatial `XmContainer` with `XmIconGadget` entries | Item model, stable selection index, images, label mode, disabled state, activation, and scroll offset. The collection is materialized, which matches `icon_view`'s owned-vector contract. |
 
@@ -49,8 +50,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
 | X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
 | All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
-| All `canvas` scrollbars | Keep **C**. Native scrollbars (`BScrollBar`, `XmScrollBar`, `WMScroller`, `NSScroller`, `SBS_*`) carry a narrower or differently-shaped range than the portable signed 32-bit content contract, which requires both endpoints to stay exactly reachable. The themed portable scrollbar also keeps the ruler/scrollbar and scrollbar/scrollbar corners inside one geometry pass. |
-| All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; only the client, ruler, and scrollbar painting is portable, because the application owns the client pixels by contract. |
+| Non-Athena `canvas` scrollbars | Keep their existing themed implementation. The portable signed 32-bit content contract requires exact endpoints and shared ruler/corner geometry. Athena now adapts actual Xaw scrollbar fractions to that contract without changing other backends. |
+| All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; application painting owns the client pixels, while backend or portable code supplies chrome. |
 
 There is no stock general-purpose Win32 splitter, accordion, code editor, or
 ruler equivalent to the portable contracts. SDL2 and GEM/AES likewise do not
@@ -58,6 +59,29 @@ provide a complete reusable child-widget set, so custom controls are expected
 in those backends.
 
 ## Linux X11/Athena
+
+The 2026-09-05 follow-up retains Athena controls, specializing Form geometry
+only for Native-owned containers. Child preferences cannot shrink these hosts
+or unmap them during layout. Native child borders fit inside assigned bounds.
+Buffered collections preserve visible pixels until the next copy and coalesce
+Exposes. Pre-show graphics support theme lookup during creation. Six X11
+CTests cover these changes, including pixels, resize and separator dragging.
+Seven SDL2 CTests also pass after the shared pressed-tab text-color correction.
+The X11 follow-up adds private splitter pane hosts (not application panels),
+server-delivered pointer tests, full-width bordered combo menus with native
+text synchronization and pointer-hover highlighting. Menu titles and popups
+have individual borders with no additional full-width bar rule. Native message
+button rows are centered; alert shells open over the current parent position,
+or screen center for a hidden owner, with screen-clamped placement.
+Stock Xaw scrollbars serve tables, icon grids,
+trees and canvases, and the live splitter has a small non-XOR grip. Visual
+checks run in monochrome TWM inside Xephyr with display-local resources.
+Selected tabs are white
+and open to the page without a separator. Collection icons are thresholded to
+black/white at display time; user image buffers and canvas images stay intact.
+Accordion headers have top rules, and alternating table rows retain the white
+content background. Native alerts use local copies of GEM's monochrome assets
+in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
@@ -67,18 +91,18 @@ in those backends.
 | `button` | **N** | Xaw `Command`. |
 | `check` | **N** | Xaw `Toggle`. |
 | `radio` | **N** | Xaw `Toggle` with radio grouping. |
-| `list` | **N** | Xaw `List`. |
+| `list` | **N** | Xaw `List`; column width follows the viewport for full-row selection. |
 | `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. |
 | `text_edit` | **N/H** | Xaw `AsciiText`; portable validation and clipboard policy wrap the native editor. |
 | `accordion` | **C** | Library-painted collection in an Xaw host. |
 | `tab_view` | **C** | Library-painted tabs, framed/strip-only page chrome, and borrowed-page routing in an Xaw host. |
-| `icon_view` | **C** | Library-painted wrapping grid in the shared collection host. |
-| `tree_view` | **C** | Library-painted hierarchy in the shared collection host. |
-| `table_view` | **C** | Model-backed library table painter in the shared collection host. |
+| `icon_view` | **H** | Library-painted wrapping grid with a native Xaw scrollbar, including inside accordions. |
+| `tree_view` | **H** | Library-painted hierarchy with native Xaw scrolling; Athena has no outline widget. |
+| `table_view` | **H** | Model-backed virtual table painter with native horizontal/vertical Xaw scrollbars. |
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
-| `split_view` | **N/H** | Xaw `Paned`; portable ratio/minimum state maps to native pane constraints and `XawPanedSetMinMax`. |
-| `panel` | **N** | Xaw `Form` child; Athena owns the container background and it is a real Xt parent for every control. |
-| `canvas` | **H** | Xaw `Form` drawable host with library paint/input routing; the client, rulers, and themed scrollbars are painted by portable code. |
+| `split_view` | **N/H** | Xaw `Paned` with private Form pane hosts preserving child borders; captured full-strip dragging through native constraints, without XOR grips. |
+| `panel` | **N/H** | Athena Form subclass; native hosting/background with portable geometry ownership. |
+| `canvas` | **H** | Xaw `Form` drawable host with portable client/ruler painting and actual Xaw scrollbar children. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |

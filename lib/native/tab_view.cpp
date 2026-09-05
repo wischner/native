@@ -764,7 +764,8 @@ namespace native
         const theme::palette colors = appearance.native_palette();
         graphics.set_font(font_t::stock(font_role::control))
             .set_ink(state.disabled ? colors.button_disabled_text
-                                    : colors.button_text);
+                : (!_sloped_tabs && state.pressed ? colors.button_pressed_text
+                                                 : colors.button_text));
         if (_tab_placement == tab_placement::left ||
             _tab_placement == tab_placement::right) {
             detail::draw_rotated_text(

@@ -22,6 +22,11 @@
 
 namespace
 {
+    Dimension backing_dimension(Widget widget, int value) {
+        Dimension border = 0;
+        XtVaGetValues(widget, XtNborderWidth, &border, nullptr);
+        return linux::x11::widget_dimension(value - 2 * border);
+    }
     Cursor cursor_for(Display *display, native::mouse_cursor cursor) {
         if (!display)
             return None;
@@ -61,10 +66,7 @@ namespace native
                           XtNy,
                           position.y,
                           nullptr);
-        } else if (widget &&
-                   (!_parent ||
-                    !native::detail::peer_state<
-                        linux::x11::xaw_split_view>(*_parent))) {
+        } else if (widget) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
                           _bounds.p.x,
@@ -96,15 +98,12 @@ namespace native
                           XtNy,
                           position.y,
                           nullptr);
-        } else if (widget &&
-                   (!_parent ||
-                    !native::detail::peer_state<
-                        linux::x11::xaw_split_view>(*_parent))) {
+        } else if (widget) {
             XtVaSetValues(widget,
                           XtNwidth,
-                          linux::x11::widget_dimension(_bounds.d.w),
+                          backing_dimension(widget, _bounds.d.w),
                           XtNheight,
-                          linux::x11::widget_dimension(_bounds.d.h),
+                          backing_dimension(widget, _bounds.d.h),
                           nullptr);
         }
     }
@@ -129,19 +128,16 @@ namespace native
                           XtNheight,
                           linux::x11::widget_dimension(_bounds.d.h),
                           nullptr);
-        } else if (widget &&
-                   (!_parent ||
-                    !native::detail::peer_state<
-                        linux::x11::xaw_split_view>(*_parent))) {
+        } else if (widget) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
                           _bounds.p.x,
                           XtNvertDistance,
                           _bounds.p.y,
                           XtNwidth,
-                          linux::x11::widget_dimension(_bounds.d.w),
+                          backing_dimension(widget, _bounds.d.w),
                           XtNheight,
-                          linux::x11::widget_dimension(_bounds.d.h),
+                          backing_dimension(widget, _bounds.d.h),
                           nullptr);
         }
     }

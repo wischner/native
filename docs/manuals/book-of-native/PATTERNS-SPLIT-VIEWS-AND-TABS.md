@@ -50,6 +50,24 @@ toolkit provides the widget: Haiku `BSplitView`/`BTabView`, Motif
 `XmPanedWindow`/`XmNotebook`, Window Maker `WMSplitView`/`WMTabView`, and
 AppKit `NSSplitView`/`NSTabView`.
 
+X11 retains Athena `Paned` but disables its square XOR grips. The complete
+separator uses the surrounding background and accepts captured pointer motion.
+A small centered four-mark grip identifies the movable strip; it is painted
+normally, not XORed, and moves with the live divider.
+Both pane sizes are committed together through Xaw's public constraint and
+refigure functions before restoring portable minimum ranges; setting preferred
+sizes alone does not commit a live layout. Private Form pane hosts prevent
+Paned from stripping the borrowed controls' borders. Children resolve their
+actual host inside the X11 backend; applications still supply two ordinary
+controls, with no extra panels. Dragging accepts the complete native gap,
+including its leading pixel, and explicitly grabs the pointer until release.
+Axis and separator changes suspend native refiguring until new constraints
+are ready; native panes retain nonzero backing even for a zero portable ratio.
+Non-sloped painted tabs pair the pressed background with the pressed text
+color. X11 uses white selected tabs with black text and an open page join:
+the tab host paints the page frame and page Lists omit their redundant native
+enclosure. There is no separator between a selected tab and its content.
+
 Haiku, AppKit, Windows, and Motif use native placement where the toolkit also
 meets Native's directional-label contract. Themed hosts use the shared
 portable geometry and renderer. WINGs exposes only top tabs, so Window Maker

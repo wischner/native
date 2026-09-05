@@ -210,6 +210,11 @@ on the screen.
 
 ## Backend responsibilities
 
+X11 can allocate window-graphics pixmaps before a created widget is realized;
+theme lookup in `on_wnd_create` does not force the shell visible. Collection
+hosts disable server background clearing, coalesce pending Exposes and copy
+the completed backbuffer. Standard Athena controls retain native painting.
+
 Each backend must:
 
 1. Translate native expose or paint notifications into one synchronous public

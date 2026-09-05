@@ -6,6 +6,7 @@
 //
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include <X11/Intrinsic.h>
@@ -19,17 +20,43 @@
 
 namespace
 {
+    void draw_grip(native::split_view &owner, Widget widget) {
+        if (!XtIsRealized(widget)) return;
+        const native::rect strip = owner.get_splitter_bounds();
+        const bool horizontal = owner.get_orientation() == native::split_orientation::horizontal;
+        if ((horizontal ? strip.d.w : strip.d.h) < 3 ||
+            (horizontal ? strip.d.h : strip.d.w) < 15) return;
+        XGCValues values{};
+        XtVaGetValues(widget, XtNborderColor, &values.foreground, nullptr);
+        GC gc = XtGetGC(widget, GCForeground, &values);
+        const int x = strip.x1() + strip.d.w / 2;
+        const int y = strip.y1() + strip.d.h / 2;
+        for (int offset = -6; offset <= 6; offset += 4) {
+            if (horizontal)
+                XDrawLine(XtDisplay(widget), XtWindow(widget), gc,
+                    x - 1, y + offset, x, y + offset);
+            else
+                XDrawLine(XtDisplay(widget), XtWindow(widget), gc,
+                    x + offset, y - 1, x + offset, y);
+        }
+        XtReleaseGC(widget, gc);
+    }
+
     linux::x11::xaw_split_view *binding(native::split_view &owner) {
         return linux::x11::split_view_bindings
             .object_from_handle(&owner);
     }
 
-    void cache_children(native::split_view &owner,
-                        linux::x11::xaw_split_view &state) {
-        state.first = linux::x11::wnd_bindings.handle_from_object(
-            &owner.get_first());
-        state.second = linux::x11::wnd_bindings.handle_from_object(
-            &owner.get_second());
+    void fit_child(native::wnd &child, Widget host) {
+        if (!host || !child.get_created()) return;
+        Dimension width = 1, height = 1;
+        XtVaGetValues(host, XtNwidth, &width, XtNheight, &height, nullptr);
+        child.set_bounds(native::rect(0, 0, width, height));
+    }
+
+    void pane_resized(Widget host, XtPointer data, XEvent *event, Boolean *) {
+        if (event && event->type == ConfigureNotify)
+            fit_child(*static_cast<native::wnd *>(data), host);
     }
 
     struct pane_constraints
@@ -47,12 +74,12 @@ namespace
                               ? owner.get_dimensions().w
                               : owner.get_dimensions().h;
         const int available = std::max(
-            1, total-static_cast<int>(owner.get_splitter_size()));
+            2, total-static_cast<int>(owner.get_splitter_size()));
         const int first_minimum = std::min(
-            available, static_cast<int>(owner.get_first_minimum()));
+            available - 1, std::max(1, static_cast<int>(owner.get_first_minimum())));
         const int second_minimum = std::min(
             available-first_minimum,
-            static_cast<int>(owner.get_second_minimum()));
+            std::max(1, static_cast<int>(owner.get_second_minimum())));
         return {available,
                 first_minimum,
                 second_minimum,
@@ -60,40 +87,44 @@ namespace
                 std::max(second_minimum, available-first_minimum)};
     }
 
-    void pane_resized(Widget widget,
+    void separator_event(Widget widget,
                       XtPointer client_data,
                       XEvent *event,
                       Boolean *) {
-        if (!event || event->type != ConfigureNotify)
-            return;
         auto *owner = static_cast<native::split_view *>(client_data);
         auto *state = owner ? binding(*owner) : nullptr;
-        if (!owner || !state || state->suppress ||
-            widget != state->first || !state->paned) {
-            return;
+        if (!owner || !state || !event || state->suppress) return;
+        if (event->type == Expose) {
+            draw_grip(*owner, widget);
+        } else if (event->type == ConfigureNotify) {
+            Dimension width = 1, height = 1;
+            XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height, nullptr);
+            owner->on_native_resize(native::size(width, height));
+        } else if (event->type == MotionNotify) {
+            owner->on_native_mouse_move(native::point(
+                event->xmotion.x, event->xmotion.y));
+        } else if ((event->type == ButtonPress || event->type == ButtonRelease) &&
+                   event->xbutton.button == Button1) {
+            if (event->type == ButtonPress) {
+                // Use the complete exposed native separator, including its
+                // leading pixel, then capture motion outside both panes.
+                if (XtGrabPointer(widget, False,
+                    ButtonReleaseMask | PointerMotionMask, GrabModeAsync,
+                    GrabModeAsync, None, None, event->xbutton.time) != GrabSuccess)
+                    return;
+            }
+            const auto divider = owner->get_splitter_bounds();
+            const auto position = event->type == ButtonPress
+                ? divider.p
+                : native::point(event->xbutton.x, event->xbutton.y);
+            if (event->type == ButtonRelease)
+                XtUngrabPointer(widget, event->xbutton.time);
+            owner->on_native_mouse_click(native::mouse_event(
+                native::mouse_button::left,
+                event->type == ButtonPress ? native::mouse_action::press
+                                          : native::mouse_action::release,
+                position));
         }
-        Dimension total_width = 0;
-        Dimension total_height = 0;
-        Dimension border = 0;
-        XtVaGetValues(state->paned,
-                      XtNwidth,
-                      &total_width,
-                      XtNheight,
-                      &total_height,
-                      XtNinternalBorderWidth,
-                      &border,
-                      nullptr);
-        const int total = owner->get_orientation() ==
-                                  native::split_orientation::horizontal
-                              ? total_width
-                              : total_height;
-        const int available = std::max(1, total-static_cast<int>(border));
-        const int first = owner->get_orientation() ==
-                                  native::split_orientation::horizontal
-                              ? event->xconfigure.width
-                              : event->xconfigure.height;
-        owner->on_native_ratio(std::clamp(
-            static_cast<float>(first)/available, 0.0f, 1.0f));
     }
 } // namespace
 
@@ -103,6 +134,9 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->paned)
             return;
+        // Xaw resets pane sizes while changing axes. Refigure only after
+        // constraints for the new axis have been installed together.
+        XawPanedSetRefigureMode(state->paned, False);
         XtVaSetValues(
             state->paned,
             XtNorientation,
@@ -118,12 +152,11 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->paned)
             return;
-        cache_children(*this, *state);
         if (!state->first || !state->second)
             return;
         const pane_constraints limits = constraints(*this);
         const int first = std::clamp(
-            static_cast<int>(limits.available*get_ratio()),
+            static_cast<int>(std::lround(limits.available*get_ratio())),
             limits.first_minimum,
             limits.first_maximum);
         state->suppress = true;
@@ -139,14 +172,26 @@ namespace native
                       XtNresizeToPreferred,
                       True,
                       nullptr);
+        // Xaw does not refigure live panes when preferredPaneSize changes.
+        // Commit both sizes together through its public constraint API,
+        // then restore the permitted ranges without an intermediate frame.
+        XawPanedSetRefigureMode(state->paned, False);
+        XawPanedSetMinMax(state->first, first, first);
+        const int second = std::max(0, limits.available - first);
+        XawPanedSetMinMax(state->second, second, second);
+        XawPanedSetRefigureMode(state->paned, True);
+        XawPanedSetRefigureMode(state->paned, False);
+        apply_minimums();
+        XawPanedSetRefigureMode(state->paned, True);
         state->suppress = false;
+        fit_child(get_first(), state->first);
+        fit_child(get_second(), state->second);
     }
 
     void split_view::apply_minimums() {
         auto *state = binding(*this);
         if (!state)
             return;
-        cache_children(*this, *state);
         if (!state->first || !state->second)
             return;
         const pane_constraints limits = constraints(*this);
@@ -164,6 +209,7 @@ namespace native
         auto *state = binding(*this);
         if (!state || !state->paned)
             return;
+        XawPanedSetRefigureMode(state->paned, False);
         XtVaSetValues(state->paned,
                       XtNinternalBorderWidth,
                       get_splitter_size(),
@@ -178,13 +224,15 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: split_view requires a created parent.");
         Widget parent_widget =
-            linux::x11::wnd_bindings.handle_from_object(parent);
+            linux::x11::parent_widget(this);
         if (!parent_widget)
             throw std::runtime_error(
                 "X11/Athena: split_view parent has no widget.");
 
         auto *self = this;
         auto *state = new linux::x11::xaw_split_view();
+        Pixel background = 0;
+        XtVaGetValues(parent_widget, XtNbackground, &background, nullptr);
         state->paned = XtVaCreateWidget(
             "splitView",
             panedWidgetClass,
@@ -203,6 +251,9 @@ namespace native
                 : XtorientVertical,
             XtNinternalBorderWidth,
             get_splitter_size(),
+            XtNinternalBorderColor, background,
+            XtNbackground, background,
+            XtNborderWidth, 0,
             nullptr);
         if (!state->paned) {
             delete state;
@@ -211,29 +262,49 @@ namespace native
         }
         linux::x11::wnd_bindings.register_pair(state->paned, self);
         linux::x11::split_view_bindings.register_pair(self, state);
-        self->refresh_contents();
-        cache_children(*self, *state);
+        state->first = XtVaCreateManagedWidget("firstPane",
+            linux::x11::layout_host_class(), state->paned,
+            XtNwidth, linux::x11::widget_dimension(get_first_bounds().d.w),
+            XtNheight, linux::x11::widget_dimension(get_first_bounds().d.h),
+            XtNpreferredPaneSize, std::max(1, resolved_first_extent()),
+            XtNborderWidth, 0, XtNdefaultDistance, 0,
+            XtNshowGrip, False, XtNallowResize, True, nullptr);
+        state->second = XtVaCreateManagedWidget("secondPane",
+            linux::x11::layout_host_class(), state->paned,
+            XtNwidth, linux::x11::widget_dimension(get_second_bounds().d.w),
+            XtNheight, linux::x11::widget_dimension(get_second_bounds().d.h),
+            XtNpreferredPaneSize, std::max(1,
+                constraints(*this).available - resolved_first_extent()),
+            XtNborderWidth, 0, XtNdefaultDistance, 0,
+            XtNshowGrip, False, XtNallowResize, True, nullptr);
         if (!state->first || !state->second) {
             self->destroy();
             throw std::runtime_error(
                 "X11/Athena: split_view panes have no native widgets.");
         }
+        _content_hosts_are_panes = true;
+        self->refresh_contents();
+        XtAddEventHandler(state->first, StructureNotifyMask, False,
+            pane_resized, &get_first());
+        XtAddEventHandler(state->second, StructureNotifyMask, False,
+            pane_resized, &get_second());
         XtVaSetValues(state->first,
                       XtNallowResize,
                       True,
                       XtNshowGrip,
-                      True,
+                      False,
                       nullptr);
         XtVaSetValues(state->second,
                       XtNallowResize,
                       True,
                       XtNshowGrip,
-                      True,
+                      False,
                       nullptr);
-        XtAddEventHandler(state->first,
-                          StructureNotifyMask,
+        XtAddEventHandler(state->paned,
+                          ExposureMask | StructureNotifyMask | ButtonPressMask |
+                              ButtonReleaseMask | PointerMotionMask,
                           False,
-                          pane_resized,
+                          separator_event,
                           self);
         self->apply_minimums();
         self->apply_ratio();
@@ -255,6 +326,7 @@ namespace native
         auto *self = this;
         auto *state = binding(*self);
         if (state && state->paned) {
+            XtUngrabPointer(state->paned, CurrentTime);
             linux::x11::wnd_bindings.unregister_by_handle(state->paned);
             XtDestroyWidget(state->paned);
         }

@@ -51,7 +51,7 @@ namespace native
                 "X11/Athena: button parent is not created.");
 
         Widget parent_widget =
-            linux::x11::wnd_bindings.handle_from_object(parent);
+            linux::x11::parent_widget(this);
         if (!parent_widget)
             throw std::runtime_error(
                 "X11/Athena: button parent has no widget.");

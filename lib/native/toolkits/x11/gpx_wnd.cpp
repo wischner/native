@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -67,26 +68,28 @@ namespace native
             Display *display = linux::x11::cached_display;
             Widget widget =
                 linux::x11::wnd_bindings.handle_from_object(_wnd);
-            if (!widget || !XtIsRealized(widget))
+            if (!widget)
                 throw std::runtime_error(
-                    "X11/Athena: Drawing widget is not realized.");
-            Window win = XtWindow(widget);
+                    "X11/Athena: Missing drawing widget.");
+            // A created but not yet shown widget can measure text and
+            // render offscreen. Do not realize/map its shell just to
+            // obtain a drawable for a same-screen pixmap and GC.
+            Window win = RootWindowOfScreen(XtScreen(widget));
             int screen = DefaultScreen(display);
-
-            // Get the actual current window size.
-            XWindowAttributes attrs;
-            XGetWindowAttributes(display, win, &attrs);
+            Dimension width = 1, height = 1;
+            XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height,
+                          nullptr);
 
             cache = new linux::x11::x11_gpx();
             cache->gc = XCreateGC(display, win, 0, nullptr);
             cache->backbuffer =
                 XCreatePixmap(display,
                               win,
-                              attrs.width,
-                              attrs.height,
+                              width,
+                              height,
                               DefaultDepth(display, screen));
-            cache->buf_w = attrs.width;
-            cache->buf_h = attrs.height;
+            cache->buf_w = width;
+            cache->buf_h = height;
 
             // Start with a white backbuffer.
             XSetForeground(
@@ -96,8 +99,8 @@ namespace native
                            cache->gc,
                            0,
                            0,
-                           attrs.width,
-                           attrs.height);
+                           width,
+                           height);
 
             linux::x11::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
@@ -242,10 +245,28 @@ namespace native
 
         apply_gc(display, cache, this);
 
+        // Collection imagery follows Athena's two-color control style.
+        // Threshold after scaling so interpolation cannot add gray fringes.
+        // Application canvases and other image surfaces retain full color.
+        std::unique_ptr<img> monochrome;
+        if (dynamic_cast<icon_view *>(_wnd) ||
+            dynamic_cast<table_view *>(_wnd) ||
+            dynamic_cast<tree_view *>(_wnd) ||
+            dynamic_cast<accordion *>(_wnd)) {
+            monochrome = std::make_unique<img>(src.w(), src.h());
+            rgba *pixels = monochrome->pixels();
+            for (int index = 0; index < src.w() * src.h(); ++index) {
+                const rgba color = src.pixels()[index];
+                const int brightness = 299 * color.r +
+                    587 * color.g + 114 * color.b;
+                const std::uint8_t value = brightness >= 224000 ? 255 : 0;
+                pixels[index] = rgba(value, value, value, color.a >= 128 ? 255 : 0);
+            }
+        }
         detail::blend_x_image(display,
                               cache->backbuffer,
                               cache->gc,
-                              src,
+                              monochrome ? *monochrome : src,
                               dst,
                               _clip,
                               size(cache->buf_w, cache->buf_h));

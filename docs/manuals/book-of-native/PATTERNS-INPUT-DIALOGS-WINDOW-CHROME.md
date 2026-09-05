@@ -7,6 +7,11 @@ its native widget or to its existing native-theme renderer.
 
 ## Combo boxes and list boxes
 
+Athena lists synchronize their native column width with the viewport for
+full-row selection. Its composite combo keeps its assigned Form dimensions,
+and changing the arrow bitmap cannot shrink the MenuButton below the field
+height. Pre-show graphics support status-metric lookup during creation.
+
 GEMix paints open combo lists as the final overlay, inside a separate one-pixel
 frame, so ordinary lists or editors below cannot cover popup choices. Its AES
 menu tree uses the conventional root siblings for the bar and popup container.
@@ -41,6 +46,25 @@ AppKit `NSComboBox`, Motif `XmComboBox`, WINGs popup and
 text controls, and XView choice and text controls. Athena composes its standard
 text, menu-button, and menu widgets. SDL2 and GEMix route the control through
 their existing backend-owned theme and input systems.
+Athena's text and arrow borders overlap by one pixel, leaving one divider.
+Text margins follow the actual text-sink font metrics for vertical centering.
+Its bordered popup anchors to the complete field, not the arrow, and menu
+entries have full-width hit areas. Ordinary pointer motion highlights the
+hovered entry without committing selection. Both click-then-click and
+press/drag/release selection work. Selection updates the native text field before notifying C++
+subscribers; selection-only fields also open when their text is clicked.
+Athena menu titles and popups retain their individual borders; no extra rule
+spans the unused menu-bar width. Menu callbacks detach before their owning
+widget hierarchy is destroyed. Message dialogs center their native Command
+button row using Form constraints, including after resize. Before mapping,
+their shell centers over the owner's current screen position, falling back
+to the X screen center when the owner is hidden. Requested shell bounds are
+clamped to that screen, and center gravity preserves the placement when the
+window manager adds decorations. They use X11-owned
+copies of GEM's 32-pixel monochrome alert artwork, supplied to the native Xaw
+Dialog icon resource; there are no GEM headers, libraries or runtime assets
+in that path. Information/warning use the exclamation, question uses the
+question mark, and error uses the stop sign.
 Haiku composes native buttons, `BTextControl`, and `BPopUpMenu`. A
 selection-only button paints through the system menu-field primitives;
 editable mode places its arrow child inside one full-width native text border,

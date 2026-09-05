@@ -8,6 +8,8 @@
 #include <stdexcept>
 
 #include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
+#include <X11/Xaw/List.h>
 
 #include <native.h>
 
@@ -17,7 +19,20 @@
 namespace native
 {
     void tab_view::apply_items() { invalidate(); }
-    void tab_view::apply_selected_index() { invalidate(); }
+    void tab_view::apply_selected_index() {
+        const int selected = get_selected_index();
+        if (selected >= 0) {
+            auto &content = get_item(selected).get_content();
+            Widget page = linux::x11::wnd_bindings.handle_from_object(&content);
+            // A List used as a page must not close the selected tab's join
+            // with a second, independently drawn native enclosure.
+            if (page && XtIsSubclass(page, listWidgetClass)) {
+                XtVaSetValues(page, XtNborderWidth, 0, nullptr);
+                content.set_bounds(get_content_bounds());
+            }
+        }
+        invalidate();
+    }
 
     void tab_view::create_native() {
         auto *self = this;

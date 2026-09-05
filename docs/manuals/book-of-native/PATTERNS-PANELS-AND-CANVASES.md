@@ -93,7 +93,7 @@ native resource colors:
 
 | Backend | Host |
 | --- | --- |
-| X11/Athena | Xaw `Form` child, edges chained so child geometry cannot resize the panel |
+| X11/Athena | Private Xaw `Form` subclass; portable layout owns bounds, child preferences cannot resize/unmap the panel |
 | OpenMotif | `XmForm` child with `XmRESIZE_NONE` |
 | OPEN LOOK/XView | Borderless `PANEL` on the frame at the accumulated child offset |
 | Window Maker/WINGs | `WMFrame` with `WRFlat` relief |
@@ -214,6 +214,13 @@ than relying on rounding.
 3. Scrollbar tracks, thumbs, and the corner filler, through
    `theme::draw_scrollbar_part` and `theme::draw_surface`.
 
+The Athena host replaces scrollbar parts with actual Xaw `Scrollbar`
+children in those same reservations, retaining the portable corner filler.
+Its buffered copy clips around native children, so it cannot erase their
+border or stippled thumb. Per-window peer state adapts native fractions to
+the signed content origin and portable range, including exact endpoints;
+no public native handle or second geometry model is introduced.
+
 The clip in stage 1 is what enforces the contract. A subscriber that ignores
 the invalid rectangle and paints its whole content still cannot reach a ruler,
 a scrollbar, a sibling, or the parent.
@@ -230,6 +237,11 @@ tracks first: a press on a thumb starts a drag and records the grab offset, a
 press in the empty track pages toward the pointer by the current viewport span,
 and a release ends the interaction. None of those reach `on_mouse_click`,
 because a scrollbar press is chrome, not a client click.
+
+When a native child owns the track, Athena handles those events instead:
+button 1 scrolls forward, button 3 backward, and button 2 jumps/drags the
+thumb. Its callbacks enter `on_native_scroll()` with the absolute content
+position. Wheel input over the native track also updates that range.
 
 Everything outside the tracks falls through to the inherited dispatch
 unchanged. Wheel input scrolls the matching axis when it can move and still

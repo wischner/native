@@ -1,0 +1,128 @@
+# twmrc-bw — TWM chrome is black and white only
+
+NoGrabServer
+RestartPreviousState
+DecorateTransients
+ShowIconManager
+TitleFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
+ResizeFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
+MenuFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
+IconFont "-adobe-helvetica-bold-r-normal--*-100-*-*-*-*-*-*"
+IconManagerFont "-adobe-helvetica-bold-r-normal--*-100-*-*-*"
+BorderWidth 1
+TitleButtonBorderWidth 1
+MenuBorderWidth 1
+
+MoveDelta 3
+Function "move-or-lower" { f.move f.deltastop f.lower }
+Function "move-or-raise" { f.move f.deltastop f.raise }
+Function "move-or-iconify" { f.move f.deltastop f.iconify }
+
+Color
+{
+    BorderColor "black"
+    DefaultBackground "white"
+    DefaultForeground "black"
+    TitleBackground "white"
+    TitleForeground "black"
+    MenuBackground "white"
+    MenuForeground "black"
+    MenuBorderColor "black"
+    MenuTitleBackground "black"
+    MenuTitleForeground "white"
+    MenuShadowColor "black"
+    IconBackground "white"
+    IconForeground "black"
+    IconBorderColor "black"
+    IconManagerBackground "white"
+    IconManagerForeground "black"
+    IconManagerHighlight "black"
+    PointerForeground "black"
+    PointerBackground "white"
+}
+
+Grayscale
+{
+    BorderColor "black"
+    DefaultBackground "white"
+    DefaultForeground "black"
+    TitleBackground "white"
+    TitleForeground "black"
+    MenuBackground "white"
+    MenuForeground "black"
+    MenuBorderColor "black"
+    MenuTitleBackground "black"
+    MenuTitleForeground "white"
+    MenuShadowColor "black"
+    IconBackground "white"
+    IconForeground "black"
+    IconBorderColor "black"
+    IconManagerBackground "white"
+    IconManagerForeground "black"
+    IconManagerHighlight "black"
+    PointerForeground "black"
+    PointerBackground "white"
+}
+
+Monochrome
+{
+    BorderColor "black"
+    DefaultBackground "white"
+    DefaultForeground "black"
+    TitleBackground "white"
+    TitleForeground "black"
+    MenuBackground "white"
+    MenuForeground "black"
+    MenuBorderColor "black"
+    MenuTitleBackground "black"
+    MenuTitleForeground "white"
+    IconBackground "white"
+    IconForeground "black"
+    IconBorderColor "black"
+    IconManagerBackground "white"
+    IconManagerForeground "black"
+    IconManagerHighlight "black"
+    PointerForeground "black"
+    PointerBackground "white"
+}
+
+Button1 = : root : f.menu "main"
+Button2 = : root : f.menu "windowops"
+Button1 = m : window|icon : f.function "move-or-lower"
+Button2 = m : window|icon : f.iconify
+Button3 = m : window|icon : f.function "move-or-raise"
+Button1 = : title : f.function "move-or-raise"
+Button2 = : title : f.raiselower
+Button1 = : icon : f.function "move-or-iconify"
+Button2 = : icon : f.iconify
+Button1 = : iconmgr : f.iconify
+Button2 = : iconmgr : f.iconify
+
+menu "main"
+{
+    "TWM (B&W)"         f.title
+    "Xterm"             f.exec "exec xterm -fg black -bg white +cm &"
+    "Xclock"            f.exec "exec xclock -bg white -fg black -hd black -hl black -bd black &"
+    ""                  f.nop
+    "Show Icon Manager" f.showiconmgr
+    "Hide Icon Manager" f.hideiconmgr
+    ""                  f.nop
+    "Restart"           f.restart
+    "Exit"              f.quit
+}
+
+menu "windowops"
+{
+    "Window Ops"        f.title
+    "Iconify"           f.iconify
+    "Resize"            f.resize
+    "Move"              f.move
+    "Raise"             f.raise
+    "Lower"             f.lower
+    ""                  f.nop
+    "Delete"            f.delete
+    "Destroy"           f.destroy
+}
+
+RandomPlacement
+UsePPosition "on"
