@@ -23,9 +23,16 @@ the same commit.
     and serialized libgem/gemd builds
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
-  - Apple backend
+  - macOS AppKit backend (native AppleClang build on remote `leia`, six
+    CTests passing normally and with ASan/UBSan, plus targeted desktop checks)
 - Work in progress:
   - other toolkit targets and ports not listed above
+
+Runtime-tested does not imply an exhaustive interactive walkthrough. The
+[feature matrix](book-of-native/FEATURE-MATRIX.md) records per-feature
+coverage; the [macOS runtime note](../notes/MACOS-REMOTE-RUNTIME.md) separates
+automated regressions and targeted visual checks from the still-incomplete
+full-gallery walkthrough.
 
 ## Chapters
 

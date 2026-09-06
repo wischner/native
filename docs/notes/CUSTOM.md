@@ -357,8 +357,15 @@ sized panes. Full-width `NSTableView` grids and native row backgrounds use
 stronger, dynamically system-derived colors and native clipping; no drawing
 override is needed. Single-open accordions fit their expanded page to the
 native viewport and leave scrolling to that page, without a second outer
-scrollbar unless even the headers cannot fit. Collection image conversion consistently preserves straight
-RGBA alpha for native image views.
+scrollbar unless even the headers cannot fit. Multiple-open mode retains
+outer scrolling for its stack of preferred-height pages. Collection image
+conversion consistently preserves straight RGBA alpha for native image views.
+
+The image-graphics text path is separate from stock-control painting. It uses
+AppKit text rendering with a flipped Quartz transform, then converts a
+transparent premultiplied layer to straight RGBA before compositing. The
+2026-09-05 regression suite checks upright glyph pixels and partial alpha,
+single-open scrollbar ownership, and light/dark grid and stripe contrast.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |

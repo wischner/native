@@ -123,6 +123,13 @@ cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
 
+Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
+`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
+`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
+commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
+Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
+The first build requires network access; no sibling GEM checkout is needed.
+
 Run backend-independent tests from any hosted debug build:
 
 ```bash
@@ -160,6 +167,13 @@ Current exercised runtime paths are:
   **Debug Vision (Windows 11 VM)** for F5. See the
   [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
+- macOS AppKit, built natively with AppleClang and run on remote `leia`.
+  Stock controls retain AppKit painting, including native splitters, tabs,
+  table grids and row backgrounds. Six CTests pass normally and with
+  ASan/UBSan; targeted desktop checks cover image text, accordion scrolling
+  and table contrast. The full-gallery interactive walkthrough is not yet
+  complete. See [macOS remote runtime](docs/notes/MACOS-REMOTE-RUNTIME.md)
+  for build, test and desktop-permission details.
 
 Current additional build-verified path is:
 

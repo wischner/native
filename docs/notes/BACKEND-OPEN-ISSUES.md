@@ -18,6 +18,14 @@ This note lists backend-level open issues that are real today.
 - Still in progress:
   - other toolkit ports not listed above as runtime-tested
 
+The 2026-09-06 compatibility check uses upstream GEM `v1.0.0`
+(`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`). Both transports build and pass
+all six Native CTests against the locally built `gem-v1.0.0` SDK image.
+This is now the default dependency; the review-image tags below describe
+the earlier diagnostic sessions. No C++ API changes were needed, and this
+check adds no new visual-coverage claims. The normal release build workflow
+is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
+
 ## Current open issues
 
 - The Windows runtime workflow now targets the `Windows` libvirt guest,

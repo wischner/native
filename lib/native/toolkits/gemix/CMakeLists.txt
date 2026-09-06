@@ -2,8 +2,8 @@ message(STATUS "Configuring GEMix toolkit backend...")
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(GEMIX_AES REQUIRED gemix-aes)
-pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi)
+pkg_check_modules(GEMIX_AES REQUIRED gemix-aes>=1.0.0)
+pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi>=1.0.0)
 
 option(GEMIX_USE_GEMD "Link libgem instead of in-process AES/VDI" OFF)
 

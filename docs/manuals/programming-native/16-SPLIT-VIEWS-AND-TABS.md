@@ -33,12 +33,21 @@ interaction. Window Maker observes its native pane sizes after a divider drag
 and refits both borrowed children to those exact sizes, so neither pane retains
 its old width or clips its trailing border.
 
+macOS likewise uses the actual `NSSplitView` pane allocation to size both
+borrowed controls. AppKit owns the divider's appearance and dragging; native
+pane sizes update the portable geometry after a drag or window resize.
+
 `tab_view` borrows one child window per item and creates only the selected
 page. Add pages with `add_item()` or append-only `operator<<`, select with
 `set_selected_index()`, and listen to `on_selection_change` for
 user-originated changes. Native tab
 backends include `BTabView`, `XmNotebook`, `WMTabView`, `NSTabView`, and the
 Win32 tab common control.
+
+On macOS each `NSTabViewItem` has its own native page host, and the selected
+control fills that host's content rectangle. Labels, frames and selection
+use `NSTabView` itself, not a row of replacement buttons or a painted page
+overlay. The exact appearance follows the installed macOS version.
 
 Tabs occupy the top edge by default. Top, bottom, left, and right placement
 is portable and may be set

@@ -85,7 +85,12 @@ if(UNIX AND NOT APPLE)
 
     set(DOCKER_TAG "latest" CACHE STRING "Docker tag used for Linux toolkit build images")
     set(DOCKER_TAG_HAIKU "1.1.0" CACHE STRING "Docker tag used for the Haiku cross-build image")
-    set(DOCKER_IMAGE_GEMIX "wischner/gcc-x86_64-gemix:${DOCKER_TAG}" CACHE STRING "Docker image for GEMix builds")
+    # Migrate the former default in existing control trees so F5 and CMake
+    # select the same release image. Preserve explicitly customized images.
+    if(DOCKER_IMAGE_GEMIX STREQUAL "wischner/gcc-x86_64-gemix:${DOCKER_TAG}")
+        unset(DOCKER_IMAGE_GEMIX CACHE)
+    endif()
+    set(DOCKER_IMAGE_GEMIX "wischner/gcc-x86_64-gemix:gem-v1.0.0" CACHE STRING "Docker image for GEMix builds")
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
@@ -147,10 +152,19 @@ if(UNIX AND NOT APPLE)
             )
         endfunction()
 
+        add_custom_target(docker-gemix-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build
+                -t ${DOCKER_IMAGE_GEMIX}
+                ${CMAKE_SOURCE_DIR}/scripts/gemix
+            USES_TERMINAL
+            COMMENT "Building the GEM v1.0.0 SDK image")
+
         add_docker_cmake_build_target(docker-gemix build/linux-gemix ${DOCKER_IMAGE_GEMIX}
             -DTOOLKIT=GEMIX)
         add_docker_cmake_build_target(docker-gemix-gemd build/linux-gemix-gemd ${DOCKER_IMAGE_GEMIX}
             -DTOOLKIT=GEMIX -DGEMIX_USE_GEMD=ON)
+        add_dependencies(docker-gemix docker-gemix-sdk)
+        add_dependencies(docker-gemix-gemd docker-gemix-sdk)
         add_docker_cmake_build_target(docker-x11 build/linux-x11 ${DOCKER_IMAGE_X11}
             -DTOOLKIT=X11)
         add_docker_cmake_build_target(docker-sdl2 build/linux-sdl2 ${DOCKER_IMAGE_SDL2}

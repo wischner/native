@@ -27,7 +27,7 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 - [Deferred theme-interface split review](REFACTOR.md)
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
 - [Haiku remote runtime, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
-- [macOS remote runtime (leia)](MACOS-REMOTE-RUNTIME.md)
+- [macOS remote runtime, AppKit regressions and desktop permissions (leia)](MACOS-REMOTE-RUNTIME.md)
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)
 - [Windows Wine runtime note](WINDOWS-WINE-RUNTIME.md)

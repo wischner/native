@@ -102,6 +102,7 @@ has no equivalent.
 The top-level CMake project provides:
 
 - `docker-x11`
+- `docker-gemix-sdk` (builds the pinned GEM v1.0.0 SDK image)
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
 - `docker-sdl2`
@@ -114,13 +115,20 @@ The top-level CMake project provides:
 These targets use the following Docker images:
 
 - X11: `wischner/gcc-x86_64-linux-x11`
-- GEMix: `wischner/gcc-x86_64-gemix`
+- GEMix: `wischner/gcc-x86_64-gemix:gem-v1.0.0`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
 - Window Maker: `wischner/gcc-x86_64-linux-window-maker`
 - Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
+
+Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
+`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
+`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
+commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
+Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
+The first build requires network access; no sibling GEM checkout is needed.
 
 The expected workflow is:
 
@@ -331,7 +339,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [REFACTOR.md](docs/notes/REFACTOR.md) | Deferred review of splitting the large theme interface; records the measured concern, proposed grouping, and evidence threshold for implementing it. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
-| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, the `MAC_REMOTE_*` environment variables, and the driving scripts. |
+| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit regression/sanitizer commands, desktop permissions, and visual-coverage limits. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |
 | [WINDOWS-VM-RUNTIME.md](docs/notes/WINDOWS-VM-RUNTIME.md) | Native Windows 11 VM deployment, key-only SSH, interactive desktop GDBserver and the F5 tunnel lifecycle. |
 | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md) | Inventory of TODO markers in `include/`, `lib/native/`, and `src/`. Must be updated in the same commit that adds or removes a production TODO. |

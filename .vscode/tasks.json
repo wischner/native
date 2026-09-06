@@ -18,6 +18,15 @@
             "group": "build"
         },
         {
+            "label": "CMake Build SDK (Docker GEM v1.0.0)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-gemix-sdk"],
+            "problemMatcher": [],
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "CMake Build Debug (Docker GEMix)",
             "type": "shell",
             "command": "cmake",

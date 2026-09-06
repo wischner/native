@@ -104,6 +104,13 @@ Collapsible Window Maker group rows use compact filled right/down disclosure
 triangles, matching native task-list groups without importing the opaque
 resource-paper square carried by the WINGs arrow pixmaps.
 
+On macOS, materialized and virtual tables both use `NSTableView` with native
+headers, cells, selection and scrollbars. Grid lines and alternating row
+backgrounds use contrasting blends of the system content and label colors,
+which resolve for light or dark appearance. AppKit paints both; there is no
+library-painted grid overlay. `set_grid_lines()` selects either axis, both,
+or neither, and `set_alternating_rows(false)` restores plain row backgrounds.
+
 ## Groups, selection, and sorting
 
 Groups describe ordered, disjoint ranges in logical model-row coordinates:

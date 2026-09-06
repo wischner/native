@@ -109,7 +109,7 @@
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
                 "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest"],
+                "pipeArgs": ["wischner/gcc-x86_64-gemix:gem-v1.0.0"],
                 "debuggerPath": "/usr/bin/gdb"
             },
             "preLaunchTask": "CMake Build Debug (Docker GEMix)"
@@ -129,7 +129,7 @@
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
                 "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest", "--gemd"],
+                "pipeArgs": ["wischner/gcc-x86_64-gemix:gem-v1.0.0", "--gemd"],
                 "debuggerPath": "/usr/bin/gdb"
             },
             "preLaunchTask": "CMake Build Debug (Docker GEMix gemd)"

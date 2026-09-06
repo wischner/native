@@ -52,10 +52,39 @@ native text/image cells, group disclosure, icon selection, accordion scrolling
 hosts, and the retained derived-button drawing extension. Follow-up checks
 cover upright image text with straight-alpha blending, single-open accordion
 scrollbar ownership after section changes and resizing, and table grid/stripe
-contrast in both light and dark appearances. The general
-collection lifecycle test is also registered on macOS. All six tests also
+contrast in both light and dark appearances. The general collection
+lifecycle test is also registered on macOS. All six tests also
 pass in a separate AddressSanitizer/UndefinedBehaviorSanitizer build (leak
 detection disabled for process-lifetime AppKit resources).
+
+### Reproduce the automated checks
+
+From the Linux checkout, sync and build using the existing remote script,
+then run CTest on the Mac (these commands use the default target above):
+
+```bash
+bash scripts/macos/remote/build.sh
+ssh tomaz@leia 'export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; cd /Users/tomaz/Projects/native && ctest --test-dir build/macos-debug --output-on-failure'
+```
+
+For the separate sanitizer audit, SSH into `tomaz@leia` and run:
+
+```bash
+export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
+cd /Users/tomaz/Projects/native
+cmake -S . -B build/macos-native-audit -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_FLAGS='-Wall -Wextra -pedantic -fsanitize=address,undefined' \
+  -DCMAKE_OBJCXX_FLAGS='-Wall -Wextra -pedantic -fsanitize=address,undefined' \
+  -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+cmake --build build/macos-native-audit -j8
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build/macos-native-audit --output-on-failure
+```
+
+The explicit flags matter: the top-level automatic sanitizer configuration
+targets GCC, not AppleClang. This audit tree is separate from the F5 Debug
+bundle and does not change the launch configuration.
+
+### Desktop permissions and visual coverage
 
 The SSH login can build and run GUI tests in the logged-in desktop session.
 After enabling Screen Recording for the SSH session, `screencapture` can
@@ -74,3 +103,11 @@ image-text, duplicate accordion scrollbar and table-contrast fixes; this does
 not constitute a completed mouse-driven walkthrough of every gallery feature.
 `NATIVE_MAC_TEST_SNAPSHOT` optionally names a PNG output path for
 the regression window's own offscreen rendering, without desktop capture.
+
+The targeted desktop checks confirmed upright text in the gallery image,
+one scrollbar in the expanded single-open accordion, and clearer grids and
+alternating rows in both table examples. Light/dark color contrast is covered
+by automated AppKit color checks; this is not a claim of a full visual
+walkthrough in both appearances. Screen Recording and Accessibility are
+needed for remote desktop inspection and input, not for the test's own
+offscreen bitmap rendering.

@@ -8,11 +8,20 @@ control tree and backend-specific build trees.
 
 ### GEMix transport selection
 
+Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
+`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
+`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
+commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
+Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
+The first build requires network access; no sibling GEM checkout is needed.
+
 `docker-gemix` builds the direct AES/VDI variant in `build/linux-gemix/`.
 `docker-gemix-gemd` uses the same Docker image, sets `GEMIX_USE_GEMD=ON`,
 and builds in `build/linux-gemix-gemd/`. Its executable links `libgem`, not
 `libaes` or `libvdi`; the separate `gemd` process owns AES/VDI and Rasta.
-The SDK headers still come from `gemix-aes` and `gemix-vdi` pkg-config modules.
+The SDK headers come from `gemix-aes` and `gemix-vdi` pkg-config modules,
+with version 1.0.0 or newer required. The image builds GEM in Release mode;
+Native Debug builds retain their own ASan/UBSan instrumentation.
 
 The image must supply matching proxy libraries and `/opt/gemix/bin/gemd`.
 `scripts/gemix/gemd-session.sh <command> [args...]` starts a private server,
@@ -104,6 +113,8 @@ toolchain and system headers.
 
 - `docker-x11`
 - `docker-gemix`
+- `docker-gemix-gemd`
+- `docker-gemix-sdk` (prepares the release SDK image)
 - `docker-sdl2`
 - `docker-openmotif`
 - `docker-openlook`
@@ -114,7 +125,7 @@ toolchain and system headers.
 The images are:
 
 - `wischner/gcc-x86_64-linux-x11`
-- `wischner/gcc-x86_64-gemix`
+- `wischner/gcc-x86_64-gemix:gem-v1.0.0`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-openlook`

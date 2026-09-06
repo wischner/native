@@ -61,6 +61,13 @@ Build the Linux toolkit target backed by the native window-system image:
 cmake --build build/cmake --target docker-x11
 ```
 
+Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
+`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
+`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
+commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
+Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
+The first build requires network access; no sibling GEM checkout is needed.
+
 Build the GEMix toolkit target:
 
 ```bash

@@ -148,6 +148,12 @@ Call `clear` before first use when a specific initial background is required.
 `get_gpx()` creates the image context lazily and returns the same context on
 later calls. Its state, including its clip, therefore persists between calls.
 
+Image text follows the same top-left coordinates as window text; applications
+must not flip the image or compensate for a platform's graphics origin.
+Partially transparent text is composited into straight-alpha RGBA pixels.
+On macOS the backend performs the Quartz coordinate and premultiplied-alpha
+conversion internally; see [Window Painting](PATTERNS-PAINTING.md).
+
 ### Load and decode
 
 PNG and JPEG can be read from either a file or an encoded memory buffer:
