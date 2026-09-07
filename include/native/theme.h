@@ -313,6 +313,11 @@ namespace native
         virtual theme &draw_menu_bar(const rect &bounds) = 0;
 
         // Draw a menu title in its default state.
+        // Paint a menu-styled command without a submenu arrow.
+        virtual theme &draw_toolbar_button(const rect &bounds,
+                                           const std::string &text,
+                                           const state &element_state);
+
         theme &draw_menu_title(const rect &bounds,
                                const std::string &text);
 

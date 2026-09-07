@@ -15,6 +15,21 @@ Legend:
 
 ## Backend status
 
+SDL2 routes native close and quit requests through the portable
+`app_wnd::request_close()` hook. Its default destroys the resource;
+overrides can keep the event loop alive during asynchronous save prompts.
+Other backends currently retain direct native-close destruction.
+SDL2 also composes panels, tabs, split views, accordions, and canvases in
+parent-depth order, preserving canvas pixels inside nested containers.
+Canvas input retains left/middle/right identity and captures drags through
+release, including motion outside the original surface. Dedicated SDL
+composition and input tests cover these paths. Software-renderer requests
+bypass accelerated initialization, and final loop shutdown releases the
+complete SDL runtime.
+The 2026-09-06 SDL2 follow-up passes all nine CTests under the Docker
+toolchain, including the renderer-pixel, real SDL input, and close-policy
+regressions.
+
 The 2026-09-05 macOS native-control audit replaces default portable drawing
 inside AppKit button/check/radio, table, outline, icon and accordion hosts.
 `native_mac_runtime_tests` verifies native rendering without entering the
@@ -96,6 +111,10 @@ passed in the preceding review after the shared tab-text contrast correction.
 
 | Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux OPEN LOOK | Linux Window Maker | Linux GEMix | MS Windows | Haiku | Apple | Other WIP ports |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Per-edge outer border flags | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Custom property dropdowns and value converters | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Compact typed property grid | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Four-edge toolbars, sticky groups, 16/24/32px icons | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Build through the current platform workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
 | `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | WIP |
 | Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -123,7 +142,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Non-client rulers and status bars | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Structural `panel` container | Xaw `Form` child (build tested) | Emulated nested region (tested) | `XmForm` child (build tested) | XView Panel (build tested) | WINGs flat frame (build tested) | GEM themed region (build tested) | Child HWND, control-host brush (build tested) | Child `BView` container (build tested) | Child `NSView` container (build tested) | WIP |
 | Paintable `canvas` surface | Athena drawable host (build tested) | Emulated nested region (tested) | Motif `XmDrawingArea` (build tested) | XView Panel with paint window (build tested) | WINGs flat frame (build tested) | GEM offset region (build tested) | Child HWND (build tested) | Child `BView` (build tested) | Child `NSView` (build tested) | WIP |
-| Canvas 32-bit content bounds, clamping, and themed scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |
+| Canvas 32-bit content bounds, clamping, and themed arrow/trough/thumb scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |
 | Single/multiple-mode `accordion` | Athena themed host (tested) | Emulated themed host (tested) | Motif themed host (tested) | XView/OLGX host (tested) | WINGs themed host (tested) | GEM themed host (tested) | Composite HWND (tested) | Native-look BView (tested) | NSStackView + disclosures (tested) | WIP |
 | Borrowed-page four-edge `tab_view`, framed or strip-only | Athena directional host (build tested) | Edge-aligned emulated directional host (tested) | `XmNotebook`, rotated side labels, native separator (build tested) | XView/OLGX directional host (build tested) | `WMTabView` framed top, WINGs-matched directional/strip-only fallback (tested) | GEM directional host (tested) | Win32 classic tab control (four-edge pages tested; strip-only build tested) | `BTabView` on all four sides with native rotated labels (tested) | `NSTabView` + `NSTabViewItem` (four-edge pages tested; strip-only build tested) | WIP |
 | Wrapping, scrolling `icon_view` | Athena themed grid (tested) | Emulated themed grid (tested) | Spatial XmContainer (tested) | XView/OLGX grid (tested) | WINGs themed grid (tested) | GEM themed grid (tested) | WC_LISTVIEW (tested) | Native-look BView grid (tested) | NSCollectionView (tested) | WIP |
@@ -347,13 +366,14 @@ This matrix is the contract for documentation quality:
 - when runtime checks expand, this table should be updated immediately
 
 The 2026-09-06 GEM v1.0.0 compatibility pass builds both transports from
-upstream commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661` using the local
-`wischner/gcc-x86_64-gemix:gem-v1.0.0` image. All six Native CTests pass in
-each Debug build, including actual Rasta input packets and framebuffer
-regressions. Native retains ASan/UBSan; the release SDK is built in Release
-mode. No C++ backend API adaptation was required. The proxy executable's
-GEM dependency is `libgem`, with no direct AES/VDI dependency. This pass is
-automated runtime coverage; it does not repeat the earlier visual walkthrough.
+upstream commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661` using the published
+`wischner/gcc-x86_64-gemix:latest` image, which ships that SDK. All six
+Native CTests pass in each Debug build, including actual Rasta input packets
+and framebuffer regressions. Native retains ASan/UBSan; the release SDK is
+built in Release mode. No C++ backend API adaptation was required. The proxy
+executable's GEM dependency is `libgem`, with no direct AES/VDI dependency.
+This pass is automated runtime coverage; it does not repeat the earlier
+visual walkthrough.
 
 GEMix's 2026-09-05 rasta pass uses the updated sibling GEM runtime as well
 as Native. Six CTest executables pass, including the GEM-specific framebuffer
@@ -413,3 +433,112 @@ covering rapid clicks, both text modes, clipboard buttons/shortcuts and input
 after modal, modeless and file-selector closure. These cases pass in both
 transports; the renewed report of dead fields/copy-paste did not reproduce in
 fresh viewer sessions, and is not claimed as a separately diagnosed fix.
+
+### GEMix canvas composition (2026-09-07)
+
+Structural surfaces now paint in ancestry order across panels, tabs,
+accordions, split views, and canvases. Tab backgrounds no longer erase a
+nested canvas or its rulers and scrollbars. Secondary AES mouse-button
+transitions reach canvases with right/middle identity intact. The GEMix
+runtime regression checks actual nested-canvas framebuffer pixels and
+secondary-button dispatch.
+
+The GEM scrollbar arrow correction uses the original outlined stock-font
+glyphs with shafts for up, down, left, and right. Canvas and collection
+scrollbars share this theme rendering, including pressed inversion and
+clipping inside small button frames. The original four bitmap symbols also
+serve as the fallback when the installed font cannot be loaded. Both Docker
+Debug transports pass all six CTests; the arrow regression compares theme
+pixels against raw VDI system-font output in all four directions, released
+and pressed, with full/partial clipping and regular/tiny bounds.
+
+The collection-input correction connects GEM icon-grid and tree scrollbars
+to the same geometry used for painting. Arrows step on press, troughs page,
+and thumbs retain capture outside their modeless window until release.
+Scrollbar gestures preserve item selection and activation, and destruction
+clears capture even after reparenting. Shared tree painting also preserves
+manual scrolling when row metrics are unchanged, so repainting does not
+return the viewport to the selected item. The real-Rasta input regression
+checks these gestures for an icon grid nested in an accordion and a tree in
+a modeless window, including endpoint dragging beyond the window and capture
+cleanup after destruction/reparenting. All six CTests pass in each GEM Debug
+transport; all nine SDL2 CTests also pass with the shared geometry and tree
+repaint changes.
+
+2026-09-07: Shared **C** ruler painting now spaces labels by measured text
+width, retaining all ticks at dense scales, and clips to its own strip.
+The window API regression checks both orientations and graphics-state
+restoration. Maestro uses the standard Native ruler with no custom painter.
+
+The inspector additions use `native_inspector_tests` for all sixteen border
+masks, typed-value validation, programmatic silence, sticky groups, multiple
+edge reservations, and exact 16x16/24x24/32x32 image pixels. Runtime coverage
+for new native edge adapters is distinct from earlier backend-wide runtime
+coverage. The Vision Properties and toolbars window is available through
+its Window menu and the `--properties` command-line option.
+
+The GEM input regression also exercises nested property text/number typing,
+checkbox changes, combo popups outside the grid viewport, grid scrolling,
+toolbar commands and exclusive selection, cancelled outside releases, and
+composite destroy/recreate. Compact rows were inspected in the GEM gallery.
+
+The 2026-09-07 inspector follow-up builds all nine Docker targets without
+compiler warnings. All 55 registered Linux test executions pass: GEM direct
+7/7, GEM via gemd 7/7, SDL2 11/11, X11 8/8, Motif 8/8, OPEN LOOK 8/8, and
+Window Maker 6/6. Linux Debug builds include address/undefined behavior
+sanitizers; the X-based suites run in private Xvfb displays with toolkit
+lifetime leak reporting disabled.
+
+`native_inspector_runtime_tests` also passes on the native Windows 11 and
+Haiku VM desktops. It checks presented icon/value pixels, native hit-tested
+checkbox clicks, text and numeric typing, repeated toolbar activation with
+status updates, sticky selection, bottom-edge input, scrolling, and owner
+recreation. The application consumes its public create signal deliberately;
+internal toolbar resources must still be created. Vision's inspector was
+visually checked on X11, Motif, OPEN LOOK, and WINGs. Values and labels share
+control paper, and icons preserve alpha and align with toolbar text. The
+Win32 property combo also passes native popup selection and a check that its
+selected-value paper matches adjacent cells. The
+macOS edge adapter and inspector controls remain unbuilt and untested on
+macOS in this validation pass.
+
+The sizing/dropdown follow-up adds native post-creation grid resizing, live
+32→24→16 toolbar geometry and neighboring-bar hit tests, arbitrary values
+committed from native popup content, and popup cancellation/stale-callback
+coverage. SDL and Haiku inspect presented pixels for all sixteen button
+border masks. GEM compares VDI text to the stock-font image raster so text
+and toolbar images share their vertical origin. OPEN LOOK combo positions
+and command-button menu marks, and WINGs text centering, are visually
+inspected in the Properties and toolbars gallery. Windows and Haiku popup
+commits use the production posted-work dispatch path. GEM’s direct and gemd
+input suites also open a custom canvas popup and
+commit an arbitrary value through real Rasta/AES input. Custom dropdown
+runtime coverage on macOS is not included in this pass.
+
+Verification of that sizing/dropdown pass built all nine Docker targets without
+compiler warnings and passed all 55 Linux test executions. The native
+Windows 11 and Haiku VM inspector checks cover the final popup commit/Cancel
+lifecycle and rejection of callbacks retained from a previous popup session.
+
+The 2026-09-07 popup repair also verifies titleless GEMix canvas hosts: all
+four `1011` frame edges remain intact, with the requested client size and a
+separate inset paint/input origin. X11/Athena now wakes and drains posted
+work in the production Xt loop; its inspector test no longer supplies a
+queue-draining timer. Server-delivered clicks on native buttons and painted
+colour swatches both commit values and close the dropdown. The X11, direct
+GEMix, and gemd Docker builds pass without warnings, and all 22 test executions
+across those three builds pass (8 + 7 + 7).
+
+The Motif border follow-up verifies all sixteen preview masks through actual
+property-grid checkbox clicks and screen pixels. A separate native-widget
+pixel test varies focus margins and default-button reservations through all
+sixteen masks. The Motif Docker build has no compiler warnings and all eight
+tests pass. Hidden edges include the complete inset native relief; restoring
+an edge restores its original Motif appearance.
+
+Haiku's keyboard follow-up sends test keystrokes through the window's preferred
+target, exercising native focus routing. Real VM keystrokes also edit property
+text and update the preview after adding a USB keyboard to the `Haiku` domain.
+The VM's PS/2 keyboard had delivered no input even to Terminal; the editor
+implementation required no change. The keyboard setup is recorded in the
+[Haiku runtime note](../../notes/HAIKU-REMOTE-RUNTIME.md).

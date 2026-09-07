@@ -52,10 +52,26 @@ through their native icon resource.
 The GEMix palette is monochrome. Its custom radio primitive uses the same
 circle and selected dot as the live radio; headers retain complete outlines,
 status surfaces carry a top separator, and scrollbar parts use flat GEM-style
-frames, stippled tracks, and arrow buttons. Offscreen stock text reads the same
-immutable GEM bitmap font resource as VDI window text. Unsupported Unicode is
+frames, stippled tracks, and arrow buttons. Scrollbar arrows use the original
+outlined symbols with shafts from `AtariSTHigh.fnt` (glyphs 1–4), with the same
+font-cell centering and directional offsets as AES window arrows. Pressed
+buttons invert the face and glyph; short buttons clip the glyph inside the
+frame. The four original bitmap symbols remain available as a built-in
+fallback if the font resource cannot be loaded. Offscreen stock text reads the
+same immutable GEM bitmap font resource as VDI window text. Unsupported Unicode is
 substituted predictably, including a printable three-dot ellipsis, before both
 measurement and rendering.
+
+Painted icon grids and trees resolve their scrollbar bounds, arrow buttons,
+trough, thumb, range, and line step through `make_collection_scrollbar()`.
+The GEM pointer dispatcher uses that same geometry before item hit testing.
+Arrow buttons step on press, the trough pages by one viewport, and a thumb
+keeps pointer capture until release even outside its window. Every scrollbar
+press consumes its release, so scrolling does not select or activate an item.
+Destroying the captured collection clears the root peer's capture.
+Reapplying unchanged tree metrics during painting preserves the manual scroll
+offset. Only changed row height triggers selection visibility adjustment in
+that paint path, so a selected first row does not prevent scrolling downward.
 
 The theme API describes what is being drawn rather than how one toolkit draws
 it. Its primitives include complete buttons, checks, radios, lists, menu bars
@@ -287,3 +303,23 @@ Adding a public primitive changes the cross-platform contract. The work is:
 If the primitive is part of a new public `wnd` subclass, that subclass also
 needs the complete lifecycle, event translation, and drawing support described
 in [Windows And App Windows](PATTERNS-WINDOWS.md).
+
+## Border masks and menu-themed tools
+
+`border_sides` selects the existing outer edges of controls and non-client
+strips. The portable border stage uses the active palette with
+`gpx::draw_border(bounds, sides)`. Unselected edges do not suppress internal
+row separators, scroll arrows, or check/radio indicators. Tree/accordion
+border visibility remains an all/none shorthand.
+
+Toolbar backgrounds and tools reuse `draw_menu_bar()` and
+`draw_menu_title()`. Held, selected, and disabled tools use the same semantic menu states and
+colors. Momentary tools return to their normal appearance after release. Immutable tool images are drawn in the
+configured icon box (16x16 by default; 24x24 and 32x32 are supported) and the
+bar grows to accommodate them. Icon and text share a centered content group,
+with image alpha preserved over the menu paper. Black monochrome icons adopt
+the selected or disabled menu foreground; colored artwork retains its colors.
+
+`draw_toolbar_button(bounds, text, state)` paints a menu-styled command without
+a submenu arrow. Its default delegates to menu-title painting; OPEN LOOK
+omits the OLGX menu mark while retaining its native button shape and state.

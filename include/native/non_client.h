@@ -8,6 +8,7 @@
 #pragma once
 
 #include "geometry.h"
+#include "border.h"
 
 namespace native
 {
@@ -51,6 +52,12 @@ namespace native
         // Return the current host-relative strip bounds.
         rect get_bounds() const;
 
+        // Select visible outer edges without adding a border to a bare strip.
+        non_client &set_border_sides(border_sides sides);
+
+        // Return the outer-edge mask; all four edges are enabled by default.
+        border_sides get_border_sides() const;
+
     protected:
         // Paint the strip after the host's client paint handlers.
         virtual void draw(gpx &graphics, const rect &bounds) = 0;
@@ -71,5 +78,6 @@ namespace native
         window_edge _edge;
         int _extent;
         bool _visible;
+        border_sides _border_sides = border_sides::all;
     };
 } // namespace native

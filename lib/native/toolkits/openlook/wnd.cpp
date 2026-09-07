@@ -87,6 +87,8 @@ namespace
                    XV_WIDTH, choice_width,
                    XV_HEIGHT, bounds.d.h,
                    nullptr);
+        if (state->choice && !editable)
+            xv_set(state->choice, PANEL_VALUE_X, bounds.p.x, nullptr);
     }
 
     void fit_list_height(Panel_item item, int requested_height) {
@@ -310,6 +312,7 @@ namespace native
                 rect(point(0, 0), self->get_dimensions()));
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
+            linux::openlook::mask_panel_borders(linux::openlook::parent_panel(this));
         }
         return *self;
     }
@@ -327,6 +330,7 @@ namespace native
             linux::openlook::repaint_collection(*self, area);
         } else if (Panel_item item = control_item(self)) {
             panel_paint(item, PANEL_CLEAR);
+            linux::openlook::mask_panel_borders(linux::openlook::parent_panel(this));
         }
         return *self;
     }

@@ -10,6 +10,7 @@
 #include <native/wnd.h>
 #include <bindings.h>
 #include <AppKit/AppKit.h>
+#include <QuartzCore/QuartzCore.h>
 #include <objc/runtime.h>
 
 #include "gpx_wnd.h"
@@ -88,6 +89,37 @@ namespace
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
+              dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||
+              dynamic_cast<tree_view *>(this) || dynamic_cast<table_view *>(this) ||
+              dynamic_cast<tab_view *>(this) || dynamic_cast<icon_view *>(this) ||
+              dynamic_cast<accordion *>(this))) return;
+        NSView *view = mac::view_from_control(this);
+        if (!view) return;
+        const auto sides = get_border_sides();
+        if (sides == border_sides::all) {
+            [[view layer] setMask:nil];
+            return;
+        }
+        [view setWantsLayer:YES];
+        NSRect bounds = [view bounds];
+        const CGFloat left = has_border(sides, border_sides::left) ? 0 : 2;
+        const CGFloat right = has_border(sides, border_sides::right) ? 0 : 2;
+        const CGFloat top = has_border(sides, border_sides::top) ? 0 : 2;
+        const CGFloat bottom = has_border(sides, border_sides::bottom) ? 0 : 2;
+        bounds.origin.x += left;
+        bounds.origin.y += [view isFlipped] ? top : bottom;
+        bounds.size.width = std::max<CGFloat>(0, bounds.size.width - left - right);
+        bounds.size.height = std::max<CGFloat>(0, bounds.size.height - top - bottom);
+        CAShapeLayer *mask = [CAShapeLayer layer];
+        CGPathRef path = CGPathCreateWithRect(NSRectToCGRect(bounds), nullptr);
+        [mask setPath:path];
+        CGPathRelease(path);
+        [[view layer] setMask:mask];
+        [view setNeedsDisplay:YES];
+    }
+
     void wnd::apply_position() {
         if (NSView *control = mac::view_from_control(this)) {
             NSRect frame = [control frame];

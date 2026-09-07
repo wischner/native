@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <SDL2/SDL.h>
 #ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
@@ -148,12 +150,12 @@ namespace linux::sdl2
         int scrollbar_grab_offset = 0;
     };
 
-    // A structural panel and a paintable canvas are child regions of
-    // the emulated tree rather than separate SDL windows, so their
-    // whole backend state is one visibility flag.
+    // Structural regions borrow their root SDL window. Canvas pointer
+    // capture belongs to this peer and ends when the region is destroyed.
     struct sdl2_surface
     {
         bool visible = false;
+        std::uint32_t pressed_buttons = 0;
     };
 
     //
@@ -245,19 +247,24 @@ namespace linux::sdl2
     void render_text_edits(native::wnd *, native::gpx &);
 
     void render_collections(native::wnd *, native::gpx &);
-    void render_tab_views(native::wnd *, native::gpx &);
 
     // Route pointer dragging to an emulated split-view divider.
     bool handle_split_mouse(native::wnd *, int, int, bool, bool);
     bool handle_split_motion(native::wnd *, int, int);
 
-    // Render panel and canvas regions parent-first, under every other
-    // emulated control they contain.
+    // Render panels, tabs, split views, accordions, and canvases in
+    // parent-first order, under the leaf controls they contain.
     void render_surfaces(native::wnd *, native::gpx &);
 
-    // Route pointer input to the topmost visible canvas region.
-    bool handle_canvas_mouse(native::wnd *, int, int, bool, bool);
-    bool handle_canvas_motion(native::wnd *, int, int);
+    // Route a gesture to its captured canvas, or hit-test a new one.
+    // The captured-only pass runs before menus and sibling controls.
+    bool handle_canvas_mouse(native::wnd *, int, int, bool, bool,
+        native::mouse_button = native::mouse_button::left,
+        bool captured_only = false);
+    bool handle_canvas_motion(native::wnd *, int, int,
+        bool captured_only = false);
+    // Finish captured gestures when their root loses keyboard focus.
+    void release_canvas_capture(native::wnd *);
     bool handle_canvas_wheel(native::wnd *, int, int, int);
 
     // Report otherwise unconsumed empty-space events to a panel.

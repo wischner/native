@@ -81,8 +81,8 @@ outputs are:
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
 | `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
 | `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
-| `docker-gemix` | `wischner/gcc-x86_64-gemix:gem-v1.0.0` | `build/linux-gemix/src/vision` |
-| `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:gem-v1.0.0` | `build/linux-gemix-gemd/src/vision` |
+| `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
+| `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
 | `docker-win` | `wischner/gcc-x86_64-windows-mingw-w64:latest` | `build/windows-mingw-w64/src/vision.exe` |
 | `docker-haiku` | `wischner/gcc-x86_64-haiku:1.1.0` | `build/haiku/src/vision` |
 
@@ -438,12 +438,13 @@ Zenity and KDialog are not required.
 
 ## Linux GEMix
 
-Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
-`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
-`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
-commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
-Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
-The first build requires network access; no sibling GEM checkout is needed.
+Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
+image, which already contains the GEM `v1.0.0` SDK built from commit
+`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
+`resgen`, the GEM resources, and the recorded revision in
+`/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
+no local SDK image build and no sibling GEM checkout is needed.
 
 ### Compile
 

@@ -81,7 +81,17 @@ namespace linux::sdl2
                                   ? window
                                   : native::detail::deepest_at(
                                         *window, position);
-        SDL_Cursor *cursor = system_cursor(target->get_cursor());
+        // A control that owns chrome answers per position, so the
+        // root point becomes local before the shape is resolved.
+        native::point local = position;
+        if (target != window) {
+            const native::point origin =
+                native::detail::origin_in_root(*target);
+            local = native::point(
+                static_cast<native::coord>(position.x - origin.x),
+                static_cast<native::coord>(position.y - origin.y));
+        }
+        SDL_Cursor *cursor = system_cursor(target->get_cursor_at(local));
         if (cursor)
             SDL_SetCursor(cursor);
     }

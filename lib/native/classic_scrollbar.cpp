@@ -31,15 +31,10 @@ namespace native::detail
         }
     } // namespace
 
-    classic_scrollbar_geometry make_classic_scrollbar(
+    classic_scrollbar_edges make_classic_scrollbar_edges(
         const rect &bounds,
-        scrollbar_orientation orientation,
-        std::uint64_t total,
-        std::uint64_t page,
-        std::uint64_t value,
-        int minimum_thumb) {
-        classic_scrollbar_geometry result;
-        result.bounds = bounds;
+        scrollbar_orientation orientation) {
+        classic_scrollbar_edges result;
         const int length = axis_length(bounds, orientation);
         const int arrow = std::min(
             std::max(0, cross_extent(bounds, orientation)),
@@ -72,6 +67,23 @@ namespace native::detail
                 static_cast<dim>(std::max(0, length - arrow * 2)),
                 bounds.d.h);
         }
+        return result;
+    }
+
+    classic_scrollbar_geometry make_classic_scrollbar(
+        const rect &bounds,
+        scrollbar_orientation orientation,
+        std::uint64_t total,
+        std::uint64_t page,
+        std::uint64_t value,
+        int minimum_thumb) {
+        classic_scrollbar_geometry result;
+        result.bounds = bounds;
+        const classic_scrollbar_edges edges =
+            make_classic_scrollbar_edges(bounds, orientation);
+        result.decrement = edges.decrement;
+        result.increment = edges.increment;
+        result.trough = edges.trough;
 
         total = std::max<std::uint64_t>(1, total);
         page = std::clamp<std::uint64_t>(page, 1, total);
@@ -138,39 +150,14 @@ namespace native::detail
         const rect &bounds,
         const rect &thumb,
         const theme::state &state) {
-        const int length = axis_length(bounds, orientation);
-        const int arrow = std::min(
-            std::max(0, cross_extent(bounds, orientation)),
-            std::max(0, length / 2));
-        const rect decrement = orientation == scrollbar_orientation::vertical
-            ? rect(bounds.p.x, bounds.p.y, bounds.d.w,
-                   static_cast<dim>(arrow))
-            : rect(bounds.p.x, bounds.p.y, static_cast<dim>(arrow),
-                   bounds.d.h);
-        const rect increment = orientation == scrollbar_orientation::vertical
-            ? rect(bounds.p.x,
-                   static_cast<coord>(bounds.y2() - arrow),
-                   bounds.d.w,
-                   static_cast<dim>(arrow))
-            : rect(static_cast<coord>(bounds.x2() - arrow),
-                   bounds.p.y,
-                   static_cast<dim>(arrow),
-                   bounds.d.h);
-        const rect trough = orientation == scrollbar_orientation::vertical
-            ? rect(bounds.p.x,
-                   static_cast<coord>(bounds.p.y + arrow),
-                   bounds.d.w,
-                   static_cast<dim>(std::max(0, length - arrow * 2)))
-            : rect(static_cast<coord>(bounds.p.x + arrow),
-                   bounds.p.y,
-                   static_cast<dim>(std::max(0, length - arrow * 2)),
-                   bounds.d.h);
+        const classic_scrollbar_edges edges =
+            make_classic_scrollbar_edges(bounds, orientation);
         appearance.draw_scrollbar_part(
-            trough, orientation, scrollbar_part::track, state);
+            edges.trough, orientation, scrollbar_part::track, state);
         appearance.draw_scrollbar_part(
-            decrement, orientation, scrollbar_part::decrement, state);
+            edges.decrement, orientation, scrollbar_part::decrement, state);
         appearance.draw_scrollbar_part(
-            increment, orientation, scrollbar_part::increment, state);
+            edges.increment, orientation, scrollbar_part::increment, state);
         appearance.draw_scrollbar_part(
             thumb, orientation, scrollbar_part::thumb, state);
     }

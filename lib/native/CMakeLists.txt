@@ -58,6 +58,7 @@ configure_file(
 # Add backend-neutral native source files.
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/border.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_control.cpp
@@ -75,6 +76,9 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd_peer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/panel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/property_grid.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/property_drop_down.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolbar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/canvas.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/non_client.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ruler.cpp

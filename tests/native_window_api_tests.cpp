@@ -152,6 +152,14 @@ namespace
         }
 
         int cursor_applications = 0;
+        bool allow_close = true;
+        int close_requests = 0;
+
+        void request_close() override {
+            ++close_requests;
+            if (allow_close)
+                app_wnd::request_close();
+        }
 
     protected:
         void create_native() override {}
@@ -519,6 +527,29 @@ namespace
             std::make_unique<native::absolute_layout_manager>());
         expect(window.get_layout() != nullptr,
                "window owns its layout");
+    }
+
+    // Preserve resources until application close policy accepts closure.
+    void test_close_request() {
+        simulated_app_window window;
+        window.create();
+        window.show();
+        window.allow_close = false;
+        native::app_wnd &application_window = window;
+        application_window.request_close();
+        expect(window.get_created() && window.get_visible(),
+               "a deferred close request keeps the window usable");
+        expect(window.close_requests == 1,
+               "close requests reach the application's policy override");
+        window.allow_close = true;
+        application_window.request_close();
+        expect(!window.get_created() && !window.get_visible(),
+               "the default close policy destroys the accepted resource");
+        window.create();
+        window.allow_close = false;
+        window.destroy();
+        expect(!window.get_created() && window.close_requests == 2,
+               "explicit destruction bypasses close policy");
     }
 
     // Verify cursor state is applied at native lifecycle boundaries.
@@ -1087,6 +1118,45 @@ namespace
                "replacement");
 
         native::app_wnd window("Chrome", 0, 0, 300, 200);
+        {
+            class measured_ruler final : public native::ruler {
+            public:
+                using native::ruler::ruler;
+                std::vector<std::pair<int, int>> labels;
+            protected:
+                void draw_label(native::gpx &graphics,
+                                const native::point &position,
+                                const std::string &text,
+                                const native::theme::palette &) override {
+                    labels.emplace_back(
+                        get_orientation() == native::ruler_orientation::horizontal
+                            ? position.x : position.y,
+                        graphics.measure_text(text).width);
+                }
+            };
+            native::app_wnd dense_window("Dense rulers", 0, 0, 300, 200);
+            measured_ruler top(dense_window, native::window_edge::top, 32);
+            measured_ruler left(dense_window, native::window_edge::left, 32);
+            top.set_minor_tick(1).set_major_tick(8);
+            left.set_minor_tick(1).set_major_tick(8);
+            recording_gpx dense_graphics;
+            dense_graphics.set_clip(native::rect(0, 0, 300, 200));
+            dense_window.on_native_paint(native::wnd_paint_event(
+                native::rect(0, 0, 300, 200), dense_graphics));
+            for (auto *ruler : {&top, &left}) {
+                expect(ruler->labels.size() > 1,
+                       "dense rulers retain readable coordinate labels");
+                for (std::size_t index = 1; index < ruler->labels.size(); ++index) {
+                    const auto previous = ruler->labels[index - 1];
+                    expect(ruler->labels[index].first > previous.first + previous.second,
+                           "dense ruler labels never overlap on either axis");
+                }
+            }
+            expect(dense_graphics.lines.size() >= 436,
+                   "label spacing preserves every one-pixel ruler tick");
+            expect(same_rect(dense_graphics.get_clip(), native::rect(0, 0, 300, 200)),
+                   "ruler painting restores its caller's clip");
+        }
         native::ruler horizontal(window, native::window_edge::top, 20);
         native::ruler vertical(window, native::window_edge::left, 30);
         native::status_bar status(window, 22);
@@ -2927,6 +2997,7 @@ int main() {
     BApplication application("application/x-vnd.native-window-api-tests");
 #endif
     test_cached_properties();
+    test_close_request();
     test_cursor_property();
     test_menu_label_metadata();
     test_tab_view_model();

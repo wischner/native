@@ -158,15 +158,16 @@ namespace native
     }
 
     accordion &accordion::set_border_visible(bool visible) {
-        if (_border_visible == visible)
-            return *this;
-        _border_visible = visible;
-        refresh();
+        set_border_sides(visible ? border_sides::all : border_sides::none);
         return *this;
     }
 
     bool accordion::get_border_visible() const {
-        return _border_visible;
+        return get_border_sides() != border_sides::none;
+    }
+
+    void accordion::on_border_sides_changed() {
+        refresh();
     }
 
     std::size_t accordion::get_item_count() const {
@@ -336,9 +337,11 @@ namespace native
     rect accordion::get_content_bounds(std::size_t index) const {
         accordion_item &item = get_item(index);
         const rect header = get_header_bounds(index);
-        const int inset = _border_visible ? 1 : 0;
+        const int inset = has_border(get_border_sides(), border_sides::left) ? 1 : 0;
+        const int right = has_border(get_border_sides(), border_sides::right) ? 1 : 0;
+        const int bottom = has_border(get_border_sides(), border_sides::bottom) ? 1 : 0;
         const dim width = non_negative_dimension(
-            static_cast<int>(_bounds.d.w) - inset * 2);
+            static_cast<int>(_bounds.d.w) - inset - right);
         if (!item._expanded) {
             return rect(static_cast<coord>(inset),
                         static_cast<coord>(header.y2()),
@@ -356,7 +359,7 @@ namespace native
         height = std::min(
             height,
             std::max(0,
-                     static_cast<int>(_bounds.d.h) - inset -
+                     static_cast<int>(_bounds.d.h) - bottom -
                          header.y2()));
         return rect(static_cast<coord>(inset),
                     static_cast<coord>(header.y2()),
@@ -574,10 +577,10 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &) {
-        if (!_border_visible)
+        if (!get_border_visible())
             return;
         graphics.set_pen(1)
             .set_ink(appearance.get_button_border_color())
-            .draw_rect(bounds, false);
+            .draw_border(bounds, get_border_sides());
     }
 } // namespace native

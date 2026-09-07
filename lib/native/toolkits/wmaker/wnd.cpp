@@ -16,9 +16,17 @@
 #include <native/combo_box.h>
 #include <native/tab_view.h>
 #include <native/wnd.h>
+#include <native/button.h>
+#include <native/accordion.h>
+#include <native/icon_view.h>
+#include <native/text_edit.h>
+#include <native/list.h>
+#include <native/tree_view.h>
+#include <native/table_view.h>
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "../x_border.h"
 
 namespace
 {
@@ -45,6 +53,22 @@ namespace
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        if (auto *editor = dynamic_cast<text_edit *>(this)) {
+            auto *binding = linux::wmaker::text_edit_bindings.object_from_handle(editor);
+            if (binding && binding->text && dynamic_cast<property_grid *>(get_parent()))
+                return;
+        }
+        if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
+              dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||
+              dynamic_cast<tree_view *>(this) || dynamic_cast<table_view *>(this) ||
+              dynamic_cast<tab_view *>(this) || dynamic_cast<icon_view *>(this) ||
+              dynamic_cast<accordion *>(this))) return;
+        WMWidget *widget = linux::wmaker::wnd_bindings.handle_from_object(this);
+        if (widget) detail::shape_border(linux::wmaker::display,
+            WMWidgetXID(widget), get_border_sides(), 2);
+    }
+
     void wnd::apply_position() {
         if (auto *window_state = native::detail::peer_state<
                 linux::wmaker::window_state>(*this)) {
@@ -86,6 +110,9 @@ namespace native
                        static_cast<unsigned int>(std::max(
                            1, static_cast<int>(_bounds.d.w))),
                        static_cast<unsigned int>(std::max(1, height)));
+        if (auto *editor = dynamic_cast<text_edit *>(this))
+            if (auto *state = linux::wmaker::text_edit_bindings.object_from_handle(editor))
+                linux::wmaker::configure_text_cell(*editor, *state);
         if (auto *state = native::detail::peer_state<
                 linux::wmaker::native_tab_view>(*this)) {
             if (state && state->portable) {

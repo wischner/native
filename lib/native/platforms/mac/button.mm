@@ -29,7 +29,8 @@
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::button *>(_nativeOwner);
     if (!owner || !owner->get_created() ||
-        typeid(*owner) == typeid(native::button)) {
+        (typeid(*owner) == typeid(native::button) &&
+         owner->get_border_sides() == native::border_sides::all)) {
         [super drawRect:dirty];
         return;
     }

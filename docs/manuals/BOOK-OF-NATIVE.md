@@ -15,12 +15,15 @@ the same commit.
 
 - Runtime-tested in this project workflow:
   - Linux X11 backend
-  - Linux SDL2 backend
+  - Linux SDL2 backend, including nested canvas renderer pixels, real
+    SDL pointer routing/capture, and close-policy regressions
   - Linux OpenMotif backend
   - Linux OPEN LOOK/XView backend in the `Tribblix-OpenLook` KVM guest
   - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
-    and serialized libgem/gemd builds
+    and serialized libgem/gemd builds; direct-backend regressions also
+    cover nested tab/split/canvas framebuffer composition and secondary
+    canvas button identity
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
   - macOS AppKit backend (native AppleClang build on remote `leia`, six

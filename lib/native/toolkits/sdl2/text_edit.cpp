@@ -90,13 +90,14 @@ namespace
                            binding_type *binding,
                            int x,
                            int y) {
+        const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 4;
         const std::string &text = owner->get_text();
         const int line_height =
             std::max(1, linux::sdl2::text_height() + 2);
         std::size_t target_line = binding->first_line;
-        if (y > binding->bounds.p.y + 4) {
+        if (y > binding->bounds.p.y + padding) {
             target_line += static_cast<std::size_t>(
-                (y - binding->bounds.p.y - 4) / line_height);
+                (y - binding->bounds.p.y - padding) / line_height);
         }
         std::size_t begin = 0;
         for (std::size_t line = 0; line < target_line; ++line) {
@@ -108,7 +109,7 @@ namespace
         const std::size_t end = text.find('\n', begin);
         const std::size_t limit =
             end == std::string::npos ? text.size() : end;
-        const int local_x = x - binding->bounds.p.x - 4 +
+        const int local_x = x - binding->bounds.p.x - padding +
                             binding->horizontal_scroll;
         std::size_t offset = begin;
         while (offset < limit) {

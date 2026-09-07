@@ -67,6 +67,12 @@ namespace native
         // Return the currently active direct modal child, if any.
         modal_wnd *get_active_modal() const;
 
+        // Request closure; the default immediately destroys the window.
+        // Overrides may keep it alive while confirming or saving edits,
+        // then call destroy() when closure is accepted. SDL2 routes native
+        // close and application-quit events through this hook.
+        virtual void request_close();
+
         // Reconcile destruction initiated by the native toolkit.
         void on_native_destroy() override;
 

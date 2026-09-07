@@ -41,11 +41,8 @@ namespace native
         if (_edge == edge)
             return *this;
         _edge = edge;
-        on_configuration_changed();
-        if (_owner) {
-            _owner->relayout_children();
-            _owner->invalidate();
-        }
+        if (_owner) _owner->update_non_client();
+        else on_configuration_changed();
         return *this;
     }
 
@@ -60,11 +57,8 @@ namespace native
         if (_extent == extent)
             return *this;
         _extent = extent;
-        on_configuration_changed();
-        if (_owner) {
-            _owner->relayout_children();
-            _owner->invalidate();
-        }
+        if (_owner) _owner->update_non_client();
+        else on_configuration_changed();
         return *this;
     }
 
@@ -76,11 +70,8 @@ namespace native
         if (_visible == visible)
             return *this;
         _visible = visible;
-        on_configuration_changed();
-        if (_owner) {
-            _owner->relayout_children();
-            _owner->invalidate();
-        }
+        if (_owner) _owner->update_non_client();
+        else on_configuration_changed();
         return *this;
     }
 
@@ -89,6 +80,18 @@ namespace native
     }
 
     void non_client::track_pointer(const point &) {}
+
+    non_client &non_client::set_border_sides(border_sides sides) {
+        if ((unsigned(sides) & ~unsigned(border_sides::all)) != 0)
+            throw std::invalid_argument("Invalid border sides.");
+        if (_border_sides == sides) return *this;
+        _border_sides = sides;
+        on_configuration_changed();
+        invalidate();
+        return *this;
+    }
+
+    border_sides non_client::get_border_sides() const { return _border_sides; }
 
     void non_client::on_configuration_changed() {}
 

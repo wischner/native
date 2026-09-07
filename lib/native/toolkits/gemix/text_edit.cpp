@@ -79,8 +79,9 @@ namespace
             1, linux::gemix::runtime.char_w);
         const int char_height = std::max<int>(
             1, linux::gemix::runtime.char_h);
+        const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 3;
         const std::size_t target_line = static_cast<std::size_t>(
-            std::max(0, y - bounds.p.y - 3) / char_height);
+            std::max(0, y - bounds.p.y - padding) / char_height);
         const std::string &text = owner->get_text();
         std::size_t begin = 0;
         for (std::size_t line = 0; line < target_line; ++line) {
@@ -93,7 +94,7 @@ namespace
         const std::size_t end = newline == std::string::npos
                                     ? text.size()
                                     : newline;
-        const int column = std::max(0, x - bounds.p.x - 3) /
+        const int column = std::max(0, x - bounds.p.x - padding) /
                            char_width;
         std::size_t offset = begin;
         for (int index = 0; index < column && offset < end; ++index) {
@@ -159,12 +160,13 @@ namespace
         frame_state.disabled = owner->get_read_only();
         native::detail::control_render_access::draw(
             *owner, g, *painter, bounds, frame_state);
-        if (bounds.d.w <= 6 || bounds.d.h <= 6)
+        const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 3;
+        if (bounds.d.w <= 2 * padding || bounds.d.h <= 2 * padding)
             return;
-        const native::rect content(bounds.p.x + 3,
-                                   bounds.p.y + 3,
-                                   bounds.d.w - 6,
-                                   bounds.d.h - 6);
+        const native::rect content(bounds.p.x + padding,
+                                   bounds.p.y + padding,
+                                   bounds.d.w - 2 * padding,
+                                   bounds.d.h - 2 * padding);
         g.set_clip(g.get_clip().intersect(content));
         g.set_font(native::font_t::stock(native::font_role::control));
         const int char_width = std::max<int>(
@@ -411,10 +413,10 @@ namespace native
     }
 
     void text_edit::create_native() {
-        auto *parent = dynamic_cast<app_wnd *>(get_parent());
+        auto *parent = get_parent();
         if (!parent || !parent->get_created())
             throw std::runtime_error(
-                "GEMix: text_edit requires a created app_wnd parent.");
+                "GEMix: text_edit requires a created parent.");
         auto *self = this;
         auto *binding = new linux::gemix::gem_text_edit;
         binding->cursor = _text.size();

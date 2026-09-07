@@ -30,6 +30,10 @@ namespace
 
         bool update(native::status_bar &bar,
                     const native::rect &bounds) override {
+            if (bar.get_border_sides() != native::border_sides::all) {
+                destroy();
+                return false;
+            }
             native::wnd *owner = bar.get_owner();
             HWND parent = owner
                               ? windows::wnd_bindings

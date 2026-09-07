@@ -100,6 +100,9 @@ namespace native
                       part, state);
             x += width;
         }
+        graphics.set_pen(1).set_ink(appearance->native_palette().button_bg)
+            .draw_border(bounds, static_cast<border_sides>(
+                unsigned(border_sides::all) ^ unsigned(get_border_sides())));
     }
 
     void status_bar::on_configuration_changed() {

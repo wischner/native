@@ -134,6 +134,14 @@ other toolkits have equivalent mechanisms. Window Maker passes X events to
 `WMHandleEvent` and drains portable callbacks only after WINGs returns, so an
 application callback can safely destroy the widget that emitted it.
 
+SDL2 delivers title-bar close and application-quit requests through
+`app_wnd::request_close()`. The default destroys the window; an override
+can defer that decision for an asynchronous save prompt. SDL event dispatch
+and rendering continue until the main window is actually destroyed, and
+only then does the loop release process-wide SDL resources with `SDL_Quit()`.
+This releases initialization references retained by display detection as
+well as the main window's video initialization.
+
 Despite those differences, every backend loop must:
 
 - Dispatch events for the main window and its controls.
@@ -154,3 +162,12 @@ control placement or other initialization can safely query it there.
 
 The complete screen contract is described in
 [Screens And Virtual Desktops](PATTERNS-SCREENS.md).
+
+Windows wakes its message loop for `app::post()` and drains work after native
+dispatch. Haiku queues a message to a handler on the application looper.
+X11/Athena registers a nonblocking pipe with Xt, processes all Xt event sources,
+and drains queued work after dispatch returns. Its posting threads only write
+to that pipe, with descriptor shutdown synchronized against concurrent writes.
+This allows custom property content to commit and close after its input event, and
+allows workers to post updates while the desktop is idle. The wake target is
+removed before backend teardown.

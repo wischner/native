@@ -8,7 +8,11 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <native/geometry.h>
+
+#include "classic_scrollbar.h"
 
 namespace native
 {
@@ -21,6 +25,23 @@ namespace native
 
     namespace detail
     {
+        // Shares a collection's painted scrollbar range and hit regions.
+        struct collection_scrollbar
+        {
+            classic_scrollbar_geometry geometry;
+            std::uint64_t total = 0;
+            std::uint64_t page = 0;
+            int step = 1;
+        };
+
+        // Resolve the icon-view scrollbar for painting and pointer input.
+        collection_scrollbar make_collection_scrollbar(
+            const icon_view &control, const theme::metrics &metrics);
+
+        // Resolve the tree scrollbar for painting and pointer input.
+        collection_scrollbar make_collection_scrollbar(
+            const tree_view &control, const theme::metrics &metrics);
+
         // Draw one accordion into a backend-owned graphics context.
         void draw_accordion(accordion &control, gpx &graphics);
 

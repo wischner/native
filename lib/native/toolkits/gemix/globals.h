@@ -76,7 +76,8 @@ namespace linux::gemix
         bool pending = false;
         native::wnd *capture = nullptr;
         bool horizontal = false;
-        int grab_offset = 0;
+        // A negative grab consumes an arrow/page release without dragging.
+        int grab_offset = -1;
     };
     inline constexpr native::detail::peer_bindings<
         native::app_wnd *, gem_window *> window_states;
@@ -140,20 +141,22 @@ namespace linux::gemix
     using native::detail::root_bounds;
     using native::detail::root_of;
 
-    // Draw panel and canvas regions under every control they contain.
+    // Draw structural containers before their descendant canvases.
     void render_surfaces(native::app_wnd *parent, native::gpx &g);
 
     // Route a local pointer position to a canvas or panel region.
     bool dispatch_surface_click(native::app_wnd *parent,
                                 native::point point,
-                                bool pressed);
+                                bool pressed,
+                                native::mouse_button button =
+                                    native::mouse_button::left);
     bool dispatch_surface_move(native::app_wnd *parent,
                                native::point point);
 
     // Draw every created collection descendant of an AES window.
     void render_collections(native::app_wnd *parent, native::gpx &g);
-    void render_accordions(native::app_wnd *parent, native::gpx &g);
-    void render_tab_views(native::app_wnd *parent, native::gpx &g);
+    // Paint one tab host, including GEM's inactive side-tab edge.
+    void render_tab_view(native::tab_view *control, native::gpx &g);
 
     // Route a local click release to a collection control.
     bool activate_collection(native::app_wnd *parent,
@@ -190,7 +193,8 @@ namespace linux::gemix
     // Notes:
     //      AES subtracts every decoration the window carries: title,
     //      borders, info line, and the sliders and arrows when the
-    //      window was created with them. This is the area the backend
+    //      window was created with them. Untitled hosts also exclude
+    //      the library-painted dialog frame. This is the area the backend
     //      paints and hit-tests, so it is the size the portable layer
     //      is told about.
     //

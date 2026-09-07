@@ -73,6 +73,24 @@ endif()
 add_test(NAME native_window_api_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
 
+add_executable(native_inspector_tests native_inspector_tests.cpp)
+target_link_libraries(native_inspector_tests PRIVATE native native_developer_options)
+add_test(NAME native_inspector_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_inspector_tests>)
+
+if(NOT APPLE AND NOT TOOLKIT STREQUAL "GEMIX")
+    add_executable(native_inspector_runtime_tests
+        native_inspector_runtime_tests.cpp inspector_input.cpp)
+    target_include_directories(native_inspector_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(native_inspector_runtime_tests PRIVATE INSPECTOR_${TOOLKIT})
+    target_link_libraries(native_inspector_runtime_tests PRIVATE
+        native native_developer_options ${CMAKE_DL_LIBS})
+    add_test(NAME native_inspector_runtime_tests COMMAND native_inspector_runtime_tests)
+    set_tests_properties(native_inspector_runtime_tests PROPERTIES TIMEOUT 30
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0;SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+endif()
+
 add_executable(native_table_model_tests
     native_table_model_tests.cpp
 )
@@ -163,6 +181,28 @@ if(UNIX AND TOOLKIT STREQUAL "X11")
 endif()
 
 if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
+    add_executable(native_canvas_input_tests native_canvas_input_tests.cpp)
+    target_include_directories(native_canvas_input_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_canvas_input_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_canvas_input_tests COMMAND native_canvas_input_tests)
+    set_tests_properties(native_canvas_input_tests PROPERTIES
+        TIMEOUT 20 ENVIRONMENT
+        "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
+    add_executable(native_sdl_composition_tests
+        native_sdl_composition_tests.cpp)
+    target_include_directories(native_sdl_composition_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_sdl_composition_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_sdl_composition_tests
+        COMMAND native_sdl_composition_tests)
+    set_tests_properties(native_sdl_composition_tests PROPERTIES
+        TIMEOUT 15 ENVIRONMENT
+        "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
     add_test(NAME native_collection_runtime_tests
         COMMAND native_collection_runtime_tests)
     set_tests_properties(native_collection_runtime_tests PROPERTIES

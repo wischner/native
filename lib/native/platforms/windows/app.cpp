@@ -8,14 +8,41 @@
 #include <native.h>
 #include <native/app.h>
 #include <windows.h>
+#include <atomic>
 
 #include "../../post_backend.h"
 #include "globals.h"
+
+namespace
+{
+    std::atomic<DWORD> posted_thread = 0;
+
+    // Wake GetMessage even when posted work is the only pending event.
+    void wake_posted_work() {
+        if (const DWORD thread = posted_thread.load())
+            PostThreadMessageW(thread, WM_APP + 0x71, 0, 0);
+    }
+
+    struct posted_session
+    {
+        posted_session() {
+            MSG message;
+            PeekMessageW(&message, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
+            posted_thread.store(GetCurrentThreadId());
+            native::detail::set_loop_wake(wake_posted_work);
+        }
+        ~posted_session() {
+            native::detail::set_loop_wake(nullptr);
+            posted_thread.store(0);
+        }
+    };
+}
 
 namespace native
 {
 
     int app::main_loop() {
+        const posted_session posted;
         MSG msg;
         BOOL ret;
 
@@ -35,10 +62,11 @@ namespace native
                 translated = menu && menu->accelerators && hwnd &&
                     TranslateAcceleratorW(hwnd, menu->accelerators, &msg);
             }
-            if (translated)
-                continue;
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            if (!translated) {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+            detail::drain_posted_work();
         }
 
         return static_cast<int>(msg.wParam);

@@ -445,3 +445,19 @@ image target, or that backend's native-look emulation otherwise.
 - Use PNG for RGBA assets and JPEG for opaque photographic output.
 - Prefer real Native controls for interaction and theme primitives for
   custom-drawn control visuals.
+
+## Drawing selected border sides
+
+`gpx::draw_border(rect, border_sides)` draws the selected edges with the current
+ink and pen and leaves the interior untouched. Its default is all four edges.
+The same flags configure a control's existing frame:
+
+```cpp
+field.set_border_sides(native::border_sides::left |
+                       native::border_sides::bottom);
+graphics.set_pen(1).set_ink(native::rgba(0, 0, 0, 255))
+    .draw_border(native::rect(10, 10, 120, 24), native::border_sides::bottom);
+```
+
+Use `theme::draw_toolbar_button(bounds, text, state)` for a menu-styled command
+that has no submenu arrow. `draw_menu_title()` retains native menu marks.

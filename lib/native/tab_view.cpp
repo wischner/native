@@ -691,30 +691,24 @@ namespace native
                              _tab_height;
                 break;
             }
+            const rect frame(page_left, page_top, page_right - page_left + 1,
+                             page_bottom - page_top + 1);
             graphics.set_ink(colors.button_highlight)
-                .draw_line(p(page_left, page_top),
-                           p(page_right, page_top))
-                .draw_line(p(page_left, page_top),
-                           p(page_left, page_bottom))
+                .draw_border(frame, get_border_sides() & (border_sides::top | border_sides::left))
                 .set_ink(colors.button_border)
-                .draw_line(p(page_left, page_bottom),
-                           p(page_right, page_bottom))
-                .draw_line(p(page_right, page_top),
-                           p(page_right, page_bottom));
-            if (page_right - page_left > 2 &&
-                page_bottom - page_top > 2) {
+                .draw_border(frame, get_border_sides() & (border_sides::bottom | border_sides::right));
+            if (frame.w() > 2 && frame.h() > 2)
                 graphics.set_ink(colors.button_shadow)
-                    .draw_line(p(page_left + 1, page_bottom - 1),
-                               p(page_right - 1, page_bottom - 1))
-                    .draw_line(p(page_right - 1, page_top + 1),
-                               p(page_right - 1, page_bottom - 1));
-            }
+                    .draw_border(rect(frame.x1() + 1, frame.y1() + 1,
+                        frame.w() - 2, frame.h() - 2),
+                        get_border_sides() & (border_sides::bottom | border_sides::right));
             graphics.set_ink(colors.button_highlight);
-            if (_tab_placement == tab_placement::top)
+            if (_tab_placement == tab_placement::top &&
+                has_border(get_border_sides(), border_sides::top))
                 graphics.draw_line(p(0, page_top), p(right, page_top));
-            else if (_tab_placement == tab_placement::left)
-                graphics.draw_line(p(page_left, 0),
-                                   p(page_left, bottom));
+            else if (_tab_placement == tab_placement::left &&
+                     has_border(get_border_sides(), border_sides::left))
+                graphics.draw_line(p(page_left, 0), p(page_left, bottom));
             return;
         }
         appearance.draw_surface(bounds, surface_kind::panel, state);

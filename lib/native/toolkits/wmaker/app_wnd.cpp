@@ -244,7 +244,9 @@ namespace native
 
         auto *self = this;
         WMWindow *window = nullptr;
-        if (app_wnd *owner = get_owner(); owner && get_modal()) {
+        if (!get_native_title_visible()) {
+            window = WMCreateWindowWithStyle(linux::wmaker::screen, "native_popup", 0);
+        } else if (app_wnd *owner = get_owner(); owner && get_modal()) {
             auto *owner_state = linux::wmaker::state(owner);
             if (!owner_state || !owner_state->window) {
                 throw std::runtime_error(

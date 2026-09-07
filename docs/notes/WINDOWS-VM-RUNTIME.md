@@ -121,6 +121,20 @@ not part of the maintained deployment. Close Vision's window to end a
 running session cleanly. Do not describe running-target interruption as
 verified. Breakpoints and native execution are independently verified.
 
+The 2026-09-07 inspector regression was deployed separately under
+`C:\NativeDebug\inspector-fix` and passed in the interactive Windows 11
+desktop session. It verifies native checkbox/text/number input, presented
+toolbar-icon and property-text pixels, repeated toolbar commands with status
+updates, sticky selection, bottom-edge input, scrolling, and owner recreation.
+Property combos also pass the unified value-background pixel check and a
+native popup selection check. The follow-up covers post-creation grid
+resizing, live toolbar growth/shrinkage and neighboring-bar hits, and custom
+dropdown values, including Cancel and callbacks retained from a previous
+popup session. Posted assertions and popup commits use the production
+message-loop wakeup rather than a test timer.
+The temporary regression task was removed after validation; the normal
+Vision deployment and debug task were retained.
+
 ## Removing the development setup
 
 Close debugging first. The guest task is `Native-Vision-Debug`, the additional

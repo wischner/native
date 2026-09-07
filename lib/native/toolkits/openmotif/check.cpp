@@ -66,6 +66,8 @@ namespace native
                              _bounds.d.h,
                              XmNlabelString,
                              s,
+                             XmNrecomputeSize,
+                             False,
                              XmNindicatorType,
                              XmN_OF_MANY,
                              XmNset,

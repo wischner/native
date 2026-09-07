@@ -8,6 +8,8 @@
 #include <stdexcept>
 
 #include <Xm/Xm.h>
+#include <Xm/PushB.h>
+#include <Xm/XmP.h>
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 
@@ -16,6 +18,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../x_border.h"
 
 namespace
 {
@@ -42,6 +45,31 @@ namespace
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        Widget widget = linux::openmotif::wnd_bindings.handle_from_object(this);
+        if (!widget || !XtIsRealized(widget) ||
+            linux::openmotif::shell_bindings.handle_from_object(this)) return;
+        Dimension border = 0, shadow = 0, highlight = 0;
+        XtVaGetValues(widget, XtNborderWidth, &border, nullptr);
+        if (XmIsPrimitive(widget) || XmIsManager(widget))
+            XtVaGetValues(widget, XmNshadowThickness, &shadow, nullptr);
+        if (!border && !shadow) return;
+        if (XmIsPrimitive(widget))
+            XtVaGetValues(widget, XmNhighlightThickness, &highlight, nullptr);
+        // Primitive relief starts inside the keyboard-focus reservation.
+        int inside = shadow + highlight;
+        if (XmIsPushButton(widget)) {
+            Dimension default_shadow = 0;
+            XtVaGetValues(widget, XmNdefaultButtonShadowThickness, &default_shadow, nullptr);
+            // Motif adds a default-button ring, a shadow-width gap and
+            // enhancement pixels hidden by its highlight resource getter.
+            if (default_shadow)
+                inside += 2 * default_shadow + shadow + Xm3D_ENHANCE_PIXEL;
+        }
+        detail::shape_border(XtDisplay(widget), XtWindow(widget),
+                             get_border_sides(), inside, border);
+    }
+
     void wnd::apply_position() {
         Widget shell =
             linux::openmotif::shell_bindings.handle_from_object(this);

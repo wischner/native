@@ -437,23 +437,20 @@ namespace native
     }
 
     tree_view &tree_view::set_border_visible(bool visible) {
-        if (_border_visible == visible)
-            return *this;
-        _border_visible = visible;
-        if (_created) {
-            apply_items();
-            // Native outline widgets rebuild their peer rows while applying
-            // frame styles. Restore the portable selection and viewport so
-            // changing decoration never changes tree state.
-            apply_selection();
-            apply_scroll_offset();
-        }
-        invalidate();
+        set_border_sides(visible ? border_sides::all : border_sides::none);
         return *this;
     }
 
     bool tree_view::get_border_visible() const {
-        return _border_visible;
+        return get_border_sides() != border_sides::none;
+    }
+
+    void tree_view::on_border_sides_changed() {
+        if (_created) {
+            apply_items();
+            apply_selection();
+            apply_scroll_offset();
+        }
     }
 
     tree_view &tree_view::set_presentation(
@@ -797,6 +794,7 @@ namespace native
 
     void tree_view::apply_theme_metrics(
         const theme::metrics &values) {
+        const int previous_row_height = _row_height;
         _row_height = std::max(
             {1,
              values.tree_row_height > 0
@@ -825,7 +823,10 @@ namespace native
                                       _disclosure_size);
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
-        ensure_item_visible(_selected_item);
+        // Painting reapplies metrics; preserve a manually scrolled viewport
+        // unless the native row geometry actually changes.
+        if (_row_height != previous_row_height)
+            ensure_item_visible(_selected_item);
     }
 
     void tree_view::draw_background(
@@ -956,10 +957,10 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &) {
-        if (!_border_visible)
+        if (!get_border_visible())
             return;
         graphics.set_pen(1)
             .set_ink(appearance.get_button_border_color())
-            .draw_rect(bounds, false);
+            .draw_border(bounds, get_border_sides());
     }
 } // namespace native

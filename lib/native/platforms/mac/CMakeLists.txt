@@ -48,6 +48,7 @@ target_sources(native PRIVATE
 
 target_link_libraries(native PRIVATE
     "-framework AppKit"
+    "-framework QuartzCore"
     "-framework Foundation"
     "-framework CoreFoundation"
     "-framework CoreGraphics"

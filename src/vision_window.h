@@ -19,6 +19,33 @@
 
 namespace vision
 {
+    // Demonstrates typed properties, selectable borders, and edge toolbars.
+    class feature_properties final : public native::modeless_wnd
+    {
+    public:
+        // Construct the compact property and toolbar demonstration.
+        explicit feature_properties(native::app_wnd &owner);
+
+    protected:
+        // Keep the inspector inside the client area when toolbar sizes change.
+        void on_bounds_changed() override;
+
+    private:
+        native::property_grid _properties;
+        native::button _preview;
+        native::toolbar _top, _second, _left, _right, _bottom;
+        native::status_bar _status;
+
+        // Create the inspector and assign image-backed tools.
+        bool on_create();
+
+        // Arrange the content inside all reserved toolbar strips.
+        void arrange();
+
+        // Apply edited properties to the live preview and toolbar images.
+        bool on_property(native::property_change event);
+    };
+
     // Shows custom themed primitives without blocking the main window.
     class feature_inspector final : public native::modeless_wnd
     {
@@ -309,7 +336,8 @@ namespace vision
     public:
         // Construct the main demonstration and connect all events.
         explicit vision_window(bool open_splitter_on_start = false,
-                               bool open_input_chrome_on_start = false);
+                               bool open_input_chrome_on_start = false,
+                               bool open_properties_on_start = false);
 
     private:
         native::button _action;
@@ -331,6 +359,7 @@ namespace vision
         native::button _show_code_editor;
         native::button _show_splitter;
         native::button _show_input_chrome;
+        native::button _show_properties;
 
         std::unique_ptr<native::img> _image;
         native::font_t _file_font;
@@ -343,6 +372,7 @@ namespace vision
         int _activation_count = 0;
         bool _open_splitter_on_start = false;
         bool _open_input_chrome_on_start = false;
+        bool _open_properties_on_start = false;
 
         int _open_image_command = 0;
         int _copy_text_command = 0;
@@ -358,6 +388,7 @@ namespace vision
         feature_code_editor _code_editor;
         feature_splitter _splitter;
         feature_input_chrome _input_chrome;
+        feature_properties _properties;
         feature_dialog _dialog;
         native::open_file_dialog _open_image;
         native::save_file_dialog _save_image;

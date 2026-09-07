@@ -7,6 +7,7 @@
 
 #include <stdexcept>
 #include <cmath>
+#include <string_view>
 
 #include <SDL2/SDL.h>
 #ifdef HAVE_SDL2_TTF
@@ -55,11 +56,15 @@ namespace native
             linux::sdl2::wnd_gpx_bindings.object_from_handle(_wnd);
         if (!cache) {
             cache = new linux::sdl2::sdl2_gpx();
+            const char *driver = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
+            const bool software = driver &&
+                std::string_view(driver) == "software";
             cache->renderer = SDL_CreateRenderer(
                 win,
                 -1,
-                SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-            if (!cache->renderer)
+                software ? SDL_RENDERER_SOFTWARE :
+                    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+            if (!cache->renderer && !software)
                 cache->renderer =
                     SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);
             linux::sdl2::wnd_gpx_bindings.register_pair(_wnd, cache);

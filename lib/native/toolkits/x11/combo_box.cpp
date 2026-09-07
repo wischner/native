@@ -257,6 +257,8 @@ namespace native
             XtNwidth, text_width,
             XtNheight, child_height,
             XtNborderWidth, 1,
+            XtNtopMargin, 0,
+            XtNbottomMargin, 0,
             XtNstring, get_text().c_str(),
             XtNeditType, get_style() == combo_box_style::editable
                 ? XawtextEdit : XawtextRead,

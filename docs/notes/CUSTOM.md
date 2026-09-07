@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-09-05.
+Audit date: 2026-09-07.
 
 ## Legend
 
@@ -48,14 +48,17 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Motif `table_view` | Keep **H**: one buffered Motif-themed table viewport with native `XmScrollBar` peers. `XmContainer` detail view cannot provide virtual rows, grid lines, or matching portable column sizing; using it only for materialized data produced incompatible tables and rebuild flicker. Native tree and icon controls retain `XmContainer`. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
-| macOS derived controls | Keep staged rendering only for explicitly derived controls. Exact stock buttons, checks, radios, tables, trees, icons and accordions use AppKit painting. |
+| macOS derived controls | Keep staged rendering for explicitly derived controls and buttons requesting partial outer frames. Default stock buttons, checks, radios, tables, trees, icons and accordions use AppKit painting. |
 | macOS `code_edit` and `status_bar` | Keep **C**. `NSTextView` alone does not implement the portable source editor's document, folding, gutter, marker and completion contract. AppKit has no stock window footer matching the in-client multipart status strip. |
-| Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls retain native painting, as with `status_bar`. |
+| Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls with default borders retain native painting, as with `status_bar`. Partial button/status frames use the staged path. |
 | Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` uses portable scrolling with `BControlLook` scrollbar parts and the system thumb preference. |
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
 | X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
 | All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
-| Non-Athena `canvas` scrollbars | Keep their existing themed implementation. The portable signed 32-bit content contract requires exact endpoints and shared ruler/corner geometry. Athena now adapts actual Xaw scrollbar fractions to that contract without changing other backends. |
+| Non-Athena `canvas` scrollbars | Keep their existing themed implementation, now drawing the complete classic bar — both arrow buttons, the trough, and the thumb — from the shared `classic_scrollbar` split. The portable signed 32-bit content contract requires exact endpoints and shared ruler/corner geometry. Athena now adapts actual Xaw scrollbar fractions to that contract without changing other backends. |
+| All `toolbar` controls | Keep **C**: a shared menu-themed canvas preserves arbitrary edge attachment, multiple stacked strips, independent toggles and named exclusive groups. Native menu theme primitives provide its appearance. |
+| Custom property dropdown cell | Keep **C** within the inspector: native string-list combos cannot host arbitrary controls or provide application-defined value converters. The popup content itself retains its control’s native or canvas implementation. |
+| GEM/SDL `property_grid` | Keep **C**: these backends have no stock property inspector; the grid reuses their existing text/check/combo controls and canvas scrolling. Other backends are **H**, combining native editors with shared labels and row geometry. |
 | All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; application painting owns the client pixels, while backend or portable code supplies chrome. |
 
 There is no stock general-purpose Win32 splitter, accordion, code editor, or
@@ -64,6 +67,11 @@ provide a complete reusable child-widget set, so custom controls are expected
 in those backends.
 
 ## Linux X11/Athena
+
+The 2026-09-07 custom-dropdown audit retains the control kinds below. An Xt
+input pipe wakes the normal application loop for posted work, so native-button
+and custom-canvas commits complete after input dispatch. The inspector
+regression uses that production path without a test timer draining the queue.
 
 The 2026-09-05 follow-up retains Athena controls, specializing Form geometry
 only for Native-owned containers. Child preferences cannot shrink these hosts
@@ -107,17 +115,26 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
 | `split_view` | **N/H** | Xaw `Paned` with private Form pane hosts preserving child borders; captured full-strip dragging through native constraints, without XOR grips. |
 | `panel` | **N/H** | Athena Form subclass; native hosting/background with portable geometry ownership. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Xaw `Form` drawable host with portable client/ruler painting and actual Xaw scrollbar children. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
 | `message_box` | **N/H** | Xaw `Dialog` shell and Xaw buttons, composed to support the portable one-to-three-button contract. |
-
 ## Linux SDL2
+
+The 2026-09-06 lifecycle audit adds application `request_close()` policy
+dispatch for title-bar close and quit, preserving the event loop while a
+save decision is pending. The native/hybrid classification is unchanged.
+The same audit combines every structural host in parent-depth paint order
+and preserves canvas mouse-button identity and gesture capture through
+tab/split nesting. Software-renderer selection bypasses GPU probing, and
+the event loop releases the complete SDL runtime after final window close.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, modality filtering, positioning, first-frame presentation, focus-click-through with one-shot activation-release reconstruction, renderer-before-window teardown, and results. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, close-request policy, modality filtering, positioning, first-frame presentation, focus-click-through with one-shot activation-release reconstruction, renderer-before-window teardown, and results. |
 | `wnd` and all child-control hosts | **C** | SDL event routing and renderer-backed library windows; SDL2 supplies no desktop widget set. |
 | `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch. |
 | `button`, `check`, `radio` | **C** | Library-painted controls using SDL's neutral system-gray emulation palette; live and complete theme check/radio drawing share the same stages and geometry. |
@@ -126,7 +143,9 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `icon_view`, `tree_view`, `table_view` | **C** | Shared library collection painting, root-relative hit testing, and scrolling; collection scrollbars share classic arrow/trough/thumb painting and SDL thumb capture, tree frames are optional and default on, and SDL uses compact disclosure arrows without connector lines. Tables finish with complete rows and their complete outer frame. |
 | `code_edit` | **C** | Portable document/editor and library painting. |
 | `split_view` | **C** | Library pane geometry, registered root-relative divider hit testing, pointer-captured drag handling, and resize cursor. |
-| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting, clipping through an SDL viewport, and root-relative hit testing are library-owned. |
+| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; all structural hosts paint in parent-depth order with local SDL viewport clipping. Canvas routing preserves left/middle/right identity and captures motion/release for the pressed surface through tab and splitter nesting. |
+| `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
+| `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips; status parts use gray chrome surfaces and highlighted/shadowed edges. |
 | File open/save/directory | **C** | One compact resizable themed browser for all three modes, with icon-backed Places and Name/Type/Size tables, icon-only history navigation, a breadcrumb/direct-address area toggled by double click, continuous draggable scrolling without pagination, separate filename entry, filters, validation, and save overwrite handling. |
 | `message_box` | **C** | Library-owned themed `modal_wnd` with attributed embedded PNG semantic badges, stock control font, real Native buttons, and SDL event routing. |
@@ -142,6 +161,12 @@ all four edges from their first selection. Modal shells use CDE's dialog
 palette, including white text; rulers and their corner use native menu-bar
 paper and menu-foreground marks.
 
+The 2026-09-07 border follow-up retains these control kinds. Motif edge masks
+cover the focus margin before native relief, including the extra reservation
+and enhancement pixels used by default buttons. Property-grid checkbox clicks
+remove and restore each preview edge across all sixteen combinations; pixel
+tests also vary the native focus and default-button metrics.
+
 Shells, notebooks, split hosts and panels destroy portable children before
 Xt recursively frees their widget trees. Native icon/tree pixmaps are thus
 detached while their gadgets remain valid. Owned shells use Xt's own deferred
@@ -152,7 +177,7 @@ destruction, not a timeout that could outlive their parent.
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Xt shells with `XmMainWindow`; explicit keyboard focus keeps typing with the clicked editor. Portable ownership/result state wraps Motif modality; drawing-area geometry is not enlarged by theme probe children. |
 | `wnd` | **H** | `XmDrawingArea` child host with library paint/input routing. |
 | `main_menu` | **N** | `XmMenuBar`, `XmPulldownMenu`, `XmCascadeButton`, `XmPushButton`, and `XmSeparator`. |
-| `button` | **N** | `XmPushButton`. |
+| `button` | **N** | `XmPushButton`; per-edge masks include its focus margin and optional default-button enclosure so hiding an edge removes the complete native relief. |
 | `check`, `radio` | **N** | `XmToggleButton`; portable code manages radio grouping. |
 | `list` | **N** | `XmList` in `XmScrolledWindow`. |
 | `combo_box` | **N** | `XmDropDownList` or editable `XmComboBox`. |
@@ -165,11 +190,12 @@ destruction, not a timeout that could outlive their parent.
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N/H** | `XmPanedWindow` with a centered native sash and resizable panes. Sash and full-divider pointer dragging share the portable ratio transaction. |
 | `panel` | **N** | `XmForm` child with `XmRESIZE_NONE`; Motif fills it and it is a real Xt parent. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using Motif theme resources. |
 | File open/save/directory | **N/H** | `XmFileSelectionDialog`; portable code adapts save confirmation and directory-only behavior. |
 | `message_box` | **N** | Motif error, warning, question, or information dialogs. |
-
 ## Linux OPEN LOOK/XView
 
 The 2026-09-05 follow-up retains native Panel items. OLGX button primitives
@@ -203,11 +229,12 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a keyboard-accepting XView Panel; key events route navigation, Shift selection, text and completion through the portable editor. |
 | `split_view` | **H** | Two private XView `Panel` panes with captured live dragging, scrollbar-aware list resizing and an exposure-painted centered grip; not `OPENWIN_SPLIT`. |
 | `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using the OPEN LOOK theme. |
 | File open/save/directory | **N/H** | XView `FILE_CHOOSER`, adapted for directory-only and save behavior. |
 | `message_box` | **N** | XView `NOTICE` with one to three buttons. |
-
 ## Linux Window Maker/WINGs
 
 | Public control | Kind | Current implementation |
@@ -226,11 +253,12 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior; native pane-size notifications synchronize the portable ratio and refit both borrowed children to the exact granted pane sizes, preserving every control edge. |
 | `panel` | **N** | `WMFrame` with `WRFlat` relief; WINGs fills it and it is a real parent widget. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
 | File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode; owner exposes remain live while their private modal loop moves a panel, and focus returns explicitly when it closes. |
 | `message_box` | **N/H** | Native WINGs alert panel, controls, fonts, and modal loop, with the requested frame title and attributed embedded PNG semantic badge. |
-
 ## Linux GEMix/AES
 
 The 2026-09-05 local-rasta audit retains the classifications below. AES owns
@@ -240,8 +268,21 @@ rectangle. Accordion surfaces precede their children, combo popups paint last,
 and framed tab pages suppress the redundant enclosure of their list content.
 Stock text on images uses the same GEM bitmap font as VDI window text.
 Table sliders use the shared drag geometry with flat GEM-style frames,
-stippled tracks, and arrow buttons. The custom radio primitive matches the
-standard library GEM radio indicator.
+stippled tracks, and arrow buttons. The 2026-09-07 arrow audit retains **C**
+for painted collections and canvases: their shared GEM theme now uses the
+original outlined stock-font arrows with shafts in all four directions,
+matching AES glyph placement. Pressing inverts the arrow and face, and short
+buttons clip inside the frame. The original bitmap glyphs provide the same
+appearance if the font resource is unavailable. The custom radio primitive
+matches the standard library GEM radio indicator.
+The same day's input correction connects icon-grid and tree scrollbars to
+that painted geometry: arrows step on press, troughs page, and thumbs retain
+capture outside their window until release. Scrollbar gestures preserve item
+selection and activation; destroying the collection releases capture. This
+also applies to icon grids borrowed by an accordion in a modeless window.
+Shared tree painting now preserves manual scroll position when it reapplies
+unchanged row metrics, rather than returning to an offscreen selected row.
+Control classifications remain unchanged on every backend using that painter.
 The status height uses the same font-plus-six-pixel metric as AES title/menu
 chrome; the gallery requests that theme metric rather than a font-only height.
 Status parts retain their top rule and leading dividers, but omit bottom and
@@ -264,22 +305,26 @@ Native content inside the same update transaction as teardown.
 AES desktop/frame redraws now share client occlusion clipping; opening windows
 does not erase covered owner content or redraw hidden frames. This is an AES
 implementation repair, with no change to control kinds or public interfaces.
-The modal-frame follow-up keeps the **N/H** classification: AES owns an
+The 2026-09-07 frame follow-up keeps the **N/H** classification: AES owns an
 untitled, gadget-free host and Native draws its four-pixel `1011` enclosure.
-Both direct and proxy pixel tests check every edge and the client inset.
+This includes titleless modeless dropdowns as well as modal dialogs. Both
+direct and proxy pixel tests check every edge, the requested client size and
+the client inset with a canvas painting to its edges.
 
 | Public control | Kind | Current implementation |
 | --- | --- | --- |
-| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library dispatcher supplies ownership/modality and the untitled modal `1011` frame. |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library dispatcher supplies ownership/modality and the `1011` frame of modal and titleless modeless hosts. |
 | `wnd` | **C/H** | AES work-area registration with VDI library painting and dispatch. |
 | `main_menu` | **N/H** | The library builds an AES `OBJECT` tree and installs it with `menu_bar`; AES owns normal menu interaction while portable code maps commands and shortcuts. |
 | `button`, `check`, `radio` | **C** | GEM-themed library painting and AES event handling. |
 | `list`, `combo_box`, `text_edit` | **C** | Library painting, editing, popup/list, scrolling, and selection over AES/VDI. |
 | `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only pages, and page routing. |
-| `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling. |
+| `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling; icon grids and trees share painted/hit geometry for arrow steps, trough paging, and captured thumb dragging, including nested accordion pages. |
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
 | `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting through an offset context and root-relative hit testing are library-owned. |
+| `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
+| `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips through VDI. |
 | File open/save/directory | **N/H** | AES `fsel_input`; portable code adapts mode, path, and overwrite confirmation. |
 | `message_box` | **N** | AES `form_alert`. |
@@ -291,9 +336,9 @@ Both direct and proxy pixel tests check every edge and the client inset.
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Win32 top-level `HWND`; modeless HWNDs stack independently without native ownership, while the portable owner graph retains lifetime and modal exclusion. Modal HWNDs retain native ownership. |
 | `wnd` | **H** | Child `HWND` registered by the library for portable paint/input routing. |
 | `main_menu` | **N** | `HMENU`, menu separators, mnemonic labels, and `HACCEL` accelerators. |
-| `button`, `check`, `radio` | **N** | Win32 `BUTTON` with `BS_PUSHBUTTON`, `BS_CHECKBOX`, and `BS_RADIOBUTTON`; native painting, metrics, focus, and input. Derived controls retain `BS_OWNERDRAW` for protected overrides. |
+| `button`, `check`, `radio` | **N** | Win32 `BUTTON` with `BS_PUSHBUTTON`, `BS_CHECKBOX`, and `BS_RADIOBUTTON`; native painting, metrics, focus, and input. Derived controls and partial-border buttons retain `BS_OWNERDRAW` for protected drawing stages. |
 | `list` | **N** | Win32 `LISTBOX`. |
-| `combo_box` | **N** | Win32 `COMBOBOX`. |
+| `combo_box` | **N/H** | Win32 `COMBOBOX`; property-grid value cells use owner-drawn text/paper, retaining the native arrow, popup, keyboard and selection behavior. |
 | `text_edit` | **N/H** | Win32 `EDIT`; portable validation and clipboard policy subclass it. |
 | `accordion` | **C** | Library child-window class and theme painting. |
 | `tab_view` | **N/H** | Common-controls `WC_TABCONTROL` with native classic painting on all four edges, since visual styles do not support bottom/vertical placement. Vertical items use content-sized widths for centered short labels; portable borrowed-page routing and a post-paint separator for strip-only pages. |
@@ -303,12 +348,13 @@ Both direct and proxy pixel tests check every edge and the client inset.
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
 | `panel` | **N** | Child window of a Native class whose background brush is `COLOR_BTNFACE`; Win32 fills it and it is a real parent HWND. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
 | `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
 | `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. Top sibling Z order and sibling clipping protect the strip from oversized controls after resize. |
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
 | `message_box` | **N** | Win32 `MessageBoxW`. |
-
 ## Haiku
 
 Rechecked 2026-09-05 in the Haiku VM: selection/resize repainting, collection
@@ -336,12 +382,13 @@ registration is complete, preventing early custom-draw callbacks.
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
 | `panel` | **N** | Child `BView` with the panel background view color and no `B_WILL_DRAW`; the app_server fills it and it is a real parent view. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared collection host `BView`; the client, rulers, and themed scrollbars are painted by portable code. Native `BScrollBar` is not used because the portable scroll range is signed 32-bit content, not view pixels. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. `BStatusBar` is intentionally not used because it is a progress indicator rather than a footer. |
 | File open/save/directory | **N** | `BFilePanel`, configured for files, save, or directories. |
 | `message_box` | **N** | `BAlert`. |
-
 ## Apple macOS
 
 The 2026-09-05 audit found portable drawing overrides inside several native
@@ -384,12 +431,13 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | `code_edit` | **C** | Portable document/editor painted in a custom `NSView`. |
 | `split_view` | **N** | `NSSplitView` owns divider appearance, tracking and pane allocation; borrowed controls fill the actual panes. |
 | `panel` | **N** | Child `NSView` filling `windowBackgroundColor`; a real AppKit parent for every control. |
+| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
 | `ruler` | **C** | Shared library-painted non-client strip; `NSRulerView` is not currently used. |
 | `status_bar` | **C** | Shared library-painted non-client strip. AppKit has no direct window-status-bar peer to the portable control. |
 | File open/save/directory | **N** | `NSOpenPanel`/`NSSavePanel`, including directory-selection mode. |
 | `message_box` | **N** | `NSAlert`. |
-
 ## Deliberately portable state
 
 Even an **N** control retains portable C++ state for consistent API behavior:
@@ -402,3 +450,47 @@ Conversely, placing a library painter inside a native generic view is **C**, not
 **N**. Using a real native scrollbar or container around custom content is
 **H**. This distinction is intentional so future reviews do not mistake a
 native handle for a native control implementation.
+
+### GEMix nested drawing correction (2026-09-07)
+
+The existing library-painted GEMix containers and canvases keep their
+classification. Their background painting shares one ancestry-ordered
+pass so tab/accordion paper cannot cover child canvases; split grips are
+painted before their panes. This is internal composition, not a new
+application-facing control or emulation layer.
+
+2026-09-07: Shared **C** ruler painting now spaces labels by measured text
+width, retaining all ticks at dense scales, and clips to its own strip.
+The window API regression checks both orientations and graphics-state
+restoration. Maestro uses the standard Native ruler with no custom painter.
+
+
+The 2026-09-07 border audit adds per-edge masks to existing outer frames.
+Native controls keep native interaction and use their backend edge adapter;
+Windows/macOS buttons with partial frames use their existing staged drawing
+path. Windows status bars with partial frames use the shared fallback.
+GEM nested text editors now accept a created structural parent, matching
+other child controls and enabling compact property-grid composition.
+
+The 2026-09-07 inspector follow-up retains those classifications. Property
+labels, frame edges, and scrollbars occupy separate native surfaces so they
+cannot obscure editor controls. Native value fields use the panel paper;
+toolbar artwork preserves alpha and shares its centered layout with the text.
+OPEN LOOK border masking reads the Panel background without constructing a
+graphics context for windowless Panel items.
+
+WINGs property text cells use native `WMText` with newlines disabled and
+configurable panel paper; `WMTextField` hard-codes white in its painter.
+Standalone single-line editors retain `WMTextField`. SDL text-editor painting
+now resolves the containing top-level and current ancestor-relative bounds,
+matching its existing nested input routing. Motif combos leave traversal
+before their native text/list children are destroyed.
+
+The 2026-09-07 inspector sizing/dropdown audit retains the property-grid and
+toolbar kind marks above. Custom dropdown cells are library-painted value
+surfaces; their titleless native popup owns the factory’s standard control or
+canvas. This custom cell is required because native string-list combos cannot
+host arbitrary C++ controls or convert arbitrary value types. Native checkbox
+labels no longer change allocated widths. WINGs property text uses a flat
+clipping host to center its WMText line. OPEN LOOK choice-stack marks remain
+content and are excluded from border masking; toolbar commands omit them.

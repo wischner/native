@@ -123,6 +123,8 @@ namespace native
     void ruler::draw(gpx &graphics, const rect &bounds) {
         if (!bounds.w() || !bounds.h())
             return;
+        const auto saved = graphics.save_state();
+        graphics.set_clip(graphics.get_clip().intersect(bounds));
         auto appearance = theme::create(graphics);
         const theme::state state{};
         theme::palette colors = appearance->native_palette();
@@ -138,6 +140,7 @@ namespace native
             std::ceil(_origin / _minor_tick) * _minor_tick;
         const int maximum_ticks = length * 4 + 8;
         int count = 0;
+        int next_label_axis = 0;
         for (double value = first_value;
              value <= final_value + _minor_tick * 0.001 &&
                  count < maximum_ticks;
@@ -148,14 +151,21 @@ namespace native
             const bool major = std::abs(major_multiple -
                                         std::round(major_multiple)) < 0.00001;
             draw_tick(graphics, bounds, axis, major, colors);
-            if (major) {
+            if (major && axis >= next_label_axis) {
+                const auto text = format_value(value);
+                const int label_width = graphics.measure_text(text).width;
+                // Keep dense tick marks, but leave readable space between
+                // labels in both ordinary and rotated orientations.
+                next_label_axis = axis + label_width + 6;
+                if (axis + label_width + 2 > length)
+                    continue;
                 const point label =
                     orientation == ruler_orientation::horizontal
                     ? point(static_cast<coord>(bounds.x1() + axis + 2),
                             static_cast<coord>(bounds.y1() + 2))
                     : point(static_cast<coord>(bounds.x1() + 2),
                             static_cast<coord>(bounds.y1() + axis + 2));
-                draw_label(graphics, label, format_value(value), colors);
+                draw_label(graphics, label, text, colors);
             }
         }
 
@@ -164,6 +174,9 @@ namespace native
 
         if (_track_mouse && _tracked_axis)
             draw_tracker(graphics, bounds, *_tracked_axis, colors);
+        graphics.set_pen(1).set_ink(colors.button_bg)
+            .draw_border(bounds, static_cast<border_sides>(
+                unsigned(border_sides::all) ^ unsigned(get_border_sides())));
     }
 
     void ruler::track_pointer(const point &position) {

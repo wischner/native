@@ -307,3 +307,71 @@ Its GEM status parts draw top and leading divider lines only: the surrounding
 window supplies the bottom/right enclosure.
 For automated desktop smoke tests, `vision --input-chrome` opens the same
 window immediately after the application enters its normal event loop.
+
+Dense ruler scales retain every configured minor and major tick, while
+labels are spaced using measured text width to avoid overlap on either
+axis. Painting is clipped to the ruler strip and restores the caller’s
+graphics state. Choose a strip extent that leaves room for the font above
+the ticks (Maestro uses 32 pixels for one-pixel minor/eight-pixel major ticks).
+
+## Compact property grids and edge toolbars
+
+`property_grid` composes a structural panel, separate canvas regions for
+labels/frame edges and the right scrollbar, and existing text/check/combo
+controls. These regions never overlap native editors, so realization and
+sibling stacking cannot hide values or intercept clicks. The value fields
+and labels use the control-host background. Property rows have unique string IDs and
+`property_value` values (`std::string`, `double`, `bool`, or custom `std::any`). A choice row
+stores one of its declared strings. Invalid types, non-finite numbers,
+duplicate IDs, and unknown choices are rejected before changing the model.
+Programmatic setters are silent; `on_change` reports a committed user edit.
+Intermediate numeric text such as a lone minus sign leaves the last committed
+number intact. Read-only rows use read-only text. The automatic row height is
+font height plus six pixels; explicit heights cannot shrink below that floor.
+Labels occupy half the viewport unless `set_label_width()` overrides it.
+Only complete visible rows have editor resources. Scrolling preserves
+committed values when those resources are recreated.
+Win32 property choices retain their native combo popup and arrow; native
+owner-draw notifications supply control paper behind the selected value.
+
+A `toolbar` attaches like a ruler, at top, bottom, left, or right. Multiple
+bars at the same edge stack in attachment order. Its canvas owns pointer
+input and paints the main-menu background and arrow-free toolbar-button primitive.
+The window creation/configuration path creates that surface even if an
+application consumes the create signal. Painting does not create children.
+Momentary buttons emit commands; toggles flip; exclusive tools select one
+member of their named group. Setters emit no commands. Disabled tools reject
+activation, and releasing outside a pressed tool cancels it. Each bar owns
+its tools and shares immutable icon images. `set_icon_size({24, 24})` changes
+the image box and grows or shrinks the strip, retaining its padding; 16x16
+and 32x32 also work. All neighboring strips move in the same configuration
+pass. Horizontal bars span the window width and side bars stop between them.
+The image and label are centered together; transparent pixels retain the
+menu background. Black monochrome icons use the menu foreground when selected
+or disabled, retaining their alpha mask so classic inverted menus remain legible.
+Font measurement does not obtain a child-window graphics
+context, since composited backends can share the top-level renderer.
+Changing edge preserves items and selection. Overflowing tools are clipped;
+use additional bars when more strip space is needed.
+
+Controls and non-client strips expose `set_border_sides()`, defaulting to
+`border_sides::all`. It applies to the outer frame, preserving inner separators
+and indicators. A Windows status bar with a partial mask uses the shared
+painted path; the default retains the native common control. Vision's
+**Properties and toolbars** window (or `vision --properties`) demonstrates all
+five property kinds, including a custom color canvas, individual border toggles, multiple edge bars, and all
+three icon sizes.
+
+Custom dropdown rows use `property_drop_down::to_text`, `create_content`, and
+`content_size`. The factory returns an uncreated window, which the grid owns
+and hosts in an independent titleless popup. Content can be a standard control
+or a derived panel/canvas with its own children. Its commit callback publishes
+a typed value after native event dispatch; Cancel and source-row destruction
+discard unfinished edits. Programmatic updates refresh the converted text
+silently. `std::any` payloads notify on every accepted commit because arbitrary
+C++ types have no universal equality operation.
+
+Native checkboxes retain their assigned compact width across label changes.
+Row separators use exactly one filled pixel row. WINGs clips and centers its
+native text line within a cell; Haiku resizes and centers the text rectangle
+when the grid changes dimensions after creation.

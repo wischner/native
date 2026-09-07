@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "events.h"
+#include "border.h"
 #include "geometry.h"
 #include "signal.h"
 
@@ -103,11 +104,31 @@ namespace native
         // Return whether show() has made the backend resource visible.
         bool get_visible() const;
 
+        // Return the independently visible outer border sides; default all.
+        border_sides get_border_sides() const;
+
+        // Select outer border sides without changing content or selection.
+        // Borderless controls remain borderless; native window frames are
+        // managed by the operating system, independently of these flags.
+        wnd &set_border_sides(border_sides sides);
+
         // Return the cached system pointer shape.
         mouse_cursor get_cursor() const;
 
         // Select a system pointer shape and return this window.
         wnd &set_cursor(mouse_cursor cursor);
+
+        //
+        // Return the pointer shape shown at one window-local point.
+        //
+        // Notes:
+        //      A control that owns chrome overrides this so its own
+        //      scrollbars and non-client strips keep the ordinary
+        //      arrow instead of the shape the application chose for
+        //      the client area. The base answer is get_cursor() for
+        //      every point, including points outside the window.
+        //
+        virtual mouse_cursor get_cursor_at(const point &position) const;
 
         // Return whether this window may currently receive user input.
         virtual bool get_input_enabled() const;
@@ -260,6 +281,12 @@ namespace native
         // Apply the cached system pointer shape to the backend resource.
         virtual void apply_cursor();
 
+        // Apply independent border sides to the backend resource.
+        void apply_border_sides();
+
+        // Refresh control geometry or native styles after a border change.
+        virtual void on_border_sides_changed();
+
         //
         // Return the host-relative area left for non-client elements
         // and the client after this window's own edge chrome.
@@ -285,6 +312,8 @@ namespace native
         friend wnd *detail::deepest_at(wnd &root, point position);
 
         friend class non_client;
+        friend class toolbar;
+        bool _non_client_surface = false;
 
         // Radio controls inspect siblings to enforce exclusive
         // selection.
@@ -292,9 +321,14 @@ namespace native
 
         // Non-owning edge elements; callers retain object ownership.
         std::vector<non_client *> _non_client;
+        bool _updating_non_client = false;
+        bool _non_client_dirty = false;
+        border_sides _border_sides = border_sides::all;
 
         void attach_non_client(non_client *element);
         void detach_non_client(non_client *element);
+        // Reposition every strip after an edge reservation changes.
+        void update_non_client(bool notify_bounds = true);
         rect non_client_bounds(const non_client *element) const;
 
     };

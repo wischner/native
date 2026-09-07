@@ -228,6 +228,13 @@ for icon views, trees, and tables. The scrollbar includes arrow buttons, a
 page trough, and a gripped thumb; SDL pointer capture keeps an icon-view or
 tree thumb moving until release, even when the pointer leaves the track.
 
+GEM icon grids and trees also handle arrow steps, trough paging, and captured
+thumb dragging through their painted scrollbars, including icon grids inside
+an accordion. Scrolling preserves the selected item and does not activate it;
+releasing the mouse or destroying the control ends capture.
+Ordinary tree repainting preserves manual scrolling even when the selected
+item is offscreen; selecting or navigating to an item still reveals it.
+
 The Vision application's **Collection controls** window demonstrates a
 Libraries accordion with enough alpha-bearing thumbnails to force scrolling
 and a classic expandable project tree on every backend.
@@ -235,3 +242,10 @@ and a classic expandable project tree on every backend.
 Previous: [Building, linking, and distributing](12-BUILDING-AND-DISTRIBUTING.md).
 
 Next: [Advanced table views](14-ADVANCED-TABLE-VIEWS.md).
+
+### Partial outer frames
+
+Tree and accordion controls also accept `set_border_sides()`, for example
+`tree.set_border_sides(native::border_sides::left | native::border_sides::bottom)`.
+Their existing `set_border_visible(false)` selects `none`; `true` selects all
+four sides. Internal disclosure indicators and row separators remain visible.

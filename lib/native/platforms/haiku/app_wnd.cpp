@@ -43,7 +43,7 @@ namespace native
                     static_cast<float>(_bounds.p.x + _bounds.d.w - 1),
                     static_cast<float>(_bounds.p.y + _bounds.d.h - 1));
 
-        const window_look look = get_modal()
+        const window_look look = !get_native_title_visible() ? B_BORDERED_WINDOW_LOOK : get_modal()
                                      ? B_MODAL_WINDOW_LOOK
                                      : B_TITLED_WINDOW_LOOK;
         const window_feel feel = get_modal()

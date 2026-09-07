@@ -14,6 +14,32 @@ This note records the current Haiku workflow that is actually exercised.
 The VS Code tasks and launch entry include VM start, deploy, and remote-debug
 workflows.
 
+## VM keyboard input
+
+The `Haiku` libvirt domain has a USB keyboard in its live and saved device
+configuration. In the 2026-09-07 keyboard investigation, the VM's PS/2 keyboard
+delivered no events to either Vision or Terminal. Pointer input and native
+window-message input still worked. Adding the USB keyboard restored physical
+typing in property-grid text and number cells without an editor implementation
+change. The device remains present across VM restarts.
+
+The required libvirt device is:
+
+```xml
+<input type='keyboard' bus='usb'/>
+```
+
+When diagnosing missing typing, check Terminal as well as Vision before
+treating the failure as a text-control problem. The inspector regression sends
+keys to the window's preferred target so `BWindow` resolves the focused editor;
+it does not address the text view directly. Real VM keyboard checks complement
+that test because a window message does not exercise the virtual keyboard or
+Haiku's input driver.
+
+The Docker cross-build and the inspector regression pass with window-routed
+text and number input. VM keystrokes also change the Name and Width properties
+and their live preview with the persistent USB device installed.
+
 ## What is verified
 
 - `vision` builds in `build/haiku/src/vision`.
@@ -40,6 +66,19 @@ and complete final-page reveal with native row pitch.
 The five Haiku test executables passed again after the 2026-09-05 follow-up;
 the collection runtime test also passed ten consecutive runs. The SDL2 Docker build and all
 seven SDL2 CTest tests passed with its original checkbox renderer retained.
+
+The 2026-09-07 inspector follow-up passes `native_inspector_runtime_tests`
+on the Haiku VM desktop. It checks native checkbox/text/number input,
+presented toolbar-icon and value-text pixels, repeated commands and status
+updates, sticky selection, bottom-edge input, scrolling, and destroy/recreate.
+The desktop must be awake for the screen-pixel assertions. The fixture sends
+view-relative pointer coordinates through Haiku's native message dispatcher
+and uses the production application messenger to dispatch posted assertions
+and finish after programmatic closure. The follow-up additionally covers
+post-creation grid resizing, all sixteen live button-border masks, toolbar
+growth/shrinkage and neighboring-bar hits, and arbitrary custom values
+committed from a native control inside a dropdown popup. Commit, Cancel,
+reopening, and callbacks retained from a closed popup are checked.
 
 ## Why this note exists
 

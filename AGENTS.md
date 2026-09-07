@@ -102,7 +102,6 @@ has no equivalent.
 The top-level CMake project provides:
 
 - `docker-x11`
-- `docker-gemix-sdk` (builds the pinned GEM v1.0.0 SDK image)
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
 - `docker-sdl2`
@@ -115,7 +114,7 @@ The top-level CMake project provides:
 These targets use the following Docker images:
 
 - X11: `wischner/gcc-x86_64-linux-x11`
-- GEMix: `wischner/gcc-x86_64-gemix:gem-v1.0.0`
+- GEMix: `wischner/gcc-x86_64-gemix:latest`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
@@ -123,12 +122,13 @@ These targets use the following Docker images:
 - Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
-Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
-`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
-`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
-commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
-Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
-The first build requires network access; no sibling GEM checkout is needed.
+Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
+image, which already contains the GEM `v1.0.0` SDK built from commit
+`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
+`resgen`, the GEM resources, and the recorded revision in
+`/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
+no local SDK image build and no sibling GEM checkout is needed.
 
 The expected workflow is:
 

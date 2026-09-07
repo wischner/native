@@ -27,7 +27,7 @@ namespace
     // It belongs to the host, never to its child controls or paint callback.
     void draw_dialog_frame(native::app_wnd *owner,
                            const native::rect &visible) {
-        if (!owner->get_modal()) return;
+        if (!owner->get_modal() && owner->get_native_title_visible()) return;
         const auto outer = linux::gemix::outer_rect(
             linux::gemix::wnd_bindings.handle_from_object(owner));
         native::gpx_wnd g(owner, outer.p);
@@ -44,8 +44,6 @@ namespace
 
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
         linux::gemix::render_surfaces(owner, graphics);
-        linux::gemix::render_accordions(owner, graphics);
-        linux::gemix::render_tab_views(owner, graphics);
         for (auto *button : linux::gemix::buttons) {
             auto saved = graphics.save_state();
             if (!button || root_of(button) != owner)

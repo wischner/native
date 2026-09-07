@@ -1,6 +1,7 @@
 //
-// Reads GEM's immutable stock font for offscreen/rotated text. Window
-// text still uses VDI; both targets use the same resource and encoding.
+// Reads GEM's immutable stock font for offscreen/rotated text and AES
+// scrollbar arrows. Window text still uses VDI; both targets use the
+// same resource, while arrow glyphs bypass printable-text encoding.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -58,6 +59,12 @@ namespace
             }
         }
     };
+
+    // Share one immutable font resource between text and theme symbols.
+    const bitmap_font &stock_font() {
+        static const bitmap_font font;
+        return font;
+    }
 }
 
 namespace linux::gemix
@@ -79,7 +86,7 @@ namespace linux::gemix
     bool draw_stock_text(const native::img &image, const native::rect &clip,
                          const std::string &text, native::point position,
                          native::rgba color) {
-        static const bitmap_font font;
+        const auto &font = stock_font();
         if (!font.bitmap) return false;
         const auto bounds = clip.intersect(native::rect(0, 0, image.w(), image.h()));
         int x = position.x;
@@ -101,5 +108,63 @@ namespace linux::gemix
             x += end - start;
         }
         return true;
+    }
+
+    void draw_stock_arrow(native::gpx &graphics, const native::rect &bounds,
+                          native::scrollbar_orientation axis,
+                          native::scrollbar_part part) {
+        if (bounds.w() <= 2 || bounds.h() <= 2) return;
+        auto saved = graphics.save_state();
+        graphics.set_clip(graphics.get_clip().intersect(native::rect(
+            bounds.x1() + 1, bounds.y1() + 1,
+            bounds.w() - 2, bounds.h() - 2))).set_pen(1);
+
+        // AtariSTHigh.fnt symbols 1..4 from GEM v1.0.0. Retain the
+        // original outlines and shafts even without installed resources.
+        static constexpr unsigned char fallback[4][16] = {
+            {0x00, 0x00, 0x00, 0x18, 0x3c, 0x66, 0xc3, 0x81,
+             0xe7, 0x24, 0x24, 0x24, 0x3c, 0x00, 0x00, 0x00},
+            {0x00, 0x00, 0x00, 0x3c, 0x24, 0x24, 0x24, 0xe7,
+             0x81, 0xc3, 0x66, 0x3c, 0x18, 0x00, 0x00, 0x00},
+            {0x00, 0x00, 0x30, 0x38, 0x2c, 0xe6, 0x83, 0x83,
+             0xe6, 0x2c, 0x38, 0x30, 0x00, 0x00, 0x00, 0x00},
+            {0x00, 0x00, 0x0c, 0x1c, 0x34, 0x67, 0xc1, 0xc1,
+             0x67, 0x34, 0x1c, 0x0c, 0x00, 0x00, 0x00, 0x00}
+        };
+        const bool vertical = axis == native::scrollbar_orientation::vertical;
+        const bool decrement = part == native::scrollbar_part::decrement;
+        const unsigned glyph = vertical ? (decrement ? 1 : 2)
+                                        : (decrement ? 4 : 3);
+        const auto &font = stock_font();
+        const bool loaded = font.bitmap && glyph >= font.first &&
+                            glyph <= font.last;
+        const unsigned start = loaded
+            ? font.word(font.offsets + (glyph - font.first) * 2) : 0;
+        const int width = loaded
+            ? font.word(font.offsets + (glyph - font.first + 1) * 2) - start
+            : 8;
+        const int height = loaded ? font.height : 16;
+        // AES centers the entire font cell and offsets up by -1,
+        // down by 0, and horizontal arrows by +2 pixels vertically.
+        const int x = bounds.x1() + (int(bounds.w()) - width) / 2;
+        const int y = bounds.y1() + (int(bounds.h()) - height) / 2 +
+                      (vertical ? (decrement ? -1 : 0) : 2);
+        const auto pixel = [&](int column, int row) {
+            const unsigned bit = start + column;
+            return loaded
+                ? (font.data[font.bitmap + row * font.stride + bit / 8] &
+                   (0x80 >> (bit % 8))) != 0
+                : (fallback[glyph - 1][row] & (0x80 >> column)) != 0;
+        };
+        // Emit runs so a remote VDI target needs one call per stroke.
+        for (int row = 0; row < height; ++row) {
+            for (int column = 0; column < width;) {
+                if (!pixel(column, row)) { ++column; continue; }
+                const int first = column++;
+                while (column < width && pixel(column, row)) ++column;
+                graphics.draw_line(native::point(x + first, y + row),
+                                   native::point(x + column - 1, y + row));
+            }
+        }
     }
 }

@@ -441,6 +441,19 @@ namespace
             return *this;
         }
 
+        theme &draw_toolbar_button(const native::rect &bounds,
+                                   const std::string &text,
+                                   const state &element_state) override {
+            saved_state saved(_g);
+            openlook_target target = native_target(bounds);
+            if (!target.information)
+                return emulated_theme::draw_menu_title(bounds, text, element_state);
+            olgx_draw_button(target.information, target.cache->backbuffer,
+                bounds.p.x, bounds.p.y, bounds.d.w, bounds.d.h,
+                const_cast<char *>(text.c_str()), native_state(element_state));
+            return *this;
+        }
+
         theme &draw_menu_item(const native::rect &bounds,
                               const std::string &text,
                               const state &element_state) override {

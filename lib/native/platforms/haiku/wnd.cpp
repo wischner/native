@@ -12,6 +12,8 @@
 #include <Cursor.h>
 #include <Window.h>
 #include <View.h>
+#include <Region.h>
+#include <TextView.h>
 
 #include <native.h>
 #include <native/wnd.h>
@@ -62,6 +64,35 @@ namespace
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        // Buttons draw their complete background and chosen edges in Draw.
+        // A persistent native clip would also prevent erasing old edges.
+        if (dynamic_cast<button *>(this)) return;
+        if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
+              dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||
+              dynamic_cast<tree_view *>(this) || dynamic_cast<table_view *>(this) ||
+              dynamic_cast<tab_view *>(this) || dynamic_cast<icon_view *>(this) ||
+              dynamic_cast<accordion *>(this))) return;
+        if (BView *view = haiku::view_from_control(this)) {
+            // A plain BTextView has no outer frame to mask.
+            if (dynamic_cast<BTextView *>(view)) return;
+            with_locked_window(view->Window(), [&](BWindow *) {
+                const auto sides = get_border_sides();
+                view->ConstrainClippingRegion(nullptr);
+                if (sides != border_sides::all) {
+                    BRect bounds = view->Bounds();
+                    if (!has_border(sides, border_sides::left)) bounds.left += 2;
+                    if (!has_border(sides, border_sides::top)) bounds.top += 2;
+                    if (!has_border(sides, border_sides::right)) bounds.right -= 2;
+                    if (!has_border(sides, border_sides::bottom)) bounds.bottom -= 2;
+                    BRegion region(bounds);
+                    view->ConstrainClippingRegion(&region);
+                }
+                view->Invalidate();
+            });
+        }
+    }
+
     void wnd::apply_position() {
         if (BView *control = haiku::view_from_control(this)) {
             with_locked_window(control->Window(), [&](BWindow *) {

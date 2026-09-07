@@ -152,6 +152,14 @@ Native does not transform your drawer by the scroll position. Paint rectangles
 and pointer coordinates stay viewport-local, and you apply your own transform.
 That keeps the canvas out of your zoom and content model.
 
+SDL2 canvas events preserve left, middle, right, and auxiliary button identity.
+A pressed canvas continues receiving motion and its matching release after
+the pointer leaves its bounds, including movement over another pane or the
+menu. A release may therefore contain coordinates outside the client area;
+finish the current tool gesture even when those coordinates are not drawable.
+Losing window focus also releases the gesture, and destroying the canvas
+clears its captured input state.
+
 ## Scrollbar policy
 
 Each axis has its own policy, and both default to `automatic`:
@@ -171,8 +179,16 @@ axis can turn the other on. Native resolves both together and reports the
 settled answer through `get_horizontal_scrollbar_visible()` and
 `get_vertical_scrollbar_visible()`.
 
+A visible scrollbar is a complete classic bar: an arrow button at each end,
+the page trough between them, and the thumb. Clicking an arrow steps the axis
+by one themed line, clicking the trough pages it by the viewport span, and the
+thumb drags. None of it reaches your `on_mouse_click` handler — scrollbar input
+is chrome, and only `on_scroll` reports the result.
+
 Scrollbar extents, minimum thumb size, and appearance come from the active
-theme. There is nothing to size or color yourself.
+theme. There is nothing to size or color yourself. A cursor you select with
+`set_cursor()` belongs to the viewport too, so a crosshair over the drawing
+becomes the ordinary arrow over the scrollbars, their corner, and any ruler.
 
 ## Rulers on a canvas
 

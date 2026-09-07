@@ -18,6 +18,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../x_border.h"
 #include "window_position.h"
 
 namespace
@@ -50,6 +51,18 @@ namespace
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(this);
+        if (!widget || !XtIsRealized(widget) ||
+            linux::x11::shell_bindings.handle_from_object(this)) return;
+        Dimension border = 0;
+        XtVaGetValues(widget, XtNborderWidth, &border, nullptr);
+        const int inside = dynamic_cast<combo_box *>(this) ? 1 : 0;
+        if (!border && !inside) return;
+        detail::shape_border(XtDisplay(widget), XtWindow(widget),
+                             get_border_sides(), inside, border);
+    }
+
     void wnd::apply_position() {
         Widget shell =
             linux::x11::shell_bindings.handle_from_object(this);

@@ -47,11 +47,13 @@ types and do not erase each control's specialized navigation contract.
 bases are `modeless_wnd` and `modal_wnd`; neither is a control or a layout
 child.
 
-GEMix modal windows use untitled AES hosts without title-bar gadgets. Their
-four-pixel border reads black, white, black, black from outside inward. The
-backend excludes this enclosure from portable client geometry and input
-coordinates, and clips its painting to AES-visible rectangles. Modeless and
-ordinary application windows retain their normal titled AES chrome.
+GEMix modal windows and titleless dropdowns use untitled AES hosts without
+title-bar gadgets. Their four-pixel border reads black, white, black, black
+from outside inward. The backend excludes this enclosure from portable client
+geometry and input
+coordinates, and clips its painting to AES-visible rectangles. Canvas content
+cannot overwrite any of its four edges. Other modeless and ordinary application
+windows retain their normal titled AES chrome.
 
 These controls are real `wnd` subclasses. Backends use native widgets where
 the platform supplies them: Athena Toggle/List/AsciiText, Motif
@@ -100,6 +102,9 @@ before a backend is involved.
 4. Applies the cached cursor to the new resource.
 5. Leaves the object marked as created.
 6. Emits `on_wnd_create` exactly once for that creation.
+7. Synchronizes attached non-client resources while the window remains
+   created, independently of public signal propagation. This creates toolbar
+   input surfaces before painting and also covers owner recreation.
 
 The public lifecycle functions are non-virtual and non-`const`. Derived
 controls implement only `create_native()`, `show_native()`, and
@@ -138,6 +143,15 @@ dismissed. Closing and then opening the same object is a fresh
 `ACTION_DISMISS` follow this path. OPEN LOOK owned windows are XView subframes
 of their owner so dismissing one cannot be interpreted as quitting the root
 application frame.
+
+Applications can override `app_wnd::request_close()` to confirm unsaved
+work. The default calls `destroy()`. An override may return with the window
+still created, show an asynchronous dialog, and call `destroy()` after
+acceptance; cancellation leaves the window usable. Explicit destruction
+and destructors remain unconditional resource cleanup.
+SDL2 routes window-manager close and application-quit events through this
+hook and does not terminate its loop while the main window remains alive.
+Other backends currently retain their direct native-close path.
 
 ## Parent and child relationships
 
@@ -396,6 +410,15 @@ corner.set_cursor(
     native::mouse_cursor::resize_northwest_southeast);
 ```
 
+A control that owns chrome needs more than one shape inside one window. That is
+what `get_cursor_at()` is for: it takes a window-local point and returns
+`get_cursor()` unless the control overrides it. `canvas` does, so a crosshair
+selected for a drawing surface stops at the viewport and its scrollbars and
+rulers keep the arrow. A backend that resolves the pointer shape by position —
+SDL2, GEMix, and the Win32 `WM_SETCURSOR` path — calls it with the point made
+local to the window it found; backends that hand the shape to a native child
+window as an attribute continue to apply one cached choice per control.
+
 Native-widget backends assign the matching system cursor to the window or
 view. SDL2 and GEMix have one toolkit cursor shared by an emulated window tree,
 so their event dispatchers select the cursor belonging to the deepest visible
@@ -476,3 +499,28 @@ The implementation checklist is:
 
 Platform differences are expected below the public API. They must not produce
 different public lifecycle or ownership rules.
+
+## Selectable outer edges
+
+`wnd::set_border_sides()` accepts any combination of `border_sides::top`,
+`right`, `bottom`, and `left`; the default is `all`. This affects a control's
+existing outer border. Bare panels and canvases remain bare, internal
+separators and indicators keep their semantics, and native shell decorations
+remain owned by the window manager. Changes invalidate the control and notify
+its protected `on_border_sides_changed()` hook (which defaults to a geometry
+refresh). Native adapters reapply masks after creation, showing, and resizing.
+
+A toolbar's private canvas is a child for lifetime and input, but does not
+enter the window's ordinary layout manager. Its owning `non_client` controls
+its bounds. Multiple bars share the same edge reservation machinery as rulers
+and status bars.
+
+An extent, edge, or visibility change synchronizes every attached non-client
+strip before relayout and the created owner’s `on_bounds_changed()` hook.
+Top/bottom toolbars span the chrome width; side toolbars stop between the
+horizontal reservations. The image-size setter grows and shrinks its strip
+while preserving padding. Attach/detach updates neighboring resources without
+calling an owner override during a non-client constructor/destructor.
+
+A titleless owned window (`get_native_title_visible() == false`) provides the
+host for custom property dropdowns; it can still focus native text controls.

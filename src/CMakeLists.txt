@@ -6,6 +6,7 @@ if(APPLE)
         vision_services.cpp
         vision_window.cpp
         vision_windows.cpp
+        vision_properties.cpp
     )
     set_target_properties(vision PROPERTIES
         MACOSX_BUNDLE_BUNDLE_NAME "Vision"
@@ -19,6 +20,7 @@ else()
         vision_services.cpp
         vision_window.cpp
         vision_windows.cpp
+        vision_properties.cpp
     )
 endif()
 

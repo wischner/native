@@ -20,13 +20,23 @@ This note lists backend-level open issues that are real today.
 
 The 2026-09-06 compatibility check uses upstream GEM `v1.0.0`
 (`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`). Both transports build and pass
-all six Native CTests against the locally built `gem-v1.0.0` SDK image.
+all six Native CTests against the published `wischner/gcc-x86_64-gemix:latest`
+image, which ships that SDK; Native no longer builds a local SDK image.
 This is now the default dependency; the review-image tags below describe
 the earlier diagnostic sessions. No C++ API changes were needed, and this
 check adds no new visual-coverage claims. The normal release build workflow
 is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
 
 ## Current open issues
+
+- The 2026-09-06 SDL2 follow-up passes all nine CTests. Nested
+  tab/split/accordion canvas pixels now survive whole-window composition;
+  actual SDL event regressions cover button identity and capture. Close
+  policy can defer teardown for unsaved edits. Software rendering also
+  needs `SDL_FRAMEBUFFER_ACCELERATION=0` to avoid implicit X11 framebuffer
+  GPU probing. `SDL_Quit()` releases the runtime, while libdbus retains
+  its known process-global allocation covered by the existing narrow
+  test suppression.
 
 - The Windows runtime workflow now targets the `Windows` libvirt guest,
   not Wine. The 2026-09-05 console check verified the native feature gallery
@@ -77,18 +87,20 @@ is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
   The reported Copy-field crash did not reproduce in the reviewed runtime;
   file open/save followed by copy/paste completed without a sanitizer report.
   On this review host, the repaired runtime and resources are installed in
-  the local `wischner/gcc-x86_64-gemix:latest` image, also tagged
-  `input-dialog-review-20260905`. This includes the follow-up fix that paints the
-  desktop on AES workstation startup; its fresh-launch framebuffer regression
-  failed before the fix and passes afterward. The preceding review image is
+  the local `wischner/gcc-x86_64-gemix:input-dialog-review-20260905` image;
+  `latest` now resolves to the published SDK image instead. This includes the
+  follow-up fix that paints the desktop on AES workstation startup; its
+  fresh-launch framebuffer regression failed before the fix and passes
+  afterward. The preceding review image is
   retained under `security-review-20260905`, `open-review-20260905`, `desktop-review-20260905` and
   `native-review-20260905`, and the
   original image as
   `wischner/gcc-x86_64-gemix:before-native-review-20260905`. No image was
   pushed to a registry. The separate gemd launch profile preserves the original
   direct launch/task configuration.
-  Other hosts must build the matching sibling GEM changes into their SDK;
-  pulling the registry image is not evidence that these fixes are included.
+  Those runtime fixes are in upstream GEM `v1.0.0`, so the published
+  `wischner/gcc-x86_64-gemix:latest` image carries them: the 2026-09-06 pass
+  runs the same framebuffer regressions against it and they pass.
 
 - The GEMix interaction follow-up verifies typing, button and keyboard
   copy/paste, selector button inversion/release, immediate split-pane list
@@ -187,3 +199,22 @@ is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
 The book should describe current behavior in plain engineering language.
 Open backend status belongs here so it can be tracked without turning the book
 into a roadmap.
+
+- GEMix nested-canvas regression (2026-09-07): tabs formerly repainted
+  their paper after child canvases, hiding their drawing and chrome.
+  Structural containers now paint before descendants. Right/middle canvas
+  button transitions also retain their identity for secondary drawing inks.
+
+The inspector follow-up fixes live toolbar size/layout changes, native checkbox
+label resizing, OPEN LOOK combo origins and command menu marks, WINGs text
+centering, and GEM font-cell alignment. Haiku text rectangles follow resized
+cells, and button edge changes erase the previous border. Windows and Haiku
+now service posted UI work after startup, including custom popup commits.
+The 2026-09-07 popup repair also fixes X11/Athena posted-work dispatch through
+a thread-safe Xt input pipe; its colour-canvas regression runs without the
+test timer that previously masked the missing dispatch. GEMix titleless
+modeless popups now reserve and paint all four dialog-frame edges, preventing
+client clearing from erasing the top and left. Direct and gemd pixel/input
+regressions pass.
+Custom property dropdowns currently close through content commit, Cancel, a
+second click on the value, source-row destruction, or owner closure.

@@ -81,41 +81,27 @@ namespace linux::gemix
         last_clicked_tree_item = native::invalid_tree_item_id;
     }
 
-    void render_tab_views(native::app_wnd *parent,
-                          native::gpx &graphics) {
-        for (auto *control : tab_views) {
-            if (control && control->get_created() &&
-                root_of(control) == parent) {
-                native::detail::draw_tab_view_at(
-                    *control, graphics, origin_in_root(*control));
-                // Flat GEM tabs need an explicit page edge beside inactive
-                // left tabs: their filled outline includes that edge pixel.
-                if (control->get_page_frame_visible() &&
-                    control->get_tab_placement() == native::tab_placement::left) {
-                    auto saved = graphics.save_state();
-                    const auto origin = origin_in_root(*control);
-                    auto appearance = native::theme::create(graphics);
-                    graphics.set_pen(1).set_ink(appearance->native_palette().button_border);
-                    for (std::size_t index = 0; index < control->get_item_count(); ++index) {
-                        if (static_cast<int>(index) == control->get_selected_index()) continue;
-                        const auto tab = control->get_tab_bounds(index);
-                        if (!tab.w() || !tab.h()) continue;
-                        const native::coord x = origin.x + tab.x2() - 1;
-                        graphics.draw_line(native::point(x, origin.y + tab.y1()),
-                            native::point(x, origin.y + tab.y2() - 1));
-                    }
-                }
+    void render_tab_view(native::tab_view *control,
+                         native::gpx &graphics) {
+        native::detail::draw_tab_view_at(
+            *control, graphics, origin_in_root(*control));
+        // Flat GEM tabs need an explicit page edge beside inactive
+        // left tabs: their filled outline includes that edge pixel.
+        if (control->get_page_frame_visible() &&
+            native::has_border(control->get_border_sides(), native::border_sides::left) &&
+            control->get_tab_placement() == native::tab_placement::left) {
+            auto saved = graphics.save_state();
+            const auto origin = origin_in_root(*control);
+            auto appearance = native::theme::create(graphics);
+            graphics.set_pen(1).set_ink(appearance->native_palette().button_border);
+            for (std::size_t index = 0; index < control->get_item_count(); ++index) {
+                if (static_cast<int>(index) == control->get_selected_index()) continue;
+                const auto tab = control->get_tab_bounds(index);
+                if (!tab.w() || !tab.h()) continue;
+                const native::coord x = origin.x + tab.x2() - 1;
+                graphics.draw_line(native::point(x, origin.y + tab.y1()),
+                    native::point(x, origin.y + tab.y2() - 1));
             }
-        }
-    }
-
-    void render_accordions(native::app_wnd *parent,
-                           native::gpx &graphics) {
-        // Container surfaces precede their icon/table child content.
-        for (auto *control : accordions) {
-            if (control && control->get_created() && root_of(control) == parent)
-                native::detail::draw_accordion_at(
-                    *control, graphics, origin_in_root(*control));
         }
     }
 
@@ -597,6 +583,7 @@ namespace native
         if (!_created)
             return;
         auto *self = this;
+        linux::gemix::forget_drag(self);
         linux::gemix::icon_views.erase(
             std::remove(linux::gemix::icon_views.begin(),
                         linux::gemix::icon_views.end(),

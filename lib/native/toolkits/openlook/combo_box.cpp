@@ -200,6 +200,11 @@ namespace
                    PANEL_VALUE,
                    owner->get_selected_index(),
                    nullptr);
+        // Adding strings recomputes the choice-stack rectangle. Reapply
+        // its origin after that layout, including the abbreviated mark.
+        if (!editable)
+            xv_set(choice, XV_X, bounds.p.x, XV_Y, bounds.p.y,
+                   PANEL_VALUE_X, bounds.p.x, nullptr);
         return choice;
     }
 }

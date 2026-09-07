@@ -15,6 +15,8 @@
 #include <WINGs/WINGs.h>
 
 #include <native/text_edit.h>
+#include <native/font.h>
+#include <native/property_grid.h>
 
 #include "globals.h"
 
@@ -168,6 +170,23 @@ namespace
     }
 } // namespace
 
+namespace linux::wmaker
+{
+    void configure_text_cell(native::text_edit &owner, native_text_edit &state) {
+        if (!state.cell || !state.text) return;
+        const auto dimensions = owner.get_dimensions();
+        const int font_height = WMFontHeight(WMDefaultSystemFont(WMWidgetScreen(state.cell)));
+        // WMText places a line two pixels into a buffer copied at y=3.
+        // Clip that native inset in the host, then center the font cell.
+        const auto metrics = native::font_t::stock(native::font_role::control).get_metrics();
+        const int top = (int(dimensions.h) - font_height) / 2 - 5 -
+                        (metrics.height - metrics.ascent);
+        WMMoveWidget(state.text, 0, top);
+        WMResizeWidget(state.text, std::max(1, int(dimensions.w)),
+                       std::max(font_height + 6, int(dimensions.h) - top));
+    }
+}
+
 namespace native
 {
     void text_edit::apply_text() {
@@ -198,7 +217,8 @@ namespace native
         auto *self = this;
         auto *binding = new linux::wmaker::native_text_edit;
         WMWidget *parent = linux::wmaker::parent_widget(self);
-        if (_mode == text_edit_mode::single_line) {
+        const bool property = dynamic_cast<property_grid *>(get_parent()) != nullptr;
+        if (_mode == text_edit_mode::single_line && !property) {
             binding->field = WMCreateTextField(parent);
             binding->widget = binding->field;
             binding->delegate.data = self;
@@ -208,9 +228,22 @@ namespace native
             WMSetTextFieldText(binding->field, _text.c_str());
             WMSetTextFieldEditable(binding->field, !_read_only);
         } else {
-            binding->text = WMCreateText(parent);
-            binding->widget = binding->text;
-            WMSetTextHasVerticalScroller(binding->text, True);
+            if (property) {
+                binding->cell = WMCreateFrame(parent);
+                WMSetFrameRelief(binding->cell, WRFlat);
+            }
+            binding->text = WMCreateText(property ? binding->cell : parent);
+            binding->widget = property ? static_cast<WMWidget *>(binding->cell) : binding->text;
+            WMSetTextHasVerticalScroller(binding->text, !property);
+            if (property) {
+                // WMTextField hard-codes white in its painter. WMText
+                // provides the native editable surface with configurable
+                // paper and can suppress newlines for compact value cells.
+                WMSetTextBackgroundColor(binding->text, WMGrayColor(WMWidgetScreen(parent)));
+                WMSetTextRelief(binding->text, WRFlat);
+                WMSetTextIgnoresNewline(binding->text, True);
+                WMSetTextDefaultFont(binding->text, WMDefaultSystemFont(WMWidgetScreen(parent)));
+            }
             WMSetTextEditable(binding->text, !_read_only);
             if (!_text.empty())
                 WMAppendTextStream(binding->text, _text.c_str());
@@ -225,8 +258,9 @@ namespace native
             linux::wmaker::control_position(self);
         WMMoveWidget(binding->widget, position.x, position.y);
         WMResizeWidget(binding->widget, _bounds.d.w, _bounds.d.h);
+        linux::wmaker::configure_text_cell(*this, *binding);
         WMCreateEventHandler(
-            WMWidgetView(binding->widget),
+            WMWidgetView(binding->text ? static_cast<WMWidget *>(binding->text) : binding->widget),
             KeyPressMask | ButtonPressMask | ButtonReleaseMask,
             handle_text_event,
             self);
@@ -257,6 +291,7 @@ namespace native
                 "Window Maker/WINGs: missing text-edit binding.");
         }
         WMRealizeWidget(binding->widget);
+        if (binding->cell) WMMapSubwidgets(binding->cell);
         WMMapWidget(binding->widget);
     }
 

@@ -248,6 +248,10 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "X11/Athena: Failed to create text_edit.");
+        if (get_border_sides() == border_sides::none)
+            XtVaSetValues(widget, XtNborderWidth, 0,
+                XtNtopMargin, 1, XtNbottomMargin, 1,
+                XtNleftMargin, 2, XtNrightMargin, 2, nullptr);
 
         auto *binding = new linux::x11::xaw_text_edit;
         binding->widget = widget;

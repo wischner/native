@@ -8,12 +8,13 @@ control tree and backend-specific build trees.
 
 ### GEMix transport selection
 
-Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
-`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
-`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
-commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
-Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
-The first build requires network access; no sibling GEM checkout is needed.
+Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
+image, which already contains the GEM `v1.0.0` SDK built from commit
+`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
+`resgen`, the GEM resources, and the recorded revision in
+`/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
+no local SDK image build and no sibling GEM checkout is needed.
 
 `docker-gemix` builds the direct AES/VDI variant in `build/linux-gemix/`.
 `docker-gemix-gemd` uses the same Docker image, sets `GEMIX_USE_GEMD=ON`,
@@ -114,7 +115,6 @@ toolchain and system headers.
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd`
-- `docker-gemix-sdk` (prepares the release SDK image)
 - `docker-sdl2`
 - `docker-openmotif`
 - `docker-openlook`
@@ -125,7 +125,7 @@ toolchain and system headers.
 The images are:
 
 - `wischner/gcc-x86_64-linux-x11`
-- `wischner/gcc-x86_64-gemix:gem-v1.0.0`
+- `wischner/gcc-x86_64-gemix:latest`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-openlook`
@@ -170,13 +170,17 @@ executables:
 | `native_openlook_runtime_tests` | Radio exclusion, intrinsic button height, identical partial-expose pixels, keyboard focus/text/completion, pre-show chrome construction, pane/list resizing and repeated modal/modeless teardown | OPEN LOOK display; Docker Xvfb and Tribblix VM |
 | `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
 | `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
+| `native_inspector_runtime_tests` | Modeless inspector creation and post-creation resizing, native checkbox/text/number input, icon/value pixels, Win32 combo paper and selection, live toolbar grow/shrink and sibling hits, all 16 SDL/Haiku border masks, arbitrary dropdown values with native popup content, cancellation/stale callbacks, scrolling and recreation | SDL2, X11, Motif, OPEN LOOK, WINGs, Windows and Haiku; native event loop, XTest on X11 toolkits |
+| `native_inspector_tests` | Typed property validation, event silence, all sixteen border masks, multiple edge bars, sticky groups and exact 16x16/24x24/32x32 icon pixels | Every hosted build; gemd session wrapper for proxy GEM |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
 | `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif/OPEN LOOK parent-child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2, Motif, OPEN LOOK and macOS; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
-| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, and stock bitmap fonts | GEMix; uses a separate rasta framebuffer without requiring a viewer |
-| `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
+| `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, tab switching, resizing, and complete SDL shutdown | SDL2 dummy video with software rendering |
+| `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, and drag/release capture | SDL2 dummy video with software rendering |
+| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure, nested icon-grid/tree scrollbar arrows, paging, thumb capture outside the window, selection preservation, capture cleanup on destruction, compact property editing/scrolling, and toolbar activation/cancellation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
 | `native_x11_runtime_tests` | Pre-show graphics, full-row selection, grow/shrink layout, idle repaint counts, collection/table edges, bottom rows, bordered full-width combo menus with hover/selection, four open tab joins, individual menu borders without a full-width rule, teardown, centered message buttons/shells with edge and hidden-owner placement, and live bordered-pane drag | X11; X server (including private Xvfb) and the image's XTest runtime |
 | `native_x11_scrollbar_tests` | Stock Xaw widget identity, table/icon/tree/canvas ranges, million-row endpoints, horizontal scrolling, signed canvas origins, real middle-button dragging and automatic/policy hiding | X11; X server and the image's XTest runtime |
 

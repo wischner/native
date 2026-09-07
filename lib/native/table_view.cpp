@@ -543,7 +543,13 @@ namespace native
                 .draw_rect(bounds, true);
             return;
         }
-        appearance.draw_surface(bounds, surface_kind::inset, state);
+        if (get_border_sides() == border_sides::all)
+            appearance.draw_surface(bounds, surface_kind::inset, state);
+        else {
+            appearance.draw_surface(bounds, surface_kind::content, state);
+            graphics.set_pen(1).set_ink(appearance.native_palette().button_shadow)
+                .draw_border(bounds, get_border_sides());
+        }
     }
 
     void table_view::draw_border(
@@ -562,14 +568,12 @@ namespace native
                 break;
             const coord left = static_cast<coord>(bounds.p.x + inset);
             const coord top = static_cast<coord>(bounds.p.y + inset);
-            const coord right = static_cast<coord>(left + width - 1);
-            const coord bottom = static_cast<coord>(top + height - 1);
             graphics.set_ink(colors.button_border)
-                .draw_line(point(left, top), point(right, top))
-                .draw_line(point(left, top), point(left, bottom));
+                .draw_border(rect(left, top, width, height), get_border_sides() &
+                    (border_sides::top | border_sides::left));
             graphics.set_ink(colors.button_highlight)
-                .draw_line(point(left, bottom), point(right, bottom))
-                .draw_line(point(right, top), point(right, bottom));
+                .draw_border(rect(left, top, width, height), get_border_sides() &
+                    (border_sides::bottom | border_sides::right));
         }
     }
 

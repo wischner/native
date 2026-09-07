@@ -7,6 +7,7 @@
 //
 
 #include <native/text_edit.h>
+#include <native/property_grid.h>
 
 #include <stdexcept>
 #include <utility>
@@ -174,7 +175,9 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &) {
-        graphics.set_ink(appearance.get_content_background_color())
+        graphics.set_ink(dynamic_cast<property_grid *>(get_parent())
+                ? appearance.native_palette().button_bg
+                : appearance.get_content_background_color())
             .draw_rect(bounds, true);
     }
 
@@ -185,7 +188,7 @@ namespace native
         const theme::state &) {
         graphics.set_pen(1)
             .set_ink(appearance.get_button_border_color())
-            .draw_rect(bounds, false);
+            .draw_border(bounds, get_border_sides());
     }
 
     void text_edit::draw_focus(

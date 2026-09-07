@@ -157,6 +157,8 @@ namespace linux::openlook
         }
 
         Xv_opaque item = wnd_bindings.handle_from_object(window);
+        if (item && dynamic_cast<native::panel *>(window))
+            return static_cast<Window>(xv_get(item, XV_XID));
         Xv_Window paint_window = item
                                      ? static_cast<Xv_Window>(xv_get(
                                            item,

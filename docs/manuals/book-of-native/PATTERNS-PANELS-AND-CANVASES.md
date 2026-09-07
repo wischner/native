@@ -107,8 +107,10 @@ child windows, so every control is painted into one window surface and matched
 against it during dispatch. Introducing a container meant those backends had to
 stop matching on a control's *immediate* parent and start matching on its
 *root* window, accumulating ancestor offsets into the position they paint and
-hit-test with. Panels and canvases are then painted parent-first, under
-everything they contain, so a container never erases its own descendants.
+hit-test with. SDL2 panels, tabs, split views, accordions, and canvases share
+one pass ordered by parent depth, under everything they contain, so a
+container never erases its own descendants. GEMix also paints its panels
+and canvases before their descendants.
 
 ## The canvas viewport
 
@@ -211,8 +213,11 @@ than relying on rounding.
    invalid rectangle, emitted as `on_wnd_paint`. The subscriber owns every
    pixel; Native draws nothing under or over it.
 2. Non-client strips, through the inherited `wnd::draw_non_client()`.
-3. Scrollbar tracks, thumbs, and the corner filler, through
-   `theme::draw_scrollbar_part` and `theme::draw_surface`.
+3. Scrollbar arrow buttons, troughs, thumbs, and the corner filler, through
+   `theme::draw_scrollbar_part` and `theme::draw_surface`. The reserved edge is
+   split by `detail::make_classic_scrollbar_edges()`, the same helper the
+   collection controls use, so every portable scrollbar in the library has the
+   parts and proportions of one classic bar.
 
 The Athena host replaces scrollbar parts with actual Xaw `Scrollbar`
 children in those same reservations, retaining the portable corner filler.
@@ -234,9 +239,21 @@ imposed here would have to be undone by every subscriber that has one.
 
 The canvas owns its scrollbar input. `on_native_mouse_click()` hit-tests the
 tracks first: a press on a thumb starts a drag and records the grab offset, a
-press in the empty track pages toward the pointer by the current viewport span,
-and a release ends the interaction. None of those reach `on_mouse_click`,
-because a scrollbar press is chrome, not a client click.
+press on an arrow button steps one themed line height, a press in the empty
+trough pages toward the pointer by the current viewport span, and a release ends
+the interaction. None of those reach `on_mouse_click`, because a scrollbar press
+is chrome, not a client click.
+
+The thumb is hit-tested before the buttons, because a range too small to move
+fills its whole trough; the buttons sit outside that trough, so both stay
+reachable either way.
+
+The same boundary decides the pointer shape. `canvas::get_cursor_at()` answers
+with `get_cursor()` inside `get_client_bounds()` and with `mouse_cursor::arrow`
+everywhere else, so an application that selects a crosshair for its drawing
+gets it over the drawing and not over the scrollbars or the rulers it never
+paints. A canvas has no rows to count, so its line step is the
+theme's `list_item_height` — the same unit an `icon_view` arrow steps by.
 
 When a native child owns the track, Athena handles those events instead:
 button 1 scrolls forward, button 3 backward, and button 2 jumps/drags the
@@ -247,6 +264,15 @@ Everything outside the tracks falls through to the inherited dispatch
 unchanged. Wheel input scrolls the matching axis when it can move and still
 emits `on_mouse_wheel` exactly once, so a subscriber that wants to zoom on the
 wheel still sees every event.
+
+SDL2 preserves the pressed mouse button when translating a canvas gesture.
+Its canvas peer retains the active buttons until their matching releases;
+motion and releases continue to that canvas even over another control or
+outside the root's content area. Capture dispatch precedes menu and collection
+hit testing, and a new canvas press is matched to the deepest child before a
+containing tab or accordion can consume it. Losing root-window focus releases
+the gesture. Destroying a canvas releases its peer and capture state together,
+so switching a tab cannot leave a stale captured child pointer behind.
 
 ## Interoperability
 
@@ -273,3 +299,32 @@ app_wnd
 The rulers and scrollbars reserve canvas space only. They never extend across
 the stencil pane or the tab strip, because they are attached to the canvas and
 resolved against its bounds.
+
+GEMix also orders every structural host in the same painting pass:
+parent panels, tab backgrounds, accordions, split views, then descendant
+canvases as determined by their ancestry. Canvas chrome consequently
+remains visible inside nested tabs. Its AES event loop forwards right
+and middle button transitions to the canvas without replacing them with
+left clicks.
+
+## Composite inspector hosts
+
+`property_grid` derives from `panel`. Its canvas paints labels and row rules,
+while standard editor controls are siblings owned by the panel. This retains
+the canvas contract as a paintable surface rather than a general native child
+host. Scrolling updates the editors for complete visible rows and preserves
+typed model values. Its frame honors `border_sides`; bare panel/canvas classes
+still introduce no frame of their own. Toolbar canvases are internal
+non-client surfaces, excluded from the host's ordinary layout manager.
+
+The property grid places label, frame, and scrollbar canvases beside native
+editors, with no overlapping input surfaces. Its show path restores these
+painting regions above the structural Panel on toolkits that flatten native
+child hosting. SDL text fields resolve their current root-relative bounds
+for painting as well as input.
+
+Custom property dropdowns accept an uncreated panel or canvas from a factory.
+The inspector owns that root and hosts it in a titleless popup; child-control
+ownership and creation remain the responsibility of the returned container.
+Closing or scrolling away the property destroys popup resources before the
+source row’s canvas disappears.

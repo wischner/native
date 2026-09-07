@@ -143,6 +143,9 @@ namespace
 
 namespace native
 {
+    // Shared drawing stages read the portable edge mask directly.
+    void wnd::apply_border_sides() {}
+
     void wnd::apply_position() {
         if (update_control_bounds(this, _bounds))
             return;

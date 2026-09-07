@@ -283,6 +283,8 @@ namespace native
                     "Motif: Failed to create top-level shell.");
         }
 
+        if (!get_native_title_visible())
+            XtVaSetValues(shell, XtNoverrideRedirect, True, nullptr);
         XtVaSetValues(shell,
                       XmNkeyboardFocusPolicy,
                       XmEXPLICIT,

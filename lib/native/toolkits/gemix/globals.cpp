@@ -96,8 +96,18 @@ namespace linux::gemix
                                   ? native::detail::deepest_at(
                                         *parent, point)
                                   : nullptr;
+        // A control that owns chrome answers per position, so the
+        // work-area point becomes local before the form is resolved.
+        native::point local = point;
+        if (target && target != parent) {
+            const native::point origin =
+                native::detail::origin_in_root(*target);
+            local = native::point(
+                static_cast<native::coord>(point.x - origin.x),
+                static_cast<native::coord>(point.y - origin.y));
+        }
         const WORD next_form = mouse_form(
-            target ? target->get_cursor()
+            target ? target->get_cursor_at(local)
                    : native::mouse_cursor::arrow);
         if (next_form == current_mouse_form)
             return;
@@ -174,7 +184,7 @@ namespace linux::gemix
         // native work area; every portable paint/input origin excludes it.
         auto *owner = dynamic_cast<native::app_wnd *>(
             wnd_bindings.object_from_handle(handle));
-        if (owner && owner->get_modal()) {
+        if (owner && (owner->get_modal() || !owner->get_native_title_visible())) {
             x += dialog_frame_width;
             y += dialog_frame_width;
             w = std::max(0, int(w) - 2 * dialog_frame_width);
@@ -209,7 +219,7 @@ namespace linux::gemix
                                 const native::size &work) {
         auto *owner = dynamic_cast<native::app_wnd *>(
             wnd_bindings.object_from_handle(handle));
-        if (owner && owner->get_modal())
+        if (owner && (owner->get_modal() || !owner->get_native_title_visible()))
             return native::size(work.w + 2 * dialog_frame_width,
                                 work.h + 2 * dialog_frame_width);
         WORD kind = 0;

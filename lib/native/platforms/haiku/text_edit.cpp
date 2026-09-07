@@ -7,8 +7,10 @@
 //
 
 #include <native/text_edit.h>
+#include <native/property_grid.h>
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 
@@ -74,8 +76,20 @@ namespace
                         "native_text_edit",
                         text_rect,
                         B_FOLLOW_LEFT | B_FOLLOW_TOP,
-                        B_WILL_DRAW | B_NAVIGABLE)
+                        B_WILL_DRAW | B_NAVIGABLE | B_FRAME_EVENTS)
             , owner_(owner) {}
+
+        void FrameResized(float width, float height) override {
+            BTextView::FrameResized(width, height);
+            if (!owner_ || owner_->get_mode() != native::text_edit_mode::single_line)
+                return;
+            font_height metrics;
+            GetFontHeight(&metrics);
+            const float line = std::ceil(metrics.ascent + metrics.descent + metrics.leading);
+            const float padding = owner_->get_border_sides() == native::border_sides::none ? 1 : 4;
+            const float top = std::max(0.0f, std::floor((height + 1 - line) / 2));
+            SetTextRect(BRect(padding, top, std::max(padding, width - padding), top + line));
+        }
 
         void set_text(const std::string &text) {
             suppress_ = true;
@@ -202,10 +216,11 @@ namespace native
         native_text_edit_view *view = nullptr;
         BScrollView *scroll = nullptr;
         locked(window, [&] {
-            const BRect text_rect(4,
-                                  4,
-                                  frame.Width() - 4,
-                                  frame.Height() - 4);
+            const int padding = get_border_sides() == border_sides::none ? 1 : 4;
+            const BRect text_rect(padding,
+                                  padding,
+                                  frame.Width() - padding,
+                                  frame.Height() - padding);
             view = new native_text_edit_view(
                 _mode == text_edit_mode::multi_line
                     ? BRect(0, 0, frame.Width() - 16, frame.Height())
@@ -214,6 +229,10 @@ namespace native
                 self);
             view->set_text(_text);
             view->MakeEditable(!_read_only);
+            if (dynamic_cast<property_grid *>(get_parent())) {
+                view->SetViewColor(parent->ViewColor());
+                view->SetLowColor(parent->ViewColor());
+            }
             view->SetWordWrap(
                 _mode == text_edit_mode::multi_line);
             if (_mode == text_edit_mode::multi_line) {
@@ -226,9 +245,12 @@ namespace native
                                          B_FANCY_BORDER);
                 scroll->MoveTo(frame.LeftTop());
                 scroll->ResizeTo(frame.Width(), frame.Height());
+                scroll->Hide();
                 parent->AddChild(scroll);
             } else {
+                view->Hide();
                 parent->AddChild(view);
+                view->FrameResized(frame.Width(), frame.Height());
             }
         });
         if (!view)

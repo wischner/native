@@ -153,6 +153,7 @@ namespace
                     return;
                 current->items_repaint_pending = false;
                 panel_paint(panel, PANEL_NO_CLEAR);
+                linux::openlook::mask_panel_borders(panel);
             });
         }
     }

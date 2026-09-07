@@ -21,6 +21,18 @@ namespace native
 {
     using linux::sdl2::content_origin_y;
 
+    // Preserve button identity when dispatching emulated canvas input.
+    static mouse_button translate_mouse_button(Uint8 button) {
+        switch (button) {
+        case SDL_BUTTON_LEFT: return mouse_button::left;
+        case SDL_BUTTON_RIGHT: return mouse_button::right;
+        case SDL_BUTTON_MIDDLE: return mouse_button::middle;
+        case SDL_BUTTON_X1: return mouse_button::x1;
+        case SDL_BUTTON_X2: return mouse_button::x2;
+        default: return mouse_button::none;
+        }
+    }
+
     // Recheck decorations after the compositor has presented a window.
     static void keep_window_reachable(native::wnd *owner) {
         SDL_Window *window =
@@ -117,7 +129,6 @@ namespace native
         wnd->on_native_paint(pe);
 
         linux::sdl2::render_surfaces(wnd, g);
-        linux::sdl2::render_tab_views(wnd, g);
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
         linux::sdl2::render_radios(wnd, g);
@@ -180,10 +191,15 @@ namespace native
                 // Handle quit before window lookup — it has no
                 // windowID.
                 if (event.type == SDL_QUIT) {
-                    if (app_wnd *main = app::main_wnd())
-                        main->destroy();
-                    running = false;
-                    break;
+                    if (app_wnd *main = app::main_wnd()) {
+                        main->request_close();
+                        running = main->get_created();
+                    } else {
+                        running = false;
+                    }
+                    if (!running)
+                        break;
+                    continue;
                 }
 
                 native::wnd *wnd =
@@ -237,6 +253,9 @@ namespace native
                 case SDL_MOUSEMOTION: {
                     const int logical_y =
                         event.motion.y - content_origin_y(wnd);
+                    if (linux::sdl2::handle_canvas_motion(
+                            wnd, event.motion.x, logical_y, true))
+                        break;
                     if (linux::sdl2::handle_split_motion(
                             wnd, event.motion.x, logical_y))
                         break;
@@ -322,6 +341,18 @@ namespace native
                             cache->invalidated = true;
                     };
 
+                    // A captured gesture receives its release even
+                    // outside the content area or over another control.
+                    if (linux::sdl2::handle_canvas_mouse(
+                            wnd, event.button.x, logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP,
+                            translate_mouse_button(event.button.button),
+                            true)) {
+                        invalidate_live_window();
+                        break;
+                    }
+
                     auto *window_state =
                         linux::sdl2::wnd_gpx_bindings.object_from_handle(wnd);
                     if (event.type == SDL_MOUSEBUTTONDOWN && window_state) {
@@ -394,6 +425,22 @@ namespace native
                             handled = true;
                         }
                         if (!handled && logical_y >= 0 &&
+                            linux::sdl2::handle_canvas_mouse(
+                                wnd,
+                                event.button.x,
+                                logical_y,
+                                true,
+                                false)) {
+                            if (wnd->get_created())
+                                linux::sdl2::handle_canvas_mouse(
+                                    wnd,
+                                    event.button.x,
+                                    logical_y,
+                                    false,
+                                    true);
+                            handled = true;
+                        }
+                        if (!handled && logical_y >= 0 &&
                             linux::sdl2::handle_collection_mouse(
                                 wnd,
                                 event.button.x,
@@ -409,22 +456,6 @@ namespace native
                                     false,
                                     true,
                                     event.button.clicks);
-                            handled = true;
-                        }
-                        if (!handled && logical_y >= 0 &&
-                            linux::sdl2::handle_canvas_mouse(
-                                wnd,
-                                event.button.x,
-                                logical_y,
-                                true,
-                                false)) {
-                            if (wnd->get_created())
-                                linux::sdl2::handle_canvas_mouse(
-                                    wnd,
-                                    event.button.x,
-                                    logical_y,
-                                    false,
-                                    true);
                             handled = true;
                         }
                         if (!handled && logical_y >= 0 &&
@@ -574,6 +605,17 @@ namespace native
                         break;
                     }
 
+                    if (linux::sdl2::handle_canvas_mouse(
+                            wnd,
+                            event.button.x,
+                            logical_y,
+                            event.type == SDL_MOUSEBUTTONDOWN,
+                            event.type == SDL_MOUSEBUTTONUP,
+                            translate_mouse_button(event.button.button))) {
+                        invalidate_live_window();
+                        break;
+                    }
+
                     if (linux::sdl2::handle_collection_mouse(
                             wnd,
                             event.button.x,
@@ -581,16 +623,6 @@ namespace native
                             event.type == SDL_MOUSEBUTTONDOWN,
                             event.type == SDL_MOUSEBUTTONUP,
                             event.button.clicks)) {
-                        invalidate_live_window();
-                        break;
-                    }
-
-                    if (linux::sdl2::handle_canvas_mouse(
-                            wnd,
-                            event.button.x,
-                            logical_y,
-                            event.type == SDL_MOUSEBUTTONDOWN,
-                            event.type == SDL_MOUSEBUTTONUP)) {
                         invalidate_live_window();
                         break;
                     }
@@ -717,6 +749,7 @@ namespace native
                         break;
 
                     case SDL_WINDOWEVENT_FOCUS_LOST:
+                        linux::sdl2::release_canvas_capture(wnd);
                         if (auto *cache =
                                 linux::sdl2::wnd_gpx_bindings
                                     .object_from_handle(wnd)) {
@@ -726,8 +759,13 @@ namespace native
                         break;
 
                     case SDL_WINDOWEVENT_CLOSE:
-                        wnd->destroy();
-                        if (wnd == app::main_wnd())
+                        if (auto *window =
+                                dynamic_cast<app_wnd *>(wnd))
+                            window->request_close();
+                        else
+                            wnd->destroy();
+                        if (wnd == app::main_wnd() &&
+                            !wnd->get_created())
                             running = false;
                         break;
 
@@ -803,7 +841,10 @@ namespace native
 
         linux::sdl2::x11_clipboard::shutdown();
         linux::sdl2::shutdown_mouse_cursors();
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        // The application loop owns process-wide SDL services. Screen
+        // detection can initialize video before the first window, so
+        // dropping one video reference does not release the full runtime.
+        SDL_Quit();
         return 0;
     }
 

@@ -235,3 +235,116 @@ height is distinct from the smaller scrollbar extent. Haiku's similarly named
 multipart strip.
 
 Return to the [manual contents](../PROGRAMMING-NATIVE.md).
+
+Dense ruler scales retain every configured minor and major tick, while
+labels are spaced using measured text width to avoid overlap on either
+axis. Painting is clipped to the ruler strip and restores the caller’s
+graphics state. Choose a strip extent that leaves room for the font above
+the ticks (Maestro uses 32 pixels for one-pixel minor/eight-pixel major ticks).
+
+## Properties and tools
+
+A compact inspector uses standard editors for each value kind. Create it
+only after its parent, as with other controls:
+
+```cpp
+native::property_grid properties(12, 40, 300, 220);
+properties.set_parent(&window);
+properties.set_items({
+    {"name", "Name", native::property_kind::text, std::string("Shape"), {}, false},
+    {"width", "Width", native::property_kind::number, 120.0, {}, false},
+    {"visible", "Visible", native::property_kind::boolean, true, {}, false},
+    {"mode", "Mode", native::property_kind::choice, std::string("Fill"),
+        {"Fill", "Outline"}, false}
+});
+properties.on_change.connect([](native::property_change change) {
+    // change.id identifies the row; change.value has its declared type.
+    return true;
+});
+properties.create();
+properties.show();
+```
+
+Rows default to the control font height plus six pixels. `set_row_height(0)`
+restores that compact default, and `set_label_width()` sets the first column's
+width. Labels and value fields share the control background. The scrollbar
+sits at the right edge and only complete rows expose editors. `set_value()`
+updates silently. Read-only properties still accept
+programmatic updates. Invalid values and duplicate IDs throw; user changes
+are emitted only after validation.
+
+Declare bars after the window they borrow, and keep them alive while displayed:
+
+```cpp
+native::toolbar commands(window, native::window_edge::top);
+native::toolbar drawing(window, native::window_edge::left);
+commands.add_item({"save", "Save", native::tool_kind::button, {}, false, true, {}});
+drawing.set_items({
+    {"select", "Select", native::tool_kind::exclusive, "tools", true, true, {}},
+    {"draw", "Draw", native::tool_kind::exclusive, "tools", false, true, {}}
+});
+drawing.set_extent(80); // room for vertical tool labels
+commands.on_command.connect([](native::tool_command command) {
+    // Execute command.id; command.checked is the resulting sticky state.
+    return true;
+});
+```
+
+Use `tool_kind::toggle` for independent sticky buttons. Exclusive groups are
+scoped to their bar. Add more toolbar objects to stack multiple bars at an
+edge; there is no fixed bar-count limit. Use `set_edge()` to relocate one.
+Toolbars reserve space through `window.get_client_bounds()` and do not enter
+its ordinary child layout. Place client controls inside those bounds.
+
+The last `tool_item` field is a `std::shared_ptr<const native::img>`. Assign an
+image and use `set_icon_size({16, 16})`, `{24, 24}`, or `{32, 32}`. Images can be
+used without a text label. Use transparent image pixels around the artwork
+to preserve the toolbar background. Images and labels are centered together.
+The bar grows or shrinks with the selected image size and retains its padding;
+neighbors and the client area are updated in the same pass. Top and bottom
+bars span the window width, and side bars stop between them;
+its tools use the main-menu palette and selection style. Available strip
+length clips excess tools, so use another bar to expose additional tools.
+
+```cpp
+properties.set_border_sides(native::border_sides::left |
+                             native::border_sides::bottom);
+commands.set_border_sides(native::border_sides::bottom);
+```
+
+Every window/control and non-client strip starts with `border_sides::all`.
+The mask hides existing outer edges; it does not create a border on a bare
+panel, hide checkbox indicators, or change window-manager decorations.
+
+A custom dropdown accepts any C++ value and any control, including a canvas
+or a derived panel that owns several child controls:
+
+```cpp
+auto editor = std::make_shared<native::property_drop_down>();
+editor->content_size = {160, 32};
+editor->to_text = [](const native::property_value &value) {
+    return std::to_string(std::any_cast<int>(std::get<std::any>(value))) + " px";
+};
+editor->create_content = [](const native::property_value &,
+                            native::property_drop_down::commit commit) {
+    auto choice = std::make_unique<native::button>("Use 24 px");
+    choice->on_click.connect([commit] {
+        commit(std::any(24));
+        return true;
+    });
+    return choice;
+};
+properties.add_item({"custom", "Custom size", native::property_kind::drop_down,
+    std::any(16), {}, false, editor});
+```
+
+Return an uncreated control. The grid takes ownership and handles its parent,
+bounds, creation, and display. A derived container can create its own children
+in `on_wnd_create`. Call the supplied callback to commit and close; Cancel
+closes without changing the property. The converter paints the closed value.
+Programmatic changes remain silent. Each accepted `std::any` commit emits a
+change, since arbitrary values have no generic equality comparison. Removing
+the source row cancels its popup and invalidates retained callbacks.
+
+Vision's **Custom canvas** property demonstrates the same API with a color
+palette painted on a canvas and an `rgba`-to-hex converter.

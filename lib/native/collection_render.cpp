@@ -122,7 +122,63 @@ namespace native::detail
                 static_cast<dim>(width),
                 static_cast<dim>(height));
         }
+
+        // Resolve the common right-edge bar from collection-space values.
+        collection_scrollbar scrollbar_for(
+            const collection_view &control,
+            std::uint64_t total,
+            int step,
+            const theme::metrics &metrics) {
+            collection_scrollbar result;
+            result.total = total;
+            result.page = control.get_dimensions().h;
+            result.step = std::max(1, step);
+            const int extent = std::max(1, metrics.scrollbar_extent);
+            const rect bounds(
+                static_cast<coord>(std::max(
+                    0,
+                    static_cast<int>(control.get_dimensions().w) - extent)),
+                0,
+                static_cast<dim>(extent),
+                control.get_dimensions().h);
+            result.geometry = make_classic_scrollbar(
+                bounds,
+                scrollbar_orientation::vertical,
+                result.total,
+                result.page,
+                static_cast<std::uint64_t>(control.get_scroll_offset()),
+                metrics.scrollbar_min_thumb);
+            return result;
+        }
     } // namespace
+
+    collection_scrollbar make_collection_scrollbar(
+        const icon_view &control, const theme::metrics &metrics) {
+        return scrollbar_for(control,
+                             control.get_content_dimensions().h,
+                             metrics.list_item_height,
+                             metrics);
+    }
+
+    collection_scrollbar make_collection_scrollbar(
+        const tree_view &control, const theme::metrics &metrics) {
+        const int row_height = control.get_visible_item_count() > 0
+            ? control.get_row_bounds(0).d.h
+            : metrics.list_item_height;
+        const std::size_t visible_count = control.get_visible_item_count();
+        const std::size_t maximum = static_cast<std::size_t>(
+            std::numeric_limits<int>::max());
+        const int content_height =
+            visible_count > maximum /
+                                static_cast<std::size_t>(
+                                    std::max(1, row_height))
+                ? std::numeric_limits<int>::max()
+                : static_cast<int>(visible_count) * row_height;
+        return scrollbar_for(control,
+                             static_cast<std::uint64_t>(content_height),
+                             row_height,
+                             metrics);
+    }
 
     void draw_accordion(accordion &control, gpx &graphics) {
         auto painter = theme::create(graphics);
@@ -337,31 +393,15 @@ namespace native::detail
                 graphics, *painter, index, item, item_bounds, state);
         }
 
-        const size content = control.get_content_dimensions();
-        if (content.h > viewport.d.h) {
-            const int extent = std::max(1, values.scrollbar_extent);
-            const rect track(
-                static_cast<coord>(
-                    std::max(0,
-                             static_cast<int>(viewport.d.w) - extent)),
-                0,
-                static_cast<dim>(extent),
-                viewport.d.h);
-            const classic_scrollbar_geometry scrollbar =
-                make_classic_scrollbar(
-                    track,
-                    scrollbar_orientation::vertical,
-                    content.h,
-                    viewport.d.h,
-                    static_cast<std::uint64_t>(
-                        control.get_scroll_offset()),
-                    values.scrollbar_min_thumb);
+        const collection_scrollbar scrollbar =
+            make_collection_scrollbar(control, values);
+        if (scrollbar.total > scrollbar.page) {
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::vertical,
-                track,
-                scrollbar.thumb,
+                scrollbar.geometry.bounds,
+                scrollbar.geometry.thumb,
                 control_state);
         }
     }
@@ -477,43 +517,15 @@ namespace native::detail
                 graphics, *painter, visible, item, row, state);
         }
 
-        const int row_height = control.get_visible_item_count() > 0
-                                   ? control.get_row_bounds(0).d.h
-                                   : values.list_item_height;
-        const std::size_t visible_count =
-            control.get_visible_item_count();
-        const std::size_t maximum = static_cast<std::size_t>(
-            std::numeric_limits<int>::max());
-        const int content_height =
-            visible_count > maximum /
-                                static_cast<std::size_t>(
-                                    std::max(1, row_height))
-                ? std::numeric_limits<int>::max()
-                : static_cast<int>(visible_count) * row_height;
-        if (content_height > static_cast<int>(viewport.d.h)) {
-            const int extent = std::max(1, values.scrollbar_extent);
-            const rect track(
-                static_cast<coord>(
-                    std::max(0,
-                             static_cast<int>(viewport.d.w) - extent)),
-                0,
-                static_cast<dim>(extent),
-                viewport.d.h);
-            const classic_scrollbar_geometry scrollbar =
-                make_classic_scrollbar(
-                    track,
-                    scrollbar_orientation::vertical,
-                    static_cast<std::uint64_t>(content_height),
-                    viewport.d.h,
-                    static_cast<std::uint64_t>(
-                        control.get_scroll_offset()),
-                    values.scrollbar_min_thumb);
+        const collection_scrollbar scrollbar =
+            make_collection_scrollbar(control, values);
+        if (scrollbar.total > scrollbar.page) {
             control.draw_scrollbar(
                 graphics,
                 *painter,
                 scrollbar_orientation::vertical,
-                track,
-                scrollbar.thumb,
+                scrollbar.geometry.bounds,
+                scrollbar.geometry.thumb,
                 control_state);
         }
         control.draw_border(

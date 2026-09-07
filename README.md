@@ -123,12 +123,13 @@ cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
 
-Both GEMix build targets first run `docker-gemix-sdk`, which builds the local
-`wischner/gcc-x86_64-gemix:gem-v1.0.0` image from
-`scripts/gemix/Dockerfile`. It downloads upstream GEM tag `v1.0.0`, verifies
-commit `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`, and builds matching
-Rasta-backend SDK libraries, resources and `gemd`. Docker caches this step.
-The first build requires network access; no sibling GEM checkout is needed.
+Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
+image, which already contains the GEM `v1.0.0` SDK built from commit
+`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
+`resgen`, the GEM resources, and the recorded revision in
+`/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
+no local SDK image build and no sibling GEM checkout is needed.
 
 Run backend-independent tests from any hosted debug build:
 
@@ -158,11 +159,14 @@ Current exercised runtime paths are:
   Xephyr/TWM mono)** for F5, or run `bash scripts/linux/x11/run-twm.sh` after
   the Docker build. Host tools and session details are in
   [Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session).
-- Linux SDL2
+- Linux SDL2, with nine CTests covering nested canvas composition, real
+  SDL pointer capture, close-request policy, and the shared UI contracts.
 - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
 - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
 - Linux GEMix through Docker with the local rasta viewer, using either
-  direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration
+  direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration.
+  Direct-backend regressions cover nested tab/split/canvas framebuffer
+  composition and right/middle canvas button identity.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
   **Debug Vision (Windows 11 VM)** for F5. See the
   [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
@@ -195,3 +199,13 @@ For application programming concepts and complete sample programs, read the
 [license.url]: https://github.com/tstih/nice/blob/master/LICENSE
 [license.badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [status.badge]: https://img.shields.io/badge/status-unstable-red.svg
+
+The **Properties and toolbars** gallery (`vision --properties`) demonstrates
+compact text/number/boolean/choice properties, custom dropdown canvases with
+value converters, individual outer-border edges,
+and multiple menu-themed toolbars on all four sides. Toolbar icons support
+16x16, 24x24, and 32x32 sizes with live toolbar resizing; tools may be ordinary buttons, independent
+sticky toggles, or exclusive tool groups. See the
+[input and chrome chapter](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
+for construction and event examples. Native X11/Motif/WINGs border masks use
+Xext's Shape extension; the macOS adapter uses QuartzCore.

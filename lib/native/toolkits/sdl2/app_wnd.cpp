@@ -90,7 +90,7 @@ namespace native
                              _bounds.d.w,
                              _bounds.d.h,
                              SDL_WINDOW_HIDDEN |
-                                 SDL_WINDOW_RESIZABLE);
+                                 (get_native_title_visible() ? SDL_WINDOW_RESIZABLE : SDL_WINDOW_BORDERLESS));
 
         if (!window) {
             const std::string error = SDL_GetError();

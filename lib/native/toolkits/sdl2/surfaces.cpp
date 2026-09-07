@@ -17,6 +17,7 @@
 #include <native/canvas.h>
 #include <native/panel.h>
 
+#include "../../collection_render.h"
 #include "globals.h"
 
 namespace
@@ -55,6 +56,21 @@ namespace
                               static_cast<native::coord>(y))));
     }
 
+    // Recover capture from live peer state; destruction leaves no
+    // process-wide raw pointer waiting for the next mouse event.
+    native::canvas *captured_canvas(native::wnd *owner) {
+        for (auto *surface : linux::sdl2::canvases) {
+            if (!surface || root_of(surface) != owner ||
+                !visible(*surface))
+                continue;
+            auto *state = linux::sdl2::canvas_bindings
+                              .object_from_handle(surface);
+            if (state && state->pressed_buttons != 0)
+                return surface;
+        }
+        return nullptr;
+    }
+
     // Return the deepest visible panel under a root-space point.
     native::panel *panel_at(native::wnd *owner, int x, int y) {
         if (!owner)
@@ -88,6 +104,20 @@ namespace linux::sdl2
             if (control && visible(*control) && root_of(control) == owner)
                 regions.push_back(control);
         }
+        // All structural hosts share this depth-ordered pass. Painting
+        // tabs or accordion backgrounds in a later type-specific pass
+        // would cover their already-painted document canvases.
+        const auto add_host = [&regions, owner](native::wnd *control) {
+            if (control && control->get_created() &&
+                control->get_visible() && root_of(control) == owner)
+                regions.push_back(control);
+        };
+        for (auto *control : tab_views)
+            add_host(control);
+        for (auto *control : split_views)
+            add_host(control);
+        for (auto *control : accordions)
+            add_host(control);
         std::stable_sort(regions.begin(),
                          regions.end(),
                          [](native::wnd *left, native::wnd *right) {
@@ -112,26 +142,7 @@ namespace linux::sdl2
             if (!bounds.d.w || !bounds.d.h)
                 continue;
 
-            if (auto *host = dynamic_cast<native::panel *>(region)) {
-                auto saved = graphics.save_state();
-                const SDL_Rect region_viewport = {
-                    bounds.p.x,
-                    bounds.p.y + content_origin,
-                    static_cast<int>(bounds.d.w),
-                    static_cast<int>(bounds.d.h)};
-                SDL_RenderSetViewport(renderer, &region_viewport);
-                const native::rect invalid(
-                    0, 0, bounds.d.w, bounds.d.h);
-                graphics.set_clip(invalid);
-                host->on_native_paint(
-                    native::wnd_paint_event(invalid, graphics));
-                SDL_RenderSetViewport(renderer, &content_viewport);
-                graphics.set_clip(content_bounds);
-                continue;
-            }
-
-            auto *surface = dynamic_cast<native::canvas *>(region);
-            if (!surface || !renderer)
+            if (!renderer)
                 continue;
 
             //
@@ -152,13 +163,10 @@ namespace linux::sdl2
                 static_cast<int>(bounds.d.h)};
             SDL_RenderSetViewport(renderer, &region_viewport);
 
-            const native::rect invalid(0,
-                                       0,
-                                       surface->get_dimensions().w,
-                                       surface->get_dimensions().h);
+            const native::rect invalid(0, 0, bounds.d.w, bounds.d.h);
             graphics.set_clip(invalid);
-            native::wnd_paint_event event(invalid, graphics);
-            surface->on_native_paint(event);
+            region->on_native_paint(
+                native::wnd_paint_event(invalid, graphics));
 
             SDL_RenderSetViewport(renderer, &content_viewport);
             graphics.set_clip(content_bounds);
@@ -166,25 +174,56 @@ namespace linux::sdl2
     }
 
     bool handle_canvas_mouse(
-        native::wnd *owner, int x, int y, bool pressed, bool released) {
-        native::canvas *surface = canvas_at(owner, x, y);
-        if (!surface || (!pressed && !released))
+        native::wnd *owner, int x, int y, bool pressed, bool released,
+        native::mouse_button button, bool captured_only) {
+        if ((!pressed && !released) ||
+            button == native::mouse_button::none)
+            return false;
+        native::canvas *surface = captured_canvas(owner);
+        if (!surface && !captured_only)
+            surface = canvas_at(owner, x, y);
+        if (!surface)
             return false;
 
+        auto *state = canvas_bindings.object_from_handle(surface);
+        const auto mask = std::uint32_t{1} <<
+            static_cast<unsigned int>(button);
+        // Update capture before callbacks, which may destroy the page.
+        if (pressed)
+            state->pressed_buttons |= mask;
+        else
+            state->pressed_buttons &= ~mask;
         surface->on_native_mouse_click(native::mouse_event(
-            native::mouse_button::left,
+            button,
             pressed ? native::mouse_action::press
                     : native::mouse_action::release,
             local_point(*surface, x, y)));
         return true;
     }
 
-    bool handle_canvas_motion(native::wnd *owner, int x, int y) {
-        native::canvas *surface = canvas_at(owner, x, y);
+    bool handle_canvas_motion(native::wnd *owner, int x, int y,
+                              bool captured_only) {
+        native::canvas *surface = captured_canvas(owner);
+        if (!surface && !captured_only)
+            surface = canvas_at(owner, x, y);
         if (!surface)
             return false;
         surface->on_native_mouse_move(local_point(*surface, x, y));
         return true;
+    }
+
+    void release_canvas_capture(native::wnd *owner) {
+        while (native::canvas *surface = captured_canvas(owner)) {
+            auto *state = canvas_bindings.object_from_handle(surface);
+            unsigned int button = 1;
+            while ((state->pressed_buttons &
+                    (std::uint32_t{1} << button)) == 0)
+                ++button;
+            state->pressed_buttons &= ~(std::uint32_t{1} << button);
+            surface->on_native_mouse_click(native::mouse_event(
+                static_cast<native::mouse_button>(button),
+                native::mouse_action::release, native::point(-1, -1)));
+        }
     }
 
     bool handle_canvas_wheel(native::wnd *owner,

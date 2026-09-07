@@ -7,6 +7,7 @@
 //
 
 #pragma once
+#include "border.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -219,6 +220,9 @@ namespace native
 
         // Draw a rectangle outline or filled rectangle.
         virtual gpx &draw_rect(rect bounds, bool filled = false) = 0;
+
+        // Draw only the requested rectangle edges in the current ink/pen.
+        gpx &draw_border(rect bounds, border_sides sides = border_sides::all);
 
         // Draw an ellipse outline or fill using portable geometry.
         gpx &draw_ellipse(const rect &bounds, bool filled = false);

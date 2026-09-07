@@ -263,6 +263,11 @@ every VDI primitive, even when a control changes its local graphics clip.
 Image scanlines are restricted to that visible intersection before VDI calls
 are emitted, avoiding off-clip drawing and unnecessary libgem round trips.
 Container surfaces paint before content; transient combo lists paint last.
+Untitled AES hosts, including modeless property dropdowns, reserve their
+four-pixel `1011` frame outside the portable client rectangle. Host painting
+draws all four edges through the AES visible clip before the client is cleared
+or a child canvas paints. Client damage and pointer coordinates use the same
+inset origin.
 The rasta GEM runtime stages drawing until presentation, so an intermediate
 clear is not exposed to the viewer.
 AES initializes and presents the desktop checker when it first acquires the
@@ -281,3 +286,29 @@ client visible-rectangle enumeration. Opening a window does not clear covered
 client pixels to the desktop pattern or redraw frames behind the new window.
 Only exposed desktop fragments are filled, and fully obscured work areas are
 not sent redundant redraw messages.
+
+## Independent border edges
+
+Control border stages read `get_border_sides()` and draw only the selected
+outer edges. `gpx::draw_border()` uses the current ink and pen without filling
+the interior. The all-edges default preserves existing controls. Native
+widgets use backend edge masking where they own their frames. Motif masks
+include the native focus reservation before the shadow, plus a push button's
+default-button reservation when present. Masking only the shadow thickness
+would leave the inset relief visible. Retained edges keep Motif's native
+painting and restoring all edges removes the mask. A borderless
+GEM/SDL text editor uses a one-pixel text inset so compact property-grid rows
+retain a complete text line. A property grid paints labels and one-pixel separators on disjoint canvases;
+fully visible native editors paint as panel siblings. Toolbar surfaces use menu theme primitives and
+receive ordinary canvas press/move/release events, including GEM capture.
+
+Toolbar input surfaces are created by the window lifecycle and updated by
+geometry/configuration changes. The non-client paint pass does not create
+children: changing the native hierarchy during a paint transaction can
+invalidate the drawing target or leave input surfaces absent.
+
+Toolbar configuration updates all input surfaces before painting, including
+when icon sizes shrink. OPEN LOOK command tools omit menu marks. GEM window
+text uses the hosted VDI font-cell origin, matching image text and centered
+icon boxes. Haiku buttons repaint their whole surface when an edge mask
+changes; a persistent native clip must not prevent erasing the old border.

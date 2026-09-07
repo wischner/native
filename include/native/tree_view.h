@@ -265,6 +265,9 @@ namespace native
         // Clamp scrolling and refresh native geometry after a resize.
         void on_bounds_changed() override;
 
+        // Refresh native frame geometry while preserving the model.
+        void on_border_sides_changed() override;
+
         // Apply cached hierarchy to the created native control.
         virtual void apply_items();
 
@@ -374,7 +377,6 @@ namespace native
         int _item_gap = 4;
         bool _lines_visible = false;
         bool _lines_visible_explicit = false;
-        bool _border_visible = true;
         tree_view_presentation _presentation =
             tree_view_presentation::native;
 

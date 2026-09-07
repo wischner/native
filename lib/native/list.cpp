@@ -179,7 +179,7 @@ namespace native
         const theme::state &) {
         graphics.set_pen(1)
             .set_ink(appearance.get_button_border_color())
-            .draw_rect(bounds, false);
+            .draw_border(bounds, get_border_sides());
     }
 
     void list::draw_focus(

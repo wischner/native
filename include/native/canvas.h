@@ -104,6 +104,17 @@ namespace native
         // Emits the effective position after a user-originated scroll.
         signal<canvas_scroll_position> on_scroll;
 
+        //
+        // Return the client cursor inside the viewport, else an arrow.
+        //
+        // Notes:
+        //      Scrollbars, their corner filler, and non-client strips
+        //      are control chrome. An application that chose a
+        //      drawing cursor for its content did not choose it for
+        //      the chrome it never paints or clicks.
+        //
+        mouse_cursor get_cursor_at(const point &position) const override;
+
     protected:
         // Reserve the visible scrollbar edges before rulers and client.
         rect get_chrome_bounds() const override;
@@ -114,7 +125,15 @@ namespace native
         // Refresh cached scrollbar extents from the active theme.
         void synchronize_theme_metrics() override;
 
-        // Draw one scrollbar track and thumb through the active theme.
+        //
+        // Draw one complete scrollbar through the active theme.
+        //
+        // Notes:
+        //      The reserved edge carries both arrow buttons, the page
+        //      trough between them, and the thumb. Each part is drawn
+        //      with its own hot and pressed state; the supplied state
+        //      carries the axis-wide disabled flag and the thumb's.
+        //
         virtual void draw_scrollbar(gpx &graphics,
                                     const rect &track,
                                     const rect &thumb,
@@ -137,16 +156,24 @@ namespace native
         enum class hit_part
         {
             none,
+            horizontal_decrement,
             horizontal_track,
             horizontal_thumb,
+            horizontal_increment,
+            vertical_decrement,
             vertical_track,
-            vertical_thumb
+            vertical_thumb,
+            vertical_increment
         };
 
         // Resolve visibility, viewport, and track geometry together.
         scroll_geometry resolve_geometry() const;
 
-        // Return the thumb inside a resolved track for one axis.
+        // Return the trough one axis leaves between its arrows.
+        rect trough_bounds(const scroll_geometry &geometry,
+                           scrollbar_orientation orientation) const;
+
+        // Return the thumb inside a resolved trough for one axis.
         rect thumb_bounds(const scroll_geometry &geometry,
                           scrollbar_orientation orientation) const;
 
@@ -169,6 +196,7 @@ namespace native
         scrollbar_policy _vertical_policy = scrollbar_policy::automatic;
         int _scrollbar_extent = 16;
         int _scrollbar_min_thumb = 16;
+        int _scrollbar_line = 16;
         hit_part _hot = hit_part::none;
         hit_part _pressed = hit_part::none;
         int _drag_offset = 0;

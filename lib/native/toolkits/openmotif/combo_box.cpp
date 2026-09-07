@@ -162,6 +162,13 @@ namespace native
         if (!_created) return;
         auto *self = this;
         Widget widget = widget_for(self);
+        // Remove the composite from traversal while its text/list children
+        // are still alive. Focus callbacks during child destruction must
+        // not try to traverse back into a half-destroyed combo box.
+        if (widget) {
+            XtVaSetValues(widget, XmNtraversalOn, False, nullptr);
+            XtUnmanageChild(widget);
+        }
         linux::openmotif::combo_box_bindings.unregister_by_handle(self);
         if (widget) {
             linux::openmotif::wnd_bindings.unregister_by_handle(widget);

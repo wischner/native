@@ -380,6 +380,8 @@ namespace native
         const point position =
             linux::x11::constrain_shell_position(
                 shell, _bounds.p, _bounds.d);
+        if (!get_native_title_visible())
+            XtVaSetValues(shell, XtNoverrideRedirect, True, nullptr);
         XtVaSetValues(shell,
                       XtNx,
                       position.x,

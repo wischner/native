@@ -146,7 +146,10 @@ northeast_corner.set_cursor(
 ```
 
 `set_cursor()` may be called before or after `create()` and returns the window
-for chaining. `get_cursor()` returns the cached selection. Windows default to
+for chaining. `get_cursor()` returns the cached selection. The shape you choose
+covers the part of the control you own: on a `canvas` it applies to the client
+viewport, while the scrollbars and rulers Native paints keep the ordinary
+arrow. Windows default to
 the arrow; `text_edit` and `code_edit` choose the I-beam by default. The
 painter example selects a crosshair because its client area is a drawing
 surface. GEMix falls back to a thin crosshair for resize cursors because AES

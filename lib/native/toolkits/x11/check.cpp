@@ -69,6 +69,8 @@ namespace native
                              linux::x11::widget_dimension(_bounds.d.h),
                              XtNlabel,
                              _text.c_str(),
+                             XtNresize,
+                             False,
                              XtNstate,
                              _checked ? True : False,
                              XtNleft,

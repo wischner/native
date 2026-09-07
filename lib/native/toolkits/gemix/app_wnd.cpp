@@ -34,7 +34,7 @@ namespace native
 
         rect desktop = linux::gemix::desktop_rect();
         const WORD features =
-            get_modal() ? 0
+            (get_modal() || !get_native_title_visible()) ? 0
                         : NAME | CLOSER | FULLER | MOVER | SIZER;
         WORD handle =
             wind_create(features,

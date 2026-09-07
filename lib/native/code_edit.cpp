@@ -819,11 +819,17 @@ namespace native
     }
 
     void code_edit::draw_editor_background(
-        gpx &,
+        gpx &graphics,
         theme &appearance,
         const rect &bounds,
         const theme::state &state) {
-        appearance.draw_surface(bounds, surface_kind::inset, state);
+        if (get_border_sides() == border_sides::all)
+            appearance.draw_surface(bounds, surface_kind::inset, state);
+        else {
+            appearance.draw_surface(bounds, surface_kind::content, state);
+            graphics.set_pen(1).set_ink(appearance.native_palette().button_border)
+                .draw_border(bounds, get_border_sides());
+        }
     }
 
     void code_edit::draw_gutter(

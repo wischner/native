@@ -45,6 +45,25 @@ namespace
 
 namespace native
 {
+    border_sides wnd::get_border_sides() const {
+        return _border_sides;
+    }
+
+    wnd &wnd::set_border_sides(border_sides sides) {
+        if ((unsigned(sides) & ~unsigned(border_sides::all)) != 0)
+            throw std::invalid_argument("Invalid border sides.");
+        if (_border_sides == sides) return *this;
+        _border_sides = sides;
+        on_border_sides_changed();
+        if (_created) apply_border_sides();
+        invalidate();
+        return *this;
+    }
+
+    void wnd::on_border_sides_changed() {
+        on_bounds_changed();
+    }
+
     wnd::wnd(coord x, coord y, dim width, dim height)
         : _created(false)
         , _bounds(x, y, width, height)
@@ -117,6 +136,7 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
+        if (_created) apply_border_sides();
         for (non_client *element : _non_client) {
             if (element)
                 element->on_configuration_changed();
@@ -181,6 +201,7 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
+        if (_created) apply_border_sides();
         for (non_client *element : _non_client) {
             if (element)
                 element->on_configuration_changed();
@@ -234,7 +255,7 @@ namespace native
             if (child == _parent->_children.end())
                 _parent->_children.push_back(this);
 
-            if (_parent->_layout) {
+            if (_parent->_layout && !_non_client_surface) {
                 _parent->_layout->add_child(this);
                 _parent->relayout_children();
             }
@@ -255,6 +276,10 @@ namespace native
     }
 
     mouse_cursor wnd::get_cursor() const {
+        return _cursor;
+    }
+
+    mouse_cursor wnd::get_cursor_at(const point &) const {
         return _cursor;
     }
 
@@ -295,12 +320,19 @@ namespace native
         try {
             create_native();
             apply_cursor();
+            apply_border_sides();
         } catch (...) {
             _peer.reset();
             _created = false;
             throw;
         }
         on_native_create();
+        // Internal chrome must be established even when an application
+        // consumes the public create signal. Never create child resources
+        // from inside the owner's paint transaction.
+        if (_created)
+            for (non_client *element : _non_client)
+                if (element) element->on_configuration_changed();
     }
 
     void wnd::show() {
@@ -315,6 +347,7 @@ namespace native
             return;
         apply_cursor();
         _visible = true;
+        apply_border_sides();
     }
 
     void wnd::destroy() {
@@ -370,6 +403,7 @@ namespace native
             if (element)
                 element->on_configuration_changed();
         }
+        if (_created) apply_border_sides();
         on_wnd_resize.emit(dimensions);
     }
 
@@ -464,7 +498,8 @@ namespace native
         _layout = std::move(layout);
         if (_layout) {
             for (wnd *child : _children)
-                _layout->add_child(child);
+                if (!child->_non_client_surface)
+                    _layout->add_child(child);
             relayout_children();
         }
         return *this;
@@ -488,8 +523,7 @@ namespace native
                             _non_client.end())
             return;
         _non_client.push_back(element);
-        relayout_children();
-        invalidate();
+        update_non_client(false);
     }
 
     void wnd::detach_non_client(non_client *element) {
@@ -498,6 +532,19 @@ namespace native
         if (found == _non_client.end())
             return;
         _non_client.erase(found);
+        update_non_client(false);
+    }
+
+    void wnd::update_non_client(bool notify_bounds) {
+        _non_client_dirty = true;
+        if (_updating_non_client) return;
+        const scoped_flag pass(_updating_non_client);
+        do {
+            _non_client_dirty = false;
+            for (non_client *element : _non_client)
+                if (element) element->on_configuration_changed();
+        } while (_non_client_dirty);
+        if (_created && notify_bounds) on_bounds_changed();
         relayout_children();
         invalidate();
     }
@@ -536,11 +583,13 @@ namespace native
         const int width = static_cast<int>(chrome.d.w);
         const int height = static_cast<int>(chrome.d.h);
         switch (target->_edge) {
-        case window_edge::top:
-            return rect(static_cast<coord>(origin_x+left_total),
+        case window_edge::top: {
+            const bool spans_window = dynamic_cast<const toolbar *>(target) != nullptr;
+            return rect(static_cast<coord>(origin_x + (spans_window ? 0 : left_total)),
                         static_cast<coord>(origin_y+before),
-                        static_cast<dim>(std::max(0, width-left_total-right_total)),
+                        static_cast<dim>(spans_window ? width : std::max(0, width-left_total-right_total)),
                         static_cast<dim>(target->_extent));
+        }
         case window_edge::right:
             return rect(static_cast<coord>(origin_x+width-before-target->_extent),
                         static_cast<coord>(origin_y+top_total),
@@ -549,7 +598,8 @@ namespace native
         case window_edge::bottom:
         {
             const bool spans_window =
-                dynamic_cast<const status_bar *>(target) != nullptr;
+                dynamic_cast<const status_bar *>(target) != nullptr ||
+                dynamic_cast<const toolbar *>(target) != nullptr;
             return rect(static_cast<coord>(origin_x + (spans_window ? 0 : left_total)),
                         static_cast<coord>(origin_y+height-before-target->_extent),
                         static_cast<dim>(spans_window ? width :

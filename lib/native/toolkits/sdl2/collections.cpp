@@ -288,27 +288,7 @@ namespace
 
 namespace linux::sdl2
 {
-    void render_tab_views(native::wnd *owner, native::gpx &graphics) {
-        for (auto *control : split_views) {
-            if (control && visible(*control) && root_of(control) == owner)
-                native::detail::draw_split_view_at(
-                    *control, graphics, origin_in_root(*control));
-        }
-        for (auto *control : tab_views) {
-            if (control && visible(*control) && root_of(control) == owner)
-                native::detail::draw_tab_view_at(
-                    *control, graphics, origin_in_root(*control));
-        }
-    }
-
     void render_collections(native::wnd *owner, native::gpx &graphics) {
-        // Parent collection hosts paint before the child collections they
-        // contain, matching native child-window stacking.
-        for (auto *control : accordions) {
-            if (control && visible(*control) && root_of(control) == owner)
-                native::detail::draw_accordion_at(
-                    *control, graphics, origin_in_root(*control));
-        }
         for (auto *control : icon_views) {
             if (control && visible(*control) && root_of(control) == owner)
                 native::detail::draw_icon_view_at(

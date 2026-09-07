@@ -172,6 +172,9 @@ Window lifecycle must follow these rules:
   resource, applies the cached cursor, marks it created, and emits
   `on_wnd_create` once per creation. A failed backend hook restores the
   uncreated state.
+- After that notification, a still-created window synchronizes internal
+  non-client resources independently of whether a public handler consumed
+  the signal. Toolbar children must exist before painting begins.
 - A child requires an assigned, created parent before it can be created.
 - `show()` requires a created resource and makes `get_visible()` true only
   after the backend hook succeeds. A synchronous system panel may accept or
@@ -187,6 +190,20 @@ Window lifecycle must follow these rules:
   or dismiss the native resource. A later `create()`/`show()` therefore starts
   a complete new native lifecycle on every backend.
 
+Owned titleless windows honor `get_native_title_visible() == false` while
+retaining input focus for their native child editors. They host custom
+property dropdown content without window-manager title furniture.
+GEMix reserves and paints the same four-pixel dialog enclosure for modal and
+titleless modeless hosts; client painting and input exclude every frame edge.
+
+`app_wnd::request_close()` is the application-level close policy hook. Its
+default calls `destroy()`; an override may leave the resource alive while
+asking about unsaved edits and call `destroy()` only after acceptance.
+The SDL2 dispatcher routes title-bar close and application quit requests
+through this hook and keeps pumping events while the main window remains
+created, including asynchronous confirmation and save dialogs. Other
+backends currently retain their direct native-close destruction path.
+
 `mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
 `crosshair`, `resize_horizontal`, `resize_vertical`,
 `resize_northwest_southeast`, and `resize_northeast_southwest`. Every `wnd`
@@ -199,6 +216,14 @@ changes. Emulated child-window backends must choose the cursor of the deepest
 visible child under the pointer. A backend without a corresponding directional
 system cursor must use its precision-pointer fallback rather than an unrelated
 arrow.
+
+One window may need more than one shape, because a control that owns chrome
+paints regions the application never draws in. `get_cursor_at()` is the virtual
+that answers for a window-local point; it returns `get_cursor()` for every
+point unless a control overrides it, and it is what a backend resolving the
+pointer shape by position must call. Backends that carry the shape as an
+attribute of a native child window keep applying the cached choice to the whole
+control.
 
 Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
@@ -214,6 +239,11 @@ A control that owns edge chrome, such as canvas scrollbars, overrides only the
 first step, and both the client area and the strip geometry stay consistent.
 Backend resize notifications must update the cache and layout without
 requesting the same resize again.
+Changing a non-client extent, edge, or visibility synchronizes all attached
+strips, then calls the created owner’s `on_bounds_changed()` and relayouts
+its children. Nested minimum-extent adjustments complete before that layout.
+Top and bottom toolbars span the full chrome width; side bars occupy the
+height left between horizontal strips. Rulers retain their shared corners.
 Non-client painting fills the shared corners of perpendicular visible
 rulers with the ruler-corner theme role before drawing the individual strips.
 Portable layout may temporarily assign a child zero width or zero height. A
@@ -445,6 +475,18 @@ the backend paints the native compact filled right/down triangle directly
 through `theme::draw_disclosure`; an arrow must never introduce an opaque
 square background or disappear with its mask.
 
+### Selectable outer edges
+
+Every `wnd` and `non_client` carries a `border_sides` mask (`top`, `right`,
+`bottom`, `left`, `none`, `all`). The default is `all`, preserving existing
+appearance. `set_border_sides()` changes the control's outer frame; it does
+not introduce a frame on an unbordered panel/canvas, remove check/radio
+indicators or internal separators, or change an OS top-level window frame.
+Shared drawing stages use `gpx::draw_border()`. Native adapters mask their
+existing edges; widget metrics remain native-owned. Tree and accordion
+`set_border_visible()` remain all/none convenience setters. Accordion body
+insets follow the selected left, right, and bottom edges.
+
 ## 6. Painting in Windows
 
 `gpx` is the portable, abstract drawing interface. It provides common drawing
@@ -563,6 +605,10 @@ Complete theme primitives for checks, radios, and similar controls must use
 the same metrics and semantic roles as the corresponding live control's base
 draw stages, so an application-painted sample is not a second visual design.
 
+`theme::draw_toolbar_button()` paints a menu-styled command without a submenu
+mark. Its default delegates to menu-title drawing; native adapters omit marks
+where menu titles themselves carry them.
+
 ## 8. Application
 
 Application code must define `program()` instead of an operating-system entry
@@ -582,6 +628,14 @@ int program(int argc, char **argv) {
 public Native API, construct the main `app_wnd`, and return a process exit code.
 It must not define or call a platform entry point, start a backend event loop
 directly, or depend on native argument types.
+
+`app::post()` work must execute after native dispatch, including when no new
+input arrives. Blocking loops install a thread-safe wake target and remove it
+before teardown. Windows uses a thread message; Haiku uses a messenger to the
+application looper. X11/Athena uses a nonblocking pipe registered as Xt input
+and drains work after `XtAppProcessEvent()` returns. Posting threads never call
+Xt or Xlib, and teardown excludes writes to closed descriptors. Deferred popup
+commits rely on this production path.
 
 The startup classes have distinct roles:
 
@@ -1073,6 +1127,12 @@ first enabled child. Space toggles a branch and Enter activates it. A classic
 row double click performs the platform's branch action and emits activation.
 Pointer disclosure hit testing is distinct from row selection.
 
+Repainting a tree with unchanged row metrics preserves its scroll offset,
+including when the selected item is outside the viewport. Selection or
+navigation may reveal an item; reapplying unchanged theme metrics must not
+undo manual scrolling. A row-height change may reveal the selected item
+after reclamping the viewport to its new content range.
+
 Windows uses `WC_TREEVIEW`, macOS uses `NSOutlineView`, and Haiku uses
 `BOutlineListView`. OpenMotif uses one `XmContainer` outline implementation
 for both presentations. The default CDE presentation uses flat
@@ -1329,6 +1389,52 @@ window chrome**. Portable tests cover pre-create state, silent programmatic
 updates, native event ordering, edge reservation, relayout, and ruler
 tracking; Docker builds compile every backend implementation.
 
+### Compact property grids and edge toolbars
+
+`property_grid` is a concrete `panel` with typed, uniquely identified rows.
+`property_kind` selects text, finite double, boolean, a string constrained
+to a choice list, or a custom-content dropdown. The owned model uses `property_value`; replacing the model
+validates all rows before publishing it. `set_value()` is silent, while a
+valid changed user value emits one `property_change` after updating the model.
+Read-only rows reject user edits. The default row height is the control font
+height plus six pixels. Separate canvas regions supply labels, outer frame edges, and the right-hand
+scrollbar; standard text/check/combo editors occupy the remaining panel area.
+Painting surfaces never overlap editors, including on toolkits with flattened
+child hosting. Labels and value fields use the control-host background. Only
+fully visible rows allocate native editor resources. Scrolling and recreation preserve committed values.
+
+`property_kind::drop_down` uses a `property_drop_down` descriptor with a
+value-to-text converter, content size, and factory returning an uncreated
+`wnd`. The grid owns, parents, sizes, creates, and shows that content in an
+owned titleless popup with a Cancel action. A panel or canvas can own arbitrary
+child controls. The factory receives the current value and a commit callback;
+commits close the popup and validate/update the model after native dispatch.
+`property_value` also accepts `std::any` for application-defined types. Such
+values have no generic equality operation, so each accepted custom commit
+emits a change. Closing, scrolling, or destroying the source row cancels
+uncommitted edits; callbacks retained after row destruction do nothing.
+
+`toolbar` is an application-owned `non_client` with an owned canvas input
+surface. Any number of bars attach to any `window_edge`, in attachment order.
+Window creation synchronizes internal non-client resources after the public
+create notification, independently of a handler consuming that signal. The
+paint pass must not create toolbar children. The surface participates in
+child lifetime and hit testing but is excluded
+from the owner's ordinary layout manager. Toolbar buttons use the active
+main-menu background and `draw_toolbar_button()` primitive, without submenu arrows. Tools may be momentary, independent
+toggles, exclusive members of a named group, or separators. Exclusive groups
+are local to each bar; selecting a member clears its peers before emitting
+one `tool_command`. Programmatic changes are silent. Releasing outside the
+pressed tool cancels activation. Items borrow immutable images through shared
+ownership; `set_icon_size()` supports 16x16, 24x24, and 32x32 (and other positive
+sizes). Changing the image size grows or shrinks the strip while retaining its padding
+(at least four pixels), and repositions neighboring bars. The image and label share a centered
+content group and vertical midpoint; alpha-transparent image pixels preserve
+the menu background. Text measurement uses the font without opening a child
+graphics context. Tools exceeding the available
+strip length are clipped; applications can place additional tools on another
+bar. These controls extend Section 17 without exposing native widget types.
+
 ## 18. Structural containers
 
 `panel` is a concrete, empty child `wnd` whose purpose is to parent and lay out
@@ -1405,7 +1511,13 @@ position; that function clamps, stores, invalidates, and emits `on_scroll`
 exactly once when the effective position changed. Wheel input over a movable
 axis scrolls it, and the normalized `on_mouse_wheel` event is still emitted
 exactly once. Thumb size and position represent the viewport inside the full
-32-bit range and must let both endpoints be reached exactly. Scrollbar
+32-bit range and must let both endpoints be reached exactly. A portable canvas
+scrollbar carries the same parts as every other portable scrollbar: a decrement
+and an increment arrow button, the page trough between them, and the thumb that
+travels inside that trough. Each square button is as long as the bar is thick
+and never longer than half of it, so a short bar keeps both buttons and loses
+only trough. An arrow steps one themed line height, the trough pages by the
+viewport span, and every part draws its own hot and pressed state. Scrollbar
 appearance, hit geometry, minimum thumb size, and extents come from theme
 metrics and `theme::draw_scrollbar_part`, or the backend's actual scrollbar
 widget in the same reserved geometry. Native range adaptation must preserve
@@ -1423,4 +1535,7 @@ applies its own content transform.
 
 Pointer actions inside scrollbar tracks, thumbs, and step controls are handled
 as chrome and are not emitted as client mouse clicks. Every other pointer event
-reaches the inherited `wnd` dispatch with canvas-local coordinates.
+reaches the inherited `wnd` dispatch with canvas-local coordinates. Chrome owns
+its pointer shape as well: `canvas` overrides `get_cursor_at()` so the cursor
+the application selected applies to the client viewport, and scrollbars, their
+corner filler, and non-client strips show the ordinary arrow.

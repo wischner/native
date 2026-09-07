@@ -138,20 +138,10 @@ namespace
                     for (int x = r.x1() + 2 + (y & 2); x < r.x2() - 1; x += 4)
                         _g.draw_line(native::point(x, y), native::point(x, y));
             } else if (part != native::scrollbar_part::thumb) {
-                const int cx = r.x1() + r.w() / 2;
-                const int cy = r.y1() + r.h() / 2;
-                const int direction = part == native::scrollbar_part::decrement ? -1 : 1;
                 if (s.pressed) {
                     _g.draw_rect(r, true).set_ink(colors.button_bg);
                 }
-                for (int step = 0; step < 4; ++step) {
-                    const int along = direction * (3 - step);
-                    if (axis == native::scrollbar_orientation::vertical)
-                        _g.draw_line(native::point(cx - step, cy + along),
-                                     native::point(cx + step, cy + along));
-                    else _g.draw_line(native::point(cx + along, cy - step),
-                                      native::point(cx + along, cy + step));
-                }
+                linux::gemix::draw_stock_arrow(_g, r, axis, part);
             }
             return *this;
         }

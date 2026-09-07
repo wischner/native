@@ -31,13 +31,14 @@ namespace
         frame_state.disabled = owner->get_read_only();
         native::detail::control_render_access::draw(
             *owner, g, *painter, bounds, frame_state);
-        if (bounds.d.w <= 8 || bounds.d.h <= 8)
+        const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 4;
+        if (bounds.d.w <= 2 * padding || bounds.d.h <= 2 * padding)
             return;
 
-        const native::rect content(bounds.p.x + 4,
-                                   bounds.p.y + 4,
-                                   bounds.d.w - 8,
-                                   bounds.d.h - 8);
+        const native::rect content(bounds.p.x + padding,
+                                   bounds.p.y + padding,
+                                   bounds.d.w - 2 * padding,
+                                   bounds.d.h - 2 * padding);
         g.set_clip(g.get_clip().intersect(content));
         g.set_font(native::font_t::stock(native::font_role::control));
         const int line_height =
@@ -128,8 +129,8 @@ namespace linux::sdl2
         for (native::text_edit *editor : text_edits) {
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->parent == parent &&
-                binding->visible) {
+            if (binding && root_of(editor) == parent && binding->visible) {
+                binding->bounds = root_bounds(*editor);
                 g.set_clip(old_clip);
                 draw_editor(editor, binding, g);
             }

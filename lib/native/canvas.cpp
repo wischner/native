@@ -16,6 +16,8 @@
 #include <native.h>
 #include <native/canvas.h>
 
+#include "classic_scrollbar.h"
+
 namespace
 {
     using native::canvas_scroll_position;
@@ -182,6 +184,12 @@ namespace native
         return resolve_geometry().vertical_visible;
     }
 
+    mouse_cursor canvas::get_cursor_at(const point &position) const {
+        return get_client_bounds().contains(position)
+                   ? get_cursor()
+                   : mouse_cursor::arrow;
+    }
+
     rect canvas::get_chrome_bounds() const {
         const scroll_geometry geometry = resolve_geometry();
         return reserve_edges(
@@ -265,12 +273,21 @@ namespace native
         return geometry;
     }
 
+    rect canvas::trough_bounds(const scroll_geometry &geometry,
+                               scrollbar_orientation orientation) const {
+        const rect track =
+            orientation == scrollbar_orientation::horizontal
+                ? geometry.horizontal_track
+                : geometry.vertical_track;
+        return detail::make_classic_scrollbar_edges(track, orientation)
+            .trough;
+    }
+
     rect canvas::thumb_bounds(const scroll_geometry &geometry,
                               scrollbar_orientation orientation) const {
         const bool horizontal =
             orientation == scrollbar_orientation::horizontal;
-        const rect track = horizontal ? geometry.horizontal_track
-                                      : geometry.vertical_track;
+        const rect track = trough_bounds(geometry, orientation);
         const int length = horizontal ? static_cast<int>(track.d.w)
                                       : static_cast<int>(track.d.h);
         if (length <= 0)
@@ -327,8 +344,7 @@ namespace native
         int offset) const {
         const bool horizontal =
             orientation == scrollbar_orientation::horizontal;
-        const rect track = horizontal ? geometry.horizontal_track
-                                      : geometry.vertical_track;
+        const rect track = trough_bounds(geometry, orientation);
         const rect thumb = thumb_bounds(geometry, orientation);
         const int length = horizontal ? static_cast<int>(track.d.w)
                                       : static_cast<int>(track.d.h);
@@ -360,22 +376,43 @@ namespace native
         return saturating_advance(origin, std::min(moved, range));
     }
 
+    //
+    // Return the part occupied by a canvas-local pointer position.
+    //
+    // Notes:
+    //      The thumb is tested first because a range too small to
+    //      move fills its whole trough; the arrows sit outside that
+    //      trough, so both buttons stay reachable either way.
+    //
     canvas::hit_part canvas::hit_test(const scroll_geometry &geometry,
                                       const point &position) const {
         if (geometry.vertical_visible &&
             geometry.vertical_track.contains(position)) {
-            return thumb_bounds(geometry, scrollbar_orientation::vertical)
-                           .contains(position)
-                       ? hit_part::vertical_thumb
-                       : hit_part::vertical_track;
+            const auto edges = detail::make_classic_scrollbar_edges(
+                geometry.vertical_track,
+                scrollbar_orientation::vertical);
+            if (thumb_bounds(geometry, scrollbar_orientation::vertical)
+                    .contains(position))
+                return hit_part::vertical_thumb;
+            if (edges.decrement.contains(position))
+                return hit_part::vertical_decrement;
+            if (edges.increment.contains(position))
+                return hit_part::vertical_increment;
+            return hit_part::vertical_track;
         }
         if (geometry.horizontal_visible &&
             geometry.horizontal_track.contains(position)) {
-            return thumb_bounds(geometry,
-                                scrollbar_orientation::horizontal)
-                           .contains(position)
-                       ? hit_part::horizontal_thumb
-                       : hit_part::horizontal_track;
+            const auto edges = detail::make_classic_scrollbar_edges(
+                geometry.horizontal_track,
+                scrollbar_orientation::horizontal);
+            if (thumb_bounds(geometry, scrollbar_orientation::horizontal)
+                    .contains(position))
+                return hit_part::horizontal_thumb;
+            if (edges.decrement.contains(position))
+                return hit_part::horizontal_decrement;
+            if (edges.increment.contains(position))
+                return hit_part::horizontal_increment;
+            return hit_part::horizontal_track;
         }
         return hit_part::none;
     }
@@ -416,6 +453,10 @@ namespace native
             1, _theme_metrics.scrollbar_extent);
         _scrollbar_min_thumb = std::max(
             1, _theme_metrics.scrollbar_min_thumb);
+        // Content pixels are the only unit a canvas has, so one arrow
+        // step is the theme's line height, as collections step by.
+        _scrollbar_line = std::max(
+            1, _theme_metrics.list_item_height);
     }
 
     void canvas::draw_scrollbar(gpx &graphics,
@@ -423,9 +464,32 @@ namespace native
                                 const rect &thumb,
                                 scrollbar_orientation orientation,
                                 const theme::state &element_state) {
+        const bool horizontal =
+            orientation == scrollbar_orientation::horizontal;
+        const auto edges =
+            detail::make_classic_scrollbar_edges(track, orientation);
+        const auto button_state = [&](hit_part part) {
+            theme::state result = element_state;
+            result.hot = _hot == part;
+            result.pressed = _pressed == part;
+            return result;
+        };
+
         auto appearance = theme::create(graphics);
+        theme::state trough_state = element_state;
+        trough_state.hot = false;
+        trough_state.pressed = false;
         appearance->draw_scrollbar_part(
-            track, orientation, scrollbar_part::track, element_state);
+            edges.trough, orientation, scrollbar_part::track,
+            trough_state);
+        appearance->draw_scrollbar_part(
+            edges.decrement, orientation, scrollbar_part::decrement,
+            button_state(horizontal ? hit_part::horizontal_decrement
+                                    : hit_part::vertical_decrement));
+        appearance->draw_scrollbar_part(
+            edges.increment, orientation, scrollbar_part::increment,
+            button_state(horizontal ? hit_part::horizontal_increment
+                                    : hit_part::vertical_increment));
         appearance->draw_scrollbar_part(
             thumb, orientation, scrollbar_part::thumb, element_state);
     }
@@ -493,8 +557,7 @@ namespace native
             const scrollbar_orientation orientation =
                 horizontal ? scrollbar_orientation::horizontal
                            : scrollbar_orientation::vertical;
-            const rect track = horizontal ? geometry.horizontal_track
-                                          : geometry.vertical_track;
+            const rect track = trough_bounds(geometry, orientation);
             const int pointer = horizontal ? position.x : position.y;
             const int origin = horizontal ? track.p.x : track.p.y;
             const int offset = pointer - origin - _drag_offset;
@@ -551,6 +614,31 @@ namespace native
                                       : event.position.y - thumb.p.y;
             _pressed = part;
             invalidate();
+            return;
+        }
+
+        if (part == hit_part::horizontal_decrement ||
+            part == hit_part::horizontal_increment ||
+            part == hit_part::vertical_decrement ||
+            part == hit_part::vertical_increment) {
+            const bool horizontal =
+                part == hit_part::horizontal_decrement ||
+                part == hit_part::horizontal_increment;
+            const bool forward =
+                part == hit_part::horizontal_increment ||
+                part == hit_part::vertical_increment;
+            const int step =
+                forward ? _scrollbar_line : -_scrollbar_line;
+            canvas_scroll_position moved = _scroll;
+            if (horizontal)
+                moved.x = saturating_step(moved.x, step);
+            else
+                moved.y = saturating_step(moved.y, step);
+            _pressed = part;
+            // The button renders pressed even at an endpoint, where
+            // the scroll itself changes nothing.
+            invalidate();
+            on_native_scroll(moved);
             return;
         }
 

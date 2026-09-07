@@ -215,6 +215,16 @@ namespace native
                     }
                 }
 
+                // AES reports all button bits, including on timer polls.
+                // Secondary canvas inks must not become left-button edits.
+                for (int bit : {2, 4}) {
+                    if ((prev_mb & bit) == (mb & bit))
+                        continue;
+                    linux::gemix::dispatch_surface_click(
+                        pointer_window, local, (mb & bit) != 0,
+                        bit == 2 ? mouse_button::right : mouse_button::middle);
+                }
+
                 if ((prev_mb & 1) == 0 && (mb & 1) != 0) {
                     linux::gemix::runtime.pressed_button = button_at(pointer_window, local);
                     if (auto *pressed = linux::gemix::runtime.pressed_button)

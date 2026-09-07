@@ -204,6 +204,9 @@ namespace native
         // Recalculate body geometry after this control is resized.
         void on_bounds_changed() override;
 
+        // Refresh native frame geometry while preserving the model.
+        void on_border_sides_changed() override;
+
         // Apply all item state to the created backend resource.
         virtual void apply_items();
 
@@ -281,7 +284,6 @@ namespace native
         std::vector<std::unique_ptr<accordion_item>> _items;
         int _header_height = 24;
         int _focused_index = -1;
-        bool _border_visible = true;
 
         void validate_index(int index, bool allow_none) const;
         void set_item_expanded(std::size_t index, bool expanded);

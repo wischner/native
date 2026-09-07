@@ -164,10 +164,20 @@ namespace windows
 
         case WM_SETCURSOR:
             if (LOWORD(lparam) == HTCLIENT) {
-                native::wnd *owner = cursor_owner(
-                    reinterpret_cast<HWND>(wparam));
-                SetCursor(cursor_handle(
-                    owner ? owner->get_cursor() : wnd->get_cursor()));
+                HWND hovered = reinterpret_cast<HWND>(wparam);
+                native::wnd *owner = cursor_owner(hovered);
+                if (!owner) {
+                    SetCursor(cursor_handle(wnd->get_cursor()));
+                    return TRUE;
+                }
+                // A control that owns chrome answers per position, so
+                // the shape follows the pointer inside one window.
+                POINT cursor{};
+                GetCursorPos(&cursor);
+                ScreenToClient(hovered, &cursor);
+                SetCursor(cursor_handle(owner->get_cursor_at(
+                    native::point(static_cast<native::coord>(cursor.x),
+                                  static_cast<native::coord>(cursor.y)))));
                 return TRUE;
             }
             break;
@@ -436,6 +446,33 @@ namespace windows
                     drawing->hwndItem);
                 if (!child)
                     break;
+                if (auto *combo = dynamic_cast<native::combo_box *>(child);
+                    combo && drawing->CtlType == ODT_COMBOBOX &&
+                    dynamic_cast<native::property_grid *>(combo->get_parent())) {
+                    const int saved = SaveDC(drawing->hDC);
+                    const bool selected = (drawing->itemState & ODS_SELECTED) != 0;
+                    const bool field = (drawing->itemState & ODS_COMBOBOXEDIT) != 0;
+                    const int paper = selected ? COLOR_HIGHLIGHT
+                                               : field ? COLOR_BTNFACE : COLOR_WINDOW;
+                    FillRect(drawing->hDC, &drawing->rcItem, GetSysColorBrush(paper));
+                    SetBkMode(drawing->hDC, TRANSPARENT);
+                    SetTextColor(drawing->hDC, GetSysColor(
+                        (drawing->itemState & ODS_DISABLED) ? COLOR_GRAYTEXT
+                            : selected ? COLOR_HIGHLIGHTTEXT : COLOR_BTNTEXT));
+                    SelectObject(drawing->hDC, windows::control_font());
+                    const auto &items = combo->get_items();
+                    if (drawing->itemID < items.size()) {
+                        const auto text = windows::utf8_to_wide(items[drawing->itemID]);
+                        RECT area = drawing->rcItem;
+                        area.left += 2;
+                        DrawTextW(drawing->hDC, text.c_str(), -1, &area,
+                            DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+                    }
+                    if (drawing->itemState & ODS_FOCUS)
+                        DrawFocusRect(drawing->hDC, &drawing->rcItem);
+                    RestoreDC(drawing->hDC, saved);
+                    return TRUE;
+                }
                 auto *button = dynamic_cast<native::button *>(child);
                 auto *check = dynamic_cast<native::check *>(child);
                 auto *radio = dynamic_cast<native::radio *>(child);
@@ -782,12 +819,15 @@ namespace windows
             }
             break;
 
+        case WM_CTLCOLOREDIT:
+        case WM_CTLCOLORLISTBOX:
         case WM_CTLCOLORBTN:
         case WM_CTLCOLORSTATIC: {
             HWND control = reinterpret_cast<HWND>(lparam);
             native::wnd *child =
                 windows::wnd_bindings.object_from_handle(control);
-            if (dynamic_cast<native::check *>(child) ||
+            if ((child && dynamic_cast<native::property_grid *>(child->get_parent())) ||
+                dynamic_cast<native::check *>(child) ||
                 dynamic_cast<native::radio *>(child)) {
                 HDC hdc = reinterpret_cast<HDC>(wparam);
                 SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
@@ -822,6 +862,45 @@ namespace windows
 
 namespace native
 {
+    void wnd::apply_border_sides() {
+        if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
+              dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||
+              dynamic_cast<tree_view *>(this) || dynamic_cast<table_view *>(this) ||
+              dynamic_cast<tab_view *>(this) || dynamic_cast<icon_view *>(this) ||
+              dynamic_cast<accordion *>(this))) return;
+        HWND handle = windows::wnd_bindings.handle_from_object(this);
+        if (!handle) return;
+        const auto sides = get_border_sides();
+        if (auto *control = dynamic_cast<button *>(this)) {
+            const LONG_PTR style = GetWindowLongPtrW(handle, GWL_STYLE);
+            const LONG_PTR kind = sides == border_sides::all && typeid(*control) == typeid(button)
+                ? BS_PUSHBUTTON : BS_OWNERDRAW;
+            if ((style & BS_TYPEMASK) != kind)
+                SetWindowLongPtrW(handle, GWL_STYLE, (style & ~BS_TYPEMASK) | kind);
+            return;
+        }
+        HRGN previous = CreateRectRgn(0, 0, 0, 0);
+        const bool shaped = GetWindowRgn(handle, previous) != ERROR;
+        if (sides == border_sides::all) {
+            DeleteObject(previous);
+            if (shaped) SetWindowRgn(handle, nullptr, TRUE);
+            return;
+        }
+        RECT bounds{};
+        GetWindowRect(handle, &bounds);
+        const int extent = 2;
+        HRGN region = CreateRectRgn(
+            has_border(sides, border_sides::left) ? 0 : extent,
+            has_border(sides, border_sides::top) ? 0 : extent,
+            bounds.right - bounds.left -
+                (has_border(sides, border_sides::right) ? 0 : extent),
+            bounds.bottom - bounds.top -
+                (has_border(sides, border_sides::bottom) ? 0 : extent));
+        if (region && shaped && EqualRgn(region, previous)) DeleteObject(region);
+        else if (region && !SetWindowRgn(handle, region, TRUE)) DeleteObject(region);
+        DeleteObject(previous);
+    }
+
     void wnd::apply_position() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(this);
         if (hwnd) {

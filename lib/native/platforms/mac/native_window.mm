@@ -12,6 +12,13 @@
 
 #include "globals.h"
 
+// Borderless property popups must still accept focus for native editors.
+@interface native_popup_window : NSWindow
+@end
+@implementation native_popup_window
+- (BOOL)canBecomeKeyWindow { return YES; }
+@end
+
 // Translate AppKit window lifecycle events to a borrowed app_wnd.
 @interface native_window_delegate : NSObject <NSWindowDelegate> {
     native::app_wnd *_owner;
@@ -140,11 +147,13 @@ namespace mac
                                  int width,
                                  int height) {
         NSRect frame = NSMakeRect(x, y, width, height);
-        auto style = NSWindowStyleMaskTitled |
-                     NSWindowStyleMaskClosable |
-                     NSWindowStyleMaskResizable;
+        const auto style = owner->get_native_title_visible()
+            ? NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
+            : NSWindowStyleMaskBorderless;
+        Class window_class = owner->get_native_title_visible()
+            ? [NSWindow class] : [native_popup_window class];
         NSWindow *win =
-            [[NSWindow alloc] initWithContentRect:frame
+            [[window_class alloc] initWithContentRect:frame
                                         styleMask:style
                                           backing:NSBackingStoreBuffered
                                             defer:NO];

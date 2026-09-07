@@ -63,6 +63,9 @@ namespace
         }
 
         void MouseDown(BPoint where) override {
+            // Canvas tools complete on release, including outside their
+            // bounds. Request the complete gesture from the app_server.
+            SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
             MakeFocus(true);
             _owner.on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,

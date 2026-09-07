@@ -99,6 +99,10 @@ namespace native
                                       : _modal_windows.back();
     }
 
+    void app_wnd::request_close() {
+        destroy();
+    }
+
     void app_wnd::on_native_destroy() {
         destroy_owned_windows();
         menu.detach();

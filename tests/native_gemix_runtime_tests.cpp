@@ -1,6 +1,7 @@
 //
 // Exercises GEM menu topology, clipped/coalesced painting, pressed feedback,
-// popup overlays, and splitter capture against the rasta framebuffer.
+// popup overlays, splitter capture, and original GEM scrollbar arrows
+// against the rasta framebuffer.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -16,6 +17,7 @@
 #include <native.h>
 #include "../lib/native/toolkits/gemix/globals.h"
 #include "../lib/native/toolkits/gemix/stock_text.h"
+#include "../lib/native/gpx_wnd.h"
 
 namespace
 {
@@ -31,6 +33,130 @@ namespace
 
     bool pixel(const std::vector<unsigned char> &frame, int x, int y) {
         return (frame.at(y * 113 + x / 8) & (0x80 >> (x % 8))) != 0;
+    }
+
+    // Fill a titleless popup's client up to every edge, as a custom editor can.
+    class canvas_popup final : public native::modeless_wnd
+    {
+    public:
+        canvas_popup(native::app_wnd &owner)
+            : modeless_wnd(owner, "Canvas popup", 180, 90, 240, 140) {
+            surface.set_parent(this);
+            surface.on_wnd_paint.connect([](native::wnd_paint_event event) {
+                event.g.clear(native::rgba(255, 255, 255, 255)); return true;
+            });
+            on_wnd_create.connect([this] {
+                surface.set_bounds(get_client_bounds());
+                surface.create(); surface.show(); return true;
+            });
+        }
+        bool get_native_title_visible() const override { return false; }
+        native::canvas surface;
+    };
+
+    // The same top-left text origin must align VDI and image glyph cells.
+    void check_text_origin(native::wnd &owner) {
+        native::gpx_wnd graphics(&owner, {640, 600});
+        native::img reference(32, 24);
+        for (native::gpx *target : {static_cast<native::gpx *>(&graphics), &reference.get_gpx()})
+            target->set_clip(native::rect(0, 0, 32, 24)).clear({255, 255, 255, 255})
+                .set_font(native::font_t::stock(native::font_role::control))
+                .set_ink({0, 0, 0, 255}).draw_text("New", native::point(0, 3));
+        const auto frame = framebuffer();
+        for (int y = 0; y < 24; ++y)
+            for (int x = 0; x < 32; ++x)
+                expect(pixel(frame, 640 + x, 600 + y) ==
+                    (reference.pixels()[y * 32 + x].r == 0),
+                    "GEM window text and toolbar image cells share a vertical origin");
+    }
+
+    // Compare image painting to VDI's original system-font arrow glyphs.
+    void check_scrollbar_arrows() {
+        using native::scrollbar_orientation;
+        using native::scrollbar_part;
+        struct arrow_case
+        {
+            scrollbar_orientation axis;
+            scrollbar_part part;
+            BYTE glyph;
+            int offset_y;
+        };
+        const arrow_case arrows[] = {
+            {scrollbar_orientation::vertical, scrollbar_part::decrement, 1, -1},
+            {scrollbar_orientation::vertical, scrollbar_part::increment, 2, 0},
+            {scrollbar_orientation::horizontal, scrollbar_part::decrement, 4, 2},
+            {scrollbar_orientation::horizontal, scrollbar_part::increment, 3, 2}
+        };
+        const native::rect bounds_cases[] = {
+            native::rect(3, 3, 16, 16), native::rect(3, 3, 20, 20),
+            native::rect(3, 3, 6, 7), native::rect(3, 3, 1, 1)
+        };
+        const native::rgba sentinel(64, 128, 192, 255);
+        const native::rgba ink(0, 0, 0, 255), paper(255, 255, 255, 255);
+        const auto handle = linux::gemix::runtime.vdi_handle;
+        WORD previous_text[6] = {};
+        expect(vqt_attributes(handle, previous_text), "VDI text state is available");
+        vst_font(handle, 1);
+        for (const auto &arrow : arrows) {
+            // The runtime test uses inverse Rasta colors. Reserve an
+            // unused desktop cell for the original 8x16 font glyph.
+            WORD cell[4] = {640, 640, 647, 655};
+            vs_clip(handle, 1, cell);
+            vswr_mode(handle, MD_REPLACE);
+            vsf_interior(handle, FIS_SOLID);
+            vsf_color(handle, BLACK);
+            vr_recfl(handle, cell);
+            vst_color(handle, WHITE);
+            const BYTE text[2] = {arrow.glyph, 0};
+            v_gtext(handle, 640, 656, text);
+            vs_clip(handle, 0, nullptr);
+            const auto original = framebuffer();
+            int glyph_pixels = 0;
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 8; ++x)
+                    glyph_pixels += pixel(original, 640 + x, 640 + y);
+            expect(glyph_pixels > 0, "VDI reference arrow is visible");
+
+            for (const auto &bounds : bounds_cases) {
+                for (bool pressed : {false, true}) {
+                    for (bool clipped : {false, true}) {
+                        native::img surface(26, 26);
+                        auto &graphics = surface.get_gpx();
+                        const native::rect clip = clipped
+                            ? native::rect(5, 5, 7, 9) : native::rect(0, 0, 26, 26);
+                        graphics.clear(sentinel).set_clip(clip);
+                        auto appearance = native::theme::create(graphics);
+                        native::theme::state state;
+                        state.pressed = pressed;
+                        appearance->draw_scrollbar_part(
+                            bounds, arrow.axis, arrow.part, state);
+                        // AES centers the complete font cell, with its
+                        // original per-direction vertical adjustment.
+                        const int left = bounds.x1() + (int(bounds.w()) - 8) / 2;
+                        const int top = bounds.y1() + (int(bounds.h()) - 16) / 2
+                            + arrow.offset_y;
+                        for (int y = 0; y < 26; ++y) {
+                            for (int x = 0; x < 26; ++x) {
+                                native::rgba expected = sentinel;
+                                const native::point p(x, y);
+                                if (bounds.contains(p) && clip.contains(p)) {
+                                    const bool border = x == bounds.x1() ||
+                                        x == bounds.x2() - 1 || y == bounds.y1() ||
+                                        y == bounds.y2() - 1;
+                                    const bool glyph = x >= left && x < left + 8 &&
+                                        y >= top && y < top + 16 &&
+                                        pixel(original, 640 + x - left, 640 + y - top);
+                                    expected = border || (glyph != pressed) ? ink : paper;
+                                }
+                                expect(surface.pixels()[y * 26 + x] == expected,
+                                    "scrollbar arrows match AES glyphs, inversion, and clipping");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        vst_font(handle, previous_text[0]);
     }
 
     class test_window final : public native::app_wnd
@@ -87,6 +213,8 @@ namespace
                                "desktop checker is painted before any window movement");
                     }
                 }
+                check_scrollbar_arrows();
+                check_text_origin(*this);
                 auto *tree = menu_tree_for(this);
                 expect(tree && tree[tree[ROOT].ob_head].ob_next == tree[ROOT].ob_tail,
                        "menu bar and popups are root siblings");
@@ -234,10 +362,12 @@ namespace
                 native::modal_wnd modal(*this, "Modal", 180, 90, 240, 140);
                 native::modal_wnd partial_modal(*this, "Partial modal",
                                                 480, 90, 240, 140);
+                canvas_popup canvas_editor(*this);
                 for (native::app_wnd *opened : {
                         static_cast<native::app_wnd *>(&partial),
                         static_cast<native::app_wnd *>(&modal),
-                        static_cast<native::app_wnd *>(&partial_modal)}) {
+                        static_cast<native::app_wnd *>(&partial_modal),
+                        static_cast<native::app_wnd *>(&canvas_editor)}) {
                     const auto previous = framebuffer();
                     opened->create();
                     opened->show();
@@ -252,24 +382,86 @@ namespace
                     const auto painted = framebuffer();
                     expect(!pixel(painted, interior.x1() + 10, interior.y1() + 10),
                            "new window client paints over owner or desktop");
-                    if (opened->get_modal()) {
+                    if (opened->get_modal() || !opened->get_native_title_visible()) {
                         const auto edge = outer_rect(wnd_bindings.handle_from_object(opened));
                         WORD kind = -1, ignored = 0;
                         wind_get(wnd_bindings.handle_from_object(opened), WF_KIND,
                             &kind, &ignored, &ignored, &ignored);
                         expect(kind == 0 && interior.x1() - edge.x1() == 4 &&
-                            interior.y1() - edge.y1() == 4,
-                            "modal host has no title and reserves its four-pixel frame");
+                            interior.y1() - edge.y1() == 4 &&
+                            interior.w() == 240 && interior.h() == 140,
+                            "titleless hosts reserve their frame outside requested client size");
                         for (int inset = 0; inset < 4; ++inset) {
                             const bool ink = inset != 1;
                             expect(pixel(painted, edge.x1() + 20, edge.y1() + inset) == ink &&
                                 pixel(painted, edge.x1() + 20, edge.y2() - 1 - inset) == ink &&
                                 pixel(painted, edge.x1() + inset, edge.y1() + 20) == ink &&
                                 pixel(painted, edge.x2() - 1 - inset, edge.y1() + 20) == ink,
-                                "all modal edges use the 1011 frame");
+                                "all modal and custom canvas popup edges use the 1011 frame");
                         }
                     }
                     opened->destroy();
+                }
+
+                {
+                    // The same panel > tabs > split > canvas nesting used
+                    // by sprite editors must survive the complete paint pass.
+                    native::app_wnd composed("Nested canvases", 40, 40, 480, 380);
+                    native::panel host;
+                    native::canvas upper, lower;
+                    native::split_view panes(upper, lower,
+                        native::split_orientation::vertical);
+                    native::tab_view pages;
+                    pages.set_tab_placement(native::tab_placement::bottom);
+                    pages.add_item("Sheet", panes);
+                    host.set_parent(&composed);
+                    pages.set_parent(&host);
+                    composed.create();
+                    composed.show();
+                    host.set_bounds(composed.get_client_bounds());
+                    host.create();
+                    host.show();
+                    pages.set_bounds(host.get_client_bounds());
+                    pages.create();
+                    pages.show();
+                    upper.on_wnd_paint.connect([](native::wnd_paint_event e) {
+                        e.g.clear(native::rgba(255, 255, 255, 255));
+                        e.g.set_ink(native::rgba(0, 0, 0, 255));
+                        e.g.draw_rect(native::rect(12, 12, 20, 20), true);
+                        return true;
+                    });
+                    lower.on_wnd_paint.connect([](native::wnd_paint_event e) {
+                        e.g.clear(native::rgba(0, 0, 0, 255));
+                        return true;
+                    });
+                    composed.invalidate();
+                    flush_repaints();
+                    const auto nested = framebuffer();
+                    const auto nested_work = work_rect(
+                        wnd_bindings.handle_from_object(&composed));
+                    const auto top = root_bounds(upper);
+                    const auto bottom = root_bounds(lower);
+                    expect(pixel(nested, nested_work.x1() + top.x1() + 16,
+                                 nested_work.y1() + top.y1() + 16) &&
+                           !pixel(nested, nested_work.x1() + top.x1() + 40,
+                                  nested_work.y1() + top.y1() + 16) &&
+                           pixel(nested, nested_work.x1() + bottom.x1() + 16,
+                                 nested_work.y1() + bottom.y1() + 16),
+                           "tab backgrounds do not erase nested canvas pixels");
+                    native::mouse_button received = native::mouse_button::none;
+                    upper.on_mouse_click.connect([&received](native::mouse_event e) {
+                        received = e.button;
+                        return true;
+                    });
+                    for (auto button : {native::mouse_button::right,
+                                        native::mouse_button::middle}) {
+                        dispatch_surface_click(&composed,
+                            native::point(top.x1() + 16, top.y1() + 16),
+                            true, button);
+                        expect(received == button,
+                               "canvas dispatch preserves the secondary button");
+                    }
+                    composed.destroy();
                 }
 
                 expect(stock_text("Alternating\xe2\x80\xa6") == "Alternating...",

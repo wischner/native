@@ -154,10 +154,12 @@ namespace native
         vst_color(linux::gemix::runtime.vdi_handle,
                   gem_color(get_ink()));
         const auto encoded = linux::gemix::stock_text(text);
+        // Hosted GEM's v_gtext origin is the bottom of the font cell.
+        // Using the typographic ascent moves text above centered images.
         v_gtext(linux::gemix::runtime.vdi_handle,
                 static_cast<WORD>(p.x + _offset.x),
                 static_cast<WORD>(p.y + _offset.y +
-                                  get_font_metrics().ascent),
+                                  get_font_metrics().height),
                 reinterpret_cast<const BYTE *>(encoded.c_str()));
         vs_clip(linux::gemix::runtime.vdi_handle, 0, nullptr);
         return *this;

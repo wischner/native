@@ -7,6 +7,7 @@
 //
 
 #include <native/text_edit.h>
+#include <native/property_grid.h>
 
 #include <cstdlib>
 #include <stdexcept>
@@ -204,6 +205,13 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "Motif: Failed to create text_edit.");
+        if (dynamic_cast<property_grid *>(get_parent())) {
+            Pixel paper = 0;
+            XtVaGetValues(XtParent(widget), XmNbackground, &paper, nullptr);
+            XtVaSetValues(widget, XmNbackground, paper,
+                XmNshadowThickness, 0, XmNhighlightThickness, 0,
+                XmNmarginHeight, 1, nullptr);
+        }
         auto *binding = new linux::openmotif::motif_text_edit;
         binding->widget = widget;
         binding->multiline = multiline;

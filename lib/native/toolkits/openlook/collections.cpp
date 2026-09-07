@@ -932,8 +932,10 @@ namespace linux::openlook
             // Restore the new page after that deferred item cleanup.
             // Clear spare row-fitting space too: a moved native list may
             // have painted its provisional border there during creation.
-            if (current->content_panel)
+            if (current->content_panel) {
                 panel_paint(current->content_panel, PANEL_CLEAR);
+                linux::openlook::mask_panel_borders(current->content_panel);
+            }
         });
     }
 

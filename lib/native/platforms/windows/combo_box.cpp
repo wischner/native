@@ -11,6 +11,7 @@
 #include <windows.h>
 
 #include <native/combo_box.h>
+#include <native/property_grid.h>
 
 #include "globals.h"
 
@@ -38,7 +39,9 @@ namespace
         if (!parent || !parent->get_created() || !parent_window)
             throw std::runtime_error(
                 "Windows: combo box requires a created parent.");
+        const bool property = dynamic_cast<native::property_grid *>(parent) != nullptr;
         const DWORD style = WS_CHILD | WS_TABSTOP | WS_VSCROLL |
+            (property ? CBS_OWNERDRAWFIXED | CBS_HASSTRINGS : 0) |
             (owner->get_style() == native::combo_box_style::editable
                 ? CBS_DROPDOWN : CBS_DROPDOWNLIST);
         const native::rect bounds = owner->get_bounds();
@@ -60,6 +63,14 @@ namespace
                 "Windows: Failed to create combo box.");
         SendMessageW(window, WM_SETFONT,
             reinterpret_cast<WPARAM>(windows::control_font()), TRUE);
+        if (property) {
+            // Keep the native popup and arrow while giving the selected
+            // value the same paper and compact height as adjacent cells.
+            SendMessageW(window, CB_SETITEMHEIGHT, static_cast<WPARAM>(-1),
+                std::max<int>(1, bounds.h() - 6));
+            SendMessageW(window, CB_SETITEMHEIGHT, 0,
+                std::max<int>(1, bounds.h() - 2));
+        }
         SendMessageW(window, CB_SETMINVISIBLE, 8, 0);
         add_items(window, owner->get_items());
         SendMessageW(window, CB_SETCURSEL,

@@ -96,10 +96,14 @@ namespace linux::wmaker
         WMWidget *widget = nullptr;
         WMTextField *field = nullptr;
         WMText *text = nullptr;
+        WMFrame *cell = nullptr;
         WMTextFieldDelegate delegate = {};
         bool suppress = false;
         bool all_selected = false;
     };
+    // Align the native WMText line within its clipped property cell.
+    void configure_text_cell(native::text_edit &owner, native_text_edit &state);
+
     struct native_combo_box
     {
         WMFrame *frame = nullptr;

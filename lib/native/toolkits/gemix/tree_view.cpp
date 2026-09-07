@@ -39,6 +39,7 @@ namespace native
         if (!_created)
             return;
         auto *self = this;
+        linux::gemix::forget_drag(self);
         linux::gemix::tree_views.erase(
             std::remove(linux::gemix::tree_views.begin(),
                         linux::gemix::tree_views.end(),

@@ -14,6 +14,7 @@
 #include <Xm/DrawingA.h>
 #include <Xm/List.h>
 #include <Xm/MessageB.h>
+#include <Xm/PushB.h>
 #include <Xm/SashP.h>
 #include <Xm/ScrollBar.h>
 #include <Xm/ScrolledW.h>
@@ -21,6 +22,7 @@
 #include <Xm/TextF.h>
 #include <array>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 
 namespace
@@ -94,7 +96,59 @@ namespace
         return result;
     }
 
+    // Native focus/default-button reservations can move relief far inward.
+    void check_border_metrics(native::app_wnd &root) {
+        native::button button("", 360, 40, 180, 80);
+        attach(button, root);
+        const auto release = [](XImage *image) { if (image) XDestroyImage(image); };
+        const auto capture = [&] {
+            Position x = 0, y = 0;
+            Dimension width = 0, height = 0;
+            XtVaGetValues(widget(button), XmNx, &x, XmNy, &y,
+                XmNwidth, &width, XmNheight, &height, nullptr);
+            auto image = std::unique_ptr<XImage, decltype(release)>(
+                XGetImage(motif::cached_display, XtWindow(widget(root)),
+                    x, y, width, height, AllPlanes, ZPixmap), release);
+            expect(bool(image), "read native button and exposed parent pixels");
+            return image;
+        };
+        const auto sample = [](XImage &image, unsigned side, int depth) {
+            const int x[] = {image.width / 2, image.width - 1 - depth,
+                image.width / 2, depth};
+            const int y[] = {depth, image.height / 2,
+                image.height - 1 - depth, image.height / 2};
+            return XGetPixel(&image, x[side], y[side]);
+        };
+        for (int reservation : {0, 1, 2}) {
+            XtVaSetValues(widget(button), XmNhighlightThickness, reservation + 2,
+                XmNshadowThickness, 2, XmNdefaultButtonShadowThickness, reservation,
+                XmNshowAsDefault, reservation ? 1 : 0, nullptr);
+            button.set_dimensions({static_cast<native::dim>(180 + reservation), 80});
+            pump();
+            const auto reference = capture();
+            const auto paper = XGetPixel(reference.get(), reference->width / 2, reference->height / 2);
+            for (unsigned mask = 0; mask < 16; ++mask) {
+                button.set_border_sides(static_cast<native::border_sides>(mask));
+                pump();
+                const auto actual = capture();
+                for (unsigned side = 0; side < 4; ++side)
+                    for (int depth = 0; depth < 16; ++depth) {
+                        const auto expected = mask & (1u << side)
+                            ? sample(*reference, side, depth) : paper;
+                        if (sample(*actual, side, depth) != expected)
+                            throw std::runtime_error("Motif border pixels: reservation=" +
+                                std::to_string(reservation) + " mask=" + std::to_string(mask) +
+                                " side=" + std::to_string(side) + " depth=" + std::to_string(depth) +
+                                " expected=" + std::to_string(expected) +
+                                " actual=" + std::to_string(sample(*actual, side, depth)));
+                    }
+            }
+        }
+        button.destroy();
+    }
+
     void checks(native::app_wnd &root) {
+        check_border_metrics(root);
         native::modeless_wnd early(root, "Early graphics", 80, 80, 300, 200);
         early.create();
         auto appearance = native::theme::create(early.get_gpx());

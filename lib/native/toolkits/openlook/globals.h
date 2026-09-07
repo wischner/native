@@ -30,6 +30,8 @@
 
 namespace linux::openlook
 {
+    // Remove hidden edges after native windowless Panel items repaint.
+    void mask_panel_borders(Panel panel);
     // Owns the XView resources representing one portable top level.
     struct openlook_window
     {

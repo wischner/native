@@ -392,6 +392,12 @@ namespace native
         return draw_button(bounds, text, state{});
     }
 
+    theme &theme::draw_toolbar_button(const rect &bounds,
+                                      const std::string &text,
+                                      const state &element_state) {
+        return draw_menu_title(bounds, text, element_state);
+    }
+
     theme &theme::draw_menu_title(const rect &bounds,
                                   const std::string &text) {
         return draw_menu_title(bounds, text, state{});

@@ -74,11 +74,11 @@ namespace native
                               : nullptr;
         // Keep the C++ lifetime/modal graph, but ordinary modeless windows
         // must stack independently. A Win32 owner would pin them above it.
-        if (dynamic_cast<modeless_wnd *>(this))
+        if (get_native_title_visible() && dynamic_cast<modeless_wnd *>(this))
             owner_hwnd = nullptr;
         const DWORD extended_style =
             get_modal() ? WS_EX_DLGMODALFRAME : 0;
-        const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
+        const DWORD style = (get_native_title_visible() ? WS_OVERLAPPEDWINDOW : WS_POPUP) | WS_CLIPCHILDREN;
         RECT framed_bounds = {
             0, 0, _bounds.d.w, _bounds.d.h};
         if (!AdjustWindowRectEx(
