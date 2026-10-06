@@ -161,6 +161,10 @@ namespace linux::sdl2
                 bounds.p.y + content_origin,
                 static_cast<int>(bounds.d.w),
                 static_cast<int>(bounds.d.h)};
+            // Drop the previous viewport's clip before moving the origin.
+            // Accelerated renderers can otherwise retain that scissor and
+            // cut off a sibling's trailing tab strip.
+            SDL_RenderSetClipRect(renderer, nullptr);
             SDL_RenderSetViewport(renderer, &region_viewport);
 
             const native::rect invalid(0, 0, bounds.d.w, bounds.d.h);
@@ -168,6 +172,7 @@ namespace linux::sdl2
             region->on_native_paint(
                 native::wnd_paint_event(invalid, graphics));
 
+            SDL_RenderSetClipRect(renderer, nullptr);
             SDL_RenderSetViewport(renderer, &content_viewport);
             graphics.set_clip(content_bounds);
         }

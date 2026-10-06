@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-09-07.
+Audit date: 2026-10-06.
 
 ## Legend
 
@@ -123,6 +123,13 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
 | `message_box` | **N/H** | Xaw `Dialog` shell and Xaw buttons, composed to support the portable one-to-three-button contract. |
 ## Linux SDL2
+
+The 2026-10-06 directional-tab audit retains **C**: SDL2 has no tab widget.
+Structural painting disables the old renderer clip before changing a child
+viewport, preserving right-side strips on accelerated renderers. Neighboring
+tab hosts with rulers and a status bar pass the four-edge pixel regression
+with both software and desktop rendering; the input-chrome gallery is also
+visually checked.
 
 The 2026-09-06 lifecycle audit adds application `request_close()` policy
 dispatch for title-bar close and quit, preserving the event loop while a

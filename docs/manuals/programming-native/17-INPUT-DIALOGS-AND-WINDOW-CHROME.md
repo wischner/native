@@ -300,6 +300,10 @@ The last `tool_item` field is a `std::shared_ptr<const native::img>`. Assign an
 image and use `set_icon_size({16, 16})`, `{24, 24}`, or `{32, 32}`. Images can be
 used without a text label. Use transparent image pixels around the artwork
 to preserve the toolbar background. Images and labels are centered together.
+The default icon size is 16 by 16 pixels; any supported positive dimensions
+can be passed to `set_icon_size(native::size(24, 24))`. The toolbar scales the
+source image to that size. `native::img` loads PNG or JPEG data; PNG supports
+the transparent background commonly used for toolbar artwork.
 The bar grows or shrinks with the selected image size and retains its padding;
 neighbors and the client area are updated in the same pass. Top and bottom
 bars span the window width, and side bars stop between them;

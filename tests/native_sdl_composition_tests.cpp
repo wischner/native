@@ -2,6 +2,7 @@
 // Verifies actual SDL frame pixels for nested structural controls.
 // Solid canvas colors must survive tab and accordion backgrounds,
 // including tab replacement, splitter layout changes, and resize.
+// Neighboring directional tab strips must survive viewport clip changes.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -30,7 +31,7 @@ namespace
     {
     public:
         composition_window()
-            : native::app_wnd("SDL composition", 20, 20, 420, 360)
+            : native::app_wnd("SDL composition", 20, 20, 790, 730)
             , _split(_first, _second,
                      native::split_orientation::vertical) {
             _first.on_wnd_paint.connect(
@@ -73,6 +74,20 @@ namespace
                 _accordion.set_expanded_index(0);
                 _tabs.create();
                 _tabs.show();
+                _left_tabs.set_parent(this);
+                _left_tabs.set_bounds(native::rect(60, 516, 300, 142));
+                _left_tabs.set_tab_placement(native::tab_placement::left);
+                _left_tabs.add_item("Left", _left_list);
+                _left_tabs.add_item("Details", _left_details);
+                _left_tabs.create();
+                _left_tabs.show();
+                _right_tabs.set_parent(this);
+                _right_tabs.set_bounds(native::rect(400, 516, 300, 142));
+                _right_tabs.set_tab_placement(native::tab_placement::right);
+                _right_tabs.add_item("Right", _right_list);
+                _right_tabs.add_item("Details", _right_details);
+                _right_tabs.create();
+                _right_tabs.show();
                 native::app::post([this] { verify(); });
                 return true;
             });
@@ -94,6 +109,15 @@ namespace
         native::accordion _accordion;
         native::split_view _split;
         native::tab_view _tabs;
+        native::list _left_list{{"Counter-clockwise labels"}};
+        native::list _left_details{{"Details page"}};
+        native::tab_view _left_tabs;
+        native::list _right_list{{"Clockwise labels", "Content precedes strip"}};
+        native::list _right_details{{"Details page"}};
+        native::tab_view _right_tabs;
+        native::ruler _horizontal_ruler{*this, native::window_edge::top, 24};
+        native::ruler _vertical_ruler{*this, native::window_edge::left, 24};
+        native::status_bar _status{*this};
 
         // Read an actual composed pixel, including all later siblings
         // and container backgrounds drawn by the SDL frame dispatcher.
@@ -123,9 +147,52 @@ namespace
             linux::sdl2::render_window_if_needed(this);
         }
 
+        // Check actual strip pixels after the borrowed list paints.
+        void verify_tab_edges() {
+            _right_tabs.set_selected_index(0);
+            auto appearance = native::theme::create(get_gpx());
+            const auto border = appearance->get_button_border_color();
+            for (auto placement : {native::tab_placement::right,
+                                   native::tab_placement::top,
+                                   native::tab_placement::bottom,
+                                   native::tab_placement::left,
+                                   native::tab_placement::right}) {
+                _right_tabs.set_tab_placement(placement);
+                render();
+                auto *state = linux::sdl2::wnd_gpx_bindings
+                    .object_from_handle(this);
+                const auto origin = linux::sdl2::origin_in_root(_right_tabs);
+                const auto bounds = _right_tabs.get_tab_bounds(0);
+                const bool horizontal =
+                    placement == native::tab_placement::top ||
+                    placement == native::tab_placement::bottom;
+                const int x = horizontal ? bounds.x1() + bounds.w() / 2
+                    : (placement == native::tab_placement::left
+                           ? bounds.x1() : bounds.x2() - 1);
+                const int y = horizontal
+                    ? (placement == native::tab_placement::top
+                           ? bounds.y1() : bounds.y2() - 1)
+                    : bounds.y1() + bounds.h() / 2;
+                const SDL_Rect pixel{origin.x + x,
+                    origin.y + y + linux::sdl2::content_origin_y(this),
+                    1, 1};
+                native::rgba color;
+                require(SDL_RenderReadPixels(state->renderer, &pixel,
+                            SDL_PIXELFORMAT_RGBA32, &color,
+                            sizeof(color)) == 0,
+                        "Read tab free-edge pixel");
+                require(color == border,
+                        "Tab free edge survives list painting: " +
+                            std::to_string(static_cast<int>(placement)));
+            }
+        }
+
         // Exercise both directions of nesting and repeat after layout.
         void verify() {
             try {
+                verify_tab_edges();
+                _tabs.set_tab_placement(native::tab_placement::bottom);
+                _tabs.set_selected_index(0);
                 render();
                 require(center_pixel(_first) == red,
                         "Bottom tabs retain the upper split canvas");

@@ -149,7 +149,10 @@ divider space belongs visually to the host; only the compact center grip marks
 the draggable axis.
 
 On an emulated backend such as SDL, the split host is painted before its pane
-children. Divider input is translated from root coordinates, captures the
-active split until button release, and updates the panes continuously during
+children. SDL's structural pass clears the renderer clip before changing
+viewports and establishes each host's local clip for painting. This preserves
+all four tab strips on accelerated renderers, including neighboring hosts
+in windows with non-client chrome. Divider input is translated from root
+coordinates, captures the active split until button release, and updates the panes continuously during
 motion. Horizontal and vertical orientations select their matching system
 resize cursor automatically.

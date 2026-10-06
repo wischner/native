@@ -21,6 +21,11 @@ overrides can keep the event loop alive during asynchronous save prompts.
 Other backends currently retain direct native-close destruction.
 SDL2 also composes panels, tabs, split views, accordions, and canvases in
 parent-depth order, preserving canvas pixels inside nested containers.
+Viewport changes clear the previous renderer clip so accelerated rendering
+preserves trailing tab strips. The 2026-10-06 four-edge pixel regression passes
+with software and desktop renderers, and the input-chrome gallery visually
+confirms the right-side labels and borders.
+All 11 SDL2 CTests pass under the Docker toolchain after this correction.
 Canvas input retains left/middle/right identity and captures drags through
 release, including motion outside the original surface. Dedicated SDL
 composition and input tests cover these paths. Software-renderer requests
