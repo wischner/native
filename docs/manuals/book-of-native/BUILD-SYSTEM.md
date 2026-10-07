@@ -176,9 +176,10 @@ executables:
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
 | `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif/OPEN LOOK parent-child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2, Motif, OPEN LOOK and macOS; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
+| `native_mouse_shader_tests` | Generation-safe pointer transitions/cancellation, rich deltas, package validation, orientation/color/alpha, multipass/history, transaction rollback, copied source and recreation | All backends; inert window hooks, image drawing; no desktop cursor/raw-input claim |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
 | `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; executable also runs on a desktop renderer |
-| `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, and drag/release capture | SDL2 dummy video with software rendering |
+| `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, drag/release capture and cancellation without synthetic releases | SDL2 dummy video with software rendering |
 | `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure, nested icon-grid/tree scrollbar arrows, paging, thumb capture outside the window, selection preservation, capture cleanup on destruction, compact property editing/scrolling, and toolbar activation/cancellation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
 | `native_x11_runtime_tests` | Pre-show graphics, full-row selection, grow/shrink layout, idle repaint counts, collection/table edges, bottom rows, bordered full-width combo menus with hover/selection, four open tab joins, individual menu borders without a full-width rule, teardown, centered message buttons/shells with edge and hidden-owner placement, and live bordered-pane drag | X11; X server (including private Xvfb) and the image's XTest runtime |
@@ -493,3 +494,26 @@ and actual desktop focus remain manual acceptance checks.
 When included through a parent's `add_subdirectory()`, Native builds only
 its library; Vision, tests and Docker targets remain top-level entry points.
 The parent owns its GUI target, platform launcher and Docker invocation.
+
+
+The optional image-shader authoring tool is `scripts/shaders/package.py`. It
+requires Python 3's standard library only and writes `native-image-1` packages
+shared by every backend. Python and shader translation libraries are not
+runtime/link dependencies; the interpreter sources are compiled in the ordinary
+`native` target. Vision embeds the independent CRT test package at configure
+time and exposes it through `--mouse-shaders`. See the
+[image-shader chapter](../programming-native/20-IMAGE-SHADERS.md) for authoring.
+
+The standard-library package compiler also has deterministic output and hostile
+expression tests: `python3 tests/native_shader_package_tests.py`. These do not
+build a host C++ executable or replace the Docker CTests.
+
+| Terminal test | Coverage | Runtime needs |
+| --- | --- | --- |
+| `native_terminal_screen_tests` | Incremental ANSI/color/cursor/erase/scroll state, portable font pixels and CRT history, shaded bezel, glass reflection/recess and power-indicator pixels | Every backend; external asset fixtures |
+| `native_retro_terminal_smoke` | Production Vision window, native editor/button siblings, host-shell output, real shader output, hidden cursor and posted close | Linux CTest: SDL dummy, X11-family Xvfb, GEMix direct/gemd; same CLI is available for target desktop checks |
+
+Vision's post-build step copies `src/assets/retro-terminal/` beside the executable,
+including attributed shader source, package, font and license files. Preserve
+that directory during VM deployment. The test mode does not change the normal
+Vision launch configuration.

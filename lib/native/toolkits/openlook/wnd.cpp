@@ -19,6 +19,7 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "../x_pointer.h"
 #include "collection_host.h"
 #include "window_position.h"
 
@@ -28,6 +29,9 @@ namespace
         if (!display)
             return None;
 
+        if (cursor == native::mouse_cursor::hidden)
+            return native::detail::invisible_x_cursor(
+                display, DefaultRootWindow(display));
         unsigned int shape = XC_left_ptr;
         if (cursor == native::mouse_cursor::ibeam)
             shape = XC_xterm;
@@ -288,7 +292,8 @@ namespace native
         if (!display || target == None)
             return;
 
-        Cursor cursor = cursor_for(display, _cursor);
+        Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
+            detail::x_pointer_position(display, target)));
         if (cursor != None) {
             XDefineCursor(display, target, cursor);
             XFreeCursor(display, cursor);
@@ -345,3 +350,37 @@ namespace native
         return *_gpx;
     }
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() {
+        return {true, true, false, false};
+    }
+    bool backend_capture_mouse(wnd &owner, mouse_capture_options,
+                               std::string &error) {
+        Display *display = linux::openlook::cached_display;
+        Window target = linux::openlook::drawable(&owner);
+        if (!display || target == None) {
+            error = "Native pointer surface is unavailable.";
+            return false;
+        }
+        const int result = XGrabPointer(display, target, False,
+            ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+            GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+        if (result != GrabSuccess) {
+            error = "X11 pointer grab failed or another grab is active.";
+            return false;
+        }
+        return true;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) {
+        Display *display = linux::openlook::cached_display;
+        Window target = linux::openlook::drawable(&owner);
+        (void)target;
+        if (display) XUngrabPointer(display, CurrentTime);
+        backend_refresh_mouse(owner);
+    }
+    void backend_refresh_mouse(wnd &owner) {
+        mouse_access::refresh(owner);
+    }
+}

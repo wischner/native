@@ -18,6 +18,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "table_scrollbars.h"
 
 namespace
@@ -103,7 +104,11 @@ namespace
         void MouseMoved(BPoint where,
                         uint32 transit,
                         const BMessage *message) override {
-            (void)transit;
+            if (transit == B_EXITED_VIEW) {
+                native::detail::pointer_leave(_owner, native::point(
+                    static_cast<native::coord>(where.x), static_cast<native::coord>(where.y)));
+                return;
+            }
             (void)message;
             _owner.on_native_mouse_move(native::point(
                 static_cast<native::coord>(where.x),

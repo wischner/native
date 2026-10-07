@@ -11,7 +11,14 @@ implementation should look like. This is not a roadmap or a wish list. When
 the architecture or code changes, the relevant chapter should be updated in
 the same commit.
 
-## Current scope (September 2026)
+## Current scope (October 2026)
+
+The mouse extension adds client-scoped hidden policy, ordered boundary and
+cancellation events, rich motion and capability-checked scoped capture. The
+portable `shader_view` uses a shared programmable CPU image executor with
+multipass/history; it has no GPU adapter. Current per-backend build and new
+runtime evidence are recorded separately in the feature matrix.
+
 
 - Runtime-tested in this project workflow:
   - Linux X11 backend
@@ -36,6 +43,10 @@ Runtime-tested does not imply an exhaustive interactive walkthrough. The
 coverage; the [macOS runtime note](../notes/MACOS-REMOTE-RUNTIME.md) separates
 automated regressions and targeted visual checks from the still-incomplete
 full-gallery walkthrough.
+
+The portable full-monitor CRT shader demo is available as `vision --retro-terminal`.
+Its selected upstream effects, shell and rendering tests, and current backend
+limits are recorded in the [feature matrix](book-of-native/FEATURE-MATRIX.md).
 
 ## Chapters
 
@@ -118,6 +129,10 @@ full-gallery walkthrough.
 20. [Background delivery, PCM output, and child ownership](book-of-native/PATTERNS-BACKGROUND-SERVICES.md)
     Scoped C++20 UI results, bounded PCM peers and shell-free child ownership.
     Expands Architecture Section 20.
+
+21. [Portable programmable image shaders](book-of-native/PATTERNS-IMAGE-SHADERS.md)
+    Bounded CPU image programs, canvas composition, temporal history and
+    coalesced generation-safe scheduling. Expands Architecture Section 21.
 
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).

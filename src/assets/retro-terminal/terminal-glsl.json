@@ -1,0 +1,334 @@
+{
+  "profile": "native-glsl-1",
+  "parameters": [
+    {
+      "name": "tint",
+      "range": [
+        0,
+        1
+      ],
+      "default": [
+        0.94,
+        0.534,
+        0.117,
+        1
+      ]
+    },
+    {
+      "name": "curvature",
+      "range": [
+        0,
+        1
+      ],
+      "default": 0.18
+    },
+    {
+      "name": "bloom",
+      "range": [
+        0,
+        4
+      ],
+      "default": 1.375
+    }
+  ],
+  "textures": [
+    "upstream/allNoise512.png"
+  ],
+  "passes": [
+    {
+      "name": "burn",
+      "vertex": "upstream/burn_in.vert",
+      "fragment": "upstream/burn_in.frag",
+      "samplers": {
+        "txt_source": -1,
+        "burnInSource": -2
+      },
+      "uniforms": {
+        "burnInLastUpdate": "elapsed",
+        "prevLastUpdate": "previous_time",
+        "burnInTime": 0.6
+      },
+      "history": true,
+      "reduction": 2
+    },
+    {
+      "name": "blur_border",
+      "vertex": "upstream/qt/shadereffect.vert",
+      "fragment": "upstream/qt/shadereffect.frag",
+      "samplers": {
+        "source": [
+          -1,
+          2
+        ]
+      },
+      "uniforms": {},
+      "extent": "viewport",
+      "reduction": 2,
+      "padding": 64,
+      "alignment": 32,
+      "mapping": 1
+    },
+    {
+      "name": "blur_2",
+      "vertex": "upstream/qt/fastblur_internal.vert",
+      "fragment": "upstream/qt/fastblur_internal.frag",
+      "samplers": {
+        "source": 1
+      },
+      "uniforms": {
+        "xStep": {
+          "binding": "pass_texel",
+          "value": [
+            1,
+            0
+          ]
+        },
+        "yStep": {
+          "binding": "pass_texel",
+          "value": [
+            0,
+            1
+          ]
+        }
+      },
+      "extent": "viewport",
+      "reduction": 4,
+      "padding": 32,
+      "alignment": 16
+    },
+    {
+      "name": "blur_3",
+      "vertex": "upstream/qt/fastblur_internal.vert",
+      "fragment": "upstream/qt/fastblur_internal.frag",
+      "samplers": {
+        "source": 2
+      },
+      "uniforms": {
+        "xStep": {
+          "binding": "pass_texel",
+          "value": [
+            1,
+            0
+          ]
+        },
+        "yStep": {
+          "binding": "pass_texel",
+          "value": [
+            0,
+            1
+          ]
+        }
+      },
+      "extent": "viewport",
+      "reduction": 8,
+      "padding": 16,
+      "alignment": 8
+    },
+    {
+      "name": "blur_4",
+      "vertex": "upstream/qt/fastblur_internal.vert",
+      "fragment": "upstream/qt/fastblur_internal.frag",
+      "samplers": {
+        "source": 3
+      },
+      "uniforms": {
+        "xStep": {
+          "binding": "pass_texel",
+          "value": [
+            1,
+            0
+          ]
+        },
+        "yStep": {
+          "binding": "pass_texel",
+          "value": [
+            0,
+            1
+          ]
+        }
+      },
+      "extent": "viewport",
+      "reduction": 16,
+      "padding": 8,
+      "alignment": 4
+    },
+    {
+      "name": "blur_5",
+      "vertex": "upstream/qt/fastblur_internal.vert",
+      "fragment": "upstream/qt/fastblur_internal.frag",
+      "samplers": {
+        "source": 4
+      },
+      "uniforms": {
+        "xStep": {
+          "binding": "pass_texel",
+          "value": [
+            1,
+            0
+          ]
+        },
+        "yStep": {
+          "binding": "pass_texel",
+          "value": [
+            0,
+            1
+          ]
+        }
+      },
+      "extent": "viewport",
+      "reduction": 32,
+      "padding": 4,
+      "alignment": 2
+    },
+    {
+      "name": "blur_6",
+      "vertex": "upstream/qt/fastblur_internal.vert",
+      "fragment": "upstream/qt/fastblur_internal.frag",
+      "samplers": {
+        "source": 5
+      },
+      "uniforms": {
+        "xStep": {
+          "binding": "pass_texel",
+          "value": [
+            1,
+            0
+          ]
+        },
+        "yStep": {
+          "binding": "pass_texel",
+          "value": [
+            0,
+            1
+          ]
+        }
+      },
+      "extent": "viewport",
+      "reduction": 64,
+      "padding": 2,
+      "alignment": 1
+    },
+    {
+      "name": "bloom",
+      "vertex": "upstream/qt/shadereffect.vert",
+      "fragment": "upstream/qt/fastblur.frag",
+      "samplers": {
+        "source1": 2,
+        "source2": 3,
+        "source3": 4,
+        "source4": 5,
+        "source5": 6
+      },
+      "uniforms": {
+        "weight1": 0.041010163030300355,
+        "weight2": 0.20084180252525033,
+        "weight3": 0.36067344202020024,
+        "weight4": 0.2786531159595996,
+        "weight5": 0.11882147646464954
+      },
+      "extent": "viewport",
+      "reduction": 2,
+      "mapping": 2,
+      "source_rect": [
+        64,
+        64,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "frame",
+      "vertex": "upstream/terminal_frame.vert",
+      "fragment": "upstream/terminal_frame.frag",
+      "samplers": {},
+      "uniforms": {
+        "screenCurvature": "curvature",
+        "frameColor": [
+          0.304,
+          0.297,
+          0.29,
+          1
+        ],
+        "frameSize": 0.01,
+        "screenRadius": 27.2,
+        "viewportSize": "viewport_size",
+        "ambientLight": 0.2,
+        "frameShininess": 0.1
+      },
+      "extent": "viewport"
+    },
+    {
+      "name": "static",
+      "vertex": "upstream/terminal_static.vert",
+      "fragment": "upstream/terminal_static.frag",
+      "samplers": {
+        "source": -1,
+        "bloomSource": [
+          7,
+          1
+        ]
+      },
+      "uniforms": {
+        "screenCurvature": "curvature",
+        "rgbShift": 0,
+        "frameShininess": 0.1,
+        "frameSize": 0.01,
+        "screen_brightness": 1,
+        "bloom": "bloom"
+      },
+      "extent": "viewport"
+    },
+    {
+      "name": "dynamic",
+      "vertex": "upstream/terminal_dynamic.vert",
+      "fragment": "upstream/terminal_dynamic.frag",
+      "samplers": {
+        "noiseSource": [
+          100,
+          1
+        ],
+        "screenBuffer": 9,
+        "burnInSource": 0,
+        "frameSource": 8
+      },
+      "uniforms": {
+        "time": "elapsed",
+        "fontColor": "tint",
+        "backgroundColor": [
+          0.06,
+          0.034,
+          0.0075,
+          1
+        ],
+        "virtualResolution": "source_size",
+        "rasterizationIntensity": 0.65,
+        "burnInLastUpdate": "elapsed",
+        "burnInTime": 0.6,
+        "burnIn": 0.25,
+        "staticNoise": 0.12,
+        "screenCurvature": "curvature",
+        "glowingLine": 0.04,
+        "chromaColor": 0.25,
+        "jitterDisplacement": [
+          0.0014,
+          0.0004
+        ],
+        "jitter": 0.2,
+        "horizontalSync": 0.08,
+        "horizontalSyncStrength": 0.074,
+        "flickering": 0.1,
+        "scaleNoiseSize": [
+          1.3,
+          1.3
+        ],
+        "frameShininess": 0.1,
+        "frameSize": 0.01,
+        "bloom": "bloom"
+      },
+      "extent": "viewport",
+      "defines": {
+        "CRT_RASTER_MODE": 1
+      }
+    }
+  ]
+}

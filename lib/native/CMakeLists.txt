@@ -61,6 +61,13 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/border.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/input_state.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mouse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader_package.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader_executor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/glsl_package.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/glsl_renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader_schedule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ui_dispatch.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/audio_out.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/process.cpp

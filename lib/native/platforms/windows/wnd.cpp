@@ -18,10 +18,12 @@
 #include "gpx_wnd.h"
 #include "globals.h"
 #include "../../input_state.h"
+#include "../../mouse_state.h"
 
 namespace windows
 {
     static HCURSOR cursor_handle(native::mouse_cursor cursor) {
+        if (cursor == native::mouse_cursor::hidden) return nullptr;
         LPCTSTR resource = IDC_ARROW;
         if (cursor == native::mouse_cursor::ibeam)
             resource = IDC_IBEAM;
@@ -151,8 +153,25 @@ namespace windows
             break;
         }
 
+        case WM_MOUSELEAVE:
+            native::detail::pointer_hover(nullptr, native::point{});
+            break;
+        case WM_CAPTURECHANGED:
+            if (reinterpret_cast<HWND>(lparam) != hwnd &&
+                native::detail::pointer_capture(*wnd) == wnd)
+                native::detail::pointer_cancel(*wnd,
+                    native::mouse_cancel_reason::capture_lost);
+            break;
+        case WM_CANCELMODE:
+        case WM_ENTERMENULOOP:
+            native::detail::mouse_access::cancel_tree(*wnd,
+                native::mouse_cancel_reason::menu);
+            native::detail::reset_input(*wnd);
+            break;
         case WM_MOUSEMOVE:
             {
+                TRACKMOUSEEVENT tracking{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
+                TrackMouseEvent(&tracking);
                 POINT screen{
                     GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
                 ClientToScreen(hwnd, &screen);
@@ -176,7 +195,7 @@ namespace windows
                 POINT cursor{};
                 GetCursorPos(&cursor);
                 ScreenToClient(hovered, &cursor);
-                SetCursor(cursor_handle(owner->get_cursor_at(
+                SetCursor(cursor_handle(native::detail::pointer_cursor(*owner,
                     native::point(static_cast<native::coord>(cursor.x),
                                   static_cast<native::coord>(cursor.y)))));
                 return TRUE;
@@ -358,9 +377,6 @@ namespace windows
                 return 0;
             break;
         }
-        case WM_ENTERMENULOOP:
-            native::detail::reset_input(*wnd);
-            break;
 
 
 
@@ -990,8 +1006,12 @@ namespace native
             return;
         native::wnd *owner = windows::cursor_owner(
             WindowFromPoint(point));
-        if (owner == this)
-            SetCursor(windows::cursor_handle(_cursor));
+        if (owner == this) {
+            ScreenToClient(hwnd, &point);
+            SetCursor(windows::cursor_handle(detail::pointer_cursor(*this,
+                native::point(static_cast<coord>(point.x),
+                              static_cast<coord>(point.y)))));
+        }
     }
 
     wnd &wnd::invalidate_native() {
@@ -1029,3 +1049,24 @@ namespace native
         return *_gpx;
     }
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() { return {true, true, false, false}; }
+    bool backend_capture_mouse(wnd &owner, mouse_capture_options, std::string &error) {
+        HWND hwnd = windows::wnd_bindings.handle_from_object(&owner);
+        if (!hwnd || GetCapture() || GetFocus() != hwnd) {
+            error = "Win32 capture requires focus and an unclaimed pointer.";
+            return false;
+        }
+        SetCapture(hwnd);
+        if (GetCapture() != hwnd) { error = "Win32 capture failed."; return false; }
+        return true;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) {
+        HWND hwnd = windows::wnd_bindings.handle_from_object(&owner);
+        if (GetCapture() == hwnd) ReleaseCapture();
+        backend_refresh_mouse(owner);
+    }
+    void backend_refresh_mouse(wnd &owner) { mouse_access::refresh(owner); }
+}

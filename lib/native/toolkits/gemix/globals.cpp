@@ -8,12 +8,14 @@
 #include <algorithm>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 
 namespace linux::gemix
 {
     namespace
     {
         WORD current_mouse_form = ARROW;
+        bool mouse_hidden = false;
 
         WORD mouse_form(native::mouse_cursor cursor) {
             if (cursor == native::mouse_cursor::ibeam)
@@ -92,6 +94,8 @@ namespace linux::gemix
 
     void update_mouse_cursor(native::app_wnd *parent,
                              native::point point) {
+        if (parent) native::detail::pointer_position(*parent, point);
+        else native::detail::pointer_hover(nullptr, point);
         native::wnd *target = parent
                                   ? native::detail::deepest_at(
                                         *parent, point)
@@ -106,9 +110,13 @@ namespace linux::gemix
                 static_cast<native::coord>(point.x - origin.x),
                 static_cast<native::coord>(point.y - origin.y));
         }
-        const WORD next_form = mouse_form(
-            target ? target->get_cursor_at(local)
-                   : native::mouse_cursor::arrow);
+        auto shape = target ? native::detail::pointer_cursor(*target, local) : native::mouse_cursor::arrow;
+        const bool hidden = shape == native::mouse_cursor::hidden;
+        if (mouse_hidden != hidden) {
+            graf_mouse(hidden ? M_OFF : M_ON, nullptr);
+            mouse_hidden = hidden;
+        }
+        const WORD next_form = mouse_form(shape);
         if (next_form == current_mouse_form)
             return;
 
@@ -120,6 +128,7 @@ namespace linux::gemix
         if (!runtime.initialized)
             return;
 
+        if (mouse_hidden) { graf_mouse(M_ON, nullptr); mouse_hidden = false; }
         graf_mouse(ARROW, nullptr);
         current_mouse_form = ARROW;
         if (runtime.vdi_handle != 0) {

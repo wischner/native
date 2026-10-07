@@ -27,6 +27,19 @@ the earlier diagnostic sessions. No C++ API changes were needed, and this
 check adds no new visual-coverage claims. The normal release build workflow
 is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
 
+## CRT terminal validation (2026-10-07)
+
+All nine Docker selections build the CRT command terminal. All 98 Linux
+CTest executions pass, and native Windows 11 passes the real-shell and CRT
+paint smoke. Haiku also passes the pixel and native terminal smoke after
+fixing peer ownership of cursor resources through app-server teardown. OpenMotif and WINGs worker delivery now uses a
+nonblocking pipe
+to wake the production loop; the terminal needs no test-only polling timer.
+The remote macOS host `leia` cannot be resolved in this pass, so these changes
+have not been compiled or run on macOS. See the
+[feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md) and
+[Haiku runtime note](HAIKU-REMOTE-RUNTIME.md) for exact coverage.
+
 ## Current open issues
 
 - The Infinity physical-key extension cannot yet deliver held keys on either
@@ -231,3 +244,34 @@ client clearing from erasing the top and left. Direct and gemd pixel/input
 regressions pass.
 Custom property dropdowns currently close through content commit, Cancel, a
 second click on the value, source-row destruction, or owner closure.
+
+## Mouse and image-shader verification (2026-10-07)
+
+The shared image-shader executor is a CPU implementation on every backend;
+there are no OpenGL, Direct3D or Metal adapters. Large effects execute on the UI
+thread and can delay input. The GPU performance requirements in the original
+Infinity proposal are not fulfilled by this profile.
+
+SDL2 exposes relative capture with device-count deltas, without a guarantee of
+unaccelerated input. X11-family backends and Windows expose explicit drag
+capture; macOS, Haiku and GEMix reject explicit capture. Their existing private
+control gestures are independent of the public capability result. No backend
+claims raw pointer input. New desktop hiding/restoration and capture behavior
+still needs interactive acceptance, separately from portable pixel tests.
+
+The macOS build host `leia` could not be resolved in this environment during this
+pass. The changed AppKit pointer adapter remains uncompiled here; historical
+macOS runtime coverage does not validate this change.
+
+The full-monitor shader follow-up adds portable glass/housing/vent/indicator
+passes. Earlier native Windows/Haiku terminal smoke evidence covers the prior
+four-pass image. Updated package validation is recorded in the feature matrix;
+macOS remains unverified while its remote host is unavailable.
+
+CRT shader acceptance remains incomplete: the demo uses selected CPU formulas
+and independently authored housing/glass, which the user rejected. The actual
+upstream pipeline includes `terminal_frame.frag`, dynamic noise/raster/burn-in
+processing, bloom generation, and the static reflection/curvature compositor.
+Native's CPU expression profile does not execute these GLSL shaders directly.
+Conformance and lifecycle passes must not be reported as upstream visual
+acceptance.

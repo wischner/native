@@ -228,7 +228,7 @@ backends currently retain their direct native-close destruction path.
 
 `mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
 `crosshair`, `resize_horizontal`, `resize_vertical`,
-`resize_northwest_southeast`, and `resize_northeast_southwest`. Every `wnd`
+`resize_northwest_southeast`, `resize_northeast_southwest`, and `hidden`. Every `wnd`
 caches its choice; `set_cursor()` is valid before or after creation, and
 `get_cursor()` returns that cached value. Windows default to `arrow`, while
 text editors select `ibeam` during construction. Backends apply the cache
@@ -241,8 +241,8 @@ arrow.
 
 One window may need more than one shape, because a control that owns chrome
 paints regions the application never draws in. `get_cursor_at()` is the virtual
-that answers for a window-local point; it returns `get_cursor()` for every
-point unless a control overrides it, and it is what a backend resolving the
+that answers for a window-local point; it returns `get_cursor()` inside the enabled client and arrow over
+chrome/outside points unless a control overrides it, and it is what a backend resolving the
 pointer shape by position must call. Backends that carry the shape as an
 attribute of a native child window keep applying the cached choice to the whole
 control.
@@ -521,6 +521,45 @@ Service teardown must not wait for a callback on a UI loop which is ending.
 Window destruction ignores reentrant `destroy()` calls while teardown is
 in progress, including calls from input-cancellation handlers. Failed native
 creation invalidates its window generation before releasing the peer.
+
+### Pointer boundaries, motion and capture
+
+Append `mouse_cursor::hidden` without renumbering existing shapes. Hiding is a
+window client policy; backend resolution rejects outside, chrome, disabled,
+non-visible and inactive regions. The deepest eligible region wins; children
+do not inherit their parent's hidden choice. Restore native visibility on
+root leave, focus loss, menu/modal takeover and teardown. A policy/geometry
+change refreshes the native cursor without requiring another motion event.
+
+`on_mouse_enter`/`on_mouse_leave` report the window's own input client, separate
+from capture delivery. Cache inside state before notifications and emit leave
+before entering the next target, at most once per transition. Positions are
+informational; native exits may use the last point. Validate weak resource
+generations between callbacks because either target can be destroyed.
+
+`on_mouse_motion` reports float deltas and explicit absolute/relative kind and
+logical-pixel/device-count units. Absolute compatibility `on_mouse_move` remains
+available; relative events never invent an absolute position or emit that signal.
+Absolute deltas derive from the existing logical coordinate stream, with a zero
+baseline on entry/cancellation/capture-mode change. This does not add fractional
+DPI coordinates to the existing 16-bit absolute API. Applications subscribe to
+one motion signal, not both. Current adapters do not claim unaccelerated input.
+
+`mouse_capture` is a move-only UI-thread lease backed by a weak generation.
+`get_active()` becomes false on real loss or owner teardown; release is
+idempotent and a stale destructor cannot release another lease. Acquisition
+requires a created, visible, focused, enabled client and rejects competing
+leases or unsupported modes atomically. Drag routes outside movement/buttons;
+relative mode additionally hides/confines according to the backend. Require a
+visible release action and shortcut in applications. Capability availability
+does not guarantee acquisition success. Unavailable/raw modes fail explicitly.
+
+Focus/capture loss and menu/modal takeover clear button/capture bookkeeping and
+restore backend state before notifying a live receiver through the virtual
+mouse-cancel hook. Destruction performs silent cleanup, never callbacks into a
+dying object or fabricated releases. Ordinary hover exits cancel held input;
+existing captured canvas gestures continue outside and receive cancellation
+on actual loss. Canvas cancellation resets its scrollbar pressed/hot state.
 
 ## 6. Painting in Windows
 
@@ -1623,3 +1662,65 @@ observe exit and release pipes, including failure and cancellation. `wait()`
 and destruction join the monitor and are controller operations; use a worker
 when closure could take time. Exit, signal, cancellation and launch failure
 are distinct public result values.
+
+
+## 21. Portable programmable image shaders
+
+`shader_view` derives from `canvas` and reuses its backend host, hierarchy,
+input and clipped image composition. Construction disables both scrollbars;
+applications can still opt into inherited canvas chrome. It remains a drawing
+leaf, not a container. Protected background/image stages implement the complete
+default rendering before inherited paint subscribers and chrome. Shader effects
+must not change pointer coordinates or surrounding control composition.
+
+The implemented `native-image-1` profile is a bounded CPU vector instruction
+language, not GLSL/HLSL/Metal or a GPU adapter. One immutable package executes on
+every backend. Public capabilities explicitly report `accelerated == false`.
+Native does not claim the original three-device GPU proposal's release gate.
+There is no runtime translation framework or application shader callback.
+
+Packages own validated descriptors, exact parameter types/defaults/ranges and
+ordered pass programs. Unknown format/profile versions, opcodes, uninitialized
+registers, invalid defaults and forward current-frame dependencies fail decoding.
+Previous-tick inputs require an explicitly retained pass. File access uses
+C++ filesystem paths and streams. Decoding may occur on workers; view operations
+are UI-thread operations. Setters cache portable values before creation and
+getters expose them. `set_source()` copies pixels before returning.
+
+Effect installation is transactional; failure preserves the previous package
+and parameters. Accepted pre-create installation reports pending. Peer-owned
+outputs/history and weak generation-checked scheduling are discarded by native
+resource teardown while cached source/package/properties survive recreation.
+Runtime execution failure reports unavailable, emits one diagnostic through a
+virtual hook, disables paced retries and applies an explicit original-image or
+black require-effect fallback. A source/property change permits retry.
+
+The executor uses top-left normalized sampling, linear premultiplied float4
+intermediates and final straight-alpha sRGB RGBA8 composition. Intermediate
+float4 programs may explicitly store effect-private metadata, such as a history
+mask in alpha; their final output must restore compositor color semantics. It supports
+source/client-sized and reduced targets, nearest/linear edge-clamped sampling,
+ordered current outputs and previous completed outputs. It must never sample
+its current writable target. History advances only after a successful tick;
+creation, geometry/source-dimension changes, explicit clear and gaps exceeding
+250 ms reset it
+to transparent black. Unchanged source-driven output is cached. Continuous
+mode shares one stop-aware pacing clock and at most one pending UI invalidation
+per view; workers never touch UI objects directly.
+
+Decode/execute must enforce the current profile bounds: one MiB package,
+sixteen parameters, eight passes, 128 instructions/pass, 64 float4 registers
+with writable indices 20..63, extents at most 4096, a conservative per-tick
+allocation estimate at most 256 MiB and work at most 128 Mi vector instructions/tick.
+Transactional replacement also retains the old installed output/history until
+the candidate succeeds; their storage is additional to the candidate estimate. Arithmetic
+invalidity/overflow has the defined result zero. CPU execution is synchronous;
+limits are not frame-rate guarantees. Preserve Native's existing geometry and
+window lifecycle rather than introducing device types into the public API.
+
+Selected upstream CRT formulas in Vision's terminal test are external attributed
+assets. The demo also computes its monitor housing, recessed glass, reflection
+and indicator using the portable image profile; these are effect output rather
+than backend-specific window chrome. Keep source, license and adaptation provenance separate from the
+library. The component-wise `step(edge, value)` image opcode produces zero below
+the edge and one otherwise, allowing portable masks without executable branches.

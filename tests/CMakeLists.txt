@@ -257,3 +257,30 @@ if(TOOLKIT STREQUAL "SDL2")
     set_tests_properties(native_keyboard_runtime_tests PROPERTIES TIMEOUT 20 ENVIRONMENT
         "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;SDL_AUDIODRIVER=dummy")
 endif()
+
+add_executable(native_mouse_shader_tests native_mouse_shader_tests.cpp)
+target_include_directories(native_mouse_shader_tests PRIVATE
+    ${PROJECT_SOURCE_DIR}/lib/native)
+target_compile_definitions(native_mouse_shader_tests PRIVATE
+    NATIVE_TEST_DATA="${PROJECT_SOURCE_DIR}/tests/data")
+target_link_libraries(native_mouse_shader_tests PRIVATE native native_developer_options)
+add_test(NAME native_mouse_shader_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_mouse_shader_tests>)
+
+add_executable(native_terminal_screen_tests
+    native_terminal_screen_tests.cpp
+    ${PROJECT_SOURCE_DIR}/src/terminal_screen.cpp)
+target_include_directories(native_terminal_screen_tests PRIVATE
+    ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/lib/native)
+target_compile_definitions(native_terminal_screen_tests PRIVATE
+    NATIVE_TERMINAL_ASSETS="${PROJECT_SOURCE_DIR}/src/assets/retro-terminal")
+target_link_libraries(native_terminal_screen_tests PRIVATE native native_developer_options)
+add_test(NAME native_terminal_screen_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_terminal_screen_tests>)
+
+if(UNIX AND NOT APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Haiku")
+    add_test(NAME native_retro_terminal_smoke
+        COMMAND ${gemd_runner} $<TARGET_FILE:vision> --retro-terminal --terminal-smoke)
+    set_tests_properties(native_retro_terminal_smoke PROPERTIES TIMEOUT 30
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0;SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+endif()

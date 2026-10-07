@@ -680,3 +680,18 @@ codec or audio link closure in the application. Non-SDL Linux sound loads
 `libasound.so.2` at runtime; missing ALSA/default output is reported by
 `audio_out::open() == false`. Windows uses WASAPI, macOS links AudioToolbox,
 and Haiku links the media kit. Audio dependencies remain private to Native.
+
+Programmable image-shader packages are generated once with the optional
+standard-library Python 3 tool `scripts/shaders/package.py`. Distribute the same
+`.nshader` file for every backend, or embed its bytes and decode them. The
+implemented CPU profile needs no GPU SDK, target-specific shader compiler or
+runtime translator. Ordinary Native builds already compile its shared executor.
+Package/profile limits and fallback are documented in
+[Portable image shaders](20-IMAGE-SHADERS.md).
+
+Vision's CRT terminal acceptance mode loads external shader/font assets from
+`retro-terminal/` beside the binary (or `--terminal-assets PATH`). CMake copies
+that directory; Windows VM and Haiku VS Code deployment also include it. Retain
+the GPL shader sources/license and CC-BY-SA font attribution/license described
+in its asset README. Python packages these developer assets; Qt is not needed
+at runtime. The library itself does not embed them.

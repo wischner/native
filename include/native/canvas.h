@@ -84,6 +84,9 @@ namespace native
         // Paint the client viewport, non-client strips, and scrollbars.
         void on_native_paint(wnd_paint_event event) override;
 
+        // End a scrollbar gesture before dispatching pointer cancellation.
+        void on_native_mouse_cancel(mouse_cancel_reason reason) override;
+
         // Route pointer input to scrollbar chrome before the client.
         void on_native_mouse_move(const point &position) override;
         void on_native_mouse_click(mouse_event event) override;

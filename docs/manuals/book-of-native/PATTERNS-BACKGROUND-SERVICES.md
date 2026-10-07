@@ -61,3 +61,11 @@ focus. The process test launches a real helper. Adapter build and runtime
 coverage are recorded separately in the feature matrix. GEMix lacks physical
 input until its SDK and viewer supply a complete raw stream; the UI explicitly
 reports that instead of generating false releases.
+
+OpenMotif and Window Maker now wake blocked production loops through bounded,
+nonblocking descriptor pipes. Workers write only the pipe; toolkit/Xlib calls
+remain on the UI thread. Motif drains callbacks after Xt dispatch returns;
+WINGs converts the descriptor notification into a local wake event, then drains
+after ordinary/deferred dispatch. Pipe registration and the wake target end
+before toolkit teardown. The CRT terminal smoke test exercises real child
+output followed by a posted close without supplying input events or test timers.

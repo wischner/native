@@ -6,6 +6,7 @@ enable_language(RC)
 target_sources(native INTERFACE ${CMAKE_CURRENT_LIST_DIR}/visual_styles.rc)
 
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/glsl_context.cpp
     ${CMAKE_CURRENT_LIST_DIR}/theme.cpp
     ${CMAKE_CURRENT_LIST_DIR}/screen.cpp
     ${CMAKE_CURRENT_LIST_DIR}/wnd.cpp
@@ -63,3 +64,5 @@ target_link_libraries(native PRIVATE
     comctl32
     uxtheme
 )
+
+target_link_libraries(native PRIVATE opengl32)

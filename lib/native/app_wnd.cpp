@@ -13,6 +13,7 @@
 
 #include <native/app_wnd.h>
 #include "input_state.h"
+#include "mouse_state.h"
 #include <native/modal_wnd.h>
 #include <native/owned_wnd.h>
 #include <native/theme.h>
@@ -111,6 +112,7 @@ namespace native
     }
 
     void app_wnd::on_native_menu(int command) {
+        detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::menu);
         detail::reset_input(*this);
         on_menu.emit(command);
     }
@@ -156,6 +158,7 @@ namespace native
     }
 
     void app_wnd::begin_modal(modal_wnd *window) {
+        detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::modal);
         detail::reset_input(*this);
         if (!window)
             return;

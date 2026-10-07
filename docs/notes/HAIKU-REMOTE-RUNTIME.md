@@ -84,3 +84,18 @@ reopening, and callbacks retained from a closed popup are checked.
 
 This is an environment-specific constraint for a remote target. It belongs in
 `docs/notes/` rather than in the normal build book.
+
+The Haiku deployment uses `scp -O -r` for Vision and its sibling
+`retro-terminal/` shader/font assets, including license notices. The acceptance
+command is `./vision --retro-terminal --terminal-smoke`. A cross-built pixel
+fixture can be run with `./native_terminal_screen_tests ./retro-terminal` so it
+does not depend on the Linux build host's absolute source path.
+
+The 2026-10-07 CRT acceptance passes the cross-built ANSI/font/CRT pixel test
+and the native terminal smoke: a real `/bin/sh` command, processed paint,
+scoped result delivery, and clean application shutdown. Cursor resources now
+belong to the window peer; process-static `BCursor` destructors had trapped
+after the app-server connection closed.
+
+Normal window closure posts the application quit message to its looper,
+avoiding an unlocked `BApplication::Quit()` call from the window thread.

@@ -36,5 +36,6 @@ vm_copy "${vm_workspace}/build/windows-mingw-w64/src/vision.exe" \
     "${vm_workspace}/build/windows-mingw-w64/src/libwinpthread-1.dll" \
     "${vm_workspace}/build/windows-mingw-w64/src/gdbserver.exe" \
     "${vm_script_dir}/session.ps1"
+vm_copy -r "${vm_workspace}/build/windows-mingw-w64/src/retro-terminal"
 vm_powershell "& '${vm_remote_dir}/session.ps1' -Action Install"
 echo "Windows VM deployment ready at ${vm_ip}."

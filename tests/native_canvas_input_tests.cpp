@@ -92,6 +92,7 @@ void test_canvas_dispatch() {
     native::split_view split(first, second,
                              native::split_orientation::vertical);
     native::tab_view tabs(4, 4, 600, 410);
+    int first_cancellations = 0;
     std::vector<native::mouse_event> first_clicks;
     std::vector<native::mouse_event> second_clicks;
     std::vector<native::point> first_moves;
@@ -112,6 +113,12 @@ void test_canvas_dispatch() {
     first.on_mouse_click.connect([&](native::mouse_event event) {
         first_clicks.push_back(event);
         return true;
+    });
+    first.on_mouse_cancel.connect([&](native::mouse_cancel_reason reason) {
+        require(reason == native::mouse_cancel_reason::focus_lost,
+            "Focus cancellation carries a reason");
+        ++first_cancellations;
+        return false;
     });
     second.on_mouse_click.connect([&](native::mouse_event event) {
         second_clicks.push_back(event);
@@ -237,13 +244,9 @@ void test_canvas_dispatch() {
                 motion_event(window_id, second_x, second_y);
                 break;
             case 7:
-                require(first_clicks.size() == 2 &&
-                        first_clicks.back().action ==
-                            native::mouse_action::release &&
-                        first_clicks.back().position.x == -1 &&
-                        first_clicks.back().position.y == -1 &&
+                require(first_clicks.size() == 1 && first_cancellations == 1 &&
                         second_moves.size() == 1,
-                        "Focus loss ends capture with one portable release");
+                        "Focus loss cancels once without a fabricated release");
                 owner.destroy();
                 return;
             default:

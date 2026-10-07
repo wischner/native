@@ -1,0 +1,4 @@
+// Independently authored Native CRT package embedded for Vision.
+// MIT License (see: LICENSE), Copyright (C) 2026 Tomaz Stih.
+#pragma once
+inline constexpr char native_crt_package[] = R"native_effect(@native_crt_package@)native_effect";

@@ -26,14 +26,43 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "../x_pointer.h"
 #include "../x_border.h"
 
 namespace
 {
+    struct pointer_tracking { bool installed = false; };
+    native::point pointer_local(native::wnd &owner, native::point point) {
+        if (auto *state = native::detail::peer_state<linux::wmaker::window_state>(owner))
+            point.y = static_cast<native::coord>(point.y - state->menu_height);
+        return point;
+    }
+    void track_pointer(XEvent *event, void *data) {
+        auto *owner = static_cast<native::wnd *>(data);
+        const auto weak = native::detail::mouse_access::lifetime(*owner);
+        const XEvent copy = *event;
+        linux::wmaker::defer([owner, weak, copy] {
+            auto lifetime = weak.lock();
+            if (!lifetime || !lifetime->alive) return;
+            if (copy.type == LeaveNotify)
+                native::detail::pointer_leave(*owner, pointer_local(*owner,
+                    native::point(copy.xcrossing.x, copy.xcrossing.y)));
+            else if (copy.type == EnterNotify || copy.type == MotionNotify) {
+                auto point = copy.type == MotionNotify
+                    ? native::point(copy.xmotion.x, copy.xmotion.y)
+                    : native::point(copy.xcrossing.x, copy.xcrossing.y);
+                native::detail::pointer_hover(owner, pointer_local(*owner, point));
+            }
+            if (lifetime->alive) native::detail::mouse_access::refresh(*owner);
+        });
+    }
     Cursor cursor_for(Display *display, native::mouse_cursor cursor) {
         if (!display)
             return None;
 
+        if (cursor == native::mouse_cursor::hidden)
+            return native::detail::invisible_x_cursor(
+                display, DefaultRootWindow(display));
         unsigned int shape = XC_left_ptr;
         if (cursor == native::mouse_cursor::ibeam)
             shape = XC_xterm;
@@ -165,7 +194,16 @@ namespace native
         if (!display || target == None)
             return;
 
-        Cursor cursor = cursor_for(display, _cursor);
+        auto *tracking = detail::peer_state<pointer_tracking>(*this);
+        auto *widget = linux::wmaker::wnd_bindings.handle_from_object(this);
+        if (!tracking && widget) {
+            tracking = new pointer_tracking;
+            detail::assign_peer_state(*this, tracking);
+            WMCreateEventHandler(WMWidgetView(widget),
+                EnterWindowMask | LeaveWindowMask | PointerMotionMask, track_pointer, this);
+        }
+        Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
+            pointer_local(*this, detail::x_pointer_position(display, target))));
         if (cursor != None) {
             XDefineCursor(display, target, cursor);
             XFreeCursor(display, cursor);
@@ -216,3 +254,37 @@ namespace native
         return *_gpx;
     }
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() {
+        return {true, true, false, false};
+    }
+    bool backend_capture_mouse(wnd &owner, mouse_capture_options,
+                               std::string &error) {
+        Display *display = linux::wmaker::display;
+        Window target = linux::wmaker::drawable(&owner);
+        if (!display || target == None) {
+            error = "Native pointer surface is unavailable.";
+            return false;
+        }
+        const int result = XGrabPointer(display, target, False,
+            ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+            GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+        if (result != GrabSuccess) {
+            error = "X11 pointer grab failed or another grab is active.";
+            return false;
+        }
+        return true;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) {
+        Display *display = linux::wmaker::display;
+        Window target = linux::wmaker::drawable(&owner);
+        (void)target;
+        if (display) XUngrabPointer(display, CurrentTime);
+        backend_refresh_mouse(owner);
+    }
+    void backend_refresh_mouse(wnd &owner) {
+        mouse_access::refresh(owner);
+    }
+}

@@ -1,0 +1,29 @@
+{
+  "profile": "native-image-1",
+  "parameters": [
+    {"name": "decay", "type": "float", "range": [1, 100], "default": 25},
+    {"name": "bloom_strength", "type": "float", "range": [0, 1], "default": 0.15},
+    {"name": "scanlines", "type": "float", "range": [0, 1], "default": 0.3},
+    {"name": "curvature", "type": "float", "range": [0, 0.1], "default": 0.02},
+    {"name": "tint", "type": "float4", "range": [0, 1], "default": [1, 1, 1, 1]}
+  ],
+  "passes": [
+    {"name": "persistence", "history": true, "program": [
+      ["current", "sample(source, uv)"],
+      ["previous", "sample(history_persistence, uv)"],
+      ["result", "max(current, previous * exp(-clock.y * decay))"]
+    ], "output": "result"},
+    {"name": "bloom", "reduction": 2, "program": [
+      ["offset", "uv.z * vec4(3, 0, 0, 0)"],
+      ["result", "(linear(persistence, uv - offset) + linear(persistence, uv) + linear(persistence, uv + offset)) / 3"]
+    ], "output": "result"},
+    {"name": "display", "program": [
+      ["center", "uv * vec4(2, 2, 0, 0) - vec4(1, 1, 0, 0)"],
+      ["radius", "dot(center, center)"],
+      ["coord", "uv + center * radius * curvature"],
+      ["color", "linear(persistence, coord) + linear(bloom, coord) * bloom_strength * vec4(1, 1, 1, 0)"],
+      ["stripe", "(sin(uv.y * source_info.y * 6.283185) * 0.5 + 0.5) * scanlines"],
+      ["result", "color * (1 - stripe * vec4(1, 1, 1, 0)) * tint"]
+    ], "output": "result"}
+  ]
+}

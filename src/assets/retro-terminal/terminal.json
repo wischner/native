@@ -1,0 +1,313 @@
+{
+  "profile": "native-image-1",
+  "license": "GPL-3.0-or-later",
+  "origin": "fork-vault/cool-retro-term@1394ce82fa53d2a87d5adc4d99f9eeba598ea53d",
+  "parameters": [
+    {
+      "name": "decay",
+      "type": "float",
+      "range": [
+        0,
+        10
+      ],
+      "default": 1.5
+    },
+    {
+      "name": "rasterization",
+      "type": "float",
+      "range": [
+        0,
+        1
+      ],
+      "default": 0.65
+    },
+    {
+      "name": "curvature",
+      "type": "float",
+      "range": [
+        0,
+        1
+      ],
+      "default": 0.18
+    },
+    {
+      "name": "bloom",
+      "type": "float",
+      "range": [
+        0,
+        1
+      ],
+      "default": 0.2
+    },
+    {
+      "name": "tint",
+      "type": "float4",
+      "range": [
+        0,
+        1
+      ],
+      "default": [
+        1,
+        0.65,
+        0.2,
+        1
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "name": "burn",
+      "program": [
+        [
+          "txt",
+          "sample(source, uv)"
+        ],
+        [
+          "acc",
+          "sample(history_burn, uv)"
+        ],
+        [
+          "blur_decay",
+          "max(0, clamp(clock.y * decay) - acc.aaaa)"
+        ],
+        [
+          "color",
+          "max(acc - blur_decay, txt) * vec4(1,1,1,0)"
+        ],
+        [
+          "curr_mask",
+          "step(dot(color, vec4(0.21,0.72,0.04,0)), dot(txt, vec4(0.21,0.72,0.04,0)))"
+        ],
+        [
+          "result",
+          "color + curr_mask * vec4(0,0,0,1)"
+        ]
+      ],
+      "output": "result",
+      "history": true
+    },
+    {
+      "name": "raster",
+      "program": [
+        [
+          "txt",
+          "sample(source, uv)"
+        ],
+        [
+          "burn_color",
+          "sample(burn, uv)"
+        ],
+        [
+          "color",
+          "max(txt, 0.65 * (burn_color - clamp(clock.y * decay)) * (1 - burn_color.aaaa)) * vec4(1,1,1,0)"
+        ],
+        [
+          "high",
+          "(1.3 - 0.2 * color) * color"
+        ],
+        [
+          "low",
+          "(0.7 + 0.1 * color) * color"
+        ],
+        [
+          "pos",
+          "(uv.y * source_info.y - 0.5) / 2"
+        ],
+        [
+          "mask",
+          "1 - abs((pos - floor(pos)) * 2 - 1)"
+        ],
+        [
+          "result",
+          "mix(color, mix(low, high, mask), rasterization) * tint + vec4(0,0,0,1)"
+        ]
+      ],
+      "output": "result"
+    },
+    {
+      "name": "bloom_buffer",
+      "program": [
+        [
+          "offset",
+          "uv.z * vec4(2,0,0,0)"
+        ],
+        [
+          "result",
+          "(linear(raster, uv - offset) + linear(raster, uv) + linear(raster, uv + offset)) / 3"
+        ]
+      ],
+      "output": "result",
+      "reduction": 2
+    },
+    {
+      "name": "display",
+      "program": [
+        [
+          "cc",
+          "uv * vec4(1,1,0,0) - vec4(0.5,0.5,0,0)"
+        ],
+        [
+          "dist",
+          "dot(cc, cc) * curvature"
+        ],
+        [
+          "coord",
+          "uv + cc * (1 + dist) * dist"
+        ],
+        [
+          "inside",
+          "step(0, coord) * (1 - step(1, coord))"
+        ],
+        [
+          "mask",
+          "inside.x * inside.y"
+        ],
+        [
+          "txt",
+          "linear(raster, coord)"
+        ],
+        [
+          "glow",
+          "linear(bloom_buffer, coord)"
+        ],
+        [
+          "color",
+          "(txt + min(clamp(glow * bloom), 0.5)) / (1 + bloom)"
+        ],
+        [
+          "result",
+          "color * mask * vec4(1,1,1,0) + vec4(0,0,0,1)"
+        ]
+      ],
+      "output": "result"
+    },
+    {
+      "name": "glass",
+      "program": [
+        [
+          "p",
+          "uv * vec4(2,2,0,0) - vec4(1,1,0,0)"
+        ],
+        [
+          "vignette",
+          "clamp(1 - dot(p,p) * 0.32)"
+        ],
+        [
+          "txt",
+          "sample(display, uv) * vignette"
+        ],
+        [
+          "reflection",
+          "pow(clamp(1 - uv.y - uv.x * 0.38), 7) * 0.07"
+        ],
+        [
+          "result",
+          "txt * vec4(1,1,1,0) + reflection * vec4(0.7,0.85,1,0) + vec4(0.008,0.012,0.01,1)"
+        ]
+      ],
+      "output": "result"
+    },
+    {
+      "name": "housing",
+      "program": [
+        [
+          "p",
+          "abs((uv - vec4(0.5,0.5,0,0)) * vec4(2.13,2.14,0,0))"
+        ],
+        [
+          "body",
+          "1 - step(1, dot(pow(p,vec4(12,12,1,1)),vec4(1,1,0,0)))"
+        ],
+        [
+          "shade",
+          "0.56 - uv.y * 0.24"
+        ],
+        [
+          "case_color",
+          "shade * vec4(1,0.89,0.72,0)"
+        ],
+        [
+          "result",
+          "mix(vec4(0.012,0.015,0.02,0), case_color, body) + vec4(0,0,0,1)"
+        ]
+      ],
+      "output": "result"
+    },
+    {
+      "name": "monitor",
+      "program": [
+        [
+          "coord",
+          "(uv - vec4(0.10,0.09,0,0)) / vec4(0.80,0.72,1,1)"
+        ],
+        [
+          "p",
+          "abs(coord * vec4(2,2,0,0) - vec4(1,1,0,0))"
+        ],
+        [
+          "distance",
+          "dot(pow(p,vec4(12,12,1,1)),vec4(1,1,0,0))"
+        ],
+        [
+          "mask",
+          "1 - step(1, distance)"
+        ],
+        [
+          "rim",
+          "1 - step(1.6, distance)"
+        ],
+        [
+          "case_color",
+          "sample(housing, uv)"
+        ],
+        [
+          "recess",
+          "mix(case_color, vec4(0.025,0.027,0.024,1), rim)"
+        ],
+        [
+          "result",
+          "mix(recess, linear(glass,coord), mask)"
+        ]
+      ],
+      "output": "result"
+    },
+    {
+      "name": "finish",
+      "program": [
+        [
+          "case_color",
+          "sample(monitor, uv)"
+        ],
+        [
+          "strip",
+          "step(0.86,uv.y) * (1 - step(0.92,uv.y)) * step(0.22,uv.x) * (1 - step(0.64,uv.x))"
+        ],
+        [
+          "phase",
+          "uv.x * 84"
+        ],
+        [
+          "vents",
+          "step(0.55,phase - floor(phase)) * strip"
+        ],
+        [
+          "color",
+          "mix(case_color,vec4(0.09,0.078,0.06,1), vents)"
+        ],
+        [
+          "led_pos",
+          "(uv - vec4(0.81,0.889,0,0)) * vec4(1,1.35,0,0)"
+        ],
+        [
+          "led",
+          "1 - step(0.00007,dot(led_pos,led_pos))"
+        ],
+        [
+          "result",
+          "mix(color,vec4(0.25,0.95,0.08,1),led)"
+        ]
+      ],
+      "output": "result"
+    }
+  ]
+}

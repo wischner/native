@@ -11,6 +11,7 @@
 #include <native/wnd.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "gpx_wnd.h"
 
 namespace
@@ -106,3 +107,14 @@ namespace native
         return *_gpx;
     }
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() { return {true, false, false, false}; }
+    bool backend_capture_mouse(wnd &, mouse_capture_options, std::string &error) {
+        error = "AES does not expose an application pointer capture lease.";
+        return false;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) { backend_refresh_mouse(owner); }
+    void backend_refresh_mouse(wnd &owner) { mouse_access::refresh(owner); }
+}

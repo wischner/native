@@ -7,6 +7,7 @@ set_property(
 )
 
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/glsl_context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.mm
@@ -57,3 +58,5 @@ target_link_libraries(native PRIVATE
 )
 
 target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.mm)
+
+target_link_libraries(native PRIVATE "-framework OpenGL")

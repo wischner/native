@@ -21,6 +21,7 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../../mouse_state.h"
 
 namespace
 {
@@ -532,6 +533,10 @@ namespace
                 argument,
                 type);
         const int action = event_action(event);
+        if (action == LOC_WINEXIT)
+            native::detail::pointer_leave(*owner, native::point(event_x(event), event_y(event)));
+        else if (action == LOC_WINENTER)
+            native::detail::pointer_hover(owner, native::point(event_x(event), event_y(event)));
         if (action == KBD_USE) {
             owner->on_native_focus(true);
         } else if (action == KBD_DONE) {
@@ -736,6 +741,8 @@ namespace
                WIN_ASCII_EVENTS,
                WIN_LEFT_KEYS,
                WIN_RIGHT_KEYS,
+               LOC_WINENTER,
+               LOC_WINEXIT,
                LOC_MOVE,
                LOC_DRAG,
                WIN_MOUSE_BUTTONS,

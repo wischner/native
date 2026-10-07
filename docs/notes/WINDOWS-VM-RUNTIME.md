@@ -142,3 +142,9 @@ GDB firewall rule is `Native-GDB-Local-Only`, and deployed files are confined
 to `C:\NativeDebug\native`. Remove only those resources if uninstalling this
 workflow. SSH is a separate installed Windows feature: restore its saved
 configuration and key/firewall policy only if no other workflow needs it.
+
+The deployment also copies Vision's external `retro-terminal/` effect/font
+assets and license notices. Run `vision.exe --retro-terminal --terminal-smoke`
+on the interactive desktop for the shell/output/CRT acceptance check. The
+portable pixel test can take an explicit asset directory:
+`native_terminal_screen_tests.exe C:\NativeDebug\native\retro-terminal`.

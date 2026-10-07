@@ -326,3 +326,13 @@ queued UI callback can reach a recreated surface.
 Window destruction ignores reentrant `destroy()` calls while teardown is
 in progress, including calls from input-cancellation handlers. Failed native
 creation invalidates its window generation before releasing the peer.
+
+## Programmable image output
+
+`shader_view` reuses a canvas host and composes a completed CPU effect image
+through the existing `gpx` image path. Background and image drawing occur in
+protected virtual stages under the client clip, before inherited subscribers
+and chrome. No shader child presents over its root menu or replaces a toolkit
+renderer. Owned source pixels, bounded ordered passes and linear premultiplied
+history are described in [Portable image shaders](PATTERNS-IMAGE-SHADERS.md).
+The shared animation worker posts coalesced invalidations and never draws.

@@ -20,6 +20,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../mouse_state.h"
 
 namespace
 {
@@ -175,31 +176,58 @@ namespace native
         if (!view)
             return;
 
-        static const BCursor crosshair(B_CURSOR_ID_CROSS_HAIR);
-        static const BCursor horizontal_resize(
-            B_CURSOR_ID_RESIZE_EAST_WEST);
-        static const BCursor vertical_resize(
-            B_CURSOR_ID_RESIZE_NORTH_SOUTH);
-        static const BCursor northwest_southeast_resize(
-            B_CURSOR_ID_RESIZE_NORTH_WEST_SOUTH_EAST);
-        static const BCursor northeast_southwest_resize(
-            B_CURSOR_ID_RESIZE_NORTH_EAST_SOUTH_WEST);
+        // The peer releases cursors before the app_server connection closes.
+        struct cursor_state {
+            std::unique_ptr<BCursor> value;
+            mouse_cursor policy = mouse_cursor::arrow;
+        };
+        auto *state = detail::peer_state<cursor_state>(*this);
+        if (!state) {
+            state = new cursor_state();
+            detail::assign_peer_state(*this, state);
+        }
+        std::unique_ptr<BCursor> replacement;
+        if (state->policy != _cursor) {
+            constexpr unsigned char hidden_data[68] = {16, 1, 0, 0};
+            switch (_cursor) {
+            case mouse_cursor::hidden:
+                replacement = std::make_unique<BCursor>(hidden_data);
+                break;
+            case mouse_cursor::crosshair:
+                replacement = std::make_unique<BCursor>(B_CURSOR_ID_CROSS_HAIR);
+                break;
+            case mouse_cursor::resize_horizontal:
+                replacement = std::make_unique<BCursor>(B_CURSOR_ID_RESIZE_EAST_WEST);
+                break;
+            case mouse_cursor::resize_vertical:
+                replacement = std::make_unique<BCursor>(B_CURSOR_ID_RESIZE_NORTH_SOUTH);
+                break;
+            case mouse_cursor::resize_northwest_southeast:
+                replacement = std::make_unique<BCursor>(B_CURSOR_ID_RESIZE_NORTH_WEST_SOUTH_EAST);
+                break;
+            case mouse_cursor::resize_northeast_southwest:
+                replacement = std::make_unique<BCursor>(B_CURSOR_ID_RESIZE_NORTH_EAST_SOUTH_WEST);
+                break;
+            default: break;
+            }
+        }
         const BCursor *cursor = B_CURSOR_SYSTEM_DEFAULT;
-        if (_cursor == mouse_cursor::ibeam)
-            cursor = B_CURSOR_I_BEAM;
-        else if (_cursor == mouse_cursor::crosshair)
-            cursor = &crosshair;
-        else if (_cursor == mouse_cursor::resize_horizontal)
-            cursor = &horizontal_resize;
-        else if (_cursor == mouse_cursor::resize_vertical)
-            cursor = &vertical_resize;
-        else if (_cursor == mouse_cursor::resize_northwest_southeast)
-            cursor = &northwest_southeast_resize;
-        else if (_cursor == mouse_cursor::resize_northeast_southwest)
-            cursor = &northeast_southwest_resize;
+        if (_cursor == mouse_cursor::ibeam) cursor = B_CURSOR_I_BEAM;
+        else if (replacement) cursor = replacement.get();
+        else if (state->policy == _cursor && state->value) cursor = state->value.get();
 
         with_locked_window(window, [&](BWindow *) {
-            view->SetViewCursor(cursor);
+            BPoint position;
+            uint32 buttons = 0;
+            view->GetMouse(&position, &buttons, false);
+            if (!window->IsActive() || !get_client_bounds().contains(point(
+                    static_cast<coord>(position.x), static_cast<coord>(position.y))))
+                cursor = B_CURSOR_SYSTEM_DEFAULT;
+            view->SetViewCursor(cursor, true);
+            if (state->policy != _cursor) {
+                state->value = std::move(replacement);
+                state->policy = _cursor;
+            }
         });
     }
 
@@ -265,3 +293,14 @@ namespace native
     }
 
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() { return {true, false, false, false}; }
+    bool backend_capture_mouse(wnd &, mouse_capture_options, std::string &error) {
+        error = "Explicit pointer capture is unavailable on this backend.";
+        return false;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) { backend_refresh_mouse(owner); }
+    void backend_refresh_mouse(wnd &owner) { mouse_access::refresh(owner); }
+}

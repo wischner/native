@@ -13,6 +13,96 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+## Mouse and programmable image shaders (2026-10-07)
+
+The shared `native-image-1` executor runs on the CPU and draws through each
+backend's existing canvas/image compositor. All capabilities report
+`accelerated == false`; no GPU adapter or GPU performance acceptance is claimed.
+
+| Backend | Hidden client cursor | Public drag capture | Relative capture | Image profile / history | New adapter evidence |
+| --- | --- | --- | --- | --- | --- |
+| X11/Athena | Yes | Yes | Unsupported | Yes | Docker build; shared pixel/input tests |
+| SDL2 | Yes | Yes | Device-count deltas | Yes | Docker build; full regression suite including native canvas cancellation |
+| OpenMotif | Yes | Yes | Unsupported | Yes | Docker build; shared pixel/input tests |
+| OPEN LOOK | Yes | Yes | Unsupported | Yes | Docker build; shared pixel/input tests |
+| Window Maker | Yes | Yes | Unsupported | Yes | Docker build; shared pixel/input tests |
+| GEMix, direct and gemd | Yes | Unsupported | Unsupported | Yes | Both Docker builds; shared pixel/input tests |
+| Windows | Yes | Yes | Unsupported | Yes | Docker cross-build; native terminal pixels/shell/hidden-cursor shutdown |
+| Haiku | Yes | Unsupported | Unsupported | Yes | Docker cross-build; native terminal pixels/shell/hidden-cursor shutdown |
+| macOS | Yes | Unsupported | Unsupported | Yes | Source implementation; changed adapter uncompiled (`leia` did not resolve) |
+
+No backend guarantees unaccelerated relative input. Unsupported acquisition
+returns an explicit diagnostic. Desktop outside restoration, native occlusion,
+menu/modal takeover and actual capture loss still need interactive acceptance;
+portable event assertions and prior gallery checks do not establish those new
+behaviors on every host. `vision --mouse-shaders` provides the acceptance view
+beside a native editor, with cursor policy, color changes and Escape release.
+
+The Debug Docker validation passed all 84 CTests: X11 12, SDL2 16, Motif 12,
+OPEN LOOK 12, Window Maker 10, GEMix direct 11 and gemd 11. The new
+`native_mouse_shader_tests` checks ordered boundaries, disabled-child occlusion,
+re-entry deltas, focus-transfer cancellation, generation-safe callbacks, actual identity RGBA
+pixels, multipass/history, invalid package dependencies and budgets, source
+ownership, transactional replacement and recreation. Six Python compiler
+tests also pass for reproducible packages and rejected executable expressions.
+Windows and Haiku were cross-built in that mouse validation pass; subsequent terminal coverage is recorded below and does not establish mouse-capture acceptance.
+
+The optimized SDL Docker build also passes all sixteen CTests. A single first
+CRT executor tick in that Release build measured 22.1 ms at 256×192 and
+740.5 ms at 1920×1080 on this host, including input linearization and output
+conversion. These are executor measurements, not end-to-end display latency,
+steady-state averages, or a frame-rate guarantee. The Debug build measured
+587 ms and 24.4 seconds respectively while other builds were running; use
+optimized builds for CPU effect performance. Reproduce with
+`build/linux-sdl2/tests/native_mouse_shader_tests --benchmark` inside the image.
+
+Effects execute synchronously on the UI thread. The CPU profile is appropriate
+for bounded image processing, not a promise of real-time full-HD CRT rendering.
+See [Image shader patterns](PATTERNS-IMAGE-SHADERS.md) for resource limits and
+[the programming chapter](../programming-native/20-IMAGE-SHADERS.md) for the
+portable format and authoring tool.
+
+## CRT command terminal (2026-10-07)
+
+**Shader acceptance is incomplete.** The current package runs selected CPU
+approximations and independently authored monitor materials. It does not run
+cool-retro-term's original renderer. The user rejected the monitor presentation;
+passing parser, package, pixel and lifecycle tests does not establish visual
+fidelity or fulfil the requirement to use the upstream rendering pipeline.
+
+
+`vision --retro-terminal` is the same public-API application on every backend.
+It renders a bounded ASCII/ANSI screen with a portable TrueType font and runs
+line-oriented commands using bounded `process` capture. POSIX targets use
+`/bin/sh -c`; Windows uses PowerShell `-Command`. It has no pseudoterminal,
+persistent shell session, Unicode cell layout, or full-screen program support.
+
+Eight CPU passes render the monitor demo. Four adapt selected cool-retro-term formulas: phosphor history,
+raster bands and tint, a reduced bloom approximation, and curvature/edge
+masking. Four more render reflected/vignetted glass, a shaded rounded housing,
+a recessed screen, vents and a power indicator. These material passes are
+independently authored; the frame is shader output rather than application
+chrome. The upstream GLSL is retained with provenance and GPL attribution in
+`src/assets/retro-terminal`; the portable font has its own CC-BY-SA license.
+This is a selected adaptation, not the complete Qt rendering pipeline or a
+GPU implementation.
+
+All nine Docker targets build. All 98 Linux CTests pass: X11 14, SDL2 18,
+OpenMotif 14, OPEN LOOK 14, Window Maker 12, GEMix direct 13, gemd 13.
+External-toolkit runtime suites use the existing `ASAN_OPTIONS=detect_leaks=0`
+setting. Each selection tests incremental ANSI state, actual font and CRT
+pixels, opaque final output, retained history, and the production event loop
+running a host-shell command and closing through scoped UI delivery.
+Native Windows 11 and Haiku both pass the screen/pixel test and desktop
+terminal smoke, including actual shell output and clean shutdown. Windows
+uses PowerShell. Haiku cursor resources are peer-owned and released before
+app-server shutdown. macOS remains uncompiled in this pass because
+`leia` cannot be resolved.
+
+OpenMotif and Window Maker now wake their production loops through a
+nonblocking pipe when workers post results. No timer or test-only queue drain
+is needed by the terminal.
+
 ## Infinity services (2026-10-06)
 
 This table records the newly added service adapters separately from older
@@ -584,3 +674,9 @@ text and update the preview after adding a USB keyboard to the `Haiku` domain.
 The VM's PS/2 keyboard had delivered no input even to Terminal; the editor
 implementation required no change. The keyboard setup is recorded in the
 [Haiku runtime note](../../notes/HAIKU-REMOTE-RUNTIME.md).
+
+The full-monitor follow-up checks actual shader pixels for the bezel, glass
+recess, reflection, green power indicator and stable housing under screen
+curvature changes. Its new visual presentation has SDL2 acceptance coverage;
+the preceding native Windows/Haiku evidence refers to the earlier four-pass
+terminal image. These checks establish executor behavior only; the presentation was rejected.

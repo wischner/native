@@ -8,6 +8,8 @@
 
 #include "vision_window.h"
 #include "infinity_window.h"
+#include "vision_mouse_shaders.h"
+#include "vision_retro_terminal.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -29,6 +31,12 @@ int program(int argc, char **argv) {
             return native::app::run(window);
         }
     }
+    for (int i = 1; i < argc; ++i)
+        if (std::string_view(argv[i]) == "--mouse-shaders")
+            return vision::run_mouse_shaders();
+    for (int i = 1; i < argc; ++i)
+        if (std::string_view(argv[i]) == "--retro-terminal")
+            return vision::run_retro_terminal(argc, argv);
     bool open_splitter = false;
     bool open_input_chrome = false;
     bool open_properties = false;

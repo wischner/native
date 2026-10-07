@@ -14,6 +14,7 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "gpx_wnd.h"
 #include "../../control_render_access.h"
 #include "../../post_backend.h"
@@ -183,6 +184,12 @@ namespace native
                                      &br);
 
             WORD pointer_handle = wind_find(mx, my);
+            auto *hover_window = window_from_handle(pointer_handle);
+            if (hover_window) {
+                const auto hover_work = linux::gemix::work_rect(pointer_handle);
+                linux::gemix::update_mouse_cursor(hover_window,
+                    point(mx - hover_work.p.x, my - hover_work.p.y));
+            } else linux::gemix::update_mouse_cursor(nullptr, point{});
             if ((prev_mb & 1) != 0) {
                 for (auto *owner : linux::gemix::windows) {
                     auto *state = linux::gemix::window_states.object_from_handle(owner);
@@ -203,8 +210,6 @@ namespace native
                 const point local(mx - work.p.x, my - work.p.y);
 
                 if (mx != prev_mx || my != prev_my) {
-                    linux::gemix::update_mouse_cursor(
-                        pointer_window, local);
                     linux::gemix::update_collection_pointer(
                         pointer_window, local);
                     if (!linux::gemix::dispatch_drag_move(pointer_window, local) &&

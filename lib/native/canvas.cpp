@@ -547,6 +547,14 @@ namespace native
         }
     }
 
+    void canvas::on_native_mouse_cancel(mouse_cancel_reason reason) {
+        _pressed = hit_part::none;
+        _hot = hit_part::none;
+        _drag_offset = 0;
+        invalidate();
+        wnd::on_native_mouse_cancel(reason);
+    }
+
     void canvas::on_native_mouse_move(const point &position) {
         const scroll_geometry geometry = resolve_geometry();
 

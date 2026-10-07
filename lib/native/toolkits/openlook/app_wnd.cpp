@@ -24,6 +24,7 @@
 #include <xview/xview.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "../x_keyboard.h"
 #include "window_position.h"
 #include "xview_init.h"
@@ -247,6 +248,10 @@ namespace
             raw && native::detail::dispatch_x_keyboard(*owner, *raw))
             return NOTIFY_DONE;
         const int action = event_action(event);
+        if (action == LOC_WINEXIT)
+            native::detail::pointer_leave(*owner, native::point(event_x(event), event_y(event)));
+        else if (action == LOC_WINENTER)
+            native::detail::pointer_hover(owner, native::point(event_x(event), event_y(event)));
         // The window manager's Quit sends WM_DELETE_WINDOW, which
         // XView turns into ACTION_DISMISS for an owned frame (a
         // root-owned one it destroys itself). ACTION_DISMISS is what
@@ -482,7 +487,9 @@ namespace native
                    WIN_TOP_KEYS,
                    KBD_USE,
                    KBD_DONE,
-                   LOC_MOVE,
+                   LOC_WINENTER,
+               LOC_WINEXIT,
+               LOC_MOVE,
                    LOC_DRAG,
                    WIN_MOUSE_BUTTONS,
                    ACTION_SELECT,

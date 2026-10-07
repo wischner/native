@@ -228,3 +228,10 @@ Selecting a tab shows and paints that page's canvas and no other. Moving the
 splitter updates the tab view and the selected canvas, and canvas paint and
 pointer coordinates stay canvas-local afterwards. Scrolling one page changes
 only that page.
+
+Subscribe to `on_mouse_cancel` to end a held stroke on focus/capture loss or
+menu/modal takeover. Cancellation replaces SDL's former synthetic outside
+release; destruction silently clears the native gesture. Actual enter/leave
+signals describe hover independently of continuing captured delivery.
+A `shader_view` reuses this canvas host with scrollbars disabled initially;
+see [Portable image shaders](20-IMAGE-SHADERS.md).

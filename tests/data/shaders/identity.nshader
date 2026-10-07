@@ -1,0 +1,6 @@
+native-image-1 1
+parameters 0
+passes 1
+pass identity source 1 0 20 1
+sample 20 -1 0
+end

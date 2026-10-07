@@ -1,0 +1,62 @@
+native-image-1 1
+parameters 5
+parameter decay 1 1 100 25
+parameter bloom_strength 1 0 1 0.15
+parameter scanlines 1 0 1 0.3
+parameter curvature 1 0 0.1 0.02
+parameter tint 4 0 1 1 1 1 1
+passes 3
+pass persistence source 1 1 28 9
+sample 20 -1 0
+sample 21 -2 0
+const 22 0 0 0 0
+swizzle 23 2 1 1 1 1
+sub 24 22 23
+mul 25 24 3
+exp 26 25
+mul 27 21 26
+max 28 20 27
+pass bloom source 2 0 31 12
+swizzle 20 0 2 2 2 2
+const 21 3 0 0 0
+mul 22 20 21
+sub 23 0 22
+linear 24 0 23
+linear 25 0 0
+add 26 24 25
+add 27 0 22
+linear 28 0 27
+add 29 26 28
+const 30 3 3 3 3
+div 31 29 30
+pass display source 1 0 48 29
+const 20 2 2 0 0
+mul 21 0 20
+const 22 1 1 0 0
+sub 23 21 22
+dot 24 23 23
+mul 25 23 24
+mul 26 25 6
+add 27 0 26
+linear 28 0 27
+linear 29 1 27
+mul 30 29 4
+const 31 1 1 1 0
+mul 32 30 31
+add 33 28 32
+swizzle 34 0 1 1 1 1
+swizzle 35 1 1 1 1 1
+mul 36 34 35
+const 37 6.283185 6.283185 6.283185 6.283185
+mul 38 36 37
+sin 39 38
+const 40 0.5 0.5 0.5 0.5
+mul 41 39 40
+add 42 41 40
+mul 43 42 5
+const 44 1 1 1 1
+mul 45 43 31
+sub 46 44 45
+mul 47 33 46
+mul 48 47 7
+end

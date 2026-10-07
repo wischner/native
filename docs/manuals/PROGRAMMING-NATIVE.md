@@ -50,6 +50,8 @@ controls.
 
 19. [Background work and services](programming-native/19-BACKGROUND-WORK-AND-SERVICES.md)
 
+20. [Portable programmable image shaders](programming-native/20-IMAGE-SHADERS.md)
+
 ## Building the repository program
 
 Configure a debug build under the root `build/` directory and select a Linux

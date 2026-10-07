@@ -226,3 +226,29 @@ physical held-key input unavailable because its pinned SDK/viewer path loses
 raw release information. Current build/runtime evidence is recorded in the
 feature matrix. A parent CMake project may link the `native` target through
 `add_subdirectory()` without building Vision or Native's test suite.
+
+## Pointer control and programmable image shaders
+
+`wnd` now provides a hidden client cursor policy, enter/leave/cancel events,
+rich absolute/relative motion and move-only capture leases. Capabilities expose
+unavailable modes explicitly: SDL2 provides relative capture, X11-family and
+Windows provide drag capture, and no adapter claims raw/unaccelerated motion.
+See [Painting and input](docs/manuals/programming-native/02-PAINTING-AND-INPUT.md).
+
+`shader_view` executes the same bounded programmable CPU image package on every
+backend, including multipass/history and typed parameters. It uses the existing
+canvas/image compositor and reports GPU acceleration unavailable. Source-sized
+passes suit small emulator frames; large effects can delay UI input. The
+optional standard-library Python 3 packaging tool is a developer dependency
+only. Run `vision --mouse-shaders` for the independently authored CRT demo and
+native-editor/pointer acceptance. See the
+[shader tutorial](docs/manuals/programming-native/20-IMAGE-SHADERS.md) and
+[feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md) for limits and evidence.
+
+`vision --retro-terminal` opens an unaccepted CRT approximation demo using
+selected cool-retro-term shader formulas adapted to the portable CPU profile.
+It includes native command entry, amber/green/color presets and bounded shell
+output. `--terminal-smoke` adds an automated paint-and-close acceptance check.
+Keep the copied `retro-terminal/` assets and license notices beside Vision.
+See [the terminal tutorial](docs/manuals/programming-native/20-IMAGE-SHADERS.md#terminal-acceptance-application)
+for the selected effects, licensing, and the lack of PTY/full-screen program support.

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "../../input_state.h"
 #include "window_position.h"
 
@@ -273,14 +274,33 @@ namespace native
                 case SDL_MOUSEMOTION: {
                     const int logical_y =
                         event.motion.y - content_origin_y(wnd);
+                    const auto mouse_lifetime = detail::mouse_access::lifetime(*wnd);
+                    linux::sdl2::update_mouse_cursor(
+                        wnd, point(event.motion.x, logical_y));
+                    const auto mouse_alive = mouse_lifetime.lock();
+                    if (!mouse_alive || !mouse_alive->alive) break;
+                    if (auto *captured = detail::pointer_capture(*wnd)) {
+                        if (detail::pointer_relative(*wnd)) {
+                            mouse_motion_event motion;
+                            motion.kind = mouse_motion_kind::relative;
+                            motion.units = mouse_motion_units::device_counts;
+                            motion.dx = static_cast<float>(event.motion.xrel);
+                            motion.dy = static_cast<float>(event.motion.yrel);
+                            captured->on_native_mouse_motion(motion);
+                        } else {
+                            const auto origin = linux::sdl2::origin_in_root(*captured);
+                            captured->on_native_mouse_move(point(
+                                event.motion.x - origin.x, logical_y - origin.y));
+                        }
+                        break;
+                    }
                     if (linux::sdl2::handle_canvas_motion(
                             wnd, event.motion.x, logical_y, true))
                         break;
                     if (linux::sdl2::handle_split_motion(
                             wnd, event.motion.x, logical_y))
                         break;
-                    linux::sdl2::update_mouse_cursor(
-                        wnd, point(event.motion.x, logical_y));
+
                     if (auto *aw =
                             dynamic_cast<native::app_wnd *>(wnd)) {
                         if (aw->menu.id()) {
@@ -340,6 +360,23 @@ namespace native
 
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP: {
+                    if (auto *captured = detail::pointer_capture(*wnd)) {
+                        const auto origin = linux::sdl2::origin_in_root(*captured);
+                        mouse_button button = mouse_button::none;
+                        switch (event.button.button) {
+                        case SDL_BUTTON_LEFT: button = mouse_button::left; break;
+                        case SDL_BUTTON_RIGHT: button = mouse_button::right; break;
+                        case SDL_BUTTON_MIDDLE: button = mouse_button::middle; break;
+                        case SDL_BUTTON_X1: button = mouse_button::x1; break;
+                        case SDL_BUTTON_X2: button = mouse_button::x2; break;
+                        }
+                        captured->on_native_mouse_click(mouse_event(button,
+                            event.type == SDL_MOUSEBUTTONDOWN
+                                ? mouse_action::press : mouse_action::release,
+                            point(event.button.x - origin.x,
+                                  event.button.y - content_origin_y(wnd) - origin.y)));
+                        break;
+                    }
                     if (event.type == SDL_MOUSEBUTTONDOWN) {
                         detail::reset_input(*wnd);
                         if (auto *old = detail::input_target(*wnd); old && old != wnd)
@@ -808,6 +845,14 @@ namespace native
                         keep_window_reachable(wnd);
                         break;
 
+                    case SDL_WINDOWEVENT_LEAVE:
+                        detail::pointer_hover(nullptr, point{});
+                        if (!detail::pointer_relative(*wnd)) SDL_ShowCursor(SDL_ENABLE);
+                        break;
+                    case SDL_WINDOWEVENT_MINIMIZED:
+                        detail::mouse_access::cancel_tree(*wnd, mouse_cancel_reason::hidden);
+                        SDL_ShowCursor(SDL_ENABLE);
+                        break;
                     case SDL_WINDOWEVENT_ENTER: {
                         int x = 0;
                         int y = 0;

@@ -165,3 +165,12 @@ uses the same dispatch. The physical-key hook uses the result to suppress
 backend default processing. Keep the prohibition on modifying connections
 while emitting. The dispatch holds its shared signal state through callbacks;
 destroying the receiver does not destroy the active state mid-call.
+
+Pointer boundaries, cancellation and rich motion use the same virtual entry
+point rule. Enter/leave cache the inside state before notification. Cancellation
+clears unreliable button/capture state before public dispatch and never
+fabricates a physical release; destruction performs silent cleanup. Leave
+handlers can destroy the next target, so the router checks its weak generation
+before sending enter. Relative motion has its own discriminated event and never
+emits the legacy absolute signal. Shader execution diagnostics likewise enter
+`shader_view::on_native_shader_error()` before `on_shader_error`.

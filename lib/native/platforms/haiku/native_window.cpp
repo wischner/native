@@ -16,6 +16,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "keyboard.h"
 #include "../../input_state.h"
 
@@ -97,10 +98,15 @@ namespace
         }
 
         void
-        MouseMoved(BPoint where, uint32, const BMessage *) override {
+        MouseMoved(BPoint where, uint32 transit, const BMessage *) override {
             if (!_owner || !_owner->get_input_enabled())
                 return;
 
+            if (transit == B_EXITED_VIEW) {
+                native::detail::pointer_leave(*_owner, native::point(
+                    static_cast<native::coord>(where.x), static_cast<native::coord>(where.y)));
+                return;
+            }
             BPoint screen = where;
             ConvertToScreen(&screen);
             _owner->on_native_mouse_move(
@@ -227,7 +233,7 @@ namespace haiku
         }
 
         if (owner == native::app::main_wnd() && be_app)
-            be_app->Quit();
+            be_app->PostMessage(B_QUIT_REQUESTED);
 
         return true;
     }

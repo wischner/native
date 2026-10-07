@@ -175,6 +175,38 @@ namespace native
         release
     };
 
+    // Post-transition portable button mask.
+    enum class mouse_buttons : unsigned
+    {
+        none = 0, left = 1, right = 2, middle = 4, x1 = 8, x2 = 16
+    };
+    // Combine button bits.
+    constexpr mouse_buttons operator|(mouse_buttons a, mouse_buttons b) {
+        return static_cast<mouse_buttons>(unsigned(a) | unsigned(b));
+    }
+    // Test button bits.
+    constexpr mouse_buttons operator&(mouse_buttons a, mouse_buttons b) {
+        return static_cast<mouse_buttons>(unsigned(a) & unsigned(b));
+    }
+    enum class mouse_cancel_reason
+    {
+        focus_lost, capture_lost, disabled, hidden, destroyed, modal,
+        menu, left_client
+    };
+    enum class mouse_motion_kind { absolute, relative };
+    enum class mouse_motion_units { logical_pixels, device_counts };
+    struct mouse_motion_event
+    {
+        // Position is valid only for absolute motion.
+        point position;
+        float dx = 0, dy = 0;
+        mouse_motion_kind kind = mouse_motion_kind::absolute;
+        mouse_motion_units units = mouse_motion_units::logical_pixels;
+        mouse_buttons buttons = mouse_buttons::none;
+        key_modifiers modifiers = key_modifiers::none;
+        bool unaccelerated = false;
+    };
+
     // Describes a mouse-button event in client coordinates.
     struct mouse_event
     {

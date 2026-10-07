@@ -211,3 +211,19 @@ exports the repository to `leia`, a destination not explicitly authorized in thi
 session. Its new adapters remain uncompiled until that sync is approved. The
 GEMix SDK prerequisite remains required before claiming full cross-platform
 emulator keyboard parity.
+
+## Mouse and programmable image interfaces (2026-10-07)
+
+Native implements the pointer contracts and a portable CPU image-shader
+profile reviewed from Infinity's `MOUSE.md` and `SHADERS.md`. The original
+OpenGL/Direct3D/Metal proposal was replaced by a bounded shared programmable
+executor to retain Native's existing toolkit composition and provide executable
+packages on GEMix as well. This is an explicit design change, not GPU support.
+See [the design review](MOUSE-AND-SHADERS-REVIEW.md),
+[mouse tutorial](../manuals/programming-native/02-PAINTING-AND-INPUT.md), and
+[shader tutorial](../manuals/programming-native/20-IMAGE-SHADERS.md).
+
+The new APIs do not automatically update nemu's UI adapter or installed Native
+headers/archive. Its guest mouse still owns sensitivity, fractional accumulation,
+Y inversion and eight-bit wrapping; effects must not alter those values.
+Native capability/desktop evidence is recorded separately in the feature matrix.

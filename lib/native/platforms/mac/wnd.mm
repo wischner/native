@@ -15,6 +15,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../mouse_state.h"
 
 namespace
 {
@@ -43,6 +44,12 @@ namespace
     }
 
     NSCursor *cursor_for(native::mouse_cursor cursor) {
+        if (cursor == native::mouse_cursor::hidden) {
+            static NSCursor *hidden = [[NSCursor alloc] initWithImage:
+                [[[NSImage alloc] initWithSize:NSMakeSize(1, 1)] autorelease]
+                hotSpot:NSZeroPoint];
+            return hidden;
+        }
         if (cursor == native::mouse_cursor::ibeam)
             return [NSCursor IBeamCursor];
         if (cursor == native::mouse_cursor::crosshair)
@@ -60,18 +67,28 @@ namespace
 
 @interface native_cursor_target : NSObject {
     NSCursor *_cursor;
+    native::wnd *_owner;
+    NSView *_view;
+    std::weak_ptr<native::detail::wnd_lifetime> _lifetime;
 }
 
-- (id)initWithCursor:(NSCursor *)cursor;
+- (id)initWithCursor:(NSCursor *)cursor owner:(native::wnd *)owner view:(NSView *)view;
 - (void)cursorUpdate:(NSEvent *)event;
+- (void)mouseEntered:(NSEvent *)event;
+- (void)mouseExited:(NSEvent *)event;
+- (void)mouseMoved:(NSEvent *)event;
 @end
 
 @implementation native_cursor_target
 
-- (id)initWithCursor:(NSCursor *)cursor {
+- (id)initWithCursor:(NSCursor *)cursor owner:(native::wnd *)owner view:(NSView *)view {
     self = [super init];
-    if (self)
+    if (self) {
         _cursor = [cursor retain];
+        _owner = owner;
+        _view = view;
+        _lifetime = native::detail::mouse_access::lifetime(*owner);
+    }
     return self;
 }
 
@@ -81,10 +98,26 @@ namespace
 }
 
 - (void)cursorUpdate:(NSEvent *)event {
-    (void)event;
-    [_cursor set];
+    auto lifetime = _lifetime.lock();
+    if (!lifetime || !lifetime->alive) return;
+    const NSPoint position = [_view convertPoint:[event locationInWindow] fromView:nil];
+    const native::point local(static_cast<native::coord>(position.x),
+                              static_cast<native::coord>(position.y));
+    const auto weak = _lifetime;
+    native::detail::pointer_hover(_owner, local);
+    lifetime = weak.lock();
+    if (!lifetime || !lifetime->alive) return;
+    [cursor_for(native::detail::pointer_cursor(*_owner, local)) set];
 }
 
+- (void)mouseEntered:(NSEvent *)event { [self cursorUpdate:event]; }
+- (void)mouseMoved:(NSEvent *)event { [self cursorUpdate:event]; }
+- (void)mouseExited:(NSEvent *)event {
+    (void)event;
+    auto lifetime = _lifetime.lock();
+    if (lifetime && lifetime->alive)
+        native::detail::pointer_leave(*_owner, native::point{});
+}
 @end
 
 namespace native
@@ -201,14 +234,18 @@ namespace native
         if (old_area)
             [view removeTrackingArea:old_area];
 
-        NSCursor *cursor = cursor_for(_cursor);
+        NSPoint position = [view convertPoint:
+            [[view window] mouseLocationOutsideOfEventStream] fromView:nil];
+        NSCursor *cursor = cursor_for(detail::pointer_cursor(*this, point(
+            static_cast<coord>(position.x), static_cast<coord>(position.y))));
         native_cursor_target *target =
-            [[native_cursor_target alloc] initWithCursor:cursor];
+            [[native_cursor_target alloc] initWithCursor:cursor owner:this view:view];
         NSTrackingArea *area = [[NSTrackingArea alloc]
             initWithRect:NSZeroRect
-                 options:NSTrackingCursorUpdate |
+                 options:NSTrackingCursorUpdate | NSTrackingMouseEnteredAndExited |
+                         NSTrackingMouseMoved |
                          NSTrackingInVisibleRect |
-                         NSTrackingActiveAlways
+                         NSTrackingActiveInKeyWindow
                    owner:target
                 userInfo:nil];
         [view addTrackingArea:area];
@@ -228,7 +265,8 @@ namespace native
             NSPoint point = [view convertPoint:
                 [window mouseLocationOutsideOfEventStream]
                                       fromView:nil];
-            if (NSMouseInRect(point, [view bounds], [view isFlipped]))
+            if ([window isKeyWindow] && [view hitTest:point] == view &&
+                NSMouseInRect(point, [view bounds], [view isFlipped]))
                 [cursor set];
         }
     }
@@ -286,3 +324,14 @@ namespace native
     }
 
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() { return {true, false, false, false}; }
+    bool backend_capture_mouse(wnd &, mouse_capture_options, std::string &error) {
+        error = "Explicit pointer capture is unavailable on this backend.";
+        return false;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) { backend_refresh_mouse(owner); }
+    void backend_refresh_mouse(wnd &owner) { mouse_access::refresh(owner); }
+}

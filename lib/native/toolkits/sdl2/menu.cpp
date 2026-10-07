@@ -9,6 +9,7 @@
 #include <native/menu.h>
 #include <algorithm>
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "../../menu_shortcut.h"
 
 namespace
@@ -247,6 +248,9 @@ namespace linux::sdl2
                     m->hover_item = -1;
                 } else {
                     m->open_idx = found;
+                    if (m->owner) native::detail::mouse_access::cancel_tree(
+                        *m->owner, native::mouse_cancel_reason::menu);
+                    SDL_ShowCursor(SDL_ENABLE);
                     m->popup_x = m->tops[found].x0;
                     m->popup_y = menu_bar_height;
                     m->hover_item = -1;

@@ -270,8 +270,11 @@
             "type": "shell",
             "command": "scp",
             "args": [
+                "-O",
+                "-r",
                 "${workspaceFolder}/build/haiku/src/vision",
-                "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/vision"
+                "${workspaceFolder}/build/haiku/src/retro-terminal",
+                "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/"
             ],
             "problemMatcher": [],
             "dependsOrder": "sequence",

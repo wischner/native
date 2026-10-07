@@ -302,3 +302,8 @@ Next: [Clipboard and text editing](11-CLIPBOARD-AND-TEXT-EDITING.md).
 `theme::draw_toolbar_button(bounds, text, state)` draws a command in the
 main-menu style without a submenu arrow; `draw_menu_title()` retains menu
 marks on toolkits that use them. Both use the active theme palette.
+
+For programmable color, blur, distortion and temporal image effects, chapter
+[20: Portable image shaders](20-IMAGE-SHADERS.md) covers `shader_view`, immutable
+packages and typed parameters. The shared CPU profile composes through these
+same image operations; it does not expose a GPU device or replace native controls.

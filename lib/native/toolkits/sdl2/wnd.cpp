@@ -16,6 +16,7 @@
 #include "bindings.h"
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../mouse_state.h"
 #include "window_position.h"
 
 namespace
@@ -230,3 +231,41 @@ namespace native
     }
 
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() {
+        return {true, true, true, false};
+    }
+    bool backend_capture_mouse(wnd &owner, mouse_capture_options options,
+                               std::string &error) {
+        auto *root = linux::sdl2::root_of(&owner);
+        SDL_Window *window = linux::sdl2::wnd_bindings.handle_from_object(root);
+        if (!window || SDL_GetKeyboardFocus() != window) {
+            error = "SDL pointer capture requires the foreground window.";
+            return false;
+        }
+        for (auto *surface : linux::sdl2::canvases) {
+            auto *state = linux::sdl2::canvas_bindings.object_from_handle(surface);
+            if (state && state->pressed_buttons && surface != &owner) {
+                error = "A canvas gesture already owns the pointer.";
+                return false;
+            }
+        }
+        const int result = options.mode == mouse_capture_mode::relative
+            ? SDL_SetRelativeMouseMode(SDL_TRUE) : SDL_CaptureMouse(SDL_TRUE);
+        if (result != 0) { error = SDL_GetError(); return false; }
+        if (auto *surface = dynamic_cast<canvas *>(&owner))
+            if (auto *state = linux::sdl2::canvas_bindings.object_from_handle(surface))
+                state->pressed_buttons = 0;
+        return true;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode mode) {
+        if (mode == mouse_capture_mode::relative)
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+        else SDL_CaptureMouse(SDL_FALSE);
+        SDL_ShowCursor(SDL_ENABLE);
+        backend_refresh_mouse(owner);
+    }
+    void backend_refresh_mouse(wnd &owner) { mouse_access::refresh(owner); }
+}

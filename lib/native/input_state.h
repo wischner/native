@@ -19,6 +19,7 @@ namespace native::detail
     {
         std::bitset<static_cast<unsigned>(key_code::count)> held;
         bool focused = false;
+        key_modifiers modifiers = key_modifiers::none;
     };
 
     // Find focused descendants without a process-wide window registry.

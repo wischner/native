@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-06.
+Audit date: 2026-10-07.
 
 ## Legend
 
@@ -59,6 +59,7 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | All `toolbar` controls | Keep **C**: a shared menu-themed canvas preserves arbitrary edge attachment, multiple stacked strips, independent toggles and named exclusive groups. Native menu theme primitives provide its appearance. |
 | Custom property dropdown cell | Keep **C** within the inspector: native string-list combos cannot host arbitrary controls or provide application-defined value converters. The popup content itself retains its control’s native or canvas implementation. |
 | GEM/SDL `property_grid` | Keep **C**: these backends have no stock property inspector; the grid reuses their existing text/check/combo controls and canvas scrolling. Other backends are **H**, combining native editors with shared labels and row geometry. |
+| All `shader_view` controls | Keep **C**: no stock widget executes Native's bounded programmable image profile. Reusing the existing canvas host retains native hierarchy/input/composition without replacing standard controls. |
 | All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; application painting owns the client pixels, while backend or portable code supplies chrome. |
 
 There is no stock general-purpose Win32 splitter, accordion, code editor, or
@@ -118,6 +119,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Xaw `Form` drawable host with portable client/ruler painting and actual Xaw scrollbar children. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
 | File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
@@ -151,6 +153,7 @@ the event loop releases the complete SDL runtime after final window close.
 | `code_edit` | **C** | Portable document/editor and library painting. |
 | `split_view` | **C** | Library pane geometry, registered root-relative divider hit testing, pointer-captured drag handling, and resize cursor. |
 | `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; all structural hosts paint in parent-depth order with local SDL viewport clipping. Canvas routing preserves left/middle/right identity and captures motion/release for the pressed surface through tab and splitter nesting. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips; status parts use gray chrome surfaces and highlighted/shadowed edges. |
@@ -200,6 +203,7 @@ destruction, not a timeout that could outlive their parent.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using Motif theme resources. |
 | File open/save/directory | **N/H** | `XmFileSelectionDialog`; portable code adapts save confirmation and directory-only behavior. |
 | `message_box` | **N** | Motif error, warning, question, or information dialogs. |
@@ -239,6 +243,7 @@ retired native list pages hide before their deferred destruction.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using the OPEN LOOK theme. |
 | File open/save/directory | **N/H** | XView `FILE_CHOOSER`, adapted for directory-only and save behavior. |
 | `message_box` | **N** | XView `NOTICE` with one to three buttons. |
@@ -263,6 +268,7 @@ retired native list pages hide before their deferred destruction.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
 | File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode; owner exposes remain live while their private modal loop moves a panel, and focus returns explicitly when it closes. |
 | `message_box` | **N/H** | Native WINGs alert panel, controls, fonts, and modal loop, with the requested frame title and attributed embedded PNG semantic badge. |
@@ -330,6 +336,7 @@ the client inset with a canvas painting to its edges.
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
 | `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting through an offset context and root-relative hit testing are library-owned. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips through VDI. |
@@ -358,6 +365,7 @@ the client inset with a canvas painting to its edges.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
 | `status_bar` | **N/H** | Common-controls `STATUSCLASSNAME`; portable parts map to `SB_SETPARTS`/`SB_SETTEXT`, with the library retaining edge reservation and model state. Top sibling Z order and sibling clipping protect the strip from oversized controls after resize. |
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
@@ -392,6 +400,7 @@ registration is complete, preventing early custom-draw callbacks.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared collection host `BView`; the client, rulers, and themed scrollbars are painted by portable code. Native `BScrollBar` is not used because the portable scroll range is signed 32-bit content, not view pixels. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. `BStatusBar` is intentionally not used because it is a progress indicator rather than a footer. |
 | File open/save/directory | **N** | `BFilePanel`, configured for files, save, or directories. |
@@ -441,6 +450,7 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
+| `shader_view` | **C** | Existing canvas host with the shared portable CPU image-shader executor, owned source, ordered passes and temporal history; no GPU adapter. |
 | `ruler` | **C** | Shared library-painted non-client strip; `NSRulerView` is not currently used. |
 | `status_bar` | **C** | Shared library-painted non-client strip. AppKit has no direct window-status-bar peer to the portable control. |
 | File open/save/directory | **N** | `NSOpenPanel`/`NSSavePanel`, including directory-selection mode. |
@@ -511,3 +521,12 @@ do not replace any stock widgets or change N/H/C/E classifications. Audio,
 UI dispatch and child ownership are services, not custom controls. Vision's
 `--infinity-test` draws a diagnostic client using the existing `app_wnd` and
 stock controls; no new library control kind was introduced.
+
+The CRT terminal acceptance application combines the existing native editor,
+buttons and menu with `shader_view`; it introduces no new public control.
+The `shader_view` classification remains **C**, since programmable image
+processing has no equivalent standard native widget.
+
+The full CRT monitor housing and glass are computed by the external shader
+package. They introduce no new control or backend-painted frame; the existing
+`shader_view` **C** justification applies.

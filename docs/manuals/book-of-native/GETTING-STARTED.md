@@ -244,3 +244,15 @@ coalesced worker progress/cancellation and a real helper child. The
 lists the manual checks. The normal Docker build targets also build the
 service regressions; run CTest in that build image, or on the target OS for
 cross-builds. GEMix's UI explicitly reports physical key input unavailable.
+
+Run the selected Vision binary with `--mouse-shaders` for programmable CPU image
+passes beside a native editor, cursor hiding and explicit pointer capture.
+The demo package is embedded; no shader compiler or GPU service is required.
+Use the [image-shader tutorial](../programming-native/20-IMAGE-SHADERS.md) to
+build your own portable package with the optional Python 3 developer tool.
+
+`vision --retro-terminal` runs the portable ANSI/CRT command-terminal test mode;
+add `--terminal-smoke` to execute one host-shell command, paint and exit. The
+build copies `retro-terminal/` assets beside Vision. Keep that directory and
+its notices when deploying the binary. Use an optimized Docker build for CPU
+shader performance; terminal commands are line-oriented without a PTY.

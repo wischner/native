@@ -17,7 +17,7 @@ The two normative standards outrank everything else:
 
 | Document | Why |
 | --- | --- |
-| [docs/standards/ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | The architectural requirements. 20 numbered sections; the book chapters expand them one by one. |
+| [docs/standards/ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | The architectural requirements. 21 numbered sections; the book chapters expand them one by one. |
 | [docs/standards/CPP-CODING-STYLE.md](docs/standards/CPP-CODING-STYLE.md) | Mandatory C++ style: directory structure, naming, header/implementation split, file headers, function documentation, build and test rules. |
 
 ---
@@ -256,7 +256,7 @@ standard appear to disagree.
 
 | Document | Contents |
 | --- | --- |
-| [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | Sections 1–20: code structure, native bindings, signals, setters/getters, windows, painting, custom drawing, application, screens, fonts, clipboard, text editing, advanced tables, source editing, classic trees, split views and tabs, filesystem resources/input controls/standard dialogs/non-client chrome, structural containers, paintable child surfaces, and background delivery/audio/child ownership. |
+| [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) | Sections 1–21: code structure, native bindings, signals, setters/getters, windows, painting, custom drawing, application, screens, fonts, clipboard, text editing, advanced tables, source editing, classic trees, split views and tabs, filesystem resources/input controls/standard dialogs/non-client chrome, structural containers, paintable child surfaces, background delivery/audio/child ownership, and portable programmable image shaders. |
 | [CPP-CODING-STYLE.md](docs/standards/CPP-CODING-STYLE.md) | Sections 1–9: project directory structure, naming conventions, header and implementation separation, file header block, function documentation, general coding rules, build rules, documentation rules, and tests. |
 
 ## The Book of Native — `docs/manuals/book-of-native/`
@@ -288,6 +288,7 @@ contents.
 | [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | File icons, special directories, combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [PATTERNS-BACKGROUND-SERVICES.md](docs/manuals/book-of-native/PATTERNS-BACKGROUND-SERVICES.md) | Scoped UI delivery, bounded PCM peers, child ownership and shutdown. Expands Architecture 20. |
+| [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
 Gap to be aware of: Architecture Sections 10 (Fonts) and 15 (Classic trees)
@@ -303,7 +304,7 @@ Teaches *how to write applications against the library*. Complete runnable
 programs and focused snippets; this is where educational example code lives
 instead of a separate examples source tree. Index:
 [docs/manuals/PROGRAMMING-NATIVE.md](docs/manuals/PROGRAMMING-NATIVE.md) — how
-a native program is organized, the 19-chapter table of contents, and build
+a native program is organized, the 20-chapter table of contents, and build
 instructions.
 
 | Chapter | Contents |
@@ -328,6 +329,8 @@ instructions.
 | [18-PANELS-AND-CANVASES.md](docs/manuals/programming-native/18-PANELS-AND-CANVASES.md) | `panel` grouping and child lifecycle, `canvas` painting, scrolling, scrollbar policy, and rulers. |
 | [19-BACKGROUND-WORK-AND-SERVICES.md](docs/manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md) | C++20 workers, scoped UI results, PCM output, child helpers and interactive acceptance. |
 
+| [20-IMAGE-SHADERS.md](docs/manuals/programming-native/20-IMAGE-SHADERS.md) | Shader-view lifecycle, source ownership, typed parameters, portable expression authoring/package format, fitting, animation, fallback and mouse acceptance. |
+
 ## Notes — `docs/notes/`
 
 Exceptional material only: remote builds, unusual host requirements, open
@@ -340,6 +343,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [CUSTOM.md](docs/notes/CUSTOM.md) | Native-versus-custom control audit. Per backend, per public control: native (**N**), hybrid (**H**), library-painted (**C**), or external helper (**E**), plus applied native replacements and deliberately retained custom implementations with reasons. Carries an audit date. |
 | [REFACTOR.md](docs/notes/REFACTOR.md) | Deferred review of splitting the large theme interface; records the measured concern, proposed grouping, and evidence threshold for implementing it. |
 | [INFINITY.md](docs/notes/INFINITY.md) | Infinity/nemu migration, implemented input/audio/background/process contracts, manual acceptance entry point and outstanding GEM/macOS verification constraints. |
+| [MOUSE-AND-SHADERS-REVIEW.md](docs/notes/MOUSE-AND-SHADERS-REVIEW.md) | Review of Infinity's proposed pointer and shader contracts against Native naming, ownership, lifecycle, composition, and verification requirements. No implementation claim. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
 | [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit regression/sanitizer commands, desktop permissions, and visual-coverage limits. |
@@ -352,6 +356,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 
 | Document | Contents |
 | --- | --- |
+| [src/assets/retro-terminal/README.md](src/assets/retro-terminal/README.md) | Pinned upstream shader/font provenance, GPL/CC-BY-SA notices, selected CPU port differences and executable asset deployment. |
 | [lib/native/third_party/README.md](lib/native/third_party/README.md) | Provenance and pinned upstream commit for the vendored `stb_truetype.h`, and its exemption from local formatting and file-length conventions. |
 
 ---
@@ -417,3 +422,7 @@ requests.
 
 - "Implement the feature inside the correct layer: core logic in `lib/native/`, OS integration in `lib/native/platforms/`, toolkit behavior in `lib/native/toolkits/`, and keep the public headers in `include/` pure C++."
 - "When changing build or backend behavior, update the code, docs, and VS Code launch/build integration together."
+
+Vision's terminal acceptance mode keeps its attributed shader/font assets under
+`src/assets/retro-terminal/`. Copy the complete directory beside the deployed
+binary; its asset README records upstream revision, licenses and port limits.

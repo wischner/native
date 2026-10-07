@@ -16,6 +16,8 @@
 
 #include "wnd_peer.h"
 #include "input_state.h"
+#include "mouse_state.h"
+#include "emulated_tree.h"
 
 namespace
 {
@@ -78,6 +80,7 @@ namespace native
         : wnd(bounds.p, bounds.d) {}
 
     wnd::~wnd() {
+        detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
         if (_lifetime) _lifetime->alive = false;
         for (non_client *element : _non_client) {
             if (element && element->_owner == this)
@@ -114,8 +117,10 @@ namespace native
 
     wnd &wnd::set_position(const point &position) {
         _bounds.p = position;
-        if (_created)
+        if (_created) {
             apply_position();
+            detail::backend_refresh_mouse(*this);
+        }
         return *this;
     }
 
@@ -138,7 +143,7 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
-        if (_created) apply_border_sides();
+        if (_created) { apply_border_sides(); detail::backend_refresh_mouse(*this); }
         for (non_client *element : _non_client) {
             if (element)
                 element->on_configuration_changed();
@@ -203,7 +208,7 @@ namespace native
 
         relayout_children();
         on_bounds_changed();
-        if (_created) apply_border_sides();
+        if (_created) { apply_border_sides(); detail::backend_refresh_mouse(*this); }
         for (non_client *element : _non_client) {
             if (element)
                 element->on_configuration_changed();
@@ -281,11 +286,14 @@ namespace native
         return _cursor;
     }
 
-    mouse_cursor wnd::get_cursor_at(const point &) const {
-        return _cursor;
+    mouse_cursor wnd::get_cursor_at(const point &position) const {
+        return get_input_enabled() && get_client_bounds().contains(position)
+            ? _cursor : mouse_cursor::arrow;
     }
 
     wnd &wnd::set_cursor(mouse_cursor cursor) {
+        if (unsigned(cursor) > unsigned(mouse_cursor::hidden))
+            throw std::invalid_argument("Invalid mouse cursor.");
         if (_cursor == cursor)
             return *this;
 
@@ -321,6 +329,7 @@ namespace native
         _peer = detail::create_wnd_peer(*this);
         _lifetime = std::make_shared<detail::wnd_lifetime>();
         detail::assign_peer_state(*this, new detail::input_state);
+        detail::assign_peer_state(*this, new detail::mouse_state);
         try {
             create_native();
             apply_cursor();
@@ -350,8 +359,8 @@ namespace native
         // Their visibility transition has already finished in that case.
         if (!_created || !_peer)
             return;
-        apply_cursor();
         _visible = true;
+        apply_cursor();
         apply_border_sides();
     }
 
@@ -360,6 +369,7 @@ namespace native
             return;
 
         _destroying = true;
+        detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
         if (_lifetime) _lifetime->alive = false;
         try {
             detail::reset_input(*this);
@@ -393,6 +403,7 @@ namespace native
         const bool destroying = _destroying;
         {
             const scoped_flag teardown(_destroying);
+            detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
             if (_lifetime) _lifetime->alive = false;
             detail::reset_input(*this);
             destroy_children();
@@ -466,7 +477,34 @@ namespace native
             _mouse_screen_position = screen_position;
         }
         _mouse_screen_position_exact = false;
+        const bool tracked = static_cast<bool>(_lifetime);
+        const auto weak = detail::mouse_access::lifetime(*this);
+        wnd *root = detail::root_of(this);
+        const point origin = root == this ? point{} : detail::origin_in_root(*this);
+        detail::pointer_position(*root, point(
+            static_cast<coord>(position.x + origin.x),
+            static_cast<coord>(position.y + origin.y)));
+        auto lifetime = weak.lock();
+        if (tracked && (!lifetime || !lifetime->alive)) return;
+        detail::backend_refresh_mouse(*this);
+        if (auto *state = detail::peer_state<detail::mouse_state>(*this)) {
+            mouse_motion_event motion;
+            motion.position = position;
+            if (const auto *input = detail::peer_state<detail::input_state>(*this))
+                motion.modifiers = input->modifiers;
+            if (state->baseline) {
+                motion.dx = float(position.x) - state->position.x;
+                motion.dy = float(position.y) - state->position.y;
+            }
+            state->position = position;
+            state->baseline = true;
+            on_native_mouse_motion(motion);
+        }
+        lifetime = weak.lock();
+        if (tracked && (!lifetime || !lifetime->alive)) return;
         on_mouse_move.emit(position);
+        lifetime = weak.lock();
+        if (tracked && (!lifetime || !lifetime->alive)) return;
         for (non_client *element : _non_client) {
             if (element && element->_visible)
                 element->track_pointer(position);
@@ -486,19 +524,31 @@ namespace native
     }
 
     void wnd::on_native_focus(bool focused) {
+        wnd *focus_root = detail::root_of(this);
+        if (auto *mouse = detail::peer_state<detail::mouse_state>(*focus_root)) {
+            if (focused || focus_root == this) mouse->active = focused;
+        }
         if (focused) {
             wnd *root = this;
             while (root->get_parent()) root = root->get_parent();
             if (wnd *old = detail::input_target(*root);
                 old && old != this && root != this) {
-                if (auto *state = detail::peer_state<detail::input_state>(*old))
-                    state->focused = false;
-                old->on_native_key_reset();
+                const bool tracked = static_cast<bool>(_lifetime);
+                const auto weak = detail::mouse_access::lifetime(*this);
+                old->on_native_focus(false);
+                const auto lifetime = weak.lock();
+                if (tracked && (!lifetime || !lifetime->alive)) return;
             }
         }
         if (auto *state = detail::peer_state<detail::input_state>(*this))
             state->focused = focused;
-        if (!focused) detail::reset_input(*this);
+        if (!focused) {
+            const bool tracked = static_cast<bool>(_lifetime);
+            const auto weak = detail::mouse_access::lifetime(*this);
+            detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::focus_lost);
+            const auto lifetime = weak.lock();
+            if (!tracked || (lifetime && lifetime->alive)) detail::reset_input(*this);
+        }
     }
 
     bool wnd::on_native_key(key_event event) {
@@ -507,6 +557,7 @@ namespace native
         if (!state || !get_input_enabled() ||
             key == 0 || key >= static_cast<unsigned>(key_code::count))
             return false;
+        state->modifiers = event.modifiers;
         if (event.action == key_action::release) {
             if (!state->held.test(key)) return false;
             state->held.reset(key);
@@ -521,7 +572,9 @@ namespace native
 
     void wnd::on_native_key_reset() {
         auto *state = detail::peer_state<detail::input_state>(*this);
-        if (!state || state->held.none()) return;
+        if (!state) return;
+        state->modifiers = key_modifiers::none;
+        if (state->held.none()) return;
         state->held.reset();
         on_key_reset.emit();
     }
@@ -538,6 +591,19 @@ namespace native
     }
 
     void wnd::on_native_mouse_click(mouse_event event) {
+        if (event.action == mouse_action::press &&
+            !get_client_bounds().contains(event.position) &&
+            detail::pointer_capture(*this) != this) return;
+        if (auto *state = detail::peer_state<detail::mouse_state>(*this)) {
+            const unsigned button = unsigned(event.button);
+            if (button > 0 && button <= 5) {
+                const unsigned mask = 1u << (button - 1);
+                state->buttons = static_cast<mouse_buttons>(
+                    event.action == mouse_action::press
+                        ? unsigned(state->buttons) | mask
+                        : unsigned(state->buttons) & ~mask);
+            }
+        }
         on_mouse_click.emit(event);
     }
 

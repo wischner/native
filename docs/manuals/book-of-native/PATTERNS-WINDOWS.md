@@ -388,14 +388,14 @@ follow the same no-echo rule.
 
 Keyboard focus is also a window-level native notification. A backend calls
 `on_native_focus()` on the `wnd` it already recovered from the event instead
-of enumerating focusable subclasses. Plain windows ignore it; painted controls
-cache and repaint the transition through `custom_control`.
+of enumerating focusable subclasses. Plain windows cache input focus and cancel pointer/keyboard sessions on loss;
+painted controls additionally repaint the transition through `custom_control`.
 
 ## Mouse cursors
 
-`mouse_cursor` names seven portable pointer shapes: `arrow` for ordinary
+`mouse_cursor` names eight portable pointer policies: `arrow` for ordinary
 pointing, `ibeam` for text, `crosshair` for precision drawing, horizontal and
-vertical resize cursors, and both diagonal resize cursors. A window defaults
+vertical resize cursors, both diagonal resize cursors, and client-scoped `hidden`. A window defaults
 to `arrow`; `text_edit` and `code_edit` default to `ibeam`.
 
 `set_cursor()` follows the normal cached-property contract. Calling it before
@@ -411,13 +411,15 @@ corner.set_cursor(
 ```
 
 A control that owns chrome needs more than one shape inside one window. That is
-what `get_cursor_at()` is for: it takes a window-local point and returns
-`get_cursor()` unless the control overrides it. `canvas` does, so a crosshair
+what `get_cursor_at()` is for: it takes a window-local point and returns the
+cached policy inside an eligible client, otherwise arrow. Derived controls can
+override that positional policy. `canvas` does, so a crosshair
 selected for a drawing surface stops at the viewport and its scrollbars and
 rulers keep the arrow. A backend that resolves the pointer shape by position —
 SDL2, GEMix, and the Win32 `WM_SETCURSOR` path — calls it with the point made
-local to the window it found; backends that hand the shape to a native child
-window as an attribute continue to apply one cached choice per control.
+local to the window it found. Native-child adapters refresh cursor attributes
+on pointer crossings/motion and live property changes so hidden policy stops
+at client edges.
 
 Native-widget backends assign the matching system cursor to the window or
 view. SDL2 and GEMix have one toolkit cursor shared by an emulated window tree,
@@ -549,3 +551,35 @@ ownership.
 Window destruction ignores reentrant `destroy()` calls while teardown is
 in progress, including calls from input-cancellation handlers. Failed native
 creation invalidates its window generation before releasing the peer.
+
+## Pointer ownership and cancellation
+
+`hidden` is an appended cursor enum value. The base `get_cursor_at()` now
+returns the cached choice inside an enabled client and arrow outside or over
+non-client strips. Backend resolution additionally checks visibility, focus
+activity and client eligibility. Canvas chrome keeps arrow; a shader view uses
+the same drawing-leaf input route and does not distort mouse coordinates.
+
+Peer-owned mouse state holds hover, held buttons and absolute motion baseline.
+The application router has one weak hover target and one weak public capture
+lease, using existing resource lifetime tokens. It clears old hover before
+leave and revalidates the proposed next generation before entry. Callbacks may
+destroy either target. Capture delivery does not fabricate inside state.
+
+Public virtual enter/leave/cancel/motion hooks update caches before their
+signals. Relative events never emit the legacy absolute signal. Absolute
+compatibility events retain the existing integer coordinate stream. Private
+canvas gestures continue outside; genuine focus/menu/modal loss resets both
+portable button state and scrollbar gesture state without fake releases.
+
+`mouse_capture` uses `get_active()` and UI-thread RAII release. Acquisition is
+exclusive, focus-dependent and capability-checked, with atomic failure and no
+silent stealing. Normal release is distinct from unexpected loss. Teardown
+invalidates tokens and restores backend capture/cursor state without notifying
+a dying object. See the [input tutorial](../programming-native/02-PAINTING-AND-INPUT.md)
+for mode support and the release gesture applications must provide.
+
+Haiku cursor resources belong to each window peer. Cursor changes synchronize
+with the native view before releasing the previous cursor; teardown releases
+these resources while the app-server connection is still valid. Keeping native
+cursors in process-static objects would make their destructors run too late.

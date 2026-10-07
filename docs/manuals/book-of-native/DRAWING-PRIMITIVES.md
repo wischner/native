@@ -461,3 +461,11 @@ graphics.set_pen(1).set_ink(native::rgba(0, 0, 0, 255))
 
 Use `theme::draw_toolbar_button(bounds, text, state)` for a menu-styled command
 that has no submenu arrow. `draw_menu_title()` retains native menu marks.
+
+For programmable image processing, use `shader_package` and `shader_view`.
+The implemented profile runs bounded CPU vector programs and multipass/history
+on every backend, then composes ordinary RGBA8 image output. It adds no GPU
+handles or runtime graphics/compiler dependencies to `gpx`. Source submission
+copies pixels and property getters retain cached values before creation.
+See [Portable image shaders](PATTERNS-IMAGE-SHADERS.md) and its
+[application tutorial](../programming-native/20-IMAGE-SHADERS.md).

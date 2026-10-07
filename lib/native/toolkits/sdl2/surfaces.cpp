@@ -194,8 +194,10 @@ namespace linux::sdl2
         const auto mask = std::uint32_t{1} <<
             static_cast<unsigned int>(button);
         // Update capture before callbacks, which may destroy the page.
-        if (pressed)
+        if (pressed) {
+            surface->on_native_focus(true);
             state->pressed_buttons |= mask;
+        }
         else
             state->pressed_buttons &= ~mask;
         surface->on_native_mouse_click(native::mouse_event(
@@ -220,14 +222,8 @@ namespace linux::sdl2
     void release_canvas_capture(native::wnd *owner) {
         while (native::canvas *surface = captured_canvas(owner)) {
             auto *state = canvas_bindings.object_from_handle(surface);
-            unsigned int button = 1;
-            while ((state->pressed_buttons &
-                    (std::uint32_t{1} << button)) == 0)
-                ++button;
-            state->pressed_buttons &= ~(std::uint32_t{1} << button);
-            surface->on_native_mouse_click(native::mouse_event(
-                static_cast<native::mouse_button>(button),
-                native::mouse_action::release, native::point(-1, -1)));
+            state->pressed_buttons = 0;
+            surface->on_native_mouse_cancel(native::mouse_cancel_reason::focus_lost);
         }
     }
 

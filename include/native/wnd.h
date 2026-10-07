@@ -10,6 +10,9 @@
 
 #include <memory>
 #include <vector>
+#include <optional>
+#include <string>
+#include "mouse.h"
 
 #include "events.h"
 #include "border.h"
@@ -33,13 +36,15 @@ namespace native
         resize_horizontal,
         resize_vertical,
         resize_northwest_southeast,
-        resize_northeast_southwest
+        resize_northeast_southwest,
+        hidden
     };
 
     namespace detail
     {
         class backend_wnd_peer;
         class wnd_peer_access;
+        class mouse_access;
         class wnd_peer;
         struct wnd_lifetime;
         wnd *deepest_at(wnd &root, point position);
@@ -128,10 +133,30 @@ namespace native
         //      A control that owns chrome overrides this so its own
         //      scrollbars and non-client strips keep the ordinary
         //      arrow instead of the shape the application chose for
-        //      the client area. The base answer is get_cursor() for
-        //      every point, including points outside the window.
+        //      the client area. The base answer is get_cursor() in
+        //      the enabled client and arrow for chrome/outside points.
         //
         virtual mouse_cursor get_cursor_at(const point &position) const;
+
+        // Return whether the pointer is over this window's own input client.
+        bool get_mouse_inside() const;
+
+        // Return the selected backend's pointer features.
+        mouse_capabilities get_mouse_capabilities() const;
+
+        // Acquire a visible, focused client's exclusive lease on the UI thread.
+        // Unsupported/conflicting acquisition returns nullopt and a diagnostic.
+        std::optional<mouse_capture> capture_mouse(
+            mouse_capture_options options, std::string &error);
+
+        // Accept one boundary transition; repeated transitions are ignored.
+        virtual void on_native_mouse_enter(const point &position);
+        // Accept one client exit; positions are informational.
+        virtual void on_native_mouse_leave(const point &position);
+        // Cancel held mouse input without fabricating physical releases.
+        virtual void on_native_mouse_cancel(mouse_cancel_reason reason);
+        // Dispatch relative motion only through the rich motion signal.
+        virtual void on_native_mouse_motion(mouse_motion_event event);
 
         // Return whether this window may currently receive user input.
         virtual bool get_input_enabled() const;
@@ -220,6 +245,10 @@ namespace native
         signal<size> on_wnd_resize;
         signal<wnd_paint_event> on_wnd_paint;
         signal<point> on_mouse_move;
+        signal<point> on_mouse_enter;
+        signal<point> on_mouse_leave;
+        signal<mouse_cancel_reason> on_mouse_cancel;
+        signal<mouse_motion_event> on_mouse_motion;
         signal<mouse_event> on_mouse_click;
         signal<mouse_wheel_event> on_mouse_wheel;
         signal<key_event> on_key;
@@ -325,6 +354,7 @@ namespace native
         friend void detail::reset_input(wnd &root);
         std::shared_ptr<detail::wnd_lifetime> _lifetime;
         friend class detail::wnd_peer_access;
+        friend class detail::mouse_access;
         friend wnd *detail::deepest_at(wnd &root, point position);
 
         friend class non_client;

@@ -328,3 +328,14 @@ The inspector owns that root and hosts it in a titleless popup; child-control
 ownership and creation remain the responsibility of the returned container.
 Closing or scrolling away the property destroys popup resources before the
 source row’s canvas disappears.
+
+Canvas pointer cancellation resets scrollbar pressed/hot state and its drag
+offset. SDL focus-loss cleanup clears private canvas capture before dispatching
+cancellation instead of fabricating a button release at an outside sentinel
+coordinate. Consumers terminate held gestures through `on_mouse_cancel`.
+
+`shader_view` is a canvas-derived drawing leaf with scrollbars initially set to
+`never`. It reuses all backend hosts and input routing, composing programmable
+CPU image output under the same client clip. Inherited chrome remains available
+when an application explicitly enables it. See
+[Portable image shaders](PATTERNS-IMAGE-SHADERS.md) for execution and ownership.

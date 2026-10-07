@@ -26,6 +26,7 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 - [Native versus custom control audit](CUSTOM.md)
 - [Deferred theme-interface split review](REFACTOR.md)
 - [Infinity emulator: portable services, migration and remaining limits](INFINITY.md)
+- [Infinity mouse and shader design review](MOUSE-AND-SHADERS-REVIEW.md)
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
 - [Haiku remote runtime, USB keyboard, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
 - [macOS remote runtime, AppKit regressions and desktop permissions (leia)](MACOS-REMOTE-RUNTIME.md)

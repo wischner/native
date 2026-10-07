@@ -181,3 +181,9 @@ copyable-callable handoff. Its unbounded queue does not imply receiver
 lifetime. Prefer `ui_dispatch_scope` for borrowed windows. A child-monitor
 or audio worker finishes independently of whether UI results are delivered.
 See [Background services](PATTERNS-BACKGROUND-SERVICES.md).
+
+Haiku window-close callbacks post `B_QUIT_REQUESTED` to `BApplication`;
+they do not call `Quit()` from the window looper without the application lock.
+Peer-owned cursor resources are released while app-server communication is
+still available. The CRT terminal exercises both posted closure and native
+window closure.

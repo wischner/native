@@ -14,3 +14,8 @@ the official [`twbs/icons`](https://github.com/twbs/icons) repository, pinned
 at commit `6945b7006285d444cc17ff2e22c7691719229526`. Their source mapping,
 rasterization details, attribution, and MIT license are recorded in
 `bootstrap-icons/README.md` and `bootstrap-icons/LICENSE`.
+
+Vision's optional CRT terminal test has separately attributed upstream shader
+and font assets outside this library directory. Their exact revision, licenses,
+adaptation differences and retained source are documented in
+[the terminal asset README](../../../src/assets/retro-terminal/README.md).

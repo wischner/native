@@ -11,6 +11,7 @@
 #include <bindings.h>
 
 #include "globals.h"
+#include "../../mouse_state.h"
 
 namespace linux::sdl2
 {
@@ -77,10 +78,16 @@ namespace linux::sdl2
         if (!window)
             return;
 
-        native::wnd *target = position.y < 0
-                                  ? window
-                                  : native::detail::deepest_at(
-                                        *window, position);
+        bool menu_open = false;
+        if (auto *application = dynamic_cast<native::app_wnd *>(window))
+            if (auto *menu = menu_bindings.object_from_handle(application->menu.id()))
+                menu_open = menu->open_idx >= 0;
+        const auto weak = native::detail::mouse_access::lifetime(*window);
+        if (menu_open) native::detail::pointer_hover(nullptr, position);
+        else native::detail::pointer_position(*window, position);
+        const auto lifetime = weak.lock();
+        if (!lifetime || !lifetime->alive) return;
+        native::wnd *target = native::detail::deepest_at(*window, position);
         // A control that owns chrome answers per position, so the
         // root point becomes local before the shape is resolved.
         native::point local = position;
@@ -91,12 +98,20 @@ namespace linux::sdl2
                 static_cast<native::coord>(position.x - origin.x),
                 static_cast<native::coord>(position.y - origin.y));
         }
-        SDL_Cursor *cursor = system_cursor(target->get_cursor_at(local));
+        auto shape = native::detail::pointer_cursor(*target, local);
+        if (position.y < 0 || menu_open || !window->get_input_enabled())
+            shape = native::mouse_cursor::arrow;
+        if (native::detail::pointer_relative(*window)) return;
+        SDL_ShowCursor(shape == native::mouse_cursor::hidden
+            ? SDL_DISABLE : SDL_ENABLE);
+        if (shape == native::mouse_cursor::hidden) return;
+        SDL_Cursor *cursor = system_cursor(shape);
         if (cursor)
             SDL_SetCursor(cursor);
     }
 
     void shutdown_mouse_cursors() {
+        SDL_ShowCursor(SDL_ENABLE);
         SDL_SetCursor(SDL_GetDefaultCursor());
         if (arrow_cursor)
             SDL_FreeCursor(arrow_cursor);

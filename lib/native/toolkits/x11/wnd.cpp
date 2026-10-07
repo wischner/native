@@ -18,11 +18,27 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../x_pointer.h"
 #include "../x_border.h"
 #include "window_position.h"
 
 namespace
 {
+    struct pointer_tracking { bool installed = false; };
+    void track_pointer(Widget, XtPointer data, XEvent *event, Boolean *) {
+        auto *owner = static_cast<native::wnd *>(data);
+        const auto weak = native::detail::mouse_access::lifetime(*owner);
+        if (event->type == LeaveNotify) {
+            native::detail::pointer_leave(*owner, native::point(event->xcrossing.x, event->xcrossing.y));
+        } else if (event->type == EnterNotify || event->type == MotionNotify) {
+            native::point local = event->type == MotionNotify
+                ? native::point(event->xmotion.x, event->xmotion.y)
+                : native::point(event->xcrossing.x, event->xcrossing.y);
+            native::detail::pointer_hover(owner, local);
+        }
+        auto lifetime = weak.lock();
+        if (lifetime && lifetime->alive) native::detail::mouse_access::refresh(*owner);
+    }
     Dimension backing_dimension(Widget widget, int value) {
         Dimension border = 0;
         XtVaGetValues(widget, XtNborderWidth, &border, nullptr);
@@ -32,6 +48,9 @@ namespace
         if (!display)
             return None;
 
+        if (cursor == native::mouse_cursor::hidden)
+            return native::detail::invisible_x_cursor(
+                display, DefaultRootWindow(display));
         unsigned int shape = XC_left_ptr;
         if (cursor == native::mouse_cursor::ibeam)
             shape = XC_xterm;
@@ -178,7 +197,18 @@ namespace native
             return;
 
         Display *display = XtDisplay(widget);
-        Cursor cursor = cursor_for(display, _cursor);
+        auto *tracking = detail::peer_state<pointer_tracking>(*this);
+        if (!tracking) {
+            tracking = new pointer_tracking;
+            detail::assign_peer_state(*this, tracking);
+        }
+        if (!tracking->installed) {
+            XtAddEventHandler(widget, EnterWindowMask | LeaveWindowMask | PointerMotionMask,
+                False, track_pointer, this);
+            tracking->installed = true;
+        }
+        Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
+            detail::x_pointer_position(display, XtWindow(widget))));
         if (cursor != None) {
             XDefineCursor(display, XtWindow(widget), cursor);
             XFreeCursor(display, cursor);
@@ -236,3 +266,39 @@ namespace native
         return *_gpx;
     }
 } // namespace native
+
+namespace native::detail
+{
+    mouse_capabilities backend_mouse_capabilities() {
+        return {true, true, false, false};
+    }
+    bool backend_capture_mouse(wnd &owner, mouse_capture_options,
+                               std::string &error) {
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(&owner);
+        Display *display = widget ? XtDisplay(widget) : nullptr;
+        Window target = widget && XtIsRealized(widget) ? XtWindow(widget) : None;
+        if (!display || target == None) {
+            error = "Native pointer surface is unavailable.";
+            return false;
+        }
+        const int result = XGrabPointer(display, target, False,
+            ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+            GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+        if (result != GrabSuccess) {
+            error = "X11 pointer grab failed or another grab is active.";
+            return false;
+        }
+        return true;
+    }
+    void backend_release_mouse(wnd &owner, mouse_capture_mode) {
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(&owner);
+        Display *display = widget ? XtDisplay(widget) : nullptr;
+        Window target = widget && XtIsRealized(widget) ? XtWindow(widget) : None;
+        (void)target;
+        if (display) XUngrabPointer(display, CurrentTime);
+        backend_refresh_mouse(owner);
+    }
+    void backend_refresh_mouse(wnd &owner) {
+        mouse_access::refresh(owner);
+    }
+}
