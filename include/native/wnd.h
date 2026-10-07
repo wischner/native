@@ -41,7 +41,10 @@ namespace native
         class backend_wnd_peer;
         class wnd_peer_access;
         class wnd_peer;
+        struct wnd_lifetime;
         wnd *deepest_at(wnd &root, point position);
+        wnd *input_target(wnd &root);
+        void reset_input(wnd &root);
     }
 
     // Represents a cross-platform native window or child control.
@@ -183,6 +186,13 @@ namespace native
         // Dispatch a backend pointer-wheel notification.
         virtual void on_native_mouse_wheel(mouse_wheel_event event);
 
+        // Deliver physical input; true suppresses native/default handling.
+        // Repeats/releases without a paired press are ignored.
+        virtual bool on_native_key(key_event event);
+
+        // Cancel held input once; no synthetic physical releases are emitted.
+        virtual void on_native_key_reset();
+
         // Dispatch a backend keyboard-focus transition.
         virtual void on_native_focus(bool focused);
 
@@ -212,6 +222,8 @@ namespace native
         signal<point> on_mouse_move;
         signal<mouse_event> on_mouse_click;
         signal<mouse_wheel_event> on_mouse_wheel;
+        signal<key_event> on_key;
+        signal<> on_key_reset;
 
     protected:
         // Create this window's backend-specific native resource.
@@ -308,6 +320,10 @@ namespace native
 
     private:
         friend class detail::backend_wnd_peer;
+        friend class ui_dispatch_scope;
+        friend wnd *detail::input_target(wnd &root);
+        friend void detail::reset_input(wnd &root);
+        std::shared_ptr<detail::wnd_lifetime> _lifetime;
         friend class detail::wnd_peer_access;
         friend wnd *detail::deepest_at(wnd &root, point position);
 

@@ -115,5 +115,9 @@ full-gallery walkthrough.
 19. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
     Per-backend feature and test status for what is implemented now.
 
+20. [Background delivery, PCM output, and child ownership](book-of-native/PATTERNS-BACKGROUND-SERVICES.md)
+    Scoped C++20 UI results, bounded PCM peers and shell-free child ownership.
+    Expands Architecture Section 20.
+
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).

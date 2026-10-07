@@ -7,12 +7,28 @@
 //
 
 #include "vision_window.h"
+#include "infinity_window.h"
+#include <iostream>
+#include <chrono>
+#include <thread>
 
 #include <string_view>
 
 #include <native.h>
 
 int program(int argc, char **argv) {
+    if (argc > 1 && std::string_view(argv[1]) == "--native-process-child") {
+        for (int i = 2; i < argc; ++i) std::cout << argv[i] << "|";
+        std::cerr << "helper error stream";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        return 7;
+    }
+    for (int i = 1; i < argc; ++i) {
+        if (std::string_view(argv[i]) == "--infinity-test") {
+            vision::infinity_window window;
+            return native::app::run(window);
+        }
+    }
     bool open_splitter = false;
     bool open_input_chrome = false;
     bool open_properties = false;

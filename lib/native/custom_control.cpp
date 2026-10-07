@@ -19,6 +19,7 @@ namespace native
     }
 
     void custom_control::on_native_focus(bool focused) {
+        wnd::on_native_focus(focused);
         if (_focused == focused)
             return;
         _focused = focused;

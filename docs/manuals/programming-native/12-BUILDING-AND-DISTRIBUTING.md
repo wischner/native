@@ -667,3 +667,16 @@ For every backend:
 
 Return to the [manual contents](../PROGRAMMING-NATIVE.md), or continue with
 the [Book of Native](../BOOK-OF-NATIVE.md) for backend implementation details.
+
+## Native as a CMake dependency
+
+A parent project can `add_subdirectory()` the Native checkout and link its
+`native` target. The dependency build configures the library, without Vision,
+Native tests or host Docker orchestration. The parent supplies its own
+application `program()` and backend selection/toolchain and runs its build
+inside the corresponding Docker image, mounting both source checkouts.
+No installed/exported package is provided. Do not reproduce Native's toolkit,
+codec or audio link closure in the application. Non-SDL Linux sound loads
+`libasound.so.2` at runtime; missing ALSA/default output is reported by
+`audio_out::open() == false`. Windows uses WASAPI, macOS links AudioToolbox,
+and Haiku links the media kit. Audio dependencies remain private to Native.

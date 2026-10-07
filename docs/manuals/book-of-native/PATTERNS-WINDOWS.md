@@ -524,3 +524,28 @@ calling an owner override during a non-client constructor/destructor.
 
 A titleless owned window (`get_native_title_visible() == false`) provides the
 host for custom property dropdowns; it can still focus native text controls.
+
+## Physical input and receiver generations
+
+`on_native_key()` pairs presses/repeats/releases in peer state and returns
+consumption from `on_key`. `on_native_key_reset()` cancels a nonempty held
+session before notifying `on_key_reset`. Plain windows receive real focus
+transitions; derived focus handlers call `wnd::on_native_focus()`.
+
+SDL resolves logical control focus; X11 adapters translate XKB position
+names, Windows normalizes scan and extended bits, AppKit uses physical virtual
+keys and sided modifier transitions, and Haiku uses raw key positions.
+Focused controls keep their text/navigation paths. Input does not bubble
+unconditionally into emulator parents. GEM AES currently has no complete
+physical stream; test `app::get_physical_keyboard_supported()`.
+
+Resource destruction invalidates the window's portable lifetime token before
+reset callbacks and peer teardown. Recreation creates a new generation;
+`ui_dispatch_scope` endpoints for the previous generation remain closed.
+Service state is independent of the window peer. See
+[Background services](PATTERNS-BACKGROUND-SERVICES.md) for queue and shutdown
+ownership.
+
+Window destruction ignores reentrant `destroy()` calls while teardown is
+in progress, including calls from input-cancellation handlers. Failed native
+creation invalidates its window generation before releasing the peer.

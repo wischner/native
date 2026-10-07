@@ -608,6 +608,7 @@ namespace native
     }
 
     void code_edit::on_native_focus(bool focused) {
+        wnd::on_native_focus(focused);
         if (_focused == focused)
             return;
         _focused = focused;

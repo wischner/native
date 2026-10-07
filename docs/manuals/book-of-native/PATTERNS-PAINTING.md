@@ -312,3 +312,17 @@ when icon sizes shrink. OPEN LOOK command tools omit menu marks. GEM window
 text uses the hosted VDI font-cell origin, matching image text and centered
 icon boxes. Haiku buttons repaint their whole surface when an edge mask
 changes; a persistent native clip must not prevent erasing the old border.
+
+## Worker-driven displays
+
+A worker may submit an immutable result through a scoped UI sender. The UI
+callback updates window/image state and calls `invalidate()`; it never draws
+on a worker. Use `post_latest()` for a frame or progress snapshot so obsolete
+updates cannot create a repaint backlog. Determine display placement from
+complete client bounds and use the paint event rectangle only for damage
+and clipping. Destruction invalidates the receiver generation before any
+queued UI callback can reach a recreated surface.
+
+Window destruction ignores reentrant `destroy()` calls while teardown is
+in progress, including calls from input-cancellation handlers. Failed native
+creation invalidates its window generation before releasing the peer.

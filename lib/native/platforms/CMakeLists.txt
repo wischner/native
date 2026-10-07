@@ -1,3 +1,26 @@
+find_package(Threads REQUIRED)
+target_link_libraries(native PRIVATE Threads::Threads)
+if(WIN32)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/windows/audio_out.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/process.cpp)
+elseif(APPLE)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mac/audio_out.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/posix/process.cpp)
+    target_link_libraries(native PRIVATE "-framework AudioToolbox")
+elseif(HAIKU)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/haiku/audio_out.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/posix/process.cpp)
+    target_link_libraries(native PRIVATE media)
+else()
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/posix/process.cpp)
+    if(TOOLKIT STREQUAL "SDL2")
+        target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../toolkits/sdl2/audio_out.cpp)
+    else()
+        target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/linux/audio_out.cpp)
+        target_link_libraries(native PRIVATE ${CMAKE_DL_LIBS})
+    endif()
+endif()
+
 if(WIN32)
     add_subdirectory(windows)
 elseif(HAIKU)

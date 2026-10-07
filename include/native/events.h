@@ -9,10 +9,153 @@
 #pragma once
 
 #include "geometry.h"
+#include <string_view>
 
 namespace native
 {
     class gpx;
+
+    // Physical positions on a US reference keyboard, never text or OS codes.
+    enum class key_code
+    {
+        unknown,
+        a,
+        b,
+        c,
+        d,
+        e,
+        f,
+        g,
+        h,
+        i,
+        j,
+        k,
+        l,
+        m,
+        n,
+        o,
+        p,
+        q,
+        r,
+        s,
+        t,
+        u,
+        v,
+        w,
+        x,
+        y,
+        z,
+        digit_0,
+        digit_1,
+        digit_2,
+        digit_3,
+        digit_4,
+        digit_5,
+        digit_6,
+        digit_7,
+        digit_8,
+        digit_9,
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+        f8,
+        f9,
+        f10,
+        f11,
+        f12,
+        left_shift,
+        right_shift,
+        left_ctrl,
+        right_ctrl,
+        left_alt,
+        right_alt,
+        left_meta,
+        right_meta,
+        enter,
+        keypad_enter,
+        space,
+        backspace,
+        escape,
+        tab,
+        up,
+        down,
+        left,
+        right,
+        home,
+        end,
+        page_up,
+        page_down,
+        insert,
+        delete_key,
+        minus,
+        equals,
+        comma,
+        period,
+        slash,
+        semicolon,
+        apostrophe,
+        left_bracket,
+        right_bracket,
+        backslash,
+        grave,
+        caps_lock,
+        num_lock,
+        scroll_lock,
+        print_screen,
+        pause,
+        keypad_0,
+        keypad_1,
+        keypad_2,
+        keypad_3,
+        keypad_4,
+        keypad_5,
+        keypad_6,
+        keypad_7,
+        keypad_8,
+        keypad_9,
+        keypad_add,
+        keypad_subtract,
+        keypad_multiply,
+        keypad_divide,
+        keypad_decimal,
+        count,
+    };
+
+    // Return the stable lowercase diagnostic name; unknown for invalid values.
+    std::string_view key_name(key_code code);
+
+    enum class key_action { press, release };
+
+    // Post-transition modifier state; sided identity is in key_code.
+    enum class key_modifiers : unsigned
+    {
+        none = 0, shift = 1, ctrl = 2, alt = 4, meta = 8,
+        caps_lock = 16, num_lock = 32
+    };
+
+    // Combine portable modifier bits.
+    constexpr key_modifiers operator|(key_modifiers a, key_modifiers b) {
+        return static_cast<key_modifiers>(unsigned(a) | unsigned(b));
+    }
+
+    // Test portable modifier bits.
+    constexpr key_modifiers operator&(key_modifiers a, key_modifiers b) {
+        return static_cast<key_modifiers>(unsigned(a) & unsigned(b));
+    }
+
+    struct key_event
+    {
+        key_code key = key_code::unknown;
+        key_action action = key_action::release;
+        bool repeat = false;
+        key_modifiers modifiers = key_modifiers::none;
+    };
+
+
 
     // Identifies a mouse button independently of the native toolkit.
     enum class mouse_button

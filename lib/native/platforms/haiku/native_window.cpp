@@ -11,10 +11,13 @@
 #include <Application.h>
 #include <AppDefs.h>
 #include <InterfaceDefs.h>
+#include <cstring>
 
 #include <native.h>
 
 #include "globals.h"
+#include "keyboard.h"
+#include "../../input_state.h"
 
 namespace
 {
@@ -43,6 +46,32 @@ namespace
             // color would make the app_server erase it once beforehand,
             // which visibly flashes during frequent non-client updates.
             SetViewColor(B_TRANSPARENT_COLOR);
+        }
+
+        void KeyDown(const char *bytes, int32 count) override {
+            if (!deliver_key(native::key_action::press)) BView::KeyDown(bytes, count);
+        }
+        void KeyUp(const char *bytes, int32 count) override {
+            if (!deliver_key(native::key_action::release)) BView::KeyUp(bytes, count);
+        }
+        bool deliver_key(native::key_action action) {
+            if (!_owner || !_owner->get_input_enabled()) return false;
+            BMessage *message = Window()->CurrentMessage();
+            int32 raw = 0, flags = 0;
+            if (!message || message->FindInt32("key", &raw) != B_OK) return false;
+            message->FindInt32("modifiers", &flags);
+            unsigned mods = 0;
+            if (flags & B_SHIFT_KEY) mods |= 1;
+            if (flags & B_CONTROL_KEY) mods |= 2;
+            if (flags & B_COMMAND_KEY) mods |= 4;
+            if (flags & B_OPTION_KEY) mods |= 8;
+            if (flags & B_CAPS_LOCK) mods |= 16;
+            if (flags & B_NUM_LOCK) mods |= 32;
+            const auto code = haiku::physical_key(raw);
+            return _owner->on_native_key({code, action,
+                action == native::key_action::press &&
+                    (message->HasInt32("be:key_repeat") || native::detail::key_held(*_owner, code)),
+                static_cast<native::key_modifiers>(mods)});
         }
 
         void Draw(BRect update_rect) override {
@@ -88,6 +117,8 @@ namespace
             // Keep receiving move/up events for drag interactions such
             // as the painter sample while the mouse button is held.
             SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
+            MakeFocus(true);
+            _owner->on_native_focus(true);
 
             uint32 buttons = 0;
             if (BMessage *msg = Window()->CurrentMessage()) {
@@ -144,6 +175,47 @@ namespace haiku
         , _owner(owner) {
         AddChild(new native_view(owner, Bounds()));
         wnd_bindings.register_pair(this, owner);
+    }
+
+    void native_window::DispatchMessage(BMessage *message, BHandler *target) {
+        if (message && message->what == B_MODIFIERS_CHANGED && _owner &&
+            _owner->get_input_enabled() && dynamic_cast<native_view *>(CurrentFocus())) {
+            key_info info{};
+            const void *states = nullptr;
+            ssize_t size = 0;
+            int32 modifiers = 0;
+            const bool snapshot = message->FindData("states", B_UINT8_TYPE, &states, &size) == B_OK &&
+                size >= static_cast<ssize_t>(sizeof(info.key_states)) &&
+                message->FindInt32("modifiers", &modifiers) == B_OK;
+            if (snapshot) {
+                std::memcpy(info.key_states, states, sizeof(info.key_states));
+                info.modifiers = modifiers;
+            }
+            if (snapshot || get_key_info(&info) == B_OK) {
+                unsigned mods = 0;
+                if (info.modifiers & B_SHIFT_KEY) mods |= 1;
+                if (info.modifiers & B_CONTROL_KEY) mods |= 2;
+                if (info.modifiers & B_COMMAND_KEY) mods |= 4;
+                if (info.modifiers & B_OPTION_KEY) mods |= 8;
+                if (info.modifiers & B_CAPS_LOCK) mods |= 16;
+                if (info.modifiers & B_NUM_LOCK) mods |= 32;
+                for (unsigned raw : {0x4bU, 0x56U, 0x5cU, 0x60U,
+                                     0x5dU, 0x5fU, 0x66U, 0x67U}) {
+                    const auto key = haiku::physical_key(raw);
+                    const bool down = (info.key_states[raw / 8] & (0x80 >> (raw % 8))) != 0;
+                    if (down != native::detail::key_held(*_owner, key))
+                        _owner->on_native_key({key, down ? native::key_action::press :
+                            native::key_action::release, false,
+                            static_cast<native::key_modifiers>(mods)});
+                }
+            }
+        }
+        BWindow::DispatchMessage(message, target);
+    }
+
+    void native_window::WindowActivated(bool active) {
+        if (_owner) _owner->on_native_focus(active);
+        BWindow::WindowActivated(active);
     }
 
     bool native_window::QuitRequested() {

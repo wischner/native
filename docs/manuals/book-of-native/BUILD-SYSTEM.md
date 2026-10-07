@@ -177,7 +177,7 @@ executables:
 | `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif/OPEN LOOK parent-child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2, Motif, OPEN LOOK and macOS; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
-| `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and complete SDL shutdown | SDL2 dummy video with software rendering; executable also runs on a desktop renderer |
+| `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; executable also runs on a desktop renderer |
 | `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, and drag/release capture | SDL2 dummy video with software rendering |
 | `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure, nested icon-grid/tree scrollbar arrows, paging, thumb capture outside the window, selection preservation, capture cleanup on destruction, compact property editing/scrolling, and toolbar activation/cancellation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
@@ -473,3 +473,23 @@ those defaults.
 - Runtime verification currently covers Linux X11/SDL2/OpenMotif, OPEN LOOK in
   Tribblix, Window Maker in Bookworm, the native Windows VM, Haiku deploy-and-run over
   SSH, and Apple on the configured remote host.
+
+## Background-service regression targets and consumers
+
+| Target | Coverage | Runtime |
+| --- | --- | --- |
+| `native_infinity_tests` | Physical pairing/consumption/reset and bounded scoped UI delivery, including concurrent close, reentrant destruction and recreation | All hosted backends; inert native hooks, no display |
+| `native_audio_queue_tests` | Production PCM queue with deterministic private device factory: copied data, stereo frames, bounds, silence, failure and reopen | All hosted backends; no audio device |
+| `native_process_tests` | Real child launch, quoting/environment, simultaneous bounded output, cancellation and reaping | All hosted backends; self-contained child modes |
+| `native_keyboard_runtime_tests` | Real SDL input dispatch, focused-editor isolation, and audio survival across loop shutdown | SDL2 dummy video/software renderer and dummy audio |
+
+These tests are registered with CTest and a timeout. Cross-build executables
+run on their target OS; a successful cross-build is not a runtime pass.
+`vision --infinity-test` is the public-API manual acceptance surface on every
+backend, with held-key counters, stereo tone, progress/cancel and child tests.
+GEMix explicitly reports physical keyboard unavailability. Device playback
+and actual desktop focus remain manual acceptance checks.
+
+When included through a parent's `add_subdirectory()`, Native builds only
+its library; Vision, tests and Docker targets remain top-level entry points.
+The parent owns its GUI target, platform launcher and Docker invocation.

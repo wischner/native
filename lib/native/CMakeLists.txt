@@ -60,6 +60,10 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/border.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/input_state.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui_dispatch.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/audio_out.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/process.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_control.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/collection_view.cpp

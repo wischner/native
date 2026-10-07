@@ -132,6 +132,28 @@ without switching on the public control type. The `wnd` default is a no-op;
 `custom_control` caches focus and invalidates, and specialized controls may
 extend that behavior.
 
+### Physical input and consumption
+
+`signal::emit_consumed()` reports a newest-first handler's `true` result;
+`emit()` retains its void signature and ignores that result. Connection
+mutation during emission remains unsupported. A signal state stays alive
+through dispatch even if its owning window is destroyed by a callback.
+
+`wnd::on_native_key(key_event)` returns consumption and updates peer-owned
+held positions before emitting `on_key`. Physical positions refer to a US
+reference keyboard; they are not text or backend numeric codes. Repeated
+presses and releases require a paired delivered press. `on_native_key_reset()`
+clears bookkeeping before emitting `on_key_reset`, once for nonempty held
+state. Focus loss, modal/panel entry, menu commands, pointer transfer and
+resource destruction cancel held input. Derived focus hooks call the base.
+Focused editor text and composition paths remain separate. Unclaimed keys
+go to their actual input target, without automatic parent bubbling.
+
+`app::get_physical_keyboard_supported()` reports adapter availability.
+GEMix currently returns false: the pinned AES interface discards raw key
+releases and some physical distinctions. Do not synthesize timed releases
+or claim emulator held-key parity from AES key-down packets.
+
 ## 4. Setters and Getters
 
 Expose mutable properties through `set_<property>(value)` and
@@ -486,6 +508,19 @@ Shared drawing stages use `gpx::draw_border()`. Native adapters mask their
 existing edges; widget metrics remain native-owned. Tree and accordion
 `set_border_visible()` remain all/none convenience setters. Accordion body
 insets follow the selected left, right, and bottom edges.
+
+### Input and asynchronous receiver lifetimes
+
+Every created window has a portable lifetime token alongside its opaque
+peer. Destroying the native resource invalidates that generation before
+application reset callbacks; recreation makes a new generation. UI delivery
+endpoints hold weak tokens and never inspect a window on a posting thread.
+Keyboard held/focus state remains peer-owned, rather than in a global map.
+Service teardown must not wait for a callback on a UI loop which is ending.
+
+Window destruction ignores reentrant `destroy()` calls while teardown is
+in progress, including calls from input-cancellation handlers. Failed native
+creation invalidates its window generation before releasing the peer.
 
 ## 6. Painting in Windows
 
@@ -1539,3 +1574,52 @@ reaches the inherited `wnd` dispatch with canvas-local coordinates. Chrome owns
 its pointer shape as well: `canvas` overrides `get_cursor_at()` so the cursor
 the application selected applies to the client viewport, and scrollbars, their
 corner filler, and non-client strips show the ordinary arrow.
+
+## 20. Background delivery, PCM output, and child processes
+
+Application work uses C++20 ownership and cancellation: normally
+`std::jthread`, `std::stop_token` and stop-aware waits. Workers do not touch
+windows, graphics, controls or signals. Keep an owning controller and ensure
+completion never depends on UI dispatch. Joining a worker is a blocking
+operation; perform potentially slow shutdown outside a window callback.
+
+`ui_dispatch_scope` binds a created, borrowed `wnd` on the UI thread.
+`ui_sender` is a copyable weak endpoint. `post()` admits bounded FIFO work,
+returning accepted/full/closed; `post_latest()` replaces obsolete progress
+with one pending slot. Admission is not guaranteed delivery. Scope close,
+window destruction and recreation make stale callbacks inert. Dispatch uses
+`app::post()`, never a second toolkit loop. Callbacks execute outside the
+state mutex, at most sixteen per turn, with a latest update before FIFO
+completion. Close drops captured payloads outside the mutex. Do not access
+a receiver after callback-driven destruction. This is a small UI boundary,
+not a thread pool, generic executor, coroutine runtime or scheduler.
+
+`audio_out` configures exact-rate signed 16-bit mono/stereo interleaved PCM
+and a total input-frame capacity. Construction validates but opens no device.
+Explicit `open()` returns false for unavailable output. Queueing copies and
+atomically accepts a whole block or rejects it, without waiting for space;
+malformed frames throw. Occupancy includes native submitted audio, released
+conservatively at completed buffer boundaries. Underflow is silence. State
+and bounded storage belong to one opaque service peer. Device threads never
+call application code. One producer may queue/query while output consumes;
+serialize open, close and destruction against that producer. Stop/detach the
+producer before close. Audio lifetime is independent of GUI-loop teardown.
+OS adapters use ALSA for non-SDL Linux, WASAPI, CoreAudio AudioQueue and
+Haiku BSoundPlayer; SDL has a private callback adapter. ALSA is loaded as an
+optional runtime dependency; missing service/device means explicit failure,
+not simulated successful output.
+
+`process` owns one child and a private monitor, without toolkit dependency.
+Executable/cwd values are filesystem paths; argument/environment strings
+cross the OS encoding boundary privately. No implicit shell or native handles
+enter the public API. Capture drains stdout/stderr concurrently, with a
+per-stream byte bound and explicit truncation. This bounded capture API is
+for helper results, not a lossless protocol transport. Stream policies also
+allow discard/inherit. Input is disconnected. A thread-safe stop source
+requests cancellation; POSIX sends SIGTERM then SIGKILL after the configured
+timeout, Windows waits for a caller's cooperative protocol opportunity then
+terminates the child. No descendant-tree ownership is promised. Always reap,
+observe exit and release pipes, including failure and cancellation. `wait()`
+and destruction join the monitor and are controller operations; use a worker
+when closure could take time. Exit, signal, cancellation and launch failure
+are distinct public result values.

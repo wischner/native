@@ -173,3 +173,21 @@ Chapter 10 expands these operations with memory images, PNG/JPEG codecs, font
 creation and measurement, and native-look theme primitives.
 
 Next: [Menus and commands](03-MENUS-AND-COMMANDS.md).
+
+## Physical keyboard input
+
+Connect `on_key` on the focused drawing window to receive `key_event`:
+`key` identifies a US reference position, `action` is press/release,
+`repeat` identifies a held repeat, and `modifiers` is a typed post-transition
+mask. `key_name()` gives a diagnostic name, not text for insertion. Keep
+composed text in existing text controls. A handler returning true consumes
+the event; input is not automatically forwarded to a parent.
+
+Connect `on_key_reset` to clear held state when focus/input ownership or
+lifecycle cancels a session. The library clears its own pairing first and
+emits no fabricated releases. Derived focus overrides call their base.
+`app::get_physical_keyboard_supported()` is false for current GEMix builds;
+AES alone cannot provide physical held-key input. Run Vision with
+`--infinity-test` for sided modifiers, repeats, modal cancellation and editor
+isolation. See [Background work and services](19-BACKGROUND-WORK-AND-SERVICES.md)
+for the accompanying sound and worker diagnostics.

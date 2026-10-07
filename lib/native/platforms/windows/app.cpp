@@ -12,6 +12,7 @@
 
 #include "../../post_backend.h"
 #include "globals.h"
+#include "../../input_state.h"
 
 namespace
 {
@@ -54,12 +55,23 @@ namespace native
             }
 
             bool translated = false;
+            auto *target = windows::wnd_bindings.object_from_handle(msg.hwnd);
+            const bool editor = dynamic_cast<text_edit *>(target) ||
+                dynamic_cast<code_edit *>(target) || dynamic_cast<combo_box *>(target);
+            const bool paired_key = target &&
+                (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN) &&
+                detail::key_held(*target, detail::pc_key((msg.lParam >> 16) & 0xff,
+                    (msg.lParam & (1L << 24)) != 0));
+            const bool editing_shortcut = editor && msg.message == WM_KEYDOWN &&
+                (GetKeyState(VK_CONTROL) & 0x8000) &&
+                (msg.wParam == 'A' || msg.wParam == 'C' || msg.wParam == 'X' ||
+                 msg.wParam == 'V' || msg.wParam == 'Z' || msg.wParam == 'Y');
             if (auto *window = app::main_wnd();
                 window && window->menu.id()) {
                 auto *menu = windows::menu_bindings.object_from_handle(
                     window->menu.id());
                 HWND hwnd = windows::wnd_bindings.handle_from_object(window);
-                translated = menu && menu->accelerators && hwnd &&
+                translated = !editing_shortcut && !paired_key && menu && menu->accelerators && hwnd &&
                     TranslateAcceleratorW(hwnd, menu->accelerators, &msg);
             }
             if (!translated) {

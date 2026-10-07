@@ -48,6 +48,8 @@ controls.
 17. [Filesystem resources, input, dialogs, and window chrome](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
 18. [Panels and canvases](programming-native/18-PANELS-AND-CANVASES.md)
 
+19. [Background work and services](programming-native/19-BACKGROUND-WORK-AND-SERVICES.md)
+
 ## Building the repository program
 
 Configure a debug build under the root `build/` directory and select a Linux

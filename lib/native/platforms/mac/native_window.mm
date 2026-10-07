@@ -11,6 +11,8 @@
 #include <bindings.h>
 
 #include "globals.h"
+#include "keyboard.h"
+#include "../../input_state.h"
 
 // Borderless property popups must still accept focus for native editors.
 @interface native_popup_window : NSWindow
@@ -55,6 +57,15 @@
         static_cast<native::dim>(bounds.size.width),
         static_cast<native::dim>(bounds.size.height));
     _owner->on_native_resize(dimensions);
+}
+
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+    (void)notification;
+    if (_owner) _owner->on_native_focus(true);
+}
+- (void)windowDidResignKey:(NSNotification *)notification {
+    (void)notification;
+    if (_owner) _owner->on_native_focus(false);
 }
 
 - (BOOL)windowShouldClose:(id)sender {
@@ -117,6 +128,29 @@
 
 - (BOOL)isFlipped {
     return YES;
+}
+
+- (BOOL)acceptsFirstResponder { return YES; }
+- (void)mouseDown:(NSEvent *)event {
+    [[self window] makeFirstResponder:self];
+    _owner->on_native_focus(true);
+    [super mouseDown:event];
+}
+- (void)keyDown:(NSEvent *)event {
+    if (!_owner || !_owner->get_input_enabled() ||
+        [[self window] firstResponder] != self) return;
+    if (!_owner->on_native_key(mac::physical_key(event, native::key_action::press)))
+        [super keyDown:event];
+}
+- (void)keyUp:(NSEvent *)event {
+    if (_owner) _owner->on_native_key(mac::physical_key(event, native::key_action::release));
+}
+- (void)flagsChanged:(NSEvent *)event {
+    if (!_owner || !_owner->get_input_enabled() ||
+        [[self window] firstResponder] != self) return;
+    auto physical = mac::physical_key(event, native::key_action::press);
+    physical.repeat = false;
+    _owner->on_native_key(physical);
 }
 
 - (void)drawRect:(NSRect)dirty_rect {

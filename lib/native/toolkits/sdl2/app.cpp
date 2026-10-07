@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "globals.h"
+#include "../../input_state.h"
 #include "window_position.h"
 
 namespace native
@@ -226,6 +227,28 @@ namespace native
 
                 switch (event.type) {
                 case SDL_KEYDOWN:
+                case SDL_KEYUP: {
+                    const auto code = detail::usb_key(event.key.keysym.scancode);
+                    native::wnd *target = detail::input_target(*wnd);
+                    if (!target) target = wnd;
+                    key_modifiers mods = key_modifiers::none;
+                    const auto native_mods = event.key.keysym.mod;
+                    if (native_mods & KMOD_SHIFT) mods = mods | key_modifiers::shift;
+                    if (native_mods & KMOD_CTRL) mods = mods | key_modifiers::ctrl;
+                    if (native_mods & KMOD_ALT) mods = mods | key_modifiers::alt;
+                    if (native_mods & KMOD_GUI) mods = mods | key_modifiers::meta;
+                    if (native_mods & KMOD_CAPS) mods = mods | key_modifiers::caps_lock;
+                    if (native_mods & KMOD_NUM) mods = mods | key_modifiers::num_lock;
+                    key_event physical{code, event.type == SDL_KEYDOWN ?
+                        key_action::press : key_action::release,
+                        event.key.repeat != 0, mods};
+                    if (event.type == SDL_KEYUP || detail::key_held(*target, code)) {
+                        target->on_native_key(physical);
+                        break;
+                    }
+                    if (linux::sdl2::handle_combo_key(wnd, event.key) ||
+                        linux::sdl2::handle_text_edit_key(wnd, event.key) ||
+                        linux::sdl2::handle_collection_key(wnd, event.key)) break;
                     if (auto *aw = dynamic_cast<native::app_wnd *>(wnd);
                         aw && aw->menu.id() &&
                         linux::sdl2::handle_menu_key(
@@ -233,12 +256,9 @@ namespace native
                                 aw->menu.id()), event.key)) {
                         break;
                     }
-                    if (!linux::sdl2::handle_combo_key(wnd, event.key) &&
-                        !linux::sdl2::handle_text_edit_key(
-                            wnd, event.key))
-                        linux::sdl2::handle_collection_key(
-                            wnd, event.key);
+                    target->on_native_key(physical);
                     break;
+                }
 
                 case SDL_TEXTINPUT:
                     if (!linux::sdl2::handle_combo_text(
@@ -320,6 +340,12 @@ namespace native
 
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP: {
+                    if (event.type == SDL_MOUSEBUTTONDOWN) {
+                        detail::reset_input(*wnd);
+                        if (auto *old = detail::input_target(*wnd); old && old != wnd)
+                            old->on_native_focus(false);
+                        wnd->on_native_focus(true);
+                    }
                     SDL_CaptureMouse(
                         event.type == SDL_MOUSEBUTTONDOWN
                             ? SDL_TRUE
@@ -741,6 +767,7 @@ namespace native
                 case SDL_WINDOWEVENT:
                     switch (event.window.event) {
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
+                        wnd->on_native_focus(true);
                         if (auto *cache =
                                 linux::sdl2::wnd_gpx_bindings
                                     .object_from_handle(wnd)) {
@@ -749,6 +776,7 @@ namespace native
                         break;
 
                     case SDL_WINDOWEVENT_FOCUS_LOST:
+                        wnd->on_native_focus(false);
                         linux::sdl2::release_canvas_capture(wnd);
                         if (auto *cache =
                                 linux::sdl2::wnd_gpx_bindings
@@ -841,10 +869,11 @@ namespace native
 
         linux::sdl2::x11_clipboard::shutdown();
         linux::sdl2::shutdown_mouse_cursors();
-        // The application loop owns process-wide SDL services. Screen
-        // detection can initialize video before the first window, so
-        // dropping one video reference does not release the full runtime.
-        SDL_Quit();
+        // Screen detection can initialize video before the first window;
+        // release every video reference owned by the GUI runtime.
+        // Audio peers may outlive app::run(); release video references only.
+        while (SDL_WasInit(SDL_INIT_VIDEO))
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
         return 0;
     }
 

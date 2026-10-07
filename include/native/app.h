@@ -73,6 +73,10 @@ namespace native
         //
         static void post(std::function<void()> work);
 
+        // Report whether the selected backend supplies physical presses/releases.
+        // GEM AES alone has no reliable release/physical-position stream.
+        static bool get_physical_keyboard_supported();
+
         // Return the current main window, or null before run().
         static app_wnd *main_wnd();
 

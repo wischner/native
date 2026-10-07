@@ -209,3 +209,20 @@ sticky toggles, or exclusive tool groups. See the
 [input and chrome chapter](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
 for construction and event examples. Native X11/Motif/WINGs border masks use
 Xext's Shape extension; the macOS adapter uses QuartzCore.
+
+## Physical input and background services
+
+Native provides physical key press/release/reset events, bounded signed
+16-bit mono/stereo PCM output, lifetime-scoped UI delivery for C++20 workers,
+and shell-free bounded child-process capture. The
+[background-services chapter](docs/manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md)
+explains ownership and cancellation. Run the selected Vision binary with
+`--infinity-test` for keyboard, audio and parallel-work acceptance.
+
+Non-SDL Linux audio loads optional `libasound.so.2` at runtime; absence of
+ALSA/default output makes `audio_out::open()` fail explicitly. Windows uses
+WASAPI, macOS AudioToolbox and Haiku the media kit. GEMix currently reports
+physical held-key input unavailable because its pinned SDK/viewer path loses
+raw release information. Current build/runtime evidence is recorded in the
+feature matrix. A parent CMake project may link the `native` target through
+`add_subdirectory()` without building Vision or Native's test suite.

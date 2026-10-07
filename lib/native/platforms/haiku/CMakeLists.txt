@@ -80,3 +80,5 @@ target_link_libraries(native
         ${HAIKU_LIB_TRANSLATION}
         ${HAIKU_LIB_COLUMN_LIST}
 )
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.cpp)

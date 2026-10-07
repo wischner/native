@@ -171,3 +171,13 @@ to that pipe, with descriptor shutdown synchronized against concurrent writes.
 This allows custom property content to commit and close after its input event, and
 allows workers to post updates while the desktop is idle. The wake target is
 removed before backend teardown.
+
+## Structured background work
+
+Use standard C++20 workers and an owning controller. Native supplies scoped,
+bounded delivery, bounded PCM output and shell-free child ownership; these
+services do not create another UI loop. `app::post()` remains the low-level
+copyable-callable handoff. Its unbounded queue does not imply receiver
+lifetime. Prefer `ui_dispatch_scope` for borrowed windows. A child-monitor
+or audio worker finishes independently of whether UI results are delivered.
+See [Background services](PATTERNS-BACKGROUND-SERVICES.md).

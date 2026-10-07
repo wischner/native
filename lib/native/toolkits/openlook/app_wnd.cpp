@@ -24,6 +24,7 @@
 #include <xview/xview.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "window_position.h"
 #include "xview_init.h"
 
@@ -242,6 +243,9 @@ namespace
 
         linux::openlook::permit_input(owner);
 
+        if (XEvent *raw = event_xevent(event);
+            raw && native::detail::dispatch_x_keyboard(*owner, *raw))
+            return NOTIFY_DONE;
         const int action = event_action(event);
         // The window manager's Quit sends WM_DELETE_WINDOW, which
         // XView turns into ACTION_DISMISS for an owned frame (a
@@ -471,6 +475,13 @@ namespace native
                    WIN_NOTIFY_SAFE_EVENT_PROC,
                    handle_window_event,
                    WIN_CONSUME_EVENTS,
+                   WIN_ASCII_EVENTS,
+                   WIN_UP_ASCII_EVENTS,
+                   WIN_LEFT_KEYS,
+                   WIN_RIGHT_KEYS,
+                   WIN_TOP_KEYS,
+                   KBD_USE,
+                   KBD_DONE,
                    LOC_MOVE,
                    LOC_DRAG,
                    WIN_MOUSE_BUTTONS,

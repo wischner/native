@@ -13,6 +13,43 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+## Infinity services (2026-10-06)
+
+This table records the newly added service adapters separately from older
+control/gallery runtime evidence. The diagnostic application is
+`vision --infinity-test`; its acceptance checklist is in
+[Background Work and Services](../programming-native/19-BACKGROUND-WORK-AND-SERVICES.md).
+
+| Backend | Physical input | PCM output | Scoped UI delivery / child process |
+| --- | --- | --- | --- |
+| SDL2 | Yes (tested): actual event dispatch, pairing, focus reset and editor isolation | Yes (tested with dummy audio); audible playback untested | Yes (tested): shared queue/lifetime tests and real POSIX child |
+| X11/Athena | Yes (build tested): XKB positions | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested): shared tests and real POSIX child |
+| OpenMotif | Yes (build tested): XKB positions | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested): shared tests and real POSIX child |
+| OPEN LOOK | Yes (build tested): XKB positions | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested): shared tests and real POSIX child |
+| Window Maker | Yes (build tested): XKB positions | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested): shared tests and real POSIX child |
+| GEMix direct / gemd | WIP: SDK/viewer lacks complete raw release/focus integration; capability reports false | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested) on both transports: shared tests and real POSIX child |
+| Windows | Yes (build tested): Win32 physical input | Yes (build tested): WASAPI; audible playback untested | Yes (build tested): shared tests and Win32 process adapter |
+| Haiku | Yes (build tested): raw positions and modifier state | Yes (build tested): BSoundPlayer; audible playback untested | Yes (build tested): shared tests and POSIX process adapter |
+| macOS | Yes (untested): AppKit adapter uncompiled this pass | Yes (untested): AudioQueue adapter uncompiled this pass | Yes (untested): new code uncompiled this pass |
+
+All nine Docker selections build the service tests and Vision. The shared
+PCM test uses a deterministic private consumer and verifies bounded copying,
+order, stereo frame arithmetic, hardware occupancy, silence, failure, concurrent
+producer/consumer access and reopening. Scope tests cover concurrent close,
+reentrant destruction and resource recreation. Process tests launch a real
+child, verify arguments/environment/directory, drain both full pipes under
+capture limits, and cancel/reap, including POSIX timeout escalation.
+
+The full Linux suites pass: SDL2 15, X11 11, Window Maker 9 and both GEM
+transports 10 each. Motif and OPEN LOOK each pass 11 with
+`ASAN_OPTIONS=detect_leaks=0`; enabling leak detection reports 328 bytes from
+Xt allocation and 2,832 bytes from XView menu/drop-interest allocation at
+shutdown in their existing peer runtime tests. Their behavioral assertions
+pass, but those leak-enabled runs are not clean passes. No leak suppression
+was added to the tests. Windows/Haiku binaries are cross-compiled, not run on
+the target OS. macOS sync to the remote build host was rejected by automatic
+approval; earlier macOS results below do not cover these new services.
+
 ## Backend status
 
 SDL2 routes native close and quit requests through the portable
@@ -29,8 +66,8 @@ All 11 SDL2 CTests pass under the Docker toolchain after this correction.
 Canvas input retains left/middle/right identity and captures drags through
 release, including motion outside the original surface. Dedicated SDL
 composition and input tests cover these paths. Software-renderer requests
-bypass accelerated initialization, and final loop shutdown releases the
-complete SDL runtime.
+bypass accelerated initialization, and loop shutdown releases video while preserving independently owned audio
+peers.
 The 2026-09-06 SDL2 follow-up passes all nine CTests under the Docker
 toolchain, including the renderer-pixel, real SDL input, and close-policy
 regressions.

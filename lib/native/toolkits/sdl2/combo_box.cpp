@@ -75,6 +75,7 @@ namespace linux::sdl2
                     }
                     state->open = false;
                     state->focused = true;
+                    combo->on_native_focus(true);
                     state->hovered_index = -1;
                     combo->on_native_drop_down(false);
                     if (still_registered(combo) && index >= 0 &&
@@ -87,6 +88,7 @@ namespace linux::sdl2
                 if (!bounds.contains(position)) {
                     state->open = false;
                     state->focused = false;
+                    combo->on_native_focus(false);
                     state->hovered_index = -1;
                     combo->on_native_drop_down(false);
                 }
@@ -142,6 +144,7 @@ namespace linux::sdl2
             } else if (bounds.contains({static_cast<native::coord>(x),
                                         static_cast<native::coord>(y)})) {
                 state->focused = true;
+                    combo->on_native_focus(true);
                 state->open = !state->open;
                 state->hovered_index = -1;
                 const bool open = state->open;
@@ -165,6 +168,7 @@ namespace linux::sdl2
                 state->hovered_index = -1;
                 changed = changed || state->focused;
                 state->focused = false;
+                    combo->on_native_focus(false);
             }
         }
         if (changed)

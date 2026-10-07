@@ -15,6 +15,7 @@
 #include <native/wnd.h>
 
 #include "wnd_peer.h"
+#include "input_state.h"
 
 namespace
 {
@@ -77,6 +78,7 @@ namespace native
         : wnd(bounds.p, bounds.d) {}
 
     wnd::~wnd() {
+        if (_lifetime) _lifetime->alive = false;
         for (non_client *element : _non_client) {
             if (element && element->_owner == this)
                 element->_owner = nullptr;
@@ -317,11 +319,14 @@ namespace native
 
         _created = true;
         _peer = detail::create_wnd_peer(*this);
+        _lifetime = std::make_shared<detail::wnd_lifetime>();
+        detail::assign_peer_state(*this, new detail::input_state);
         try {
             create_native();
             apply_cursor();
             apply_border_sides();
         } catch (...) {
+            _lifetime->alive = false;
             _peer.reset();
             _created = false;
             throw;
@@ -351,11 +356,13 @@ namespace native
     }
 
     void wnd::destroy() {
-        if (!_created)
+        if (!_created || _destroying)
             return;
 
         _destroying = true;
+        if (_lifetime) _lifetime->alive = false;
         try {
+            detail::reset_input(*this);
             destroy_native();
         } catch (...) {
             _destroying = false;
@@ -383,13 +390,18 @@ namespace native
         if (!_created)
             return;
 
-        destroy_children();
-        delete _gpx;
-        _gpx = nullptr;
-        if (!_destroying)
-            _peer.reset();
-        _visible = false;
-        _created = false;
+        const bool destroying = _destroying;
+        {
+            const scoped_flag teardown(_destroying);
+            if (_lifetime) _lifetime->alive = false;
+            detail::reset_input(*this);
+            destroy_children();
+            delete _gpx;
+            _gpx = nullptr;
+            _visible = false;
+            _created = false;
+        }
+        if (!destroying) _peer.reset();
     }
 
     void wnd::on_native_resize(const size &dimensions) {
@@ -473,7 +485,46 @@ namespace native
         return _mouse_screen_position;
     }
 
-    void wnd::on_native_focus(bool) {}
+    void wnd::on_native_focus(bool focused) {
+        if (focused) {
+            wnd *root = this;
+            while (root->get_parent()) root = root->get_parent();
+            if (wnd *old = detail::input_target(*root);
+                old && old != this && root != this) {
+                if (auto *state = detail::peer_state<detail::input_state>(*old))
+                    state->focused = false;
+                old->on_native_key_reset();
+            }
+        }
+        if (auto *state = detail::peer_state<detail::input_state>(*this))
+            state->focused = focused;
+        if (!focused) detail::reset_input(*this);
+    }
+
+    bool wnd::on_native_key(key_event event) {
+        auto *state = detail::peer_state<detail::input_state>(*this);
+        const auto key = static_cast<unsigned>(event.key);
+        if (!state || !get_input_enabled() ||
+            key == 0 || key >= static_cast<unsigned>(key_code::count))
+            return false;
+        if (event.action == key_action::release) {
+            if (!state->held.test(key)) return false;
+            state->held.reset(key);
+            event.repeat = false;
+        } else {
+            if (event.repeat && !state->held.test(key)) return false;
+            event.repeat = state->held.test(key);
+            state->held.set(key);
+        }
+        return on_key.emit_consumed(event);
+    }
+
+    void wnd::on_native_key_reset() {
+        auto *state = detail::peer_state<detail::input_state>(*this);
+        if (!state || state->held.none()) return;
+        state->held.reset();
+        on_key_reset.emit();
+    }
 
     wnd &wnd::invalidate() {
         return invalidate(

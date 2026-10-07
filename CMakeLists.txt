@@ -80,7 +80,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
     set(HAIKU TRUE)
 endif()
 
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     find_program(DOCKER_EXECUTABLE docker)
 
     set(DOCKER_TAG "latest" CACHE STRING "Docker tag used for Linux toolkit build images")
@@ -186,7 +186,9 @@ endif()
 
 # Build the library before programs that consume it.
 add_subdirectory(lib/native)
-add_subdirectory(src)
-if(BUILD_TESTING)
-    add_subdirectory(tests)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    add_subdirectory(src)
+    if(BUILD_TESTING)
+        add_subdirectory(tests)
+    endif()
 endif()

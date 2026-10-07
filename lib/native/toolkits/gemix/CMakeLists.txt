@@ -56,3 +56,5 @@ else()
         ${GEMIX_VDI_LIBRARIES})
     message(STATUS "GEMix calls use in-process AES/VDI.")
 endif()
+
+target_compile_definitions(native PRIVATE NATIVE_NO_PHYSICAL_KEYBOARD)

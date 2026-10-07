@@ -156,3 +156,12 @@ that deliberately permits fallback processing.
 This convention is especially useful for layered controls: a specialized
 handler can consume an input event, while a general window handler remains
 available when it does not.
+
+## Consumption-returning input
+
+`emit_consumed(args...)` returns true when the newest-first dispatch reaches
+a consuming slot, otherwise false. `emit(args...)` retains its void API and
+uses the same dispatch. The physical-key hook uses the result to suppress
+backend default processing. Keep the prohibition on modifying connections
+while emitting. The dispatch holds its shared signal state through callbacks;
+destroying the receiver does not destroy the active state mid-call.

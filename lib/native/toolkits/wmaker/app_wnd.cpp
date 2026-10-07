@@ -16,6 +16,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 
 namespace
 {
@@ -118,6 +119,8 @@ namespace
         auto *state = linux::wmaker::state(owner);
         const int menu_height = state ? state->menu_height : 0;
 
+        XEvent keyboard_event = native_event;
+        if (native::detail::dispatch_x_keyboard(*owner, keyboard_event)) return;
         switch (event->type) {
         case Expose:
             if (event->xexpose.count == 0 &&
@@ -305,7 +308,7 @@ namespace native
             WMWidgetView(window),
             ExposureMask | StructureNotifyMask | FocusChangeMask |
                 PointerMotionMask | ButtonPressMask |
-                ButtonReleaseMask,
+                ButtonReleaseMask | KeyPressMask | KeyReleaseMask,
             handle_window_event,
             self);
 

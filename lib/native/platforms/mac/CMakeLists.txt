@@ -55,3 +55,5 @@ target_link_libraries(native PRIVATE
     "-framework ImageIO"
     "-framework UniformTypeIdentifiers"
 )
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.mm)

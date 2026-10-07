@@ -10,6 +10,9 @@
 #pragma once
 
 #include "native/app.h"
+#include "native/process.h"
+#include "native/ui_dispatch.h"
+#include "native/audio_out.h"
 #include "native/app_wnd.h"
 #include "native/accordion.h"
 #include "native/button.h"

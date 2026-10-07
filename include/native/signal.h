@@ -159,16 +159,23 @@ namespace native
         //      Propagation stops when a slot returns true.
         //
         void emit(argument_types... args) {
+            (void)emit_consumed(args...);
+        }
+
+        // Notify newest-first and report whether a callback consumed input.
+        bool emit_consumed(argument_types... args) {
             ensure_init();
-            for (auto slot = _state->slots.rbegin();
-                 slot != _state->slots.rend();
+            const auto keep_alive = _state;
+            for (auto slot = keep_alive->slots.rbegin();
+                 slot != keep_alive->slots.rend();
                  ++slot) {
                 // Named arguments are lvalues here. Passing them
                 // without forwarding gives every by-value subscriber
                 // its own copy while preserving reference arguments.
                 if (slot->second(args...))
-                    break;
+                    return true;
             }
+            return false;
         }
 
     private:

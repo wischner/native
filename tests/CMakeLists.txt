@@ -239,3 +239,21 @@ if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
         ENVIRONMENT
             "SDL_VIDEODRIVER=dummy;LSAN_OPTIONS=${native_lsan_options}")
 endif()
+
+foreach(infinity_test native_infinity_tests native_audio_queue_tests native_process_tests)
+    add_executable(${infinity_test} ${infinity_test}.cpp)
+    target_include_directories(${infinity_test} PRIVATE ${PROJECT_SOURCE_DIR}/lib/native)
+    target_link_libraries(${infinity_test} PRIVATE native native_developer_options)
+    add_test(NAME ${infinity_test} COMMAND ${infinity_test})
+    set_tests_properties(${infinity_test} PROPERTIES TIMEOUT 30)
+endforeach()
+
+if(TOOLKIT STREQUAL "SDL2")
+    add_executable(native_keyboard_runtime_tests native_keyboard_runtime_tests.cpp)
+    target_include_directories(native_keyboard_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_keyboard_runtime_tests PRIVATE native native_developer_options)
+    add_test(NAME native_keyboard_runtime_tests COMMAND native_keyboard_runtime_tests)
+    set_tests_properties(native_keyboard_runtime_tests PROPERTIES TIMEOUT 20 ENVIRONMENT
+        "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;SDL_AUDIODRIVER=dummy")
+endif()

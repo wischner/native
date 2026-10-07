@@ -501,3 +501,13 @@ host arbitrary C++ controls or convert arbitrary value types. Native checkbox
 labels no longer change allocated widths. WINGs property text uses a flat
 clipping host to center its WMText line. OPEN LOOK choice-stack marks remain
 content and are excluded from border masking; toolbar commands omit them.
+
+## Input and background-service audit — 2026-10-06
+
+Physical-key translation and base focus/reset bookkeeping were added to the
+existing adapters. SDL editor/combo logical focus now participates in the
+portable input tree; source-editor focus calls the shared base. These changes
+do not replace any stock widgets or change N/H/C/E classifications. Audio,
+UI dispatch and child ownership are services, not custom controls. Vision's
+`--infinity-test` draws a diagnostic client using the existing `app_wnd` and
+stock controls; no new library control kind was introduced.

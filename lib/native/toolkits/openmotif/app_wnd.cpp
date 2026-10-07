@@ -19,6 +19,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 
 namespace
 {
@@ -70,11 +71,15 @@ namespace
     void handle_canvas_event(Widget widget,
                              XtPointer client_data,
                              XEvent *event,
-                             Boolean *) {
+                             Boolean *continue_dispatch) {
         auto *owner = static_cast<native::app_wnd *>(client_data);
         if (!owner || !event)
             return;
 
+        if (native::detail::dispatch_x_keyboard(*owner, *event)) {
+            if (continue_dispatch) *continue_dispatch = False;
+            return;
+        }
         switch (event->type) {
         case Expose: {
             if (event->xexpose.count != 0)
@@ -328,7 +333,8 @@ namespace native
         XtAddEventHandler(canvas,
                           ExposureMask | StructureNotifyMask |
                               PointerMotionMask | ButtonPressMask |
-                              ButtonReleaseMask,
+                              ButtonReleaseMask | KeyPressMask | KeyReleaseMask |
+                              FocusChangeMask,
                           False,
                           handle_canvas_event,
                           this);

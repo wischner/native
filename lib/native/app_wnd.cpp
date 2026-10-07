@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <native/app_wnd.h>
+#include "input_state.h"
 #include <native/modal_wnd.h>
 #include <native/owned_wnd.h>
 #include <native/theme.h>
@@ -110,6 +111,7 @@ namespace native
     }
 
     void app_wnd::on_native_menu(int command) {
+        detail::reset_input(*this);
         on_menu.emit(command);
     }
 
@@ -154,6 +156,7 @@ namespace native
     }
 
     void app_wnd::begin_modal(modal_wnd *window) {
+        detail::reset_input(*this);
         if (!window)
             return;
 

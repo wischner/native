@@ -234,3 +234,13 @@ build/haiku/          Haiku build tree
 
 This chapter describes only the workflow that is currently maintained.
 It does not document deferred API documentation generation.
+
+## Input, sound and background-work acceptance
+
+Run the selected backend's Vision binary with `--infinity-test`; this opens
+portable diagnostics for held physical keys, focus/reset, stereo PCM sound,
+coalesced worker progress/cancellation and a real helper child. The
+[application services chapter](../programming-native/19-BACKGROUND-WORK-AND-SERVICES.md)
+lists the manual checks. The normal Docker build targets also build the
+service regressions; run CTest in that build image, or on the target OS for
+cross-builds. GEMix's UI explicitly reports physical key input unavailable.

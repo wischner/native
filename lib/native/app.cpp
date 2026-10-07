@@ -97,6 +97,14 @@ namespace native
             wake();
     }
 
+    bool app::get_physical_keyboard_supported() {
+#ifdef NATIVE_NO_PHYSICAL_KEYBOARD
+        return false;
+#else
+        return true;
+#endif
+    }
+
     app_wnd *app::main_wnd() {
         return _main_wnd;
     }

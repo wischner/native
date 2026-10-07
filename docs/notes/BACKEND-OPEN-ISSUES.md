@@ -29,6 +29,19 @@ is documented in [Build System](../manuals/book-of-native/BUILD-SYSTEM.md).
 
 ## Current open issues
 
+- The Infinity physical-key extension cannot yet deliver held keys on either
+  GEMix transport: the pinned SDK converts physical positions and AES drops
+  key releases. A supported SDK/viewer raw-input and focus hook is required;
+  `app::get_physical_keyboard_supported()` returns false. See
+  [INFINITY.md](INFINITY.md). Audio, scoped UI delivery and child processes
+  are available independently.
+- The new macOS physical-key, AudioQueue and POSIX process integration has
+  not been compiled in the 2026-10-06 pass. Automatic approval rejected the
+  remote script because syncing the repository to `leia` was not authorized
+  in this session. Earlier macOS runtime evidence does not validate these
+  new adapters.
+
+
 - The 2026-09-06 SDL2 follow-up passes all nine CTests. Nested
   tab/split/accordion canvas pixels now survive whole-window composition;
   actual SDL event regressions cover button identity and capture. Close

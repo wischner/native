@@ -17,6 +17,7 @@
 #include "../../control_render_access.h"
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "../../input_state.h"
 
 namespace windows
 {
@@ -235,6 +236,7 @@ namespace windows
             wnd->on_native_focus(false);
             break;
 
+        case WM_SYSKEYDOWN:
         case WM_KEYDOWN:
             if (auto *editor = dynamic_cast<native::code_edit *>(wnd)) {
                 const bool extend =
@@ -339,7 +341,28 @@ namespace windows
                     return 0;
                 }
             }
+            [[fallthrough]];
+        case WM_SYSKEYUP:
+        case WM_KEYUP: {
+            const auto code = native::detail::pc_key((lparam >> 16) & 0xff,
+                (lparam & (1L << 24)) != 0);
+            native::key_modifiers mods = native::key_modifiers::none;
+            if (GetKeyState(VK_SHIFT) & 0x8000) mods = mods | native::key_modifiers::shift;
+            if (GetKeyState(VK_CONTROL) & 0x8000) mods = mods | native::key_modifiers::ctrl;
+            if (GetKeyState(VK_MENU) & 0x8000) mods = mods | native::key_modifiers::alt;
+            if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
+                mods = mods | native::key_modifiers::meta;
+            const bool press = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+            if (wnd->on_native_key({code, press ? native::key_action::press :
+                native::key_action::release, press && (lparam & (1L << 30)), mods}))
+                return 0;
             break;
+        }
+        case WM_ENTERMENULOOP:
+            native::detail::reset_input(*wnd);
+            break;
+
+
 
         case WM_CHAR:
             if (auto *editor = dynamic_cast<native::code_edit *>(wnd)) {

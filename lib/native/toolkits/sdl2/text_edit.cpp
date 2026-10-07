@@ -203,8 +203,10 @@ namespace linux::sdl2
                 binding->bounds.contains(native::point(x, y))) {
                 hit = editor;
             }
-            if (binding && root_of(editor) == parent)
+            if (binding && root_of(editor) == parent) {
                 binding->focused = false;
+                editor->on_native_focus(false);
+            }
             if (binding && root_of(editor) == parent)
                 binding->mouse_selecting = false;
         }
@@ -215,6 +217,7 @@ namespace linux::sdl2
         }
         auto *binding = text_edit_bindings.object_from_handle(hit);
         binding->focused = true;
+        hit->on_native_focus(true);
         binding->cursor = hit_offset(hit, binding, x, y);
         if ((SDL_GetModState() & KMOD_SHIFT) == 0)
             binding->anchor = binding->cursor;

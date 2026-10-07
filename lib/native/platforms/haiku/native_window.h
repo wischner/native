@@ -28,6 +28,12 @@ namespace haiku
                       const char *title,
                       window_look look,
                       window_feel feel);
+        // Translate raw modifier transitions only for the plain client focus.
+        void DispatchMessage(BMessage *message, BHandler *target) override;
+
+        // Forward application activation and cancel held input on loss.
+        void WindowActivated(bool active) override;
+
         // Handle the BeAPI close request and stop the application loop.
         bool QuitRequested() override;
 
