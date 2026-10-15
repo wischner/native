@@ -27,14 +27,15 @@ namespace
     class scoped_flag
     {
     public:
-        explicit scoped_flag(bool &flag)
+        scoped_flag(bool &flag, native::wnd &owner)
             : _flag(flag)
-            , _previous(flag) {
+            , _previous(flag)
+            , _guard(owner) {
             _flag = true;
         }
 
         ~scoped_flag() {
-            _flag = _previous;
+            if (_guard.object_alive()) _flag = _previous;
         }
 
         scoped_flag(const scoped_flag &) = delete;
@@ -43,6 +44,7 @@ namespace
     private:
         bool &_flag;
         bool _previous;
+        native::detail::window_guard _guard;
     };
 } // namespace
 
@@ -56,9 +58,12 @@ namespace native
         if ((unsigned(sides) & ~unsigned(border_sides::all)) != 0)
             throw std::invalid_argument("Invalid border sides.");
         if (_border_sides == sides) return *this;
+        const detail::window_guard guard(*this);
         _border_sides = sides;
         on_border_sides_changed();
+        if (!guard.alive()) return *this;
         if (_created) apply_border_sides();
+        if (!guard.alive()) return *this;
         invalidate();
         return *this;
     }
@@ -71,7 +76,8 @@ namespace native
         : _created(false)
         , _bounds(x, y, width, height)
         , _parent(nullptr)
-        , _mouse_screen_position(x, y) {}
+        , _mouse_screen_position(x, y)
+        , _object_lifetime(std::make_shared<detail::wnd_lifetime>()) {}
 
     wnd::wnd(const point &position, const size &dimensions)
         : wnd(position.x, position.y, dimensions.w, dimensions.h) {}
@@ -80,6 +86,7 @@ namespace native
         : wnd(bounds.p, bounds.d) {}
 
     wnd::~wnd() {
+        _object_lifetime->alive = false;
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
         if (_lifetime) _lifetime->alive = false;
         for (non_client *element : _non_client) {
@@ -116,9 +123,11 @@ namespace native
     }
 
     wnd &wnd::set_position(const point &position) {
+        const detail::window_guard guard(*this);
         _bounds.p = position;
         if (_created) {
             apply_position();
+            if (!guard.alive()) return *this;
             detail::backend_refresh_mouse(*this);
         }
         return *this;
@@ -129,24 +138,36 @@ namespace native
     }
 
     wnd &wnd::set_dimensions(const size &dimensions) {
+        const detail::window_guard guard(*this);
         {
             // Applying geometry can come straight back as a native
             // resize notification carrying the size the backend
             // actually granted. Suspending the pass lets that update
             // the cache, so the single pass below arranges children
             // against the granted size rather than the requested one.
-            const scoped_flag pass(_layout_suspended);
+            const scoped_flag pass(_layout_suspended, *this);
             _bounds.d = dimensions;
             if (_created)
                 apply_dimensions();
         }
 
+        if (!guard.alive()) return *this;
         relayout_children();
+        if (!guard.alive()) return *this;
         on_bounds_changed();
-        if (_created) { apply_border_sides(); detail::backend_refresh_mouse(*this); }
-        for (non_client *element : _non_client) {
-            if (element)
+        if (!guard.alive()) return *this;
+        if (_created) {
+            apply_border_sides();
+            if (!guard.alive()) return *this;
+            detail::backend_refresh_mouse(*this);
+            if (!guard.alive()) return *this;
+        }
+        const auto elements = _non_client;
+        for (non_client *element : elements) {
+            if (element && std::find(_non_client.begin(), _non_client.end(),
+                                     element) != _non_client.end())
                 element->on_configuration_changed();
+            if (!guard.alive()) return *this;
         }
         return *this;
     }
@@ -199,19 +220,31 @@ namespace native
     }
 
     wnd &wnd::set_bounds(const rect &bounds) {
+        const detail::window_guard guard(*this);
         {
-            const scoped_flag pass(_layout_suspended);
+            const scoped_flag pass(_layout_suspended, *this);
             _bounds = bounds;
             if (_created && _peer)
                 _peer->apply_bounds(_bounds);
         }
 
+        if (!guard.alive()) return *this;
         relayout_children();
+        if (!guard.alive()) return *this;
         on_bounds_changed();
-        if (_created) { apply_border_sides(); detail::backend_refresh_mouse(*this); }
-        for (non_client *element : _non_client) {
-            if (element)
+        if (!guard.alive()) return *this;
+        if (_created) {
+            apply_border_sides();
+            if (!guard.alive()) return *this;
+            detail::backend_refresh_mouse(*this);
+            if (!guard.alive()) return *this;
+        }
+        const auto elements = _non_client;
+        for (non_client *element : elements) {
+            if (element && std::find(_non_client.begin(), _non_client.end(),
+                                     element) != _non_client.end())
                 element->on_configuration_changed();
+            if (!guard.alive()) return *this;
         }
         return *this;
     }
@@ -325,35 +358,60 @@ namespace native
                     "A child window requires a created parent.");
         }
 
+        const detail::window_guard object(*this);
         _created = true;
-        _peer = detail::create_wnd_peer(*this);
-        _lifetime = std::make_shared<detail::wnd_lifetime>();
-        detail::assign_peer_state(*this, new detail::input_state);
-        detail::assign_peer_state(*this, new detail::mouse_state);
+        bool native_started = false;
         try {
+            _peer = detail::create_wnd_peer(*this);
+            _lifetime = std::make_shared<detail::wnd_lifetime>();
+            detail::assign_peer_state(*this, new detail::input_state);
+            detail::assign_peer_state(*this, new detail::mouse_state);
+            native_started = true;
+            const detail::window_guard generation(*this);
             create_native();
+            if (!generation.alive()) return;
             apply_cursor();
+            if (!generation.alive()) return;
             apply_border_sides();
+            if (!generation.alive()) return;
         } catch (...) {
-            _lifetime->alive = false;
+            if (!object.object_alive()) throw;
+            if (_lifetime) _lifetime->alive = false;
+            // Backends accept partial creation and remove any registered
+            // native resources while their peer state is still available.
+            if (native_started) {
+                try { destroy_native(); } catch (...) {}
+                if (!object.object_alive()) throw;
+            }
             _peer.reset();
             _created = false;
+            _visible = false;
             throw;
         }
+        const auto weak = detail::mouse_access::lifetime(*this);
         on_native_create();
+        const auto lifetime = weak.lock();
+        if (!lifetime || !lifetime->alive) return;
         // Internal chrome must be established even when an application
         // consumes the public create signal. Never create child resources
         // from inside the owner's paint transaction.
-        if (_created)
-            for (non_client *element : _non_client)
-                if (element) element->on_configuration_changed();
+        const detail::window_guard generation(*this);
+        const auto elements = _non_client;
+        for (non_client *element : elements) {
+            if (element && std::find(_non_client.begin(), _non_client.end(),
+                                     element) != _non_client.end())
+                element->on_configuration_changed();
+            if (!generation.alive()) return;
+        }
     }
 
     void wnd::show() {
+        const detail::window_guard guard(*this);
         if (!_created)
             throw std::logic_error(
                 "A window must be created before show().");
         _peer->apply_visible(true);
+        if (!guard.alive()) return;
         // Synchronous system panels (file, directory, and similar dialogs)
         // can complete and destroy their logical resource inside show_native.
         // Their visibility transition has already finished in that case.
@@ -361,6 +419,7 @@ namespace native
             return;
         _visible = true;
         apply_cursor();
+        if (!guard.alive()) return;
         apply_border_sides();
     }
 
@@ -368,23 +427,32 @@ namespace native
         if (!_created || _destroying)
             return;
 
+        const detail::window_guard guard(*this);
         _destroying = true;
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
         if (_lifetime) _lifetime->alive = false;
         try {
             detail::reset_input(*this);
+            if (!guard.object_alive()) return;
             destroy_native();
+            if (!guard.object_alive()) return;
         } catch (...) {
+            if (!guard.object_alive()) throw;
             _destroying = false;
             if (!_created)
                 _peer.reset();
             throw;
         }
         _destroying = false;
-        if (_created)
+        if (_created) {
+            // Suppress completion until this transaction releases its peer.
+            _destroying = true;
             on_native_destroy();
-        else
-            _peer.reset();
+            if (!guard.object_alive()) return;
+            _destroying = false;
+        }
+        _peer.reset();
+        on_destroy_completed();
     }
 
     void wnd::on_native_create() {
@@ -397,42 +465,60 @@ namespace native
     }
 
     void wnd::on_native_destroy() {
-        if (!_created)
-            return;
-
+        if (!_created) return;
+        const detail::window_guard guard(*this);
         const bool destroying = _destroying;
-        {
-            const scoped_flag teardown(_destroying);
+        _destroying = true;
+        try {
             detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::destroyed, false);
             if (_lifetime) _lifetime->alive = false;
             detail::reset_input(*this);
+            if (!guard.object_alive()) return;
             destroy_children();
+            if (!guard.object_alive()) return;
             delete _gpx;
             _gpx = nullptr;
             _visible = false;
             _created = false;
+            _destroying = destroying;
+        } catch (...) {
+            if (guard.object_alive()) _destroying = destroying;
+            throw;
         }
-        if (!destroying) _peer.reset();
+        if (!destroying) {
+            _peer.reset();
+            on_destroy_completed();
+        }
     }
 
+    void wnd::on_destroy_completed() {}
+
     void wnd::on_native_resize(const size &dimensions) {
+        const detail::window_guard guard(*this);
         if (_bounds.d.w != dimensions.w ||
             _bounds.d.h != dimensions.h) {
             _bounds.d = dimensions;
             relayout_children();
+            if (!guard.alive()) return;
             on_bounds_changed();
+            if (!guard.alive()) return;
         }
-        for (non_client *element : _non_client) {
-            if (element)
+        const auto elements = _non_client;
+        for (non_client *element : elements) {
+            if (element && std::find(_non_client.begin(), _non_client.end(),
+                                     element) != _non_client.end())
                 element->on_configuration_changed();
+            if (!guard.alive()) return;
         }
         if (_created) apply_border_sides();
+        if (!guard.alive()) return;
         on_wnd_resize.emit(dimensions);
     }
 
     void wnd::on_native_paint(wnd_paint_event event) {
+        const detail::window_guard guard(*this);
         on_wnd_paint.emit(event);
-        draw_non_client(event.g);
+        if (guard.alive()) draw_non_client(event.g);
     }
 
     void wnd::draw_non_client(gpx &graphics) {
@@ -630,7 +716,7 @@ namespace native
         if (!_layout || _layout_suspended)
             return;
 
-        const scoped_flag pass(_layout_suspended);
+        const scoped_flag pass(_layout_suspended, *this);
         _layout->relayout(this, get_client_bounds());
     }
 
@@ -655,14 +741,22 @@ namespace native
     void wnd::update_non_client(bool notify_bounds) {
         _non_client_dirty = true;
         if (_updating_non_client) return;
-        const scoped_flag pass(_updating_non_client);
+        const detail::window_guard guard(*this);
+        const scoped_flag pass(_updating_non_client, *this);
         do {
             _non_client_dirty = false;
-            for (non_client *element : _non_client)
-                if (element) element->on_configuration_changed();
+            const auto elements = _non_client;
+            for (non_client *element : elements) {
+                if (element && std::find(_non_client.begin(), _non_client.end(),
+                                         element) != _non_client.end())
+                    element->on_configuration_changed();
+                if (!guard.alive()) return;
+            }
         } while (_non_client_dirty);
         if (_created && notify_bounds) on_bounds_changed();
+        if (!guard.alive()) return;
         relayout_children();
+        if (!guard.alive()) return;
         invalidate();
     }
 
@@ -735,9 +829,15 @@ namespace native
     void wnd::on_bounds_changed() {}
 
     void wnd::destroy_children() {
-        for (wnd *child : _children) {
-            if (child && child->_created)
-                child->destroy();
+        const detail::window_guard owner(*this);
+        const auto children = _children;
+        std::vector<detail::window_guard> guards;
+        guards.reserve(children.size());
+        for (auto *child : children) guards.emplace_back(*child);
+        for (std::size_t i = 0; i < children.size(); ++i) {
+            if (!owner.object_alive()) return;
+            if (guards[i].alive() && children[i]->_created)
+                children[i]->destroy();
         }
     }
 

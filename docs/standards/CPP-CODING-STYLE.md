@@ -6,7 +6,9 @@ project.
 
 We are writing modern C++ code.
 
-- All development and debugging happens  on Linux with GCC.
+- Develop and verify shared C++ on Linux with GCC through Docker first.
+- Verify macOS through the configured remote CMake/AppleClang workflow with
+  the Apple SDK; this is the explicit exception to Docker backend builds.
 - GCC builds must use full warnings and sanitizers while debugging.
 
 ## 1. Project Directory Structure
@@ -167,3 +169,9 @@ Rules:
 
 - Keep automated tests in `tests/`.
 - Put test data files in `tests/data/`.
+
+
+The 2026-10-15 inventory, repairs and verification limits are recorded in
+[ADJUST.md](../ADJUST.md). Existing omissions do not waive the mandatory header,
+implementation split, naming, warning or documentation rules above. The
+approximately 500-line guidance calls for judgment, not mechanical file splits.

@@ -106,9 +106,9 @@ Use `request_close()` for an application close command that may need to
 confirm unsaved work. Its default calls `destroy()`. An application-window
 subclass can override it, show a save prompt, and call `destroy()` only
 after the user accepts closure. Returning without destruction cancels or
-defers the request. SDL2 also sends title-bar close and application-quit
-events through this hook, so those actions share the same save policy.
-Other backends currently keep their direct window-manager close path.
+defers the request. Every backend sends native window-close requests through
+this hook; SDL2 also sends application-quit events through it. These actions
+therefore share the same save policy. Explicit destroy() forces teardown.
 
 Calling `destroy()` on the main application window releases its native
 resource. Backends use that destruction to leave the event loop when no main

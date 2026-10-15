@@ -37,3 +37,8 @@ This change touches every backend theme and every control. Implement it only
 if `theme` keeps growing enough to justify that cost. If the metric count stays
 stable, leave the interface intact and group the metrics fields by consumer
 with comments.
+
+
+The broader 2026-10-15 standards review is recorded in
+[ADJUST.md](../ADJUST.md). Its file-size inventory does not by itself satisfy
+the evidence threshold above or authorize a mechanical theme-interface split.

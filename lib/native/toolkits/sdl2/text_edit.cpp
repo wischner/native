@@ -76,11 +76,14 @@ namespace
         const auto [begin, end] = selection(*binding);
         std::string candidate = owner->get_text();
         candidate.replace(begin, end - begin, inserted);
-        if (!owner->validate(candidate))
-            return false;
+        const native::detail::window_guard guard(*owner);
+        const bool accepted = owner->validate(candidate);
+        if (!guard.alive()) return true;
+        if (!accepted) return false;
         binding->cursor = begin + inserted.size();
         binding->anchor = binding->cursor;
         owner->on_native_text(candidate);
+        if (!guard.alive()) return true;
         update_scroll(owner, binding);
         invalidate_binding(binding);
         return true;

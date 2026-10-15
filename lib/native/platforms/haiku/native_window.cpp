@@ -6,6 +6,9 @@
 //
 
 #include "native_window.h"
+#include "ui_dispatch.h"
+#include <Messenger.h>
+#include "../../wnd_peer.h"
 
 #include <interface/View.h>
 #include <Application.h>
@@ -124,7 +127,9 @@ namespace
             // as the painter sample while the mouse button is held.
             SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
             MakeFocus(true);
+            const native::detail::window_guard guard(*_owner);
             _owner->on_native_focus(true);
+            if (!guard.alive()) return;
 
             uint32 buttons = 0;
             if (BMessage *msg = Window()->CurrentMessage()) {
@@ -184,6 +189,22 @@ namespace haiku
     }
 
     void native_window::DispatchMessage(BMessage *message, BHandler *target) {
+        // BWindow enters here holding its native lock. Drop it before
+        // waiting for the portable gate; UI delivery takes gate -> window.
+        // A messenger validates the original handler after reacquiring.
+        const BMessenger destination(target, this);
+        ui_callback ui(*this);
+        if (_retired) {
+            if (message && message->what == B_QUIT_REQUESTED) {
+                // BeAPI can terminate this looper without unwinding its C++
+                // frames. No portable callbacks remain; do not strand the gate.
+                ui.release();
+                BWindow::DispatchMessage(message, this);
+            }
+            return;
+        }
+        if (!destination.IsValid() || destination.Target(nullptr) != target) return;
+        const native::detail::window_guard guard(*_owner);
         if (message && message->what == B_MODIFIERS_CHANGED && _owner &&
             _owner->get_input_enabled() && dynamic_cast<native_view *>(CurrentFocus())) {
             key_info info{};
@@ -213,10 +234,11 @@ namespace haiku
                         _owner->on_native_key({key, down ? native::key_action::press :
                             native::key_action::release, false,
                             static_cast<native::key_modifiers>(mods)});
+                    if (!guard.alive()) return;
                 }
             }
         }
-        BWindow::DispatchMessage(message, target);
+        if (guard.alive()) BWindow::DispatchMessage(message, target);
     }
 
     void native_window::WindowActivated(bool active) {
@@ -224,26 +246,31 @@ namespace haiku
         BWindow::WindowActivated(active);
     }
 
-    bool native_window::QuitRequested() {
-        native::app_wnd *owner = _owner;
+    void native_window::retire() {
+        _retired = true;
         _owner = nullptr;
-        if (owner) {
-            owner->on_native_destroy();
-            wnd_bindings.unregister_by_handle(this);
-        }
+        PostMessage(B_QUIT_REQUESTED);
+    }
 
-        if (owner == native::app::main_wnd() && be_app)
+    bool native_window::QuitRequested() {
+        if (_retired) return true;
+        native::app_wnd *owner = _owner;
+        const bool main = owner == native::app::main_wnd();
+        const native::detail::window_guard guard(*owner);
+        owner->request_close();
+        if (main && !guard.alive() && be_app)
             be_app->PostMessage(B_QUIT_REQUESTED);
-
-        return true;
+        // Forced teardown queues the looper's actual quit separately.
+        return false;
     }
 
     void native_window::MessageReceived(BMessage *message) {
         if (message && message->what == haiku::button_message) {
-            void *pointer = nullptr;
-            if (message->FindPointer(haiku::control_owner_field,
-                                     &pointer) == B_OK) {
-                auto *owner = static_cast<native::button *>(pointer);
+            uint64 identity = 0;
+            if (message->FindUInt64(haiku::control_owner_field,
+                                   &identity) == B_OK) {
+                auto *owner = haiku::button_callbacks.object_from_handle(identity);
+                if (!owner) return;
                 auto *binding =
                     haiku::button_bindings.object_from_handle(owner);
                 if (binding && binding->button &&
@@ -269,6 +296,7 @@ namespace haiku
 
         if (message && message->what == B_MOUSE_WHEEL_CHANGED &&
             _owner && _owner->get_input_enabled()) {
+            const native::detail::window_guard guard(*_owner);
             float dx = 0.0f;
             float dy = 0.0f;
             message->FindFloat("be:wheel_delta_x", &dx);
@@ -288,6 +316,7 @@ namespace haiku
                     native::wheel_direction::horizontal));
             }
 
+            if (!guard.alive()) return;
             if (dy != 0.0f) {
                 _owner->on_native_mouse_wheel(
                     native::mouse_wheel_event(

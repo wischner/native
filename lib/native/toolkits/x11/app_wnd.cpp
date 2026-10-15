@@ -160,7 +160,9 @@ namespace
             g.clear(g.get_paper());
 
             native::wnd_paint_event paint_event(invalid, g);
-            owner->on_native_paint(paint_event);
+            const native::detail::window_guard paint_guard(*owner);
+        owner->on_native_paint(paint_event);
+        if (!paint_guard.alive()) return;
 
             cache =
                 linux::x11::wnd_gpx_bindings.object_from_handle(owner);
@@ -298,7 +300,7 @@ namespace
                    event->xclient.data.l[0] ==
                        static_cast<long>(
                            linux::x11::wm_delete_window_atom)) {
-            owner->destroy();
+            owner->request_close();
         }
     }
 } // namespace

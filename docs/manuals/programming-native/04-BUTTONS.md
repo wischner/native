@@ -16,6 +16,11 @@ The control's signals can be connected before its backend resource exists.
 Lifecycle operations are intentionally non-`const`: creating, showing,
 invalidating, and destroying a control mutate its portable and native state.
 
+If creation throws, the window returns to the uncreated state, including
+failures allocating its internal peer. The same C++ object can be retried after
+the cause is resolved. A create/paint callback may destroy its receiver; stop
+using that receiver and its borrowed drawing context immediately afterward.
+
 ```cpp
 //
 // Demonstrates a native button and its complete control lifecycle.

@@ -165,6 +165,7 @@ namespace windows
 
     private:
         native::gpx &_graphics;
+        std::weak_ptr<void> _lifetime;
         HDC _previous;
         HDC _borrowed;
         int _saved_state;

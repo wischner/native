@@ -22,8 +22,7 @@
 namespace
 {
     Widget widget_for(native::combo_box *owner) {
-        return linux::openmotif::combo_box_bindings
-            .object_from_handle(owner);
+        return linux::openmotif::wnd_bindings.handle_from_object(owner);
     }
 
     void replace_items(Widget widget,
@@ -144,7 +143,6 @@ namespace native
             throw std::runtime_error(
                 "Motif: Failed to create combo box.");
         linux::openmotif::wnd_bindings.register_pair(widget, self);
-        linux::openmotif::combo_box_bindings.register_pair(self, widget);
         XtAddCallback(widget, XmNselectionCallback, changed, self);
         replace_items(widget, get_items());
         self->apply_selected_index();
@@ -169,7 +167,6 @@ namespace native
             XtVaSetValues(widget, XmNtraversalOn, False, nullptr);
             XtUnmanageChild(widget);
         }
-        linux::openmotif::combo_box_bindings.unregister_by_handle(self);
         if (widget) {
             linux::openmotif::wnd_bindings.unregister_by_handle(widget);
             XtDestroyWidget(widget);

@@ -147,7 +147,13 @@ later pass repaints that stage after an override returns.
 SDL presents a complete invalidated frame while a newly created top-level
 window is still hidden, then shows it. This prevents the renderer's initial
 black backbuffer from becoming a transient first frame. On destruction it
-releases the renderer before its target window.
+releases the renderer before its target window. The SDL renderer requests
+acceleration without blocking vertical synchronization. Waiting for the
+compositor inside `SDL_RenderPresent` would also delay key releases and queued
+UI callbacks, especially when a window is obscured or presentation is throttled.
+Invalidations still coalesce into complete frames; animation producers,
+including shader views, retain their own clocks. The standard SDL render-vsync
+hint can explicitly override this backend default.
 
 The ordering matters in one direction only: the subscriber must never be able
 to reach the chrome. Clipping the client stage is what enforces that, so a
@@ -336,3 +342,12 @@ and chrome. No shader child presents over its root menu or replaces a toolkit
 renderer. Owned source pixels, bounded ordered passes and linear premultiplied
 history are described in [Portable image shaders](PATTERNS-IMAGE-SHADERS.md).
 The shared animation worker posts coalesced invalidations and never draws.
+
+
+Paint subscribers may delete their C++ owner or destroy/recreate its resource.
+The original generation is checked before chrome or backend presentation.
+`gpx_state` and native DC guards also track drawer lifetime and skip restoring a
+destroyed drawer. These guards do not extend a borrowed drawer's public usable
+lifetime: application code stops drawing when it destroys the receiver.
+Modal completion runs through `on_destroy_completed()` after peer release.
+The regression evidence is recorded in [ADJUST.md](../../ADJUST.md), A01.

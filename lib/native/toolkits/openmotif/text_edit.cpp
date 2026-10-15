@@ -298,7 +298,10 @@ namespace native
         candidate.replace(start,
                           finish - start,
                           text);
-        if (!validate(candidate))
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = validate(candidate);
+        if (!validation_guard.alive()) return true;
+        if (!accepted)
             return false;
         binding->suppress = true;
         if (binding->multiline) {

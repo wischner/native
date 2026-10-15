@@ -17,6 +17,7 @@
 
 namespace
 {
+    std::filesystem::path test_data = NATIVE_TEST_DATA;
     void require(bool condition, const char *message) {
         if (!condition) throw std::runtime_error(message);
     }
@@ -153,7 +154,7 @@ namespace
 
         using namespace native;
         const auto identity = shader_package::load(
-            std::filesystem::path(NATIVE_TEST_DATA) / "shaders/identity.nshader");
+            test_data / "shaders/identity.nshader");
         img source(2, 2);
         source.pixels()[0] = rgba(255, 0, 0, 255);
         source.pixels()[1] = rgba(0, 255, 0, 255);
@@ -175,7 +176,7 @@ namespace
         require(second->pixels()[0].a == 191 && second->pixels()[0].r > 150,
             "Completed-tick history did not advance.");
         const auto crt = shader_package::load(
-            std::filesystem::path(NATIVE_TEST_DATA) / "shaders/crt.nshader");
+            test_data / "shaders/crt.nshader");
         history.clear();
         auto processed = run(crt, source, history);
         require(processed->w() == 2 && processed->h() == 2 && history.size() == 3,
@@ -204,6 +205,11 @@ namespace
         rejects([&] { view.set_parameter("gain", 1); }, "Wrong parameter type accepted.");
         rejects([&] { view.set_parameter("gain", 3.0f); }, "Out-of-range parameter accepted.");
         root.create(); root.show(); view.set_parent(&root); view.create(); view.show();
+        require(view.get_shader_status() == shader_status::pending,
+            "Creation claimed execution before the first paint.");
+        require(view.set_effect(effect, error) &&
+            view.get_shader_status() == shader_status::pending,
+            "Source-less replacement claimed an executed output.");
         img source(2, 2), target(2, 2);
         source.pixels()[0] = rgba(255, 0, 0, 255);
         view.set_source(source, 7, 1.25);
@@ -211,6 +217,20 @@ namespace
         view.on_native_paint(wnd_paint_event(rect(0, 0, 2, 2), target.get_gpx()));
         require(view.get_shader_status() == shader_status::active && target.pixels()[0].r == 255,
             "Source pixels were borrowed or effect was not painted.");
+        // Model a failed execution with an otherwise valid package. An
+        // expose must keep fallback/status until a producer permits retry.
+        view.set_animation(shader_animation::continuous);
+        auto *state = detail::peer_state<detail::shader_view_state>(view);
+        state->status = shader_status::unavailable;
+        state->dirty = false;
+        state->output.reset();
+        view.on_native_paint(wnd_paint_event(rect(0, 0, 2, 2), target.get_gpx()));
+        require(view.get_shader_status() == shader_status::unavailable,
+            "Expose retried an unavailable continuous effect.");
+        view.set_source(source, 7, 1.25);
+        view.on_native_paint(wnd_paint_event(rect(0, 0, 2, 2), target.get_gpx()));
+        require(view.get_shader_status() == shader_status::active,
+            "Source update did not permit effect retry.");
         const auto previous = view.get_effect();
         require(!view.set_effect(shader_package(), error) && view.get_effect().get_valid(),
             "Failed replacement lost a valid effect.");
@@ -223,12 +243,19 @@ namespace
         (void)previous;
     }
 }
-int main(int argc, char **) {
+int main(int argc, char **argv) {
     try {
+        bool benchmark = false;
+        for (int index = 1; index < argc; ++index) {
+            const std::string argument = argv[index];
+            if (argument == "--benchmark") benchmark = true;
+            else if (argument == "--data" && index + 1 < argc) test_data = argv[++index];
+            else throw std::invalid_argument("Expected --benchmark or --data PATH.");
+        }
         pointer_boundaries(); pointer_focus_transfer(); shader_pixels(); view_properties();
-        if (argc > 1) {
+        if (benchmark) {
             auto effect = native::shader_package::load(
-                std::filesystem::path(NATIVE_TEST_DATA) / "shaders/crt.nshader");
+                test_data / "shaders/crt.nshader");
             for (auto dimensions : {native::size(256, 192), native::size(1920, 1080)}) {
                 native::img source(dimensions.w, dimensions.h);
                 std::vector<native::detail::shader_frame> history;

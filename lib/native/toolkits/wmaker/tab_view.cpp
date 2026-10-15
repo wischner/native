@@ -1,3 +1,9 @@
+//
+// Implements native tab view integration for wmaker.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 // Implements tab_view with Window Maker's native WINGs WMTabView.
 
 #include <stdexcept>

@@ -504,7 +504,10 @@ namespace native
                                       ? 0
                                       : selection.size();
         candidate.replace(begin, count, text);
-        if (!validate(candidate))
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = validate(candidate);
+        if (!validation_guard.alive()) return true;
+        if (!accepted)
             return false;
 
         binding->suppress = true;

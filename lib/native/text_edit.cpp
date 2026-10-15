@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "wnd_peer.h"
 #include <native/text_edit.h>
 #include <native/property_grid.h>
 
@@ -59,7 +60,10 @@ namespace native
     }
 
     text_edit &text_edit::set_text(const std::string &text) {
-        if (!validate(text))
+        const detail::window_guard guard(*this);
+        const bool accepted = validate(text);
+        if (!guard.alive()) return *this;
+        if (!accepted)
             throw std::invalid_argument(
                 "text_edit value was rejected by validation");
         if (_text == text)
@@ -112,12 +116,16 @@ namespace native
         if (_mode == text_edit_mode::single_line &&
             text.find('\n') != std::string::npos)
             return false;
-        return !_validator || _validator(text);
+        const auto validator = _validator;
+        return !validator || validator(text);
     }
 
     bool text_edit::on_native_text(const std::string &text) {
-        if (_read_only || !validate(text))
-            return false;
+        if (_read_only) return false;
+        const detail::window_guard guard(*this);
+        const bool accepted = validate(text);
+        if (!guard.alive()) return true;
+        if (!accepted) return false;
         if (_text == text)
             return true;
         _text = text;

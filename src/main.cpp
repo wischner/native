@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "worker_shutdown.h"
 #include "vision_window.h"
 #include "infinity_window.h"
 #include "vision_mouse_shaders.h"
@@ -19,6 +20,7 @@
 #include <native.h>
 
 int program(int argc, char **argv) {
+    const vision::worker_shutdown shutdown;
     if (argc > 1 && std::string_view(argv[1]) == "--native-process-child") {
         for (int i = 2; i < argc; ++i) std::cout << argv[i] << "|";
         std::cerr << "helper error stream";

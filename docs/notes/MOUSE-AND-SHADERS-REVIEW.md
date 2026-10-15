@@ -3,8 +3,8 @@
 Reviewed 2026-10-07 against Native's architectural and C++ standards,
 window peers, input lifetime state, graphics API, emulated hierarchy,
 and platform/toolkit build definitions. Source proposals:
-[Mouse](../../../infinity/docs/notes/MOUSE.md) and
-[Shaders](../../../infinity/docs/notes/SHADERS.md).
+`infinity/docs/notes/MOUSE.md` and `infinity/docs/notes/SHADERS.md` in the
+external Infinity checkout; those proposal files are not bundled here.
 
 The original review preceded implementation. The current public API includes
 `mouse_capture` and `shader_view`; the implementation and coverage are described

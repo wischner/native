@@ -65,6 +65,14 @@ namespace
 
     // Verify line containment and half-open rectangle operations.
     void test_geometry() {
+        const native::line extreme(-32768, -32768, 32767, 32766);
+        expect(!extreme.contains({-32767, -32766}), "full-range line rejects false collinearity");
+        expect(extreme.contains({32767, 32766}), "full-range line includes its endpoint");
+        const native::rect wide(30000, 0, 10000, 10);
+        expect(wide.x2() == 40000 && wide.contains({32767, 1}), "wide endpoint does not wrap");
+        const auto clipped = wide.intersect(native::rect(31000, 1, 20000, 2));
+        expect(clipped.p.x == 31000 && clipped.w() == 9000, "wide intersection stays exact");
+        expect(!wide.intersect(native::rect(-32768, 0, 1, 1)).w(), "disjoint extremes have empty intersection");
         const native::line diagonal(0, 0, 10, 10);
         expect(diagonal.contains(native::point(5, 5)),
                "line contains a point on its segment");
@@ -84,6 +92,32 @@ namespace
                "rectangle includes its final interior point");
         expect(!first.contains(native::point(10, 10)),
                "rectangle excludes its lower-right boundary");
+    }
+
+    // Destroying a signal or disconnecting during a callback stops stale delivery.
+    void test_signal_lifetime() {
+        auto event = std::make_unique<native::signal<>>();
+        int calls = 0;
+        event->connect([&] { ++calls; return false; });
+        event->connect([&] { event.reset(); return false; });
+        event->emit();
+        expect(calls == 0, "signal deletion skips older callbacks");
+        native::signal<> mutable_event;
+        int id = 0;
+        id = mutable_event.connect([&] {
+            mutable_event.disconnect(id);
+            ++calls;
+            return false;
+        });
+        mutable_event.emit();
+        mutable_event.emit();
+        expect(calls == 1, "self-disconnection is safe and effective");
+        std::unique_ptr<native::signal<>> initializing;
+        initializing = std::make_unique<native::signal<>>(
+            [&] { initializing.reset(); });
+        auto orphan = initializing->connect_scoped([] { return false; });
+        orphan = {};
+        expect(!initializing, "scoped connection tolerates initializer deletion");
     }
 
     // Verify lazy initialization, reverse order, and propagation stops.
@@ -213,6 +247,7 @@ int main() {
     test_rgba();
     test_geometry();
     test_signal();
+    test_signal_lifetime();
     test_bindings();
     test_file_filter_match();
     return failure_count == 0 ? 0 : 1;

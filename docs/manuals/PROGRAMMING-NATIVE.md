@@ -85,3 +85,10 @@ Linux toolkit.
   `<native.h>` and link the CMake target `native`.
 
 Continue with [Your first application](programming-native/01-FIRST-APPLICATION.md).
+
+
+Backend qualification and current review limits are described in
+[Building and distributing](programming-native/12-BUILDING-AND-DISTRIBUTING.md)
+and [ADJUST.md](../ADJUST.md). Amiga's runtime check is not a supported
+application target. The repair record distinguishes passing portable examples,
+native runtime regressions and SDK exceptions from exhaustive conformance.

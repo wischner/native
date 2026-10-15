@@ -307,3 +307,8 @@ For programmable color, blur, distortion and temporal image effects, chapter
 [20: Portable image shaders](20-IMAGE-SHADERS.md) covers `shader_view`, immutable
 packages and typed parameters. The shared CPU profile composes through these
 same image operations; it does not expose a GPU device or replace native controls.
+
+
+The implementation companion is [Stock and portable fonts](../book-of-native/PATTERNS-FONTS.md),
+covering private byte ownership, registrations, shared layout/rasterization and
+native stock resources. Current discovery-layer adjustments are in ADJUST.md.

@@ -148,3 +148,20 @@ assets and license notices. Run `vision.exe --retro-terminal --terminal-smoke`
 on the interactive desktop for the shell/output/CRT acceptance check. The
 portable pixel test can take an explicit asset directory:
 `native_terminal_screen_tests.exe C:\NativeDebug\native\retro-terminal`.
+
+## Non-Amiga repair verification (2026-10-15)
+
+An interactive desktop task ran 18 cross-built regression executables: 16 passed,
+and the desktop-context and real-renderer tests returned skip code 77 because
+this VM has no suitable OpenGL 3.3 context. Native controls, callback/creation
+lifecycle, close cancellation/acceptance, service/process/audio-queue models and
+independent worker shutdown passed. This does not prove WGL shader execution or
+real-device sound. The final rebuilt suite was deployed with user approval and passed with the
+same two skips; all deployed test SHA256 hashes match the Docker outputs. The
+temporary Native-Adjustment-Tests task was removed; Native-Vision-Debug remains.
+
+Copy tests/data beside the tests and pass --data data to native_mouse_shader_tests;
+pass retro-terminal to native_terminal_screen_tests. Preserve the MinGW runtime
+DLLs and attributed asset directory. Run GUI regressions in the interactive user
+session, not the SSH service desktop. Temporary acceptance tasks should be removed
+after verification; retain Native-Vision-Debug for the maintained debugger flow.

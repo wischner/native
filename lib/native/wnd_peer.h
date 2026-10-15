@@ -63,10 +63,26 @@ namespace native
             friend class wnd_peer_access;
         };
 
+        struct wnd_lifetime;
+        // Check callback continuations without dereferencing a deleted owner.
+        class window_guard
+        {
+        public:
+            explicit window_guard(wnd &owner);
+            bool alive() const;
+            bool object_alive() const;
+        private:
+            std::weak_ptr<wnd_lifetime> _object;
+            std::weak_ptr<wnd_lifetime> _resource;
+            bool _tracked = false;
+        };
+
         // Gives internal backend adapters typed access to peer-owned state.
         class wnd_peer_access
         {
         public:
+            static std::weak_ptr<wnd_lifetime> object_lifetime(wnd &owner);
+            static std::weak_ptr<wnd_lifetime> resource_lifetime(wnd &owner);
             static void assign_state(wnd &owner,
                                      std::type_index type,
                                      void *state,

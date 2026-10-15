@@ -1,13 +1,16 @@
 # Infinity: Portable Emulator Input, Audio, and Background Work
 
-Reviewed and implemented: 2026-10-06.
+Reviewed and implemented: 2026-10-06. Verification status refreshed: 2026-10-15.
 
 This exceptional consumer integration note records the extensions prompted by
 `../infinity/lib/nui`, their implementation, and remaining platform limits.
 The original review proposed physical keyboard events, bounded PCM output,
 scoped worker delivery and an optional child-process service. Those APIs now
-exist. **Complete held-key parity is still blocked on the GEMix SDK/viewer;
-macOS adapters have not been compiled in this pass.**
+exist. **Complete held-key parity is still blocked on the GEMix SDK/viewer.**
+The earlier macOS build gap is closed: the current remote build and all 17
+registered tests pass on `leia`. Interactive physical-key/audio acceptance is
+separate from these automated results; shared lifecycle, threading and shutdown
+repairs and verification limits are recorded in [ADJUST.md](../ADJUST.md).
 
 The [architecture standard](../standards/ARCHITECTURE.md), including its new
 Section 20, and [C++ style standard](../standards/CPP-CODING-STYLE.md) govern
@@ -191,6 +194,13 @@ proper target-side configuration for native builds.
 | `native_keyboard_runtime_tests` (SDL2) | Actual SDL event dispatch, editor isolation, focus reset, audio surviving video teardown |
 | `infinity_native_keyboard_tests` (Infinity) | Native-key Spectrum mapping and sided shift/chord rules |
 
+The original 2026-10-06 validation below is historical. Current Native
+repair results and exact SDK sanitizer exceptions are in
+[the feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md).
+Vision now retires stopped workers to an independent join controller; UI
+callbacks close delivery and request cancellation without waiting for joins.
+The worker-shutdown regression proves completion without another UI turn.
+
 All nine Native Docker selections compile, including Windows and Haiku test
 binaries and both GEM transports. SDL2's complete 15-test suite and both GEM
 10-test suites pass. X11 and Window Maker also pass; Motif and OPEN LOOK pass their behavior
@@ -206,11 +216,11 @@ MCP/DAP end-to-end checks also pass.
 A fake PCM consumer or dummy driver does not prove audible output. New physical
 input adapters outside SDL have not been exercised with real held-key hardware
 in this pass. Windows/Haiku device runtime acceptance remains for target systems.
-The remote macOS build was rejected by automatic approval because its script
-exports the repository to `leia`, a destination not explicitly authorized in this
-session. Its new adapters remain uncompiled until that sync is approved. The
-GEMix SDK prerequisite remains required before claiming full cross-platform
-emulator keyboard parity.
+The original macOS source sync was rejected by automatic approval. The user
+subsequently authorized that destination, and the current build and registered
+suite pass on `leia`; no source-sync approval is pending. The GEMix SDK
+prerequisite remains required before claiming full cross-platform emulator
+keyboard parity.
 
 ## Mouse and programmable image interfaces (2026-10-07)
 
@@ -218,7 +228,12 @@ Native implements the pointer contracts and a portable CPU image-shader
 profile reviewed from Infinity's `MOUSE.md` and `SHADERS.md`. The original
 OpenGL/Direct3D/Metal proposal was replaced by a bounded shared programmable
 executor to retain Native's existing toolkit composition and provide executable
-packages on GEMix as well. This is an explicit design change, not GPU support.
+packages on GEMix as well. That CPU profile does not provide GPU support. A
+separate `native-glsl-1` profile now executes through private OpenGL adapters
+on Linux, Windows, macOS and Haiku, with current lifecycle/capability limits
+recorded in [ADJUST.md](../ADJUST.md). Haiku uses optional Mesa OSMesa software
+rendering; the configured Mesa 22.0.5 VM requires GALLIUM_DRIVER=softpipe.
+Foreign Mesa bindings must be released before Native GLSL activation.
 See [the design review](MOUSE-AND-SHADERS-REVIEW.md),
 [mouse tutorial](../manuals/programming-native/02-PAINTING-AND-INPUT.md), and
 [shader tutorial](../manuals/programming-native/20-IMAGE-SHADERS.md).

@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "wnd_peer.h"
 #include <native/code_edit.h>
 
 #include <algorithm>
@@ -390,13 +391,17 @@ namespace native
         const std::string proposed =
             _document->text().substr(0, span.start) + utf8 +
             _document->text().substr(span.end);
-        if (!validate(proposed))
+        const detail::window_guard guard(*this);
+        const bool accepted = validate(proposed);
+        if (!guard.alive()) return *this;
+        if (!accepted)
             throw std::invalid_argument(
                 "source edit was rejected by validation");
         if (proposed == _document->text())
             return *this;
         _document->replace(span, utf8);
         edited(span.start + utf8.size());
+        if (!guard.alive()) return *this;
         restyle(span.start, span.start + utf8.size());
         return *this;
     }
@@ -406,25 +411,33 @@ namespace native
     bool code_edit::can_redo() const { return _document->can_redo(); }
 
     bool code_edit::undo() {
+        const detail::window_guard guard(*this);
         if (!_document->undo())
             return false;
-        if (!validate(_document->text())) {
+        const bool accepted = validate(_document->text());
+        if (!guard.alive()) return true;
+        if (!accepted) {
             _document->redo();
             return false;
         }
         edited(std::min(_caret, _document->text().size()));
+        if (!guard.alive()) return true;
         restyle(0, _document->text().size());
         return true;
     }
 
     bool code_edit::redo() {
+        const detail::window_guard guard(*this);
         if (!_document->redo())
             return false;
-        if (!validate(_document->text())) {
+        const bool accepted = validate(_document->text());
+        if (!guard.alive()) return true;
+        if (!accepted) {
             _document->undo();
             return false;
         }
         edited(std::min(_caret, _document->text().size()));
+        if (!guard.alive()) return true;
         restyle(0, _document->text().size());
         return true;
     }
@@ -596,19 +609,25 @@ namespace native
     }
 
     bool code_edit::on_native_text(const std::string &text) {
-        if (_read_only || !validate(text))
-            return false;
+        const detail::window_guard guard(*this);
+        if (_read_only) return false;
+        const bool accepted = validate(text);
+        if (!guard.alive()) return true;
+        if (!accepted) return false;
         if (_document->text() == text)
             return true;
         _document->replace(
             text_span{0, _document->text().size()}, text);
         edited(std::min(_caret, text.size()));
+        if (!guard.alive()) return true;
         restyle(0, text.size());
         return true;
     }
 
     void code_edit::on_native_focus(bool focused) {
+        const detail::window_guard guard(*this);
         wnd::on_native_focus(focused);
+        if (!guard.alive()) return;
         if (_focused == focused)
             return;
         _focused = focused;
@@ -661,8 +680,9 @@ namespace native
         _preferred_column = -1;
         reveal_caret();
         invalidate();
+        const detail::window_guard guard(*this);
         on_change.emit(_text);
-        on_text_change.emit();
+        if (guard.alive()) on_text_change.emit();
     }
 
     void code_edit::restyle(std::size_t start, std::size_t end) {

@@ -59,11 +59,14 @@ namespace native
             const char *driver = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
             const bool software = driver &&
                 std::string_view(driver) == "software";
+            // Painting shares the input dispatcher. Do not block it on a
+            // compositor refresh; invalidation already coalesces frames and
+            // animated producers (including shader views) own their clocks.
             cache->renderer = SDL_CreateRenderer(
                 win,
                 -1,
                 software ? SDL_RENDERER_SOFTWARE :
-                    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                    SDL_RENDERER_ACCELERATED);
             if (!cache->renderer && !software)
                 cache->renderer =
                     SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);

@@ -285,3 +285,12 @@ native panel supports it and conservatively returns one folder on older
 single-path selectors.
 
 Next: [Graphics, images, fonts, and themes](10-GRAPHICS-IMAGES-FONTS-THEMES.md).
+
+## Callback teardown
+
+A callback may destroy its native resource or delete its C++ receiver. Once it
+does, application code must stop using the receiver and any borrowed drawer.
+The library checks the original generation before later paint/presentation
+stages. Modal close notification runs after native teardown and peer release,
+so its handler may safely create a new dialog generation. Backend test evidence
+for these paths is recorded in the feature matrix and ADJUST.md.

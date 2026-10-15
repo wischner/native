@@ -65,6 +65,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/shader_package.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/shader_executor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/glsl_package.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/glsl_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/glsl_renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/shader_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/shader_schedule.cpp
@@ -136,6 +137,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/menu_shortcut.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp
 )
@@ -161,3 +163,7 @@ if(NOT WIN32 AND NOT HAIKU AND NOT APPLE)
 endif()
 
 add_subdirectory(platforms)
+
+if(NOT HAIKU)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui_startup.cpp)
+endif()

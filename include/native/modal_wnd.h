@@ -59,6 +59,8 @@ namespace native
 
         // Show the dialog and begin its owner-modal session.
     protected:
+        // Deliver completion only after the complete window teardown transaction.
+        void on_destroy_completed() override;
         void show_native() override;
 
     public:
@@ -87,6 +89,7 @@ namespace native
 
     private:
         bool _modal_active;
+        bool _close_pending = false;
         dialog_result _result;
 
         // Unregister this dialog and optionally emit its result.

@@ -125,6 +125,7 @@ namespace
             Menu_item item = static_cast<Menu_item>(xv_create(
                 XV_NULL,
                 MENUITEM,
+                MENU_RELEASE,
                 MENU_STRING,
                 owner->get_items()[index].c_str(),
                 MENU_NOTIFY_PROC,

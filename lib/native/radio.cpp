@@ -10,6 +10,7 @@
 
 #include <native/radio.h>
 #include <native/theme.h>
+#include "wnd_peer.h"
 
 namespace native
 {
@@ -77,8 +78,14 @@ namespace native
             return;
         }
 
-        for (wnd *sibling : _parent->_children) {
-            auto *other = dynamic_cast<radio *>(sibling);
+        const detail::window_guard guard(*this);
+        const auto siblings = _parent->_children;
+        std::vector<detail::window_guard> guards;
+        for (auto *sibling : siblings) guards.emplace_back(*sibling);
+        for (std::size_t i = 0; i < siblings.size(); ++i) {
+            if (!guard.alive()) return;
+            if (!guards[i].alive()) continue;
+            auto *other = dynamic_cast<radio *>(siblings[i]);
             if (!other || other == this || !other->_selected) {
                 continue;
             }
@@ -88,6 +95,7 @@ namespace native
             if (notify)
                 other->selection_changed(false);
         }
+        if (!guard.alive()) return;
         const bool changed = !_selected;
         _selected = true;
         if (_created)

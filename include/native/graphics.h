@@ -22,6 +22,7 @@
 namespace native
 {
     class gpx;
+    namespace detail { class graphics_access; }
 
     // Selects pixel sampling for scaled image drawing.
     enum class image_filter
@@ -86,6 +87,7 @@ namespace native
 
     private:
         gpx *_graphics;
+        std::weak_ptr<void> _lifetime;
         rgba _ink;
         rgba _paper;
         std::uint8_t _pen;
@@ -256,6 +258,11 @@ namespace native
                       const rect &source_rect,
                       const rect &destination,
                       image_filter filter = image_filter::linear);
+
+    private:
+        friend class gpx_state;
+        friend class detail::graphics_access;
+        std::shared_ptr<void> _lifetime = std::make_shared<char>();
 
     protected:
         // Draw stock-font text through the selected native backend.

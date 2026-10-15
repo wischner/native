@@ -12,8 +12,10 @@ Posting threads never read window state. The mutex protects admission and
 queue ownership; callbacks and discarded payload destructors run outside it.
 
 One pending `app::post()` wake drains at most sixteen callbacks per turn.
-Latest progress is applied before FIFO completion. Remaining work rearms a
-future turn, allowing native input/paint dispatch in between. Closing the
+Latest progress is applied at most once per turn, before FIFO completion.
+New progress submitted during a callback waits for a future turn. A slow redraw
+therefore cannot consume all sixteen callbacks while input waits. Remaining
+work rearms a future turn, allowing native input/paint dispatch in between. Closing the
 scope on the UI thread clears its receiver and queue. Native destruction
 invalidates the weak generation even if the scope is still alive; recreation
 cannot revive an old sender. Admission does not guarantee execution after
@@ -69,3 +71,18 @@ WINGs converts the descriptor notification into a local wake event, then drains
 after ordinary/deferred dispatch. Pipe registration and the wake target end
 before toolkit teardown. The CRT terminal smoke test exercises real child
 output followed by a posted close without supplying input events or test timers.
+
+
+OPEN LOOK serializes wake writes and descriptor close under one mutex and
+validates nonblocking/close-on-exec setup. Haiku serializes posted deliveries
+and window callbacks under a common recursive UI gate. Native looper locks
+are released before waiting for that gate, then reacquired in gate-to-looper
+order; retired native quit messages release the gate before BeAPI terminates
+a looper. Thus callbacks form one serialized UI domain even though BeAPI uses
+several OS threads.
+
+Vision closes delivery, requests stop and transfers joining to an independent
+shutdown controller. Workers retain their services without borrowing a dying
+window; restarting closes that job's old delivery scope. The controller drains
+without another UI turn, and `program()` joins it after `app::run()` returns.
+Tests and target evidence are recorded in [ADJUST.md](../../ADJUST.md), A03/A04/A09.

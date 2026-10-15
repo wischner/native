@@ -14,7 +14,13 @@ namespace mac
 {
     NSApplication *global_app = nullptr;
     native::bindings<NSWindow *, native::wnd *> wnd_bindings;
-    native::bindings<native::wnd *, id> delegate_bindings;
+    id take_window_delegate(native::wnd &owner) {
+        auto *state = static_cast<mac_window_state *>(
+            native::detail::wnd_peer_access::release_state(owner, typeid(mac_window_state)));
+        id delegate = state ? state->delegate : nil;
+        delete state;
+        return delegate;
+    }
     native::bindings<uint32_t, mac_font *> font_bindings;
     native::bindings<uint32_t, mac_menu *> menu_bindings;
     // Bind: structural panel host to its container view.

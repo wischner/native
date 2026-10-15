@@ -13,6 +13,8 @@
 #include <native/wnd.h>
 
 #include "post_backend.h"
+#include "ui_startup.h"
+#include "wnd_peer.h"
 
 #include <mutex>
 #include <stdexcept>
@@ -53,12 +55,19 @@ namespace native
                 "window.");
 
         _main_wnd = &wnd;
+        const detail::window_guard owner(wnd);
 
         try {
+            detail::begin_ui_startup();
             // Populate screens before creation so handlers may query
             // them from the window's create signal.
             screen::detect();
             wnd.create();
+            if (!owner.object_alive()) {
+                detail::end_ui_startup();
+                _main_wnd = nullptr;
+                return 0;
+            }
             wnd.show();
 
             const int result = app::main_loop();
@@ -68,12 +77,14 @@ namespace native
             // them.
             detail::discard_posted_work();
 
-            wnd.destroy();
+            if (owner.object_alive()) wnd.destroy();
+            detail::end_ui_startup();
             _main_wnd = nullptr;
             return result;
         } catch (...) {
             detail::discard_posted_work();
-            wnd.destroy();
+            try { if (owner.object_alive()) wnd.destroy(); } catch (...) {}
+            detail::end_ui_startup();
             _main_wnd = nullptr;
             throw;
         }

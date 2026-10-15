@@ -27,6 +27,7 @@
 
 #include "../../file_filter_match.h"
 #include "globals.h"
+#include "ui_dispatch.h"
 
 namespace
 {
@@ -111,6 +112,7 @@ namespace
             : BHandler("native file dialog handler") {}
 
         void MessageReceived(BMessage *message) override {
+            const haiku::ui_callback ui(*Looper());
             void *dialog_pointer = nullptr;
             void *state_pointer = nullptr;
             if (!message ||

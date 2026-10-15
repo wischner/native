@@ -13,6 +13,7 @@
 #include <mutex>
 #include <iostream>
 #include "globals.h"
+#include "ui_dispatch.h"
 #include "../../post_backend.h"
 
 namespace
@@ -32,6 +33,7 @@ namespace
     public:
         void MessageReceived(BMessage *message) override {
             if (message->what != posted_message) { BHandler::MessageReceived(message); return; }
+            const haiku::ui_callback ui(*Looper());
             native::detail::drain_posted_work();
             if (native::app::main_wnd() && !native::app::main_wnd()->get_created())
                 be_app->PostMessage(B_QUIT_REQUESTED);
@@ -57,6 +59,7 @@ namespace native
         }
         detail::set_loop_wake(wake_posted_work);
         detail::drain_posted_work();
+        haiku::end_ui_startup();
         if (!app::main_wnd() || app::main_wnd()->get_created())
             haiku::global_app->Run();
         detail::set_loop_wake(nullptr);

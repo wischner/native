@@ -339,7 +339,10 @@ namespace native
         if (!binding || _read_only)
             return false;
         if (binding->all_selected) {
-            if (!validate(replacement))
+            const native::detail::window_guard validation_guard(*this);
+            const bool accepted = validate(replacement);
+            if (!validation_guard.alive()) return true;
+            if (!accepted)
                 return false;
             binding->suppress = true;
             set_native_text(binding, replacement);
@@ -359,7 +362,10 @@ namespace native
             candidate.replace(static_cast<std::size_t>(begin),
                               static_cast<std::size_t>(count),
                               replacement);
-            if (!validate(candidate))
+            const native::detail::window_guard validation_guard(*this);
+            const bool accepted = validate(candidate);
+            if (!validation_guard.alive()) return true;
+            if (!accepted)
                 return false;
             binding->suppress = true;
             WMSetTextFieldText(binding->field, candidate.c_str());
@@ -380,7 +386,10 @@ namespace native
                 ? nullptr
                 : mutable_replacement.data());
         const std::string candidate = current_text(binding);
-        if (!replaced || !validate(candidate)) {
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = replaced && validate(candidate);
+        if (!validation_guard.alive()) return true;
+        if (!accepted) {
             set_native_text(binding, previous);
             binding->suppress = false;
             return false;

@@ -59,3 +59,5 @@ add_custom_command(TARGET vision POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/assets/retro-terminal
         $<TARGET_FILE_DIR:vision>/retro-terminal)
+
+target_sources(vision PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/worker_shutdown.cpp)

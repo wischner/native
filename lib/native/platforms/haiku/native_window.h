@@ -46,11 +46,15 @@ namespace haiku
         // Forward a BeAPI resize notification to the owner.
         void FrameResized(float new_width, float new_height) override;
 
+        // Detach portable callbacks and request looper-owned destruction.
+        void retire();
+
         // Return the non-owning application-window owner.
         native::app_wnd *owner() const;
 
     private:
         native::app_wnd *_owner;
+        bool _retired = false;
     };
 
 } // namespace haiku

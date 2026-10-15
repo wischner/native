@@ -37,6 +37,11 @@ The basic code-structure rules are:
   - Place behavior specific to a toolkit on a particular platform in
     `lib/native/toolkits/<toolkit>/`.
 
+Geometry stores signed 16-bit coordinates and unsigned 16-bit dimensions.
+Rectangle x2()/y2() return std::int32_t so endpoint addition cannot narrow;
+containment/intersection widen intermediate calculations, and line cross-products
+use std::int64_t. Consumers must rebuild after the endpoint return-type change.
+
 ## 2. Native Bindings
 
 Public C++ classes must not contain native types, even in private members. To
@@ -136,8 +141,10 @@ extend that behavior.
 
 `signal::emit_consumed()` reports a newest-first handler's `true` result;
 `emit()` retains its void signature and ignores that result. Connection
-mutation during emission remains unsupported. A signal state stays alive
-through dispatch even if its owning window is destroyed by a callback.
+mutation during emission is safe: removed slots are skipped and new slots wait
+for the next emission. The current callable and dispatch state stay alive;
+destroying the signal owner stops remaining subscribers. Callers separately
+validate their resource generation before continuing after dispatch.
 
 `wnd::on_native_key(key_event)` returns consumption and updates peer-owned
 held positions before emitting `on_key`. Physical positions refer to a US
@@ -153,6 +160,12 @@ go to their actual input target, without automatic parent bubbling.
 GEMix currently returns false: the pinned AES interface discards raw key
 releases and some physical distinctions. Do not synthesize timed releases
 or claim emulator held-key parity from AES key-down packets.
+
+Haiku uses several native loopers within one serialized UI domain. Its common
+recursive gate protects portable state and signals across window callbacks and
+posted delivery. Acquire the gate before native looper locks, and release it
+before a native quit path that can terminate a thread without C++ unwinding.
+Application workers still communicate only through posted/scoped deliveries.
 
 ## 4. Setters and Getters
 
@@ -193,7 +206,15 @@ Window lifecycle must follow these rules:
 - `create()` is idempotent, validates the parent once, establishes the backend
   resource, applies the cached cursor, marks it created, and emits
   `on_wnd_create` once per creation. A failed backend hook restores the
-  uncreated state.
+  uncreated state. Shared peer, lifetime and input allocations are part of
+  the same rollback transaction; a failed creation must permit retry.
+- `on_destroy_completed()` runs once after native teardown and peer release.
+  Completion may delete or recreate the C++ window; no caller may then use
+  its previous generation. Modal completion signals use this boundary.
+- Callback continuations capture an opaque object/resource generation before
+  dispatch and check it without dereferencing the owner afterward. Paint must
+  stop when that generation ends; borrowed graphics-state guards skip restoring
+  a destroyed drawer. Signal-owner destruction stops remaining subscribers.
 - After that notification, a still-created window synchronizes internal
   non-client resources independently of whether a public handler consumed
   the signal. Toolbar children must exist before painting begins.
@@ -208,9 +229,9 @@ Window lifecycle must follow these rules:
   or surface they target. In particular, SDL renderers are destroyed before
   their `SDL_Window`; process-wide SDL shutdown belongs to the application
   loop, never to a closing modeless window.
-- A window-manager close request must converge on `destroy()`, not merely hide
-  or dismiss the native resource. A later `create()`/`show()` therefore starts
-  a complete new native lifecycle on every backend.
+- An accepted window-manager close request must converge on `destroy()`, not
+  merely hide or dismiss the native resource. A later `create()`/`show()`
+  therefore starts a complete new native lifecycle on every backend.
 
 Owned titleless windows honor `get_native_title_visible() == false` while
 retaining input focus for their native child editors. They host custom
@@ -221,10 +242,11 @@ titleless modeless hosts; client painting and input exclude every frame edge.
 `app_wnd::request_close()` is the application-level close policy hook. Its
 default calls `destroy()`; an override may leave the resource alive while
 asking about unsaved edits and call `destroy()` only after acceptance.
-The SDL2 dispatcher routes title-bar close and application quit requests
-through this hook and keeps pumping events while the main window remains
-created, including asynchronous confirmation and save dialogs. Other
-backends currently retain their direct native-close destruction path.
+Every desktop adapter routes native window close requests through this hook
+and keeps its loop active while the main resource remains created. SDL2 also
+routes application quit requests through it. Explicit destruction remains the
+unconditional resource operation; native teardown notifications are not a
+second cancellable close request.
 
 `mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
 `crosshair`, `resize_horizontal`, `resize_vertical`,
@@ -607,7 +629,9 @@ delete it. Painting must honor the invalid rectangle and active clip.
 `invalidate()` only schedules a repaint. It must not emit the paint signal
 directly. Each backend is responsible for preparing its context, presenting
 buffered output when required, and releasing all graphics resources during
-window destruction.
+window destruction. SDL2 requests accelerated rendering without blocking
+vertical synchronization: presentation shares the input/UI-delivery thread.
+Invalidation coalesces complete frames; animation producers own their pacing.
 
 ## 7. Custom Drawing
 
@@ -768,6 +792,8 @@ without native queries. Returned pointers remain valid until the next
 `std::runtime_error`.
 
 ## 10. Fonts
+
+Internal implementation: [font patterns](../manuals/book-of-native/PATTERNS-FONTS.md).
 
 Fonts belong to one of two categories: stock fonts supplied by the active
 platform or toolkit, and portable TrueType fonts supplied by the application.
@@ -1171,6 +1197,8 @@ properties, signals, completion commands, and live create/show/destroy on
 each supported backend.
 
 ## 15. Classic trees
+
+Internal implementation: [tree patterns](../manuals/book-of-native/PATTERNS-TREE-VIEW.md).
 
 `tree_view` is the owned, single-selection hierarchy control. It remains
 separate from the flat text-only `list`, spatial `icon_view`, and model-backed
@@ -1628,8 +1656,9 @@ returning accepted/full/closed; `post_latest()` replaces obsolete progress
 with one pending slot. Admission is not guaranteed delivery. Scope close,
 window destruction and recreation make stale callbacks inert. Dispatch uses
 `app::post()`, never a second toolkit loop. Callbacks execute outside the
-state mutex, at most sixteen per turn, with a latest update before FIFO
-completion. Close drops captured payloads outside the mutex. Do not access
+state mutex, at most sixteen per turn, with at most one latest update before
+FIFO completion. New progress arriving during that update is deferred to the
+next turn, so a slow redraw cannot repeatedly delay native input. Close drops captured payloads outside the mutex. Do not access
 a receiver after callback-driven destruction. This is a small UI boundary,
 not a thread pool, generic executor, coroutine runtime or scheduler.
 
@@ -1673,11 +1702,32 @@ leaf, not a container. Protected background/image stages implement the complete
 default rendering before inherited paint subscribers and chrome. Shader effects
 must not change pointer coordinates or surrounding control composition.
 
-The implemented `native-image-1` profile is a bounded CPU vector instruction
-language, not GLSL/HLSL/Metal or a GPU adapter. One immutable package executes on
-every backend. Public capabilities explicitly report `accelerated == false`.
-Native does not claim the original three-device GPU proposal's release gate.
-There is no runtime translation framework or application shader callback.
+The `native-image-1` profile is a bounded CPU vector instruction language.
+Its immutable packages execute on every backend without GPU acceleration.
+The separate `native-glsl-1` profile executes original GLSL pass bodies using
+an owned OpenGL 3.3 context; programs, textures and context stay private.
+Offscreen context activation preserves the caller's graphics context and
+restores it after work and failure. Re-entering the same active image context
+is rejected; teardown must not unbind an unrelated caller context. Context
+restoration failure must not trigger GL cleanup in the caller's context.
+Capabilities describe the live renderer, rather than claiming acceleration
+for every profile or backend. Linux execution is verified separately from
+CPU-profile acceptance; other adapters retain their documented validation
+limits. Native does not claim the original three-device GPU proposal's
+release gate. There is no runtime translation framework or application
+shader callback.
+
+Haiku's optional adapter loads Mesa OSMesa dynamically and requests an OpenGL
+3.3 core context. It renders through the software driver and existing image
+compositor; it does not claim GPU acceleration. Native peers can nest in binding
+order; retirement retains predecessor state until safe restoration. A foreign
+Mesa context is rejected before its dispatch is changed, rather than treating
+private BGLView state as an OSMesa object. Applications embedding another GL
+client must release that binding before invoking Native GLSL. Missing runtime,
+unsupported version or unavailable entry points use the ordinary diagnostic and
+fallback contract. The reproduced Mesa 22.0.5 llvmpipe JIT fault is rejected
+before drawing; launch with GALLIUM_DRIVER=softpipe on that runtime. The library
+never changes the process environment to select a driver.
 
 Packages own validated descriptors, exact parameter types/defaults/ranges and
 ordered pass programs. Unknown format/profile versions, opcodes, uninitialized
@@ -1688,14 +1738,17 @@ are UI-thread operations. Setters cache portable values before creation and
 getters expose them. `set_source()` copies pixels before returning.
 
 Effect installation is transactional; failure preserves the previous package
-and parameters. Accepted pre-create installation reports pending. Peer-owned
+and parameters. Accepted pre-create installation reports pending.
+Resource creation and source-less installation remain pending until
+the current effect has produced a successful output; creating a peer
+alone must not report active execution. Peer-owned
 outputs/history and weak generation-checked scheduling are discarded by native
 resource teardown while cached source/package/properties survive recreation.
 Runtime execution failure reports unavailable, emits one diagnostic through a
-virtual hook, disables paced retries and applies an explicit original-image or
+virtual hook, disables paced retries and incidental-expose execution, and applies an explicit original-image or
 black require-effect fallback. A source/property change permits retry.
 
-The executor uses top-left normalized sampling, linear premultiplied float4
+The CPU executor uses top-left normalized sampling, linear premultiplied float4
 intermediates and final straight-alpha sRGB RGBA8 composition. Intermediate
 float4 programs may explicitly store effect-private metadata, such as a history
 mask in alpha; their final output must restore compositor color semantics. It supports
@@ -1708,7 +1761,7 @@ to transparent black. Unchanged source-driven output is cached. Continuous
 mode shares one stop-aware pacing clock and at most one pending UI invalidation
 per view; workers never touch UI objects directly.
 
-Decode/execute must enforce the current profile bounds: one MiB package,
+For `native-image-1`, decode/execute must enforce these bounds: one MiB package,
 sixteen parameters, eight passes, 128 instructions/pass, 64 float4 registers
 with writable indices 20..63, extents at most 4096, a conservative per-tick
 allocation estimate at most 256 MiB and work at most 128 Mi vector instructions/tick.
@@ -1718,9 +1771,26 @@ invalidity/overflow has the defined result zero. CPU execution is synchronous;
 limits are not frame-rate guarantees. Preserve Native's existing geometry and
 window lifecycle rather than introducing device types into the public API.
 
-Selected upstream CRT formulas in Vision's terminal test are external attributed
-assets. The demo also computes its monitor housing, recessed glass, reflection
-and indicator using the portable image profile; these are effect output rather
-than backend-specific window chrome. Keep source, license and adaptation provenance separate from the
-library. The component-wise `step(edge, value)` image opcode produces zero below
+The separate `native-glsl-1` decoder accepts up to eight MiB, sixteen
+parameters and sixteen passes. It owns optional packaged textures and GLSL
+uniform/sampler reflection. Current OpenGL targets are RGBA8; they do not
+claim the CPU profile's float4 intermediate precision. Profile-specific
+capabilities reflect the installed renderer immediately after a successful live
+replacement. All source/viewport/target extents must fit both 4096 and the device
+limit. Admission includes retained renderer storage, packaged CPU/GPU pixels,
+new current/history targets, readback/old output and initialization staging,
+within a conservative 256 MiB estimate. Every history edge is allocated before
+any pass samples it; only a complete successful tick commits new history.
+
+Vision's terminal demo executes attributed original GLSL CRT/blur pass bodies.
+Earlier CPU material/effect packages remain test fixtures. Both keep upstream
+source, license and adaptation provenance separate from the library. The component-wise `step(edge, value)` image opcode produces zero below
 the edge and one otherwise, allowing portable masks without executable branches.
+
+
+## Current implementation conformance
+
+These requirements are normative. The 2026-10-15 working-tree review and
+non-Amiga repairs are recorded with source evidence, regressions, narrow SDK
+exceptions and acceptance limits in [ADJUST.md](../ADJUST.md). Passing builds
+and regressions do not establish exhaustive-path conformance.

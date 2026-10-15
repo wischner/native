@@ -181,6 +181,7 @@ namespace
         void FrameResized(float, float) override { configure(); }
 
         void MessageReceived(BMessage *message) override {
+            const native::detail::window_guard guard(_owner);
             auto *state = haiku::combo_box_bindings.object_from_handle(&_owner);
             if (!state || state->suppress) return;
             if (message->what == text_message) {
@@ -195,6 +196,7 @@ namespace
                     item->SetMarked(static_cast<int>(i) == _owner.get_selected_index());
                 }
                 _owner.on_native_drop_down(true);
+                if (!guard.alive()) return;
                 BMenuItem *item = menu.Go(ConvertToScreen(BPoint(0,
                     Bounds().bottom + 1)), false, true);
                 if (item) {
@@ -203,6 +205,7 @@ namespace
                     state->choice->SetLabel(_owner.get_items()[index].c_str());
                     _owner.on_native_selection(index);
                 }
+                if (!guard.alive()) return;
                 _owner.on_native_drop_down(false);
             } else BView::MessageReceived(message);
         }

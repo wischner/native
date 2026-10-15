@@ -28,10 +28,10 @@ namespace native
         , b(x2, y2) {}
 
     bool line::contains(point candidate) const {
-        const coord line_dx = b.x - a.x;
-        const coord line_dy = b.y - a.y;
-        const coord point_dx = candidate.x - a.x;
-        const coord point_dy = candidate.y - a.y;
+        const std::int64_t line_dx = std::int64_t(b.x) - a.x;
+        const std::int64_t line_dy = std::int64_t(b.y) - a.y;
+        const std::int64_t point_dx = std::int64_t(candidate.x) - a.x;
+        const std::int64_t point_dy = std::int64_t(candidate.y) - a.y;
 
         // A zero cross product identifies collinear points.
         if (line_dx * point_dy != point_dx * line_dy)
@@ -68,10 +68,10 @@ namespace native
     coord rect::y1() const {
         return p.y;
     }
-    coord rect::x2() const {
+    std::int32_t rect::x2() const {
         return p.x + d.w;
     }
-    coord rect::y2() const {
+    std::int32_t rect::y2() const {
         return p.y + d.h;
     }
 
@@ -90,8 +90,8 @@ namespace native
     rect rect::intersect(const rect &other) const {
         const coord overlap_x1 = std::max(p.x, other.p.x);
         const coord overlap_y1 = std::max(p.y, other.p.y);
-        const coord overlap_x2 = std::min(x2(), other.x2());
-        const coord overlap_y2 = std::min(y2(), other.y2());
+        const std::int32_t overlap_x2 = std::min(x2(), other.x2());
+        const std::int32_t overlap_y2 = std::min(y2(), other.y2());
 
         if (overlap_x2 <= overlap_x1 || overlap_y2 <= overlap_y1)
             return rect();

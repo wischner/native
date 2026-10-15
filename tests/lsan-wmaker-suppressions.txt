@@ -1,0 +1,5 @@
+# native_wmaker_allocation_tests links only WINGs/X11 and reproduces
+# leaked FcNameParse/FcFontRenderPrepare patterns inside WMCreateFont,
+# even after WMReleaseFont, WMReleaseApplication and XCloseDisplay.
+# Match the SDK factory path, never Native registries or all Fontconfig.
+leak:WMCreateFont

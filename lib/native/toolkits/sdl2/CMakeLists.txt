@@ -45,6 +45,7 @@ find_package(SDL2_ttf QUIET)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SDL2_TTF QUIET IMPORTED_TARGET SDL2_ttf)
+    pkg_check_modules(FONTCONFIG QUIET IMPORTED_TARGET fontconfig)
 endif()
 find_package(X11 REQUIRED)
 target_include_directories(native PRIVATE
@@ -71,4 +72,9 @@ else()
         ${SDL2_LIBRARIES}
         ${X11_LIBRARIES}
     )
+endif()
+
+if(TARGET PkgConfig::FONTCONFIG)
+    target_link_libraries(native PRIVATE PkgConfig::FONTCONFIG)
+    target_compile_definitions(native PRIVATE HAVE_FONTCONFIG)
 endif()

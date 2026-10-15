@@ -178,7 +178,8 @@ executables:
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_mouse_shader_tests` | Generation-safe pointer transitions/cancellation, rich deltas, package validation, orientation/color/alpha, multipass/history, transaction rollback, copied source and recreation | All backends; inert window hooks, image drawing; no desktop cursor/raw-input claim |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
-| `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; executable also runs on a desktop renderer |
+| `native_sdl_presentation_tests` | Accelerated renderer flags exclude a blocking vertical-refresh wait by default | SDL2 dummy video startup in CTest; policy assertion requires a desktop accelerated renderer |
+| `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; desktop pixel readback also requires `SDL_RENDER_DRIVER=software` |
 | `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, drag/release capture and cancellation without synthetic releases | SDL2 dummy video with software rendering |
 | `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure, nested icon-grid/tree scrollbar arrows, paging, thumb capture outside the window, selection preservation, capture cleanup on destruction, compact property editing/scrolling, and toolbar activation/cancellation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
@@ -517,3 +518,93 @@ Vision's post-build step copies `src/assets/retro-terminal/` beside the executab
 including attributed shader source, package, font and license files. Preserve
 that directory during VM deployment. The test mode does not change the normal
 Vision launch configuration.
+
+
+| Test | Coverage | Backend |
+| --- | --- | --- |
+| `native_glsl_context_tests` | EGL/GLX handoff, API and draw/read restoration, repeated activation, creation/activation rollback and destruction with an active image context | Linux; deterministic shared driver fixtures, no display/GPU required |
+| `native_desktop_glsl_context_tests` | Real WGL/CGL caller-context preservation, repeated activation, nesting rejection, idle leave and entered teardown | Windows/macOS; skips with code 77 when desktop OpenGL is unavailable |
+
+The private driver fixture is loaded only by this test through its CTest
+`LD_LIBRARY_PATH`; it is never linked into or deployed with Native or Vision.
+
+
+## Amiga runtime qualification
+
+`docker-amiga-check` configures the standalone `tests/amiga_toolchain/` project
+with `scripts/cmake/toolchain-amiga.cmake` into `build/amiga-toolchain/`.
+It is a diagnostic prerequisite and does not configure the `native` target or
+Vision. No Amiga launch profile is supplied because no Amiga GUI binary exists.
+
+The default `DOCKER_IMAGE_AMIGA` is
+`wischner/gcc-m68k-amiga@sha256:7622740b8aaa5c1a5444ec3ccf04e9506f71375300b0946e1382d67c56692cff`.
+The toolchain settings select m68k/68000 and libnix `nix20`. Configuration
+attempts both compile/link checks, writes their complete diagnostics and fails
+explicitly if either fails. The measured image has GCC 16.1.1b with thread
+model `single`: C++20 worker/mutex types are omitted, and filesystem linking
+also fails. The complete evidence and repair gate are in
+[ADJUST.md](../../ADJUST.md), A00. A different repaired compiler image can be
+selected through the host cache's `DOCKER_IMAGE_AMIGA` setting.
+
+| Standalone executable probe | What it qualifies |
+| --- | --- |
+| `native_amiga_thread_probe` | Real mutex/jthread ownership, notification and stop-aware cancellation; links `pthread` |
+| `native_amiga_filesystem_probe` | Streams, per-run scratch-directory creation, rename, traversal, metadata and cleanup |
+
+These targets are generated only after both checks link. They are not
+registered as another backend's CTests and are not included in Native's test
+counts. Compile/link success still requires target runtime qualification.
+Run the filesystem probe with a writable scratch directory, default `RAM:` on
+Amiga. The same sources were verified on a hosted C++20 runtime to check the
+qualification harness itself. A CLI/API emulator does not prove native UI or
+hardware behavior. This target currently fails and does not add an Amiga build
+selection to the library.
+
+## Adjustment regressions
+
+| Test | Purpose |
+| --- | --- |
+| `native_lifecycle_tests` | Shared allocation/hook rollback, retry, create/paint deletion and expired drawer-state guards |
+| `native_glsl_renderer_tests` | Real GLSL later-pass history, reset/resize, failed tick retry and extent/allocation limits; explicit skip if no context |
+| `native_motif_allocation_tests_0..2` | Toolkit-only baseline, selection and notebook allocation controls; no Native linkage |
+| `native_openlook_allocation_tests_0..2` | Toolkit-only baseline, PANEL_TEXT and owned menu teardown controls; no Native linkage |
+| `native_wmaker_allocation_tests` | Toolkit-only WINGs font-pattern retention control; no Native linkage |
+| `native_worker_shutdown_tests` | Retire a blocked worker without blocking its caller; join independently of UI turns |
+| `native_close_runtime_tests` | Actual native close cancellation then acceptance on every existing backend |
+| `native_haiku_glsl_context_tests` | Real OSMesa core contexts, binding order, retired outer peers, viewport preservation and untouched foreign bindings; explicit skip when the runtime is unavailable |
+| `native_haiku_dispatch_tests` | Native two-window paint/resize with 100 posted updates, callback serialization and shutdown |
+
+Motif runtime/allocation tests use full allocation unwinding and only the
+independently reproduced `XtOwnSelection`, `XtDisownSelection` and
+`_XmSFAddNavigator` exceptions. XView suppresses only its independently
+reproduced `win_add_drop_interest` node. Native's menu-item allocations remain
+checked; explicit `MENU_RELEASE` ownership fixes that leak. These are SDK
+exceptions, not a claim of leak-free upstream toolkits.
+
+WINGs close/allocation tests except only independently reproduced WMCreateFont
+retention, with full allocation unwinding. The hosted GNU Debug Linux
+native_glsl_renderer_tests conditionally preloads ASan followed by Mesa's
+swrast_dri.so when present: keeping vendor driver metadata rooted avoids
+unload-only bookkeeping leaks while Native remains leak-checked. The EGL/GLX
+loader likewise keeps vendor dispatch/TLS code resident with RTLD_NODELETE
+where available. Contexts, surfaces and owned display leases still release.
+No leak suppression or detect_leaks=0 is applied to the real-renderer test.
+The renderer fixture has inert window hooks and runs directly even for gemd;
+it does not preload the driver into an unrelated server-launch shell.
+
+Cross-built mouse_shader tests accept --data PATH for tests/data fixtures;
+terminal_screen tests accept an asset-directory argument. Copy these fixtures
+to target hosts along with the executables. --benchmark is an explicit opt-in
+for the mouse/shader timing run, not part of the ordinary regression suite.
+Windows/macOS real-context tests and the real-renderer test use skip code 77
+when a suitable context is unavailable; a skip is not GLSL acceptance.
+
+Haiku GLSL uses the optional runtime libOSMesa.so.8 and OpenGL 3.3 core; its
+adapter resolves C entry points dynamically so the Docker SDK needs no Mesa
+headers or link library. The supported test environment sets
+GALLIUM_DRIVER=softpipe for native_haiku_glsl_context_tests and
+native_glsl_renderer_tests. Mesa 22.0.5 llvmpipe's generated vertex code faults
+on the configured VM, and Native diagnoses that known combination before drawing.
+The Haiku F5 profile supplies the same per-process environment. No global VM
+setting or application environment is modified by the library. Copy the normal
+Vision assets and use the same setting for --retro-terminal --terminal-smoke.

@@ -111,3 +111,36 @@ by automated AppKit color checks; this is not a claim of a full visual
 walkthrough in both appearances. Screen Recording and Accessibility are
 needed for remote desktop inspection and input, not for the test's own
 offscreen bitmap rendering.
+
+
+## GLSL context and shader verification (2026-10-14)
+
+The current Debug build on `leia` passes after correcting the CGL profile
+constant to the SDK's `kCGLOGLPVersion_GL4_Core` (OpenGL 4.1). The four focused
+CTests pass: `native_desktop_glsl_context_tests`, `native_mouse_shader_tests`,
+`native_terminal_screen_tests` and `native_infinity_tests`. The CGL test runs
+against real contexts without skipping and checks repeated handoff, nesting
+rejection, idle leave and destruction while entered. `vision --retro-terminal
+--terminal-smoke` also exits zero after original GLSL output becomes active
+and the host-shell echo command completes. This is functional shader evidence;
+it does not add a visual walkthrough, performance claim or full-suite result.
+
+After the configured sync/build, reproduce these checks on `leia`:
+
+```bash
+cd /Users/tomaz/Projects/native
+ctest --test-dir build/macos-debug --output-on-failure -V \
+  -R 'native_(desktop_glsl_context|mouse_shader|terminal_screen|infinity)_tests'
+build/macos-debug/src/vision.app/Contents/MacOS/vision \
+  --retro-terminal --terminal-smoke
+```
+
+## Non-Amiga repair verification (2026-10-15)
+
+The authorized sync/build and full CTest suite pass 17/17 on leia, including
+real CGL handoff, GLSL history/live installation, callback/creation rollback,
+independent worker shutdown and native performClose cancellation/acceptance.
+Run ctest --test-dir build/macos-debug --output-on-failure after the configured
+build script. These are functional regressions; the earlier full-gallery visual
+walkthrough remains incomplete. AppleClang with the installed Apple SDK is the
+explicit platform exception to Docker-backed GCC verification.

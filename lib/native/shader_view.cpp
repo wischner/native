@@ -52,15 +52,27 @@ namespace native
         for (const auto &parameter : effect.get_parameters())
             parameters.emplace(parameter.name, parameter.default_value);
         std::unique_ptr<img> prepared;
+        std::unique_ptr<detail::glsl_renderer> renderer;
         std::vector<detail::shader_frame> history;
         try {
             if (_source && get_created()) {
                 const auto client = get_client_bounds();
                 if (!effect._data->glsl_passes.empty()) {
-                    auto renderer = detail::make_glsl_renderer(*effect._data);
+                    const auto *old = detail::peer_state<detail::shader_view_state>(*this);
+                    std::uint64_t retained = old && old->glsl ? old->glsl->storage_bytes() : 0;
+                    if (old && old->output)
+                        retained += std::uint64_t(old->output->w()) * old->output->h() * 4;
+                    if (old) for (const auto &frame : old->history)
+                        retained += frame.pixels.size() * sizeof(detail::shader_vector);
+                    std::uint64_t initial = retained + std::uint64_t(_source->w()) * _source->h() * 4;
+                    for (const auto &asset : effect._data->glsl_textures)
+                        initial += std::uint64_t(asset.width) * asset.height * 8;
+                    if (initial > 256u * 1024u * 1024u)
+                        throw std::invalid_argument("GLSL replacement exceeds 256 MiB.");
+                    renderer = detail::make_glsl_renderer(*effect._data);
                     prepared = renderer->render(*_source, parameters,
                         std::max(1u, unsigned(client.d.w)), std::max(1u, unsigned(client.d.h)),
-                        _source_time, 0, 0, true);
+                        _source_time, 0, 0, true, retained);
                 } else prepared = detail::execute_shader(*effect._data, *_source, parameters,
                     std::max(1u, unsigned(client.d.w)), std::max(1u, unsigned(client.d.h)),
                     _sequence, _source_time, 0, 0, history);
@@ -71,11 +83,17 @@ namespace native
         clear_history();
         mark_shader_dirty();
         if (auto *state = detail::peer_state<detail::shader_view_state>(*this)) {
-            state->glsl.reset();
-            state->glsl_package = nullptr;
+            state->glsl = std::move(renderer);
+            state->glsl_package = state->glsl ? effect._data.get() : nullptr;
             state->output = std::move(prepared);
             state->history = std::move(history);
-            state->status = shader_status::active;
+            if (state->glsl) state->history.resize(1);
+            if (state->output) {
+                state->start = state->last = std::chrono::steady_clock::now();
+                state->started = true;
+            }
+            state->status = state->output ? shader_status::active
+                                          : shader_status::pending;
             state->dirty = !state->output;
         }
         return true;
@@ -91,6 +109,8 @@ namespace native
         if (!std::isfinite(source_time_seconds) ||
             std::abs(source_time_seconds) > std::numeric_limits<float>::max())
             throw std::invalid_argument("Shader source time must fit a finite float.");
+        if (image.w() > 4096 || image.h() > 4096)
+            throw std::invalid_argument("Shader source exceeds 4096 pixels per side.");
         auto source = std::make_shared<img>(image.w(), image.h());
         std::copy_n(image.pixels(), std::size_t(image.w()) * image.h(), source->pixels());
         if (_source && (_source->w() != image.w() || _source->h() != image.h()))
@@ -204,7 +224,8 @@ namespace native
         const auto weak = detail::mouse_access::lifetime(*this);
         const auto client = get_client_bounds();
         if (_source && _effect.get_valid() && client.d.w && client.d.h &&
-            (state->dirty || _animation == shader_animation::continuous)) {
+            (state->dirty || (_animation == shader_animation::continuous &&
+                              state->status != shader_status::unavailable))) {
             const auto now = std::chrono::steady_clock::now();
             if (!state->started || now - state->last > std::chrono::milliseconds(250)) {
                 state->history.clear();

@@ -13,6 +13,7 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "../../graphics_lifetime.h"
 
 namespace windows
 {
@@ -105,6 +106,7 @@ namespace windows
 
     scoped_gpx_dc::scoped_gpx_dc(native::gpx &graphics, HDC hdc)
         : _graphics(graphics)
+        , _lifetime(native::detail::graphics_access::lifetime(graphics))
         , _previous(nullptr)
         , _borrowed(hdc)
         , _saved_state(hdc ? SaveDC(hdc) : 0) {
@@ -115,6 +117,7 @@ namespace windows
     }
 
     scoped_gpx_dc::~scoped_gpx_dc() {
+        if (_lifetime.expired()) return;
         if (win_gpx *state = state_from_gpx(_graphics))
             state->hdc = _previous;
         if (_borrowed && _saved_state)

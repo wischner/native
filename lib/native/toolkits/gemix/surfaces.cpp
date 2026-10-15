@@ -228,7 +228,14 @@ namespace linux::gemix
                              return depth_of(*left) < depth_of(*right);
                          });
 
-        for (native::wnd *region : regions) {
+        const native::detail::window_guard root_guard(*parent);
+        std::vector<native::detail::window_guard> guards;
+        guards.reserve(regions.size());
+        for (auto *region : regions) guards.emplace_back(*region);
+        for (std::size_t index = 0; index < regions.size(); ++index) {
+            if (!root_guard.alive()) return;
+            if (!guards[index].alive()) continue;
+            native::wnd *region = regions[index];
             const native::rect bounds = root_bounds(*region);
             const auto work = work_rect(wnd_bindings.handle_from_object(parent));
             const native::point screen_origin(bounds.p.x + work.p.x,

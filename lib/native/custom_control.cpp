@@ -9,6 +9,7 @@
 #include <native/custom_control.h>
 
 #include <stdexcept>
+#include "wnd_peer.h"
 
 namespace native
 {
@@ -19,7 +20,9 @@ namespace native
     }
 
     void custom_control::on_native_focus(bool focused) {
+        const detail::window_guard guard(*this);
         wnd::on_native_focus(focused);
+        if (!guard.alive()) return;
         if (_focused == focused)
             return;
         _focused = focused;

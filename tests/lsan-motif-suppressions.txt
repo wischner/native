@@ -1,0 +1,7 @@
+# Independently reproduced by native_motif_allocation_tests, with no Native
+# linkage. Xt retains 104-byte selection bookkeeping from these ownership
+# transitions; XmNotebook retains one 16-byte scroll-frame navigator record.
+# Never suppress XtMalloc, the entire toolkit, or Native allocation frames.
+leak:XtOwnSelection
+leak:XtDisownSelection
+leak:_XmSFAddNavigator

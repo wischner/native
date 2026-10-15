@@ -10,189 +10,19 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
 
-#if defined(_WIN32)
-#include <windows.h>
-#endif
-
 #include "portable_font.h"
+#include "font_locations.h"
 
 namespace
 {
     constexpr std::uintmax_t maximum_font_file_size =
         128U * 1024U * 1024U;
-
-#if !defined(_WIN32)
-    void add_home_path(
-        std::vector<std::filesystem::path> &paths,
-        const char *suffix) {
-        const char *home = std::getenv("HOME");
-        if (home && *home)
-            paths.emplace_back(std::filesystem::path(home) / suffix);
-    }
-#endif
-
-#if defined(_WIN32)
-    class registry_key
-    {
-    public:
-        explicit registry_key(HKEY handle) : _handle(handle) {}
-
-        ~registry_key() {
-            if (_handle)
-                RegCloseKey(_handle);
-        }
-
-        registry_key(const registry_key &) = delete;
-        registry_key &operator=(const registry_key &) = delete;
-
-        HKEY get() const {
-            return _handle;
-        }
-
-    private:
-        HKEY _handle;
-    };
-#endif
-
-    std::vector<std::filesystem::path> font_roots() {
-        std::vector<std::filesystem::path> result;
-#if defined(_WIN32)
-        const char *windows_directory = std::getenv("WINDIR");
-        result.emplace_back(
-            windows_directory && *windows_directory
-                ? std::filesystem::path(windows_directory) / "Fonts"
-                : std::filesystem::path("C:/Windows/Fonts"));
-#elif defined(__APPLE__)
-        result.emplace_back("/System/Library/Fonts");
-        result.emplace_back("/Library/Fonts");
-        add_home_path(result, "Library/Fonts");
-#elif defined(__HAIKU__)
-        result.emplace_back("/boot/system/data/fonts");
-        result.emplace_back("/boot/system/non-packaged/data/fonts");
-        add_home_path(result, "config/data/fonts");
-        add_home_path(result, "config/non-packaged/data/fonts");
-#else
-        result.emplace_back("/usr/share/fonts");
-        result.emplace_back("/usr/local/share/fonts");
-        add_home_path(result, ".fonts");
-        add_home_path(result, ".local/share/fonts");
-#endif
-        return result;
-    }
-
-#if defined(_WIN32)
-    std::wstring expand_registry_value(const std::wstring &value) {
-        const DWORD required = ExpandEnvironmentStringsW(
-            value.c_str(), nullptr, 0);
-        if (required == 0)
-            return value;
-        std::vector<wchar_t> expanded(required);
-        const DWORD written = ExpandEnvironmentStringsW(
-            value.c_str(), expanded.data(), required);
-        if (written == 0 || written > required)
-            return value;
-        return std::wstring(expanded.data());
-    }
-
-    void append_registry_font_files(
-        std::vector<std::filesystem::path> &files,
-        HKEY root,
-        const wchar_t *key_name,
-        const std::filesystem::path &font_directory) {
-        HKEY handle = nullptr;
-        if (RegOpenKeyExW(
-                root, key_name, 0, KEY_QUERY_VALUE, &handle) !=
-            ERROR_SUCCESS) {
-            return;
-        }
-        registry_key key(handle);
-
-        DWORD value_count = 0;
-        DWORD maximum_name_length = 0;
-        DWORD maximum_data_length = 0;
-        if (RegQueryInfoKeyW(
-                key.get(),
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                &value_count,
-                &maximum_name_length,
-                &maximum_data_length,
-                nullptr,
-                nullptr) != ERROR_SUCCESS) {
-            return;
-        }
-
-        std::vector<wchar_t> name(maximum_name_length + 1);
-        std::vector<wchar_t> data(
-            maximum_data_length / sizeof(wchar_t) + 2);
-        for (DWORD index = 0; index < value_count; ++index) {
-            DWORD name_length = static_cast<DWORD>(name.size());
-            DWORD data_length = static_cast<DWORD>(
-                data.size() * sizeof(wchar_t));
-            DWORD type = 0;
-            const LSTATUS status = RegEnumValueW(
-                key.get(),
-                index,
-                name.data(),
-                &name_length,
-                nullptr,
-                &type,
-                reinterpret_cast<BYTE *>(data.data()),
-                &data_length);
-            if (status != ERROR_SUCCESS ||
-                (type != REG_SZ && type != REG_EXPAND_SZ)) {
-                continue;
-            }
-
-            std::size_t character_count =
-                data_length / sizeof(wchar_t);
-            while (character_count > 0 &&
-                   data[character_count - 1] == L'\0') {
-                --character_count;
-            }
-            if (character_count == 0)
-                continue;
-            std::wstring value(data.data(), character_count);
-            if (type == REG_EXPAND_SZ)
-                value = expand_registry_value(value);
-            std::filesystem::path path(value);
-            if (path.is_relative())
-                path = font_directory / path;
-            files.push_back(std::move(path));
-        }
-    }
-
-    std::vector<std::filesystem::path> registry_font_files(
-        const std::filesystem::path &font_directory) {
-        constexpr const wchar_t *key_names[] = {
-            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
-            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Fonts"};
-        const HKEY roots[] = {HKEY_LOCAL_MACHINE,
-                              HKEY_CURRENT_USER};
-        std::vector<std::filesystem::path> result;
-        for (HKEY root : roots) {
-            for (const wchar_t *key_name : key_names) {
-                append_registry_font_files(
-                    result, root, key_name, font_directory);
-            }
-        }
-        std::sort(result.begin(), result.end());
-        result.erase(
-            std::unique(result.begin(), result.end()), result.end());
-        return result;
-    }
-#endif
 
     bool supported_extension(const std::filesystem::path &path) {
         std::string extension = path.extension().string();
@@ -245,7 +75,7 @@ namespace native
         std::vector<font_description> result;
         const auto options =
             std::filesystem::directory_options::skip_permission_denied;
-        for (const auto &root : font_roots()) {
+        for (const auto &root : detail::font_roots()) {
             std::error_code error;
             if (!std::filesystem::is_directory(root, error))
                 continue;
@@ -263,18 +93,13 @@ namespace native
                     error.clear();
             }
         }
-#if defined(_WIN32)
-        const auto roots = font_roots();
-        const std::filesystem::path font_directory = roots.front();
-        for (const auto &path :
-             registry_font_files(font_directory)) {
+        for (const auto &path : detail::registered_font_files()) {
             std::error_code error;
             if (std::filesystem::is_regular_file(path, error) &&
-                !error && supported_extension(path)) {
+                !error && supported_extension(path))
                 append_font_descriptions(result, path);
-            }
         }
-#endif
+
         std::sort(
             result.begin(),
             result.end(),

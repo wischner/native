@@ -158,11 +158,11 @@ namespace native
         // Return the inclusive top coordinate.
         coord y1() const;
 
-        // Return the exclusive right coordinate.
-        coord x2() const;
+        // Return the exclusive right coordinate, widened to preserve large extents.
+        std::int32_t x2() const;
 
-        // Return the exclusive bottom coordinate.
-        coord y2() const;
+        // Return the exclusive bottom coordinate, widened to preserve large extents.
+        std::int32_t y2() const;
 
         // Return the rectangle width.
         dim w() const;

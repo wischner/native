@@ -87,14 +87,14 @@ It can safely outlive the signal because it retains only a weak reference to
 the signal state. `release()` leaves the slot connected and relinquishes
 automatic cleanup; use it only when another lifetime rule is explicit.
 
-## Do not mutate connections during emission
+## Changes during emission and receiver destruction
 
-Handlers must not call `connect()`, `disconnect()`, or `disconnect_all()` on
-the signal currently being emitted. Emission is iterating that signal's
-connection collection, so mutation can invalidate the active traversal.
-
-If a handler needs to change subscriptions, record that intention and apply it
-after `emit()` has returned, or defer it through the backend event mechanism.
+Emission retains its dispatch state and copies the current callable before
+invocation. Disconnecting the current or another slot is safe; disconnected
+slots are skipped. Newly connected slots wait for the next emission. Destroying
+the signal owner stops remaining subscribers, even when the deleting subscriber
+returns `false`. This does not keep the C++ receiver alive: native and portable
+callers must check their captured resource generation before continuing.
 
 ## Lazy initialization
 

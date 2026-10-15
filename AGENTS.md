@@ -94,7 +94,10 @@ has no equivalent.
   `scripts/`, such as `scripts/linux/`, `scripts/windows/`, and
   `scripts/macos/remote/`.
 - Do not add a new top-level `Makefile` for normal project orchestration.
-- All builds must run through Docker-backed CMake targets.
+- Builds use the Docker-backed CMake targets. macOS is the documented
+  exception: use `scripts/macos/remote/build.sh` for CMake/AppleClang with the
+  Apple SDK on the configured remote Mac; validate shared C++ with GCC/Docker
+  first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
 ### Docker targets
@@ -144,6 +147,12 @@ cmake --build build/cmake --target docker-wmaker
 cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
+
+`docker-amiga-check` is a separate runtime qualification target, not a library
+backend. It uses the pinned `wischner/gcc-m68k-amiga` image recorded in CMake,
+`scripts/cmake/toolchain-amiga.cmake` and `build/amiga-toolchain/`. Both C++20
+threading and filesystem checks currently fail; no Amiga Vision binary or F5
+launch configuration exists. The VS Code task exposes the same diagnostic.
 
 ### Build directories
 
@@ -220,6 +229,13 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
   - release ends stroke
   - wheel clears strokes
 
+- Optional Haiku GLSL uses dynamically loaded Mesa OSMesa, with native views
+  unchanged. The verified Mesa 22.0.5 runtime uses GALLIUM_DRIVER=softpipe;
+  its llvmpipe JIT is rejected before drawing. Keep driver selection in test,
+  debug and deployment environments, never mutate it inside the library.
+- Haiku image context nesting owns its predecessor state and leaves in binding
+  order. Foreign Mesa bindings are rejected unchanged before activation.
+
 ## Vision program
 
 - `vision` is the single program built by the repository.
@@ -248,6 +264,7 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 | --- | --- |
 | [README.md](README.md) | Project pitch, feature summary, backend list, dependency list per backend, direct and Docker-backed build commands, build output layout, and links into the two manuals. The public front door. |
 | [AGENTS.md](AGENTS.md) | This file: project rules, documentation map, and refresh obligations. |
+| [docs/ADJUST.md](docs/ADJUST.md) | Dated standards review, completed non-Amiga repairs and verification, SDK exceptions, and excluded Amiga runtime blockers. A review record, not a new standard. |
 
 ## Standards — `docs/standards/`
 
@@ -281,9 +298,11 @@ contents.
 | [DRAWING-PRIMITIVES.md](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md) | Application-facing reference for window and image graphics, PNG/JPEG I/O, text measurement, and themed control drawing. |
 | [PATTERNS-APPLICATION.md](docs/manuals/book-of-native/PATTERNS-APPLICATION.md) | Portable startup through `program()`, `app::run()`, and backend launchers. Expands Architecture 8. |
 | [PATTERNS-SCREENS.md](docs/manuals/book-of-native/PATTERNS-SCREENS.md) | Snapshot lifetime, work areas, primary selection, backend detection. Expands Architecture 9. |
+| [PATTERNS-FONTS.md](docs/manuals/book-of-native/PATTERNS-FONTS.md) | Stock/portable font ownership, byte-backed registration, measurement/rasterization and platform discovery. Expands Architecture 10. |
 | [PATTERNS-CLIPBOARD-TEXT-EDITING.md](docs/manuals/book-of-native/PATTERNS-CLIPBOARD-TEXT-EDITING.md) | Typed clipboard transactions, editor modes, live validation, selection, clipboard commands. Expands Architecture 11–12. |
 | [PATTERNS-TABLE-VIEW.md](docs/manuals/book-of-native/PATTERNS-TABLE-VIEW.md) | Model ownership, stable row identity, virtualization, grouping, search, backend adaptation. Expands Architecture 13. |
 | [PATTERNS-CODE-EDIT.md](docs/manuals/book-of-native/PATTERNS-CODE-EDIT.md) | Canonical source storage, overlays, lexers, completion, shared painting, backend input translation. Expands Architecture 14. |
+| [PATTERNS-TREE-VIEW.md](docs/manuals/book-of-native/PATTERNS-TREE-VIEW.md) | Owned hierarchy, stable IDs, visible rows, selection/disclosure, native adapters and scrolling. Expands Architecture 15. |
 | [PATTERNS-SPLIT-VIEWS-AND-TABS.md](docs/manuals/book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md) | Split/tab layout ownership, native content transitions, floating shells, interaction, themed painting, persistence. Expands Architecture 16. |
 | [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | File icons, special directories, combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
@@ -291,12 +310,10 @@ contents.
 | [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
-Gap to be aware of: Architecture Sections 10 (Fonts) and 15 (Classic trees)
-have no book chapter expanding them. Fonts are covered from the application
-side in [DRAWING-PRIMITIVES.md](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md)
-and trees in
-[13-COLLECTION-AND-DISCLOSURE-CONTROLS.md](docs/manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md),
-so the standard is the only normative source for their internals.
+Architecture Sections 10 (Fonts) and 15 (Classic trees) now have matching
+internal pattern chapters. The application-side references remain
+[Drawing primitives](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md) and
+[collection/disclosure controls](docs/manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md).
 
 ## Programming Native — `docs/manuals/programming-native/`
 
@@ -346,7 +363,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [MOUSE-AND-SHADERS-REVIEW.md](docs/notes/MOUSE-AND-SHADERS-REVIEW.md) | Review of Infinity's proposed pointer and shader contracts against Native naming, ownership, lifecycle, composition, and verification requirements. No implementation claim. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
-| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit regression/sanitizer commands, desktop permissions, and visual-coverage limits. |
+| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit/GLSL regression and sanitizer commands, desktop permissions, and visual-coverage limits. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |
 | [WINDOWS-VM-RUNTIME.md](docs/notes/WINDOWS-VM-RUNTIME.md) | Native Windows 11 VM deployment, key-only SSH, interactive desktop GDBserver and the F5 tunnel lifecycle. |
 | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md) | Inventory of TODO markers in `include/`, `lib/native/`, and `src/`. Must be updated in the same commit that adds or removes a production TODO. |

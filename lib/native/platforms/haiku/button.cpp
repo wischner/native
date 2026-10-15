@@ -106,6 +106,10 @@ namespace native
                 "Haiku: button parent is not created.");
 
 
+        auto *h = new haiku::haiku_button();
+        h->owner = self;
+        h->callback_id = haiku::next_control_callback();
+        detail::assign_peer_state(*self, h);
         BButton *btn = nullptr;
         with_locked_window(window, [&](BWindow *) {
             BRect frame(
@@ -115,9 +119,13 @@ namespace native
                 static_cast<float>(_bounds.p.y + _bounds.d.h - 1));
 
             BMessage *message = new BMessage(haiku::button_message);
-            message->AddPointer(haiku::control_owner_field, self);
+            message->AddUInt64(haiku::control_owner_field, h->callback_id);
             btn = new native_button_view(
                 frame, _text.c_str(), message, self);
+            h->button = btn;
+            // State is adopted before allocation; publish its completed view
+            // before attachment can trigger a native drawing callback.
+            detail::wnd_peer_access::assign_content(*self, btn);
             btn->Hide();
             parent->AddChild(btn);
         });
@@ -125,10 +133,7 @@ namespace native
         if (!btn)
             throw std::runtime_error("Haiku: Failed to create button.");
 
-        auto *h = new haiku::haiku_button();
-        h->button = btn;
-        h->owner = self;
-        haiku::button_bindings.register_pair(self, h);
+        haiku::button_callbacks.register_pair(h->callback_id, self);
 
     }
 
@@ -156,6 +161,7 @@ namespace native
         auto *h = haiku::button_bindings.object_from_handle(self);
 
         if (h) {
+            haiku::button_callbacks.unregister_by_handle(h->callback_id);
             if (h->button) {
                 BWindow *window = h->button->Window();
                 with_locked_window(window, [&](BWindow *) {

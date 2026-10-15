@@ -30,6 +30,8 @@ Unknown names, wrong types, non-finite values and out-of-range components throw
 `std::invalid_argument`. A failed live effect replacement returns false and
 preserves the previous effect. `get_shader_status()` distinguishes accepted
 pre-create packages (`pending`) from active and unavailable resources.
+A created view also stays pending until its effect produces an output;
+creation alone does not establish successful execution.
 
 ```cpp
 display.set_parameter("scanlines", 0.4f);
@@ -194,7 +196,7 @@ Captured output is limited to 32 KiB per stream. A worker posts cumulative
 snapshots through scoped latest-value delivery, so coalescing does not lose
 captured bytes; stdout/stderr cross-stream ordering is not preserved. Cancel
 requests child cancellation. Closing invalidates delivery before stopping and
-joining the worker. The existing process contract owns the shell child and does
+transferring its join to the independent shutdown controller. The existing process contract owns the shell child and does
 not promise descendant-tree cancellation.
 
 `vision --retro-terminal --terminal-smoke` renders an ANSI fixture and exits
@@ -206,3 +208,49 @@ Windows, Haiku and macOS can run the same command on the target desktop. Copy
 the complete `retro-terminal/` asset directory next to the executable; when
 launching by an unresolved PATH name, use `--terminal-assets PATH` explicitly.
 Use a Release Docker build for interactive CPU effect performance.
+
+
+On Linux, Native preserves the surrounding toolkit's EGL/GLX context while
+executing GLSL image passes. SDL's accelerated window renderer and the offscreen
+shader renderer can run together without application-side context switching.
+Context failures name the EGL operation and error code; they still trigger the
+selected shader fallback and `on_shader_error`.
+
+The shader renderer preserves the current toolkit graphics context on Linux,
+Windows and macOS. Applications do not need to switch contexts around a view.
+Pacing and pending-until-output status use the same implementation on every
+backend; CPU processing and GLSL readback still run synchronously on the UI
+thread, so large passes can delay input.
+
+Haiku supports both profiles. GLSL additionally requires Mesa's OSMesa runtime
+and OpenGL 3.3; the tested VM already has that runtime installed. Its Mesa
+22.0.5 llvmpipe JIT crashes during drawing, so select the verified softpipe
+renderer for this process:
+
+```bash
+GALLIUM_DRIVER=softpipe ./vision --retro-terminal
+```
+
+The Haiku F5 profile uses the same setting. Native rejects the known unsafe
+llvmpipe combination with a diagnostic instead of drawing; it does not change
+the application's environment. GLSL remains software-rendered, so synchronous
+passes can delay input. The portable CPU profile needs no OSMesa library.
+If the application also uses another native OpenGL client, release that client's
+current context before invoking Native GLSL; foreign bindings are rejected
+without modification. Native-owned contexts restore in binding order.
+
+The macOS Debug audit on `leia` (2026-10-14) passes the real CGL context test,
+shared shader/delivery regressions and `--retro-terminal --terminal-smoke`.
+Smoke success establishes active original GLSL output and the completed shell
+command; it does not establish visual acceptance or measured frame performance.
+
+
+The current GLSL profile accepts packages up to eight MiB and sixteen passes
+and renders to RGBA8 textures; the CPU profile retains its one-MiB/eight-pass
+and float4 limits. Live installation retains its prepared renderer, so status
+and GLSL capability agree immediately. Simultaneous Linux views share display
+ownership; later-pass history is initialized before any sampling and commits
+only after the complete tick succeeds. Source/viewport/target sizes must fit
+4096 pixels and the device limit; a conservative 256 MiB estimate includes
+retained/candidate targets, assets and CPU output. See
+[ADJUST.md](../../ADJUST.md), A02/A06/A07/A08, for verification.

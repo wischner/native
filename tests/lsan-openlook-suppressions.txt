@@ -1,0 +1,4 @@
+# Independently reproduced by native_openlook_allocation_tests with one
+# PANEL_TEXT and xv_destroy(frame), without Native linkage: XView retains
+# one 16-byte drop-interest node. Native-owned menu items must still be freed.
+leak:win_add_drop_interest

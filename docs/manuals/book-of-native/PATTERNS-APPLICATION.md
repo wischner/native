@@ -124,7 +124,8 @@ published after the run ends.
 
 `app::main_wnd()` returns a borrowed pointer only while `app::run()` is active.
 It returns null before startup and after cleanup. Code receiving this pointer
-must not store it beyond the active run or delete it.
+must not store it beyond the active run. Destruction clears the borrowed
+pointer, and the run guard stops further access to a deleted main window.
 
 ## Backend main loops
 
@@ -134,9 +135,10 @@ other toolkits have equivalent mechanisms. Window Maker passes X events to
 `WMHandleEvent` and drains portable callbacks only after WINGs returns, so an
 application callback can safely destroy the widget that emitted it.
 
-SDL2 delivers title-bar close and application-quit requests through
+Every backend delivers native window-close requests through
 `app_wnd::request_close()`. The default destroys the window; an override
-can defer that decision for an asynchronous save prompt. SDL event dispatch
+can defer that decision for an asynchronous save prompt. SDL2 additionally
+routes application-quit requests through it. SDL event dispatch
 and rendering continue until the main window is actually destroyed, and
 only then does the loop release process-wide SDL resources with `SDL_Quit()`.
 This releases initialization references retained by display detection as
@@ -146,7 +148,9 @@ Despite those differences, every backend loop must:
 
 - Dispatch events for the main window and its controls.
 - Translate native values to public Native event types.
-- Emit public signals synchronously on the UI thread.
+- Emit public signals synchronously in the serialized UI domain. Haiku's
+  application/window looper callbacks share a gate; other backends use their
+  event-loop thread.
 - Notice the backend's normal quit condition.
 - Return an exit code to the shared `app::run()` cleanup path.
 

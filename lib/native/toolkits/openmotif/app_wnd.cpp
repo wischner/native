@@ -114,7 +114,9 @@ namespace
             g.clear(g.get_paper());
 
             native::wnd_paint_event paint_event(r, g);
-            owner->on_native_paint(paint_event);
+            const native::detail::window_guard paint_guard(*owner);
+        owner->on_native_paint(paint_event);
+        if (!paint_guard.alive()) return;
 
             cache =
                 linux::openmotif::wnd_gpx_bindings.object_from_handle(
@@ -214,7 +216,7 @@ namespace
     void handle_wm_delete(Widget, XtPointer client_data, XtPointer) {
         auto *owner = static_cast<native::app_wnd *>(client_data);
         if (owner)
-            owner->destroy();
+            owner->request_close();
     }
 
 } // namespace

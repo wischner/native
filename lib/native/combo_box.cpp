@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "wnd_peer.h"
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
@@ -163,8 +164,10 @@ namespace native
         _selected_index = index;
         _text = index >= 0 ? _items[static_cast<std::size_t>(index)]
                            : std::string();
+        const detail::window_guard guard(*this);
         if (_selected_index != previous_index)
             on_selection_change.emit(index);
+        if (!guard.alive()) return;
         if (_text != previous_text)
             on_text_change.emit(_text);
     }

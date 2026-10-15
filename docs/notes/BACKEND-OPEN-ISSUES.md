@@ -48,11 +48,15 @@ have not been compiled or run on macOS. See the
   `app::get_physical_keyboard_supported()` returns false. See
   [INFINITY.md](INFINITY.md). Audio, scoped UI delivery and child processes
   are available independently.
-- The new macOS physical-key, AudioQueue and POSIX process integration has
-  not been compiled in the 2026-10-06 pass. Automatic approval rejected the
-  remote script because syncing the repository to `leia` was not authorized
-  in this session. Earlier macOS runtime evidence does not validate these
-  new adapters.
+- The macOS verification gap from 2026-10-06 was superseded after source sync
+  was explicitly authorized: the 2026-10-15 build and all 17 registered tests
+  pass on `leia`, including the real CGL test. This does not establish
+  interactive acceptance of every physical-key or audio device path. See
+  [the current feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md).
+- The shared creation rollback defect from this review is repaired: peer,
+  lifetime and input allocations and partial native acquisition all unwind,
+  leaving the object retryable. The fault-injection regression is recorded in
+  [ADJUST.md](../ADJUST.md), A18.
 
 
 - The 2026-09-06 SDL2 follow-up passes all nine CTests. Nested
@@ -247,10 +251,16 @@ second click on the value, source-row destruction, or owner closure.
 
 ## Mouse and image-shader verification (2026-10-07)
 
-The shared image-shader executor is a CPU implementation on every backend;
-there are no OpenGL, Direct3D or Metal adapters. Large effects execute on the UI
-thread and can delay input. The GPU performance requirements in the original
-Infinity proposal are not fulfilled by this profile.
+The portable image profile is a CPU implementation on every backend. A
+separate GLSL profile now has private OpenGL adapters on Linux, Windows and
+macOS and Haiku. Haiku requires the optional OSMesa runtime and its verified
+software driver configuration (see the remote note). Packaged Mesa 22.0.5
+llvmpipe faults in generated vertex code on the test VM; Native rejects this
+combination and the launcher selects `GALLIUM_DRIVER=softpipe`. Foreign Mesa
+contexts must be released before activating a Native image context.
+CPU effects and GLSL readback execute on
+the UI thread and can delay input. Functional shader execution does not fulfill
+the original Infinity proposal's GPU performance acceptance.
 
 SDL2 exposes relative capture with device-count deltas, without a guarantee of
 unaccelerated input. X11-family backends and Windows expose explicit drag
@@ -259,19 +269,62 @@ control gestures are independent of the public capability result. No backend
 claims raw pointer input. New desktop hiding/restoration and capture behavior
 still needs interactive acceptance, separately from portable pixel tests.
 
-The macOS build host `leia` could not be resolved in this environment during this
-pass. The changed AppKit pointer adapter remains uncompiled here; historical
-macOS runtime coverage does not validate this change.
+The 2026-10-14 macOS follow-up builds the current AppKit adapter on `leia`
+and passes the shared mouse/shader regression. This does not replace
+interactive pointer acceptance.
 
 The full-monitor shader follow-up adds portable glass/housing/vent/indicator
 passes. Earlier native Windows/Haiku terminal smoke evidence covers the prior
 four-pass image. Updated package validation is recorded in the feature matrix;
-macOS remains unverified while its remote host is unavailable.
+the 2026-10-14 macOS follow-up now has original-GLSL terminal smoke coverage.
 
-CRT shader acceptance remains incomplete: the demo uses selected CPU formulas
-and independently authored housing/glass, which the user rejected. The actual
-upstream pipeline includes `terminal_frame.frag`, dynamic noise/raster/burn-in
-processing, bloom generation, and the static reflection/curvature compositor.
-Native's CPU expression profile does not execute these GLSL shaders directly.
-Conformance and lifecycle passes must not be reported as upstream visual
-acceptance.
+CRT visual acceptance remains incomplete. The earlier CPU approximation and
+independently authored housing/glass were rejected. The current terminal demo
+executes original upstream GLSL pass bodies, including `terminal_frame.frag`,
+dynamic noise/raster/burn-in processing, bloom and the static compositor,
+through the separate `native-glsl-1` profile. Native's CPU expression profile
+does not execute GLSL. Conformance, lifecycle and smoke passes must not be
+reported as upstream visual acceptance.
+
+
+Linux GLSL context coexistence is fixed in the EGL adapter: it preserves and
+restores the surrounding EGL/GLX toolkit context, including accelerated SDL
+renderers. Context failures now include the operation and EGL error code.
+The original GLSL pipeline was verified on an Intel Iris Xe desktop.
+
+
+The 2026-10-14 shader review adds guarded/checkable context restoration to
+Windows WGL and macOS CGL and prevents repeated failed continuous execution
+on incidental repaint in the shared view. At this 2026-10-14 checkpoint Haiku
+reported GLSL unavailable; the subsequent OSMesa implementation and target
+verification supersede that limitation. These changes do not
+establish visual or performance acceptance on other desktops. The real
+WGL/CGL context regression skips when desktop OpenGL is unavailable; on
+`leia` it passes without a skip. The macOS Debug build, all four focused
+shader/delivery tests and original-GLSL terminal smoke pass on 2026-10-14.
+At that 2026-10-14 checkpoint Windows was compile-tested and Haiku retained
+CPU-profile support. The 2026-10-15 final native VM results below supersede
+that runtime gap; Windows desktop GLSL still skips on this VM.
+
+
+## Repository standards repair (2026-10-15)
+
+[ADJUST.md](../ADJUST.md) records the completed A01–A18 non-Amiga repairs,
+regressions and remaining acceptance limits. Callback and drawer lifetime,
+creation rollback, shared EGL ownership, geometry, transactional GLSL/history,
+peer-owned caches, tree selection, nonblocking worker shutdown and portable
+native-close policy are repaired. OPEN LOOK wake teardown is synchronized.
+Haiku's UI gate serializes native window and application loopers; native Quit
+releases the gate before BeAPI exits its looper thread. Button peers publish
+their completed native content before attachment can invoke drawing.
+The final Windows VM run has 16 passes and two desktop-OpenGL skips; Haiku has
+18 passing regression executables with Mesa softpipe, including GLSL pixels and
+context ownership without a skip. Haiku inspector and multiwindow stress pass. Deployed test hashes match final Docker artifacts on both VMs.
+
+All nine Docker backends build. Current Linux/macOS/VM results are maintained
+in [the feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md).
+Native's XView menu/combo ownership leak is fixed. Remaining Motif selection/
+notebook, XView drop-interest and WINGs font-pattern allocations were reproduced
+without Native and have narrow test exceptions. They are SDK limitations;
+they are not new Native leak findings or a blanket leak-free claim.
+The Amiga diagnostic remains excluded from this pass and adds no UI backend.

@@ -29,8 +29,9 @@ namespace vision
         native::button _tone, _work, _cancel, _child, _modal_button;
         native::modal_wnd _modal;
         native::button _modal_close;
-        native::audio_out _audio{44100, 2, 22050};
+        std::shared_ptr<native::audio_out> _audio;
         std::unique_ptr<native::ui_dispatch_scope> _delivery;
+        std::unique_ptr<native::ui_dispatch_scope> _worker_delivery, _sound_delivery;
         std::jthread _worker, _sound;
         std::set<native::key_code> _held;
         std::string _last = "Click the background and press physical keys.";
@@ -46,7 +47,7 @@ namespace vision
         void start_tone();
         // Run this executable's deterministic helper on a monitor controller.
         void start_child();
-        // Invalidate delivery and join cancellable workers on teardown.
+        // Invalidate delivery and retire cancellable workers on teardown.
         void stop();
     };
 }

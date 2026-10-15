@@ -184,6 +184,9 @@
             "request": "launch",
             "program": "/boot/home/Projects/${workspaceFolderBasename}/run/vision",
             "cwd": "/boot/home/Projects/${workspaceFolderBasename}/run",
+            "environment": [
+                {"name": "GALLIUM_DRIVER", "value": "softpipe"}
+            ],
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,

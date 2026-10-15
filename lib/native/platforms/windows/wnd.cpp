@@ -881,7 +881,10 @@ namespace windows
             return 1;
 
         case WM_CLOSE:
-            wnd->destroy();
+            if (auto *window = dynamic_cast<native::app_wnd *>(wnd))
+                window->request_close();
+            else
+                wnd->destroy();
             return 0;
 
         case WM_DESTROY:

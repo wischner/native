@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
         require(padded->w() == image->w() + 64 &&
                     padded->h() == image->h() + 32,
                 "Terminal margins changed the grid extent.");
-        for (unsigned y = 0; y < padded->h(); ++y) {
-            for (unsigned x = 0; x < padded->w(); ++x) {
+        for (int y = 0; y < padded->h(); ++y) {
+            for (int x = 0; x < padded->w(); ++x) {
                 const auto pixel = padded->pixels()[y * padded->w() + x];
                 if (x < 32 || x >= padded->w() - 32 ||
                     y < 16 || y >= padded->h() - 16)

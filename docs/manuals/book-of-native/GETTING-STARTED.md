@@ -256,3 +256,21 @@ add `--terminal-smoke` to execute one host-shell command, paint and exit. The
 build copies `retro-terminal/` assets beside Vision. Keep that directory and
 its notices when deploying the binary. Use an optimized Docker build for CPU
 shader performance; terminal commands are line-oriented without a PTY.
+
+
+On Haiku, the original GLSL terminal additionally uses the optional Mesa OSMesa
+runtime. With the tested Mesa 22.0.5 package, run
+`GALLIUM_DRIVER=softpipe ./vision --retro-terminal`. The Haiku F5 profile sets
+the same process environment. See the image-shader chapter for the software
+renderer and foreign-context requirements.
+
+## Amiga prerequisite check
+
+AmigaOS is not a supported Native backend yet. To reproduce the current
+compiler/runtime qualification through the host control tree, run
+`cmake --build build/cmake --target docker-amiga-check`. It uses the pinned
+Amiga image and writes `threads.log` and `filesystem.log` below
+`build/amiga-toolchain/`. Both checks currently fail; no GUI executable is
+created. This is also available through the VS Code **Check Amiga C++20 Runtime
+(Docker)** task. See [the build chapter](BUILD-SYSTEM.md) for details and
+[ADJUST.md](../../ADJUST.md) for the measured blockers.

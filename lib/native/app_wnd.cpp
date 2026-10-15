@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <native/app_wnd.h>
+#include <native/app.h>
 #include "input_state.h"
 #include "mouse_state.h"
 #include <native/modal_wnd.h>
@@ -39,6 +40,7 @@ namespace native
 
     app_wnd::~app_wnd() {
         destroy();
+        if (app::_main_wnd == this) app::_main_wnd = nullptr;
 
         while (!_owned_windows.empty())
             _owned_windows.back()->detach_owner();
@@ -106,14 +108,27 @@ namespace native
     }
 
     void app_wnd::on_native_destroy() {
-        destroy_owned_windows();
-        menu.detach();
+        const detail::window_guard guard(*this);
+        const bool destroying = _destroying;
+        _destroying = true;
+        try {
+            destroy_owned_windows();
+            if (!guard.object_alive()) return;
+            menu.detach();
+            _destroying = destroying;
+        } catch (...) {
+            if (guard.object_alive()) _destroying = destroying;
+            throw;
+        }
         wnd::on_native_destroy();
     }
 
     void app_wnd::on_native_menu(int command) {
+        const detail::window_guard guard(*this);
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::menu);
+        if (!guard.alive()) return;
         detail::reset_input(*this);
+        if (!guard.alive()) return;
         on_menu.emit(command);
     }
 
@@ -158,8 +173,11 @@ namespace native
     }
 
     void app_wnd::begin_modal(modal_wnd *window) {
+        const detail::window_guard guard(*this);
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::modal);
+        if (!guard.alive()) return;
         detail::reset_input(*this);
+        if (!guard.alive()) return;
         if (!window)
             return;
 
@@ -176,14 +194,14 @@ namespace native
     }
 
     void app_wnd::destroy_owned_windows() {
-        const std::vector<owned_wnd *> windows = _owned_windows;
-        for (auto item = windows.rbegin(); item != windows.rend();
-             ++item) {
-            owned_wnd *window = *item;
-            if (window && window->get_owner() == this &&
-                window->get_created()) {
-                window->destroy();
-            }
+        const detail::window_guard guard(*this);
+        const auto windows = _owned_windows;
+        std::vector<detail::window_guard> guards;
+        for (auto *window : windows) guards.emplace_back(*window);
+        for (std::size_t i = windows.size(); i > 0; --i) {
+            if (!guard.object_alive()) return;
+            if (guards[i - 1].alive() && windows[i - 1]->get_created())
+                windows[i - 1]->destroy();
         }
     }
 

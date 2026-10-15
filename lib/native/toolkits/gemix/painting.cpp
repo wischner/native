@@ -43,7 +43,9 @@ namespace
     }
 
     void draw_controls(native::app_wnd *owner, native::gpx &graphics) {
+        const native::detail::window_guard guard(*owner);
         linux::gemix::render_surfaces(owner, graphics);
+        if (!guard.alive()) return;
         for (auto *button : linux::gemix::buttons) {
             auto saved = graphics.save_state();
             if (!button || root_of(button) != owner)
@@ -184,7 +186,13 @@ namespace
                 g.set_ink(native::rgba(0, 0, 0, 255));
                 g.clear(g.get_paper());
                 native::wnd_paint_event e(local_piece, g);
+                const native::detail::window_guard guard(*owner);
                 owner->on_native_paint(e);
+                if (!guard.alive()) {
+                    linux::gemix::runtime.painting = false;
+                    wind_update(END_UPDATE);
+                    return;
+                }
                 g.set_clip(local_piece);
                 draw_controls(owner, g);
                 linux::gemix::runtime.painting = false;

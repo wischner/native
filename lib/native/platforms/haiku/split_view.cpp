@@ -1,3 +1,9 @@
+//
+// Implements native split view integration for haiku.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 // Implements split_view with Haiku's native BSplitView.
 
 #include <algorithm>

@@ -134,14 +134,16 @@ namespace
 namespace native::detail
 {
     bool dispatch_x_keyboard(wnd &owner, XEvent &event) {
-        if (event.type == FocusIn) { owner.on_native_focus(true); return false; }
-        if (event.type == FocusOut) { owner.on_native_focus(false); return false; }
+        const window_guard guard(owner);
+        if (event.type == FocusIn) { owner.on_native_focus(true); return !guard.alive(); }
+        if (event.type == FocusOut) { owner.on_native_focus(false); return !guard.alive(); }
         if (event.type == ButtonPress) {
             reset_input(owner);
+            if (!guard.alive()) return true;
             XSetInputFocus(event.xbutton.display, event.xbutton.window,
                 RevertToParent, CurrentTime);
             owner.on_native_focus(true);
-            return false;
+            return !guard.alive();
         }
         if (event.type != KeyPress && event.type != KeyRelease) return false;
         if (!owner.get_input_enabled()) { reset_input(owner); return true; }
@@ -217,7 +219,8 @@ namespace native::detail
                 }
             }
         }
-        return owner.on_native_key({code, press ? key_action::press : key_action::release,
+        const bool consumed = owner.on_native_key({code, press ? key_action::press : key_action::release,
             press && key_held(owner, code), static_cast<key_modifiers>(mods)});
+        return consumed || !guard.alive();
     }
 }

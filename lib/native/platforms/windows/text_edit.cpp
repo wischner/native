@@ -244,7 +244,10 @@ namespace native
         std::wstring value = window_text(window);
         const std::wstring replacement = native_text(*this, text);
         value.replace(begin, end - begin, replacement);
-        if (!validate(portable_text(value)))
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = validate(portable_text(value));
+        if (!validation_guard.alive()) return true;
+        if (!accepted)
             return false;
         SendMessageW(window,
                      EM_REPLACESEL,

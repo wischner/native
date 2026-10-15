@@ -17,6 +17,8 @@
 #include <View.h>
 
 #include <algorithm>
+#include <limits>
+#include <stdexcept>
 #include <native.h>
 #include <bindings.h>
 
@@ -24,6 +26,13 @@
 
 namespace haiku
 {
+    native::bindings<std::uint64_t, native::button *> button_callbacks;
+    std::uint64_t next_control_callback() {
+        static std::uint64_t value = 0;
+        if (value == std::numeric_limits<std::uint64_t>::max())
+            throw std::overflow_error("Haiku control command identities exhausted.");
+        return ++value;
+    }
     // Bind: application object.
     BApplication *global_app = nullptr;
     // Bind: BWindow to wnd.

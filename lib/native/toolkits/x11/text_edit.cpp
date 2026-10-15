@@ -127,7 +127,9 @@ namespace
             candidate.replace(static_cast<std::size_t>(begin),
                               static_cast<std::size_t>(end - begin),
                               replacement);
-            if (!owner->validate(candidate)) {
+            const native::detail::window_guard validation_guard(*owner);
+            const bool accepted = owner->validate(candidate);
+            if (!validation_guard.alive() || !accepted) {
                 if (continue_dispatch)
                     *continue_dispatch = False;
                 return;
@@ -329,7 +331,10 @@ namespace native
         candidate.replace(static_cast<std::size_t>(begin),
                           static_cast<std::size_t>(end - begin),
                           text);
-        if (!validate(candidate))
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = validate(candidate);
+        if (!validation_guard.alive()) return true;
+        if (!accepted)
             return false;
         XawTextBlock block{};
         block.firstPos = 0;

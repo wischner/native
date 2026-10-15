@@ -86,8 +86,7 @@ namespace native
         app_wnd *owner = get_owner();
         NSWindow *owner_window =
             owner ? mac::wnd_bindings.handle_from_object(owner) : nil;
-        id delegate = mac::delegate_bindings.object_from_handle(self);
-        mac::delegate_bindings.unregister_by_handle(self);
+        id delegate = mac::take_window_delegate(*self);
 
         if (win) {
             if ([win sheetParent])

@@ -1,3 +1,9 @@
+//
+// Implements native tab view integration for openlook.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 // Implements portable tabs in an OPEN LOOK collection panel.
 
 #include <stdexcept>

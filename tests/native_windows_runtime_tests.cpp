@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../lib/native/font_locations.h"
 #include <native.h>
 #include "../lib/native/platforms/windows/globals.h"
 
@@ -377,6 +378,14 @@ namespace
 
 int main() {
     try {
+        const auto registered = native::detail::registered_font_files();
+        bool readable = false;
+        for (const auto &path : registered) {
+            std::error_code error;
+            expect(path.is_absolute(), "Windows registry fonts resolve to absolute paths");
+            readable = readable || std::filesystem::is_regular_file(path, error);
+        }
+        expect(readable, "Windows registry adapter discovers an installed font file");
         run();
         test_grid_tabs_and_chrome();
         std::cout << "Windows native-peer regressions passed\n";

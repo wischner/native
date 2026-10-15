@@ -1,5 +1,6 @@
 # Collect all the source files for the program
 set(SRC_FILES
+    glsl_context.cpp
     theme.cpp
     main.cpp
     globals.cpp
@@ -82,3 +83,7 @@ target_link_libraries(native
 )
 
 target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.cpp)
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/font_locations.cpp)
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui_dispatch.cpp)

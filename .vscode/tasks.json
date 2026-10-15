@@ -2,6 +2,14 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Check Amiga C++20 Runtime (Docker)",
+            "type": "process",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-amiga-check"],
+            "problemMatcher": "$gcc",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "CMake Configure Debug (Docker Targets)",
             "type": "shell",
             "command": "cmake",

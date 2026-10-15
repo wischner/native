@@ -20,15 +20,18 @@ namespace native::detail
     }
 
     void reset_input(wnd &root) {
-        // Weak lifetime snapshots avoid retaining a dead child across callbacks.
-        const std::weak_ptr<wnd_lifetime> owner = root._lifetime;
-        const bool tracked = static_cast<bool>(root._lifetime);
-        std::vector<std::pair<wnd *, std::weak_ptr<wnd_lifetime>>> children;
-        for (wnd *child : root._children)
-            if (child && child->_lifetime) children.push_back({child, child->_lifetime});
-        for (const auto &[child, lifetime] : children)
-            if (!lifetime.expired()) reset_input(*child);
-        if (!tracked || !owner.expired()) root.on_native_key_reset();
+        const window_guard owner(root);
+        const auto generation = root._lifetime;
+        const auto children = root._children;
+        std::vector<window_guard> guards;
+        guards.reserve(children.size());
+        for (auto *child : children) guards.emplace_back(*child);
+        for (std::size_t i = 0; i < children.size(); ++i) {
+            if (!owner.object_alive() || root._lifetime != generation) return;
+            if (guards[i].alive()) reset_input(*children[i]);
+        }
+        if (owner.object_alive() && root._lifetime == generation)
+            root.on_native_key_reset();
     }
 
     bool key_held(wnd &target, key_code key) {

@@ -65,7 +65,12 @@ namespace mac
 
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
-    extern native::bindings<native::wnd *, id> delegate_bindings;
+    struct mac_window_state
+    {
+        id delegate = nil;
+    };
+    // Remove the peer record and transfer its retained delegate to the caller.
+    id take_window_delegate(native::wnd &owner);
     inline constexpr native::detail::peer_bindings<
         native::wnd *, mac_gpx *> wnd_gpx_bindings;
     extern native::bindings<uint32_t, mac_font *> font_bindings;

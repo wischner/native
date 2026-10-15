@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "portable_font.h"
+#include "graphics_lifetime.h"
 #include "text_util.h"
 
 namespace
@@ -80,6 +81,7 @@ namespace native
 {
     gpx_state::gpx_state(gpx &graphics)
         : _graphics(&graphics)
+        , _lifetime(graphics._lifetime)
         , _ink(graphics.get_ink())
         , _paper(graphics.get_paper())
         , _pen(graphics.get_pen())
@@ -87,7 +89,7 @@ namespace native
         , _clip(graphics.get_clip()) {}
 
     gpx_state::~gpx_state() {
-        if (_graphics) {
+        if (_graphics && !_lifetime.expired()) {
             _graphics->set_ink(_ink)
                 .set_paper(_paper)
                 .set_pen(_pen)
@@ -98,6 +100,7 @@ namespace native
 
     gpx_state::gpx_state(gpx_state &&other) noexcept
         : _graphics(std::exchange(other._graphics, nullptr))
+        , _lifetime(std::move(other._lifetime))
         , _ink(other._ink)
         , _paper(other._paper)
         , _pen(other._pen)
@@ -356,3 +359,10 @@ namespace native
     }
 
 } // namespace native
+
+namespace native::detail
+{
+    std::weak_ptr<void> graphics_access::lifetime(gpx &graphics) {
+        return graphics._lifetime;
+    }
+}

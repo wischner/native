@@ -272,7 +272,10 @@ namespace native
         [candidate replaceCharactersInRange:selection
                                  withString:native_string(text)];
         const std::string portable = portable_string(candidate);
-        if (!validate(portable))
+        const native::detail::window_guard validation_guard(*this);
+        const bool accepted = validate(portable);
+        if (!validation_guard.alive()) return true;
+        if (!accepted)
             return false;
 
         set_editor_value(binding, portable);

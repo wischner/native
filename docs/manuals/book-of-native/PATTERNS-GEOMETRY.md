@@ -115,3 +115,19 @@ The same `point`, `size`, `rect`, and `rgba` types appear in:
 - image manipulation
 
 That consistency keeps the API predictable and makes backend work easier.
+
+
+The review originally reproduced coordinate-boundary defects:
+`rect(30000,0,10000,10)` excluded `(31000,1)`, and a line spanning extreme signed
+coordinates reported a non-collinear point as contained. Both are repaired. The stored member
+types alone do not ensure safe intermediate arithmetic. See
+[ADJUST.md](../../ADJUST.md), A05, for the arithmetic/endpoint adjustment.
+
+## Full-range endpoints
+
+`rect::x2()` and `y2()` return `std::int32_t`, preserving the sum of a signed
+16-bit origin and an unsigned 16-bit extent. This intentionally changes their
+return type: rebuild library consumers and update exact-return-type or
+pointer-to-member declarations. Stored points, sizes and the rectangle layout
+are unchanged. Containment and intersection use the widened endpoints; line
+collinearity uses signed 64-bit differences/products before any narrowing.

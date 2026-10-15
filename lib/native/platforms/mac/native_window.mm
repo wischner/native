@@ -69,12 +69,11 @@
 }
 
 - (BOOL)windowShouldClose:(id)sender {
-    NSWindow *window = static_cast<NSWindow *>(sender);
-    if ([window sheetParent])
-        [[window sheetParent] endSheet:window];
-    if (_owner)
-        _owner->on_native_destroy();
-    return YES;
+    (void)sender;
+    // request_close may destroy the window, defer, or delete its C++ owner.
+    // AppKit must never perform a second unconditional close afterward.
+    if (_owner) _owner->request_close();
+    return NO;
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
@@ -83,9 +82,13 @@
     _owner = nullptr;
 
     if (owner) {
+        const native::detail::window_guard guard(*owner);
         if (owner->get_created())
             owner->on_native_destroy();
-        mac::delegate_bindings.unregister_by_handle(owner);
+        if (!guard.object_alive()) owner = nullptr;
+    }
+    if (owner) {
+        mac::take_window_delegate(*owner);
         if (owner == native::app::main_wnd() && mac::global_app)
             [mac::global_app stop:nil];
         if (owner->get_modal()) {
@@ -208,7 +211,7 @@ namespace mac
         [win setDelegate:delegate];
 
         mac::wnd_bindings.register_pair(win, owner);
-        mac::delegate_bindings.register_pair(owner, delegate);
+        native::detail::assign_peer_state(*owner, new mac::mac_window_state{delegate});
     }
 
 } // namespace mac

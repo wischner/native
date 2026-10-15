@@ -103,8 +103,11 @@ namespace
             GetSelection(&begin, &end);
             const std::string candidate =
                 replaced(Text(), begin, end, text.data(), text.size());
-            if (!owner_ || !owner_->validate(candidate))
-                return false;
+            if (!owner_) return false;
+            const native::detail::window_guard validation_guard(*owner_);
+            const bool accepted = owner_->validate(candidate);
+            if (!validation_guard.alive()) return true;
+            if (!accepted) return false;
             suppress_ = true;
             Delete(begin, end);
             Insert(text.c_str(), text.size());
@@ -126,8 +129,10 @@ namespace
             GetSelection(&begin, &end);
             const std::string candidate =
                 replaced(Text(), begin, end, text, length);
-            if (!owner_ || !owner_->validate(candidate))
-                return;
+            if (!owner_) return;
+            const native::detail::window_guard validation_guard(*owner_);
+            const bool accepted = owner_->validate(candidate);
+            if (!validation_guard.alive() || !accepted) return;
             BTextView::InsertText(text, length, offset, runs);
             owner_->on_native_text(candidate);
         }
@@ -139,8 +144,10 @@ namespace
             }
             const std::string candidate =
                 replaced(Text(), begin, end, nullptr, 0);
-            if (!owner_ || !owner_->validate(candidate))
-                return;
+            if (!owner_) return;
+            const native::detail::window_guard validation_guard(*owner_);
+            const bool accepted = owner_->validate(candidate);
+            if (!validation_guard.alive() || !accepted) return;
             BTextView::DeleteText(begin, end);
             owner_->on_native_text(candidate);
         }

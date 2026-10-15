@@ -1,3 +1,9 @@
+//
+// Implements native split view integration for wmaker.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 // Implements split_view with Window Maker's native WINGs WMSplitView.
 
 #include <algorithm>

@@ -249,3 +249,11 @@ Tree and accordion controls also accept `set_border_sides()`, for example
 `tree.set_border_sides(native::border_sides::left | native::border_sides::bottom)`.
 Their existing `set_border_visible(false)` selects `none`; `true` selects all
 four sides. Internal disclosure indicators and row separators remain visible.
+
+
+The [classic tree implementation chapter](../book-of-native/PATTERNS-TREE-VIEW.md)
+explains stable IDs, visible flattening and native adapters. Collapsing a
+branch preserves an empty selection; a hidden selected descendant moves to its
+ancestor. Replacing items preserves a selected ID and expands its ancestors.
+Programmatic updates remain silent. Regression evidence is recorded in
+[ADJUST.md](../../ADJUST.md), A12.

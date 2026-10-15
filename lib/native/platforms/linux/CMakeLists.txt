@@ -15,3 +15,5 @@ if(NOT TOOLKIT STREQUAL "SDL2" AND NOT TOOLKIT STREQUAL "GEMIX")
 endif()
 
 target_link_libraries(native PRIVATE ${CMAKE_DL_LIBS})
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/font_locations.cpp)

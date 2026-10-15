@@ -23,8 +23,6 @@ namespace linux::openmotif
     native::bindings<Widget, native::wnd *> main_wnd_bindings;
     native::bindings<uint32_t, motif_font *> font_bindings;
     native::bindings<uint32_t, motif_menu *> menu_bindings;
-    native::bindings<native::list *, Widget> list_content_bindings;
-    native::bindings<native::combo_box *, Widget> combo_box_bindings;
     native::bindings<native::file_dialog *, motif_file_dialog *>
         file_dialog_bindings;
     Display *cached_display = nullptr;

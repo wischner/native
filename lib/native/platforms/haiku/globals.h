@@ -46,6 +46,10 @@ namespace haiku
     inline constexpr const char *control_owner_field =
         "native_control_owner";
 
+    extern native::bindings<std::uint64_t, native::button *> button_callbacks;
+    // Allocate a non-reused native command identity under the UI gate.
+    std::uint64_t next_control_callback();
+
     // BeAPI callbacks carry objects, so process-wide registries
     // recover the corresponding C++ objects during event dispatch.
     // Platform handle for a font_t — copies a BFont value.
@@ -96,6 +100,7 @@ namespace haiku
     {
         BButton *button = nullptr;
         native::button *owner = nullptr;
+        std::uint64_t callback_id = 0;
     };
 
     // Owns the BeAPI objects associated with one file chooser.

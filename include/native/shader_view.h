@@ -57,7 +57,8 @@ namespace native
         shader_fit get_fit() const;
         // Return the local image rectangle; fill may extend beyond the client clip.
         rect get_image_viewport() const;
-        // Return current installation status, independently of fallback pixels.
+        // Return installation status independently of fallback pixels.
+        // Creation remains pending until an effect output succeeds.
         shader_status get_shader_status() const;
         // Reset previous-frame inputs to transparent black and the time baseline.
         void clear_history();

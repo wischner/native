@@ -12,6 +12,8 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <limits>
+#include <stdexcept>
 #include <utility>
 
 #include "connection.h"
@@ -29,6 +31,7 @@ namespace native
             std::map<int, slot_type> slots;
             int current_id = 0;
             bool initialized = false;
+            bool alive = true;
             std::function<void()> initializer;
         };
 
@@ -59,7 +62,12 @@ namespace native
             return *this;
         }
 
+        // Stop an in-flight emission before any further owner callbacks.
+        ~signal() { if (_state) _state->alive = false; }
+
+        // Transfer callbacks and existing connection handles.
         signal(signal &&) noexcept = default;
+        // Replace this signal with transferred callback ownership.
         signal &operator=(signal &&) noexcept = default;
 
         //
@@ -73,16 +81,20 @@ namespace native
         //
         int connect(
             const std::function<bool(argument_types...)> &slot) const {
-            ensure_init();
-            _state->slots[++_state->current_id] = slot;
-            return _state->current_id;
+            const auto state = ensure_init();
+            if (!state->alive) return 0;
+            if (state->current_id == std::numeric_limits<int>::max())
+                throw std::overflow_error("Signal connection identifiers exhausted.");
+            const int id = ++state->current_id;
+            state->slots.emplace(id, slot);
+            return id;
         }
 
         // Connect a callable and return an automatic lifetime handle.
         [[nodiscard]] connection connect_scoped(
             const slot_type &slot) const {
-            const int id = connect(slot);
             std::weak_ptr<state> weak_state = _state;
+            const int id = connect(slot);
             return connection([weak_state, id]() {
                 if (auto connected = weak_state.lock())
                     connected->slots.erase(id);
@@ -164,27 +176,34 @@ namespace native
 
         // Notify newest-first and report whether a callback consumed input.
         bool emit_consumed(argument_types... args) {
-            ensure_init();
-            const auto keep_alive = _state;
-            for (auto slot = keep_alive->slots.rbegin();
-                 slot != keep_alive->slots.rend();
-                 ++slot) {
-                // Named arguments are lvalues here. Passing them
-                // without forwarding gives every by-value subscriber
-                // its own copy while preserving reference arguments.
-                if (slot->second(args...))
-                    return true;
+            const auto keep_alive = ensure_init();
+            auto next = keep_alive->slots.end();
+            // Re-find by ID after each callback: scoped disconnection can
+            // erase the current or a later slot, including during deletion.
+            int before = 0;
+            bool first = true;
+            while (keep_alive->alive) {
+                next = first ? keep_alive->slots.end()
+                             : keep_alive->slots.lower_bound(before);
+                first = false;
+                if (next == keep_alive->slots.begin()) break;
+                --next;
+                before = next->first;
+                const auto callback = next->second;
+                if (callback(args...)) return true;
             }
             return false;
         }
 
     private:
         // Run the optional initializer at most once.
-        void ensure_init() const {
-            if (!_state->initialized && _state->initializer) {
-                _state->initialized = true;
-                _state->initializer();
+        std::shared_ptr<state> ensure_init() const {
+            const auto keep_alive = _state;
+            if (!keep_alive->initialized && keep_alive->initializer) {
+                keep_alive->initialized = true;
+                keep_alive->initializer();
             }
+            return keep_alive;
         }
 
         std::shared_ptr<state> _state;

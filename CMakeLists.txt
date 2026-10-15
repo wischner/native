@@ -106,6 +106,10 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
 
+    set(DOCKER_IMAGE_AMIGA
+        "wischner/gcc-m68k-amiga@sha256:7622740b8aaa5c1a5444ec3ccf04e9506f71375300b0946e1382d67c56692cff"
+        CACHE STRING "Amiga compiler image for runtime qualification")
+
     if(DOCKER_EXECUTABLE)
         execute_process(
             COMMAND id -u
@@ -117,6 +121,25 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             OUTPUT_VARIABLE HOST_GID
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
+
+        # This qualifies the runtime only; it does not advertise a UI backend.
+        add_custom_target(docker-amiga-check
+            COMMAND ${DOCKER_EXECUTABLE} run --rm
+                -u ${HOST_UID}:${HOST_GID}
+                -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
+                -w ${CMAKE_SOURCE_DIR}
+                ${DOCKER_IMAGE_AMIGA}
+                cmake -S ${CMAKE_SOURCE_DIR}/tests/amiga_toolchain
+                    -B ${CMAKE_SOURCE_DIR}/build/amiga-toolchain
+                    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-amiga.cmake
+            COMMAND ${DOCKER_EXECUTABLE} run --rm
+                -u ${HOST_UID}:${HOST_GID}
+                -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
+                -w ${CMAKE_SOURCE_DIR}
+                ${DOCKER_IMAGE_AMIGA}
+                cmake --build ${CMAKE_SOURCE_DIR}/build/amiga-toolchain
+            USES_TERMINAL
+            COMMENT "Qualifying Amiga C++20 runtime (not a Native backend)")
 
         function(add_docker_cmake_build_target target_name build_dir image)
             set(cmake_args ${ARGN})

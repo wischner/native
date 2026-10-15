@@ -6,6 +6,7 @@
 //
 
 #include "infinity_window.h"
+#include "worker_shutdown.h"
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -63,10 +64,12 @@ namespace vision
     infinity_window::~infinity_window() { stop(); }
     void infinity_window::stop() {
         if (_delivery) _delivery->close();
+        if (_worker_delivery) _worker_delivery->close();
+        if (_sound_delivery) _sound_delivery->close();
         _worker.request_stop(); _sound.request_stop();
-        if (_worker.joinable()) _worker.join();
-        if (_sound.joinable()) _sound.join();
-        _audio.close();
+        retire_worker(std::move(_worker));
+        retire_worker(std::move(_sound));
+        _audio.reset();
     }
     void infinity_window::on_native_destroy() {
         stop();
@@ -100,9 +103,11 @@ namespace vision
         return true;
     }
     void infinity_window::start_worker() {
+        if (_worker_delivery) _worker_delivery->close();
+        _worker_delivery = std::make_unique<native::ui_dispatch_scope>(*this);
         _worker.request_stop();
-        if (_worker.joinable()) _worker.join();
-        auto sender = _delivery->sender();
+        retire_worker(std::move(_worker));
+        auto sender = _worker_delivery->sender();
         _worker = std::jthread([sender](std::stop_token stop) {
             std::mutex mutex;
             std::condition_variable_any changed;
@@ -123,11 +128,15 @@ namespace vision
         });
     }
     void infinity_window::start_tone() {
+        if (_sound_delivery) _sound_delivery->close();
+        _sound_delivery = std::make_unique<native::ui_dispatch_scope>(*this);
         _sound.request_stop();
-        if (_sound.joinable()) _sound.join();
-        if (!_audio.open()) { _status = "No audio device / unsupported format."; invalidate(); return; }
-        auto sender = _delivery->sender();
-        _sound = std::jthread([this, sender](std::stop_token stop) {
+        retire_worker(std::move(_sound));
+        auto audio = std::make_shared<native::audio_out>(44100, 2, 22050);
+        if (!audio->open()) { _status = "No audio device / unsupported format."; invalidate(); return; }
+        auto sender = _sound_delivery->sender();
+        _audio = audio;
+        _sound = std::jthread([audio, sender](std::stop_token stop) {
             std::array<std::int16_t, 882> samples{};
             unsigned accepted = 0;
             for (unsigned block = 0; block < 100 && !stop.stop_requested(); ++block) {
@@ -136,7 +145,7 @@ namespace vision
                     samples[frame * 2] = static_cast<std::int16_t>(6000 * std::sin(time * 440 * 6.283185307));
                     samples[frame * 2 + 1] = static_cast<std::int16_t>(6000 * std::sin(time * 660 * 6.283185307));
                 }
-                if (_audio.queue(samples)) ++accepted;
+                if (audio->queue(samples)) ++accepted;
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             sender.post([accepted](native::wnd &target) {
@@ -147,9 +156,11 @@ namespace vision
         });
     }
     void infinity_window::start_child() {
+        if (_worker_delivery) _worker_delivery->close();
+        _worker_delivery = std::make_unique<native::ui_dispatch_scope>(*this);
         _worker.request_stop();
-        if (_worker.joinable()) _worker.join();
-        auto sender = _delivery->sender();
+        retire_worker(std::move(_worker));
+        auto sender = _worker_delivery->sender();
         native::process_config config;
         config.executable = std::filesystem::absolute(native::app::argv[0]);
         config.arguments = {"--native-process-child", "argument with spaces", "quote\"slash\\"};

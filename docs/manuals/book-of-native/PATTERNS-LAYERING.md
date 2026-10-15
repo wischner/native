@@ -127,6 +127,13 @@ state stored through `peer_bindings` follows the peer lifetime automatically;
 an explicit unregister may release it early while a destroy hook tears down a
 native resource.
 
+When partial-acquisition rollback requires adopting an empty state before the
+native resource exists, publish the completed child-host/content pointer before
+attachment can deliver native drawing callbacks. Haiku buttons adopt the state
+first, assign its BButton as content, then attach it to the native parent. Do
+not re-register the same owned pointer to update content: that would release
+the adopted state instead of updating the peer's host.
+
 ## Backend globals and namespaces
 
 Callback bindings, process-wide native resources, native helper structures,
@@ -172,3 +179,11 @@ When adding behavior, decide its layer in this order:
 This division keeps backend implementations small and makes differences easy
 to audit. More importantly, an application has the same observable behavior
 regardless of the selected platform or toolkit.
+
+
+Platform `font_locations.cpp` adapters now supply roots and Windows registry
+entries to portable traversal in `installed_fonts.cpp`. Motif list contents and
+macOS window delegates are peer-owned; Motif combos reuse the callback widget
+binding. Haiku button commands use non-reused callback identities, removed
+before native teardown, so a queued command never dereferences a deleted C++
+owner. See [ADJUST.md](../../ADJUST.md), A01/A10/A11.

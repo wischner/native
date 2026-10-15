@@ -110,6 +110,27 @@ namespace
         while (!submitted.load()) std::this_thread::yield();
         concurrent.close(); racing_worker.join();
         native::detail::drain_posted_work();
+        // A redraw which receives newer progress must yield to input after
+        // one callback, even when every redraw replaces the pending slot.
+        native::ui_dispatch_scope redraws(window);
+        auto repaint_sender = redraws.sender();
+        unsigned paints = 0, completions = 0;
+        bool input_received = false;
+        std::function<void(native::wnd &)> repaint;
+        repaint = [&](native::wnd &) {
+            if (++paints < 32) repaint_sender.post_latest(repaint);
+        };
+        repaint_sender.post_latest(repaint);
+        repaint_sender.post([&](native::wnd &) { ++completions; });
+        native::app::post([&] { input_received = paints == 1; });
+        native::detail::drain_posted_work();
+        require(paints == 1 && completions == 1 && input_received,
+                "Continuous progress starved input or FIFO completion.");
+        for (unsigned turn = 2; turn <= 32; ++turn) {
+            native::detail::drain_posted_work();
+            require(paints == turn, "Latest redraw did not yield each turn.");
+        }
+        redraws.close();
         native::ui_dispatch_scope reentrant(window);
         auto destroys = reentrant.sender();
         window.on_native_key({native::key_code::a, native::key_action::press});

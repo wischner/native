@@ -85,7 +85,9 @@ namespace
         graphics.set_clip(invalid);
         graphics.clear(graphics.get_paper());
         native::wnd_paint_event event(invalid, graphics);
+        const native::detail::window_guard paint_guard(*owner);
         owner->on_native_paint(event);
+        if (!paint_guard.alive()) return;
 
         XSetClipMask(linux::wmaker::display, cache->gc, None);
         XCopyArea(linux::wmaker::display,
@@ -106,7 +108,7 @@ namespace
         if (owner && linux::wmaker::permit_input(owner)) {
             linux::wmaker::defer([owner]() {
                 if (owner->get_created())
-                    owner->destroy();
+                    owner->request_close();
             });
         }
     }

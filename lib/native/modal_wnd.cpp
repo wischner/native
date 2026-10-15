@@ -7,6 +7,7 @@
 //
 
 #include <native/modal_wnd.h>
+#include "wnd_peer.h"
 
 #include <stdexcept>
 #include <utility>
@@ -69,7 +70,9 @@ namespace native
             return;
         }
 
+        const detail::window_guard guard(*this);
         begin_modal_session();
+        if (!guard.alive()) return;
         try {
             app_wnd::show_native();
         } catch (...) {
@@ -82,23 +85,18 @@ namespace native
         if (_modal_active && _result == dialog_result::none)
             _result = dialog_result::cancelled;
 
-        const bool notify = end_modal_session();
+        _close_pending = end_modal_session() || _close_pending;
         app_wnd::destroy_native();
 
-        if (notify)
-            this->on_native_modal_close(
-                _result);
     }
 
     void modal_wnd::on_native_destroy() {
         if (_modal_active && _result == dialog_result::none)
             _result = dialog_result::cancelled;
 
-        const bool notify = end_modal_session();
+        _close_pending = end_modal_session() || _close_pending;
         app_wnd::on_native_destroy();
 
-        if (notify)
-            on_native_modal_close(_result);
     }
 
     void modal_wnd::close(dialog_result result) {
@@ -108,6 +106,12 @@ namespace native
 
         _result = result;
         destroy();
+    }
+
+    void modal_wnd::on_destroy_completed() {
+        if (!_close_pending) return;
+        _close_pending = false;
+        on_native_modal_close(_result);
     }
 
     void modal_wnd::on_native_modal_close(dialog_result result) {

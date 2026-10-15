@@ -94,13 +94,13 @@ libraries appear on an end user's machine.
 | Target | Application payload | Runtime that must be present |
 | --- | --- | --- |
 | Linux X11 | Executable and assets | X11, Xaw7, Xt, pixman, Xrandr, PNG/JPEG, and GCC runtime; optional Zenity or KDialog desktop integration |
-| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, and optional SDL2_ttf |
+| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, optional SDL2_ttf and Fontconfig |
 | Linux OpenMotif | Executable and assets | Xm, Xt, X11, PNG/JPEG, and GCC runtime |
 | Linux OPEN LOOK | Executable and assets | XView, OLGX, libtirpc, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux Window Maker | Executable and assets | WINGs, WUtil, wraster, Pango/Xft, Fontconfig/Freetype, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux GEMix | Executable, assets, and matching GEMix/Rasta runtime when it is not installed system-wide | AES, VDI, Rasta resources, PNG/JPEG, and GCC runtime |
 | Windows MinGW | Executable, assets, and three MinGW runtime DLLs | Windows system DLLs and GDI+ |
-| Haiku | Executable or Haiku package and assets | Haiku Be, Tracker, Translation, and root system libraries |
+| Haiku | Executable or Haiku package and assets | Haiku Be, Tracker, Translation, and root system libraries; optional Mesa OSMesa for GLSL |
 | macOS | Complete `.app` bundle and assets | macOS system frameworks |
 
 For Linux packages, “must be present” normally means declaring a package
@@ -227,9 +227,11 @@ cmake --build build/linux-sdl2-release --parallel
 
 The build requires SDL2 development files and X11 development files.
 SDL2_ttf is optional: CMake uses it when found and otherwise enables the
-built-in bitmap stock-font fallback. Typical Debian-family packages are
-`libsdl2-dev`, optional `libsdl2-ttf-dev`, `libx11-dev`, `libpng-dev`, and
-`libjpeg-dev`.
+built-in bitmap stock-font fallback. Fontconfig is also optional and discovered
+through pkg-config; stock-role lookup calls its C API directly. Without it,
+explicit font paths are tried and missing stock faces use the bitmap fallback.
+Typical Debian-family packages are libsdl2-dev, optional libsdl2-ttf-dev and
+libfontconfig1-dev, libx11-dev, libpng-dev and libjpeg-dev.
 
 Portable fonts created from a file or memory do not depend on SDL2_ttf; they
 use Native's vendored TrueType rasterizer.
@@ -241,6 +243,7 @@ The `native` target links:
 - SDL2.
 - Xlib, used for full X11 clipboard integration.
 - SDL2_ttf only when it was detected while configuring.
+- Fontconfig only when its pkg-config target was detected.
 - libpng and libjpeg.
 
 The CMake link command also receives the X11 support libraries reported by
@@ -255,7 +258,7 @@ The target system must provide:
 
 - A compatible SDL2 shared library.
 - X11 client libraries used by the clipboard backend.
-- SDL2_ttf when the configure log says it was found and linked.
+- SDL2_ttf and Fontconfig when the configure log says they were linked.
 - The common libpng, zlib, libjpeg, and compiler runtime libraries.
 - Optionally `zenity` or `kdialog` for desktop-integrated file dialogs.
 
@@ -695,3 +698,23 @@ that directory; Windows VM and Haiku VS Code deployment also include it. Retain
 the GPL shader sources/license and CC-BY-SA font attribution/license described
 in its asset README. Python packages these developer assets; Qt is not needed
 at runtime. The library itself does not embed them.
+
+
+## AmigaOS qualification status
+
+The nine supported backend selections above do not include AmigaOS. The
+separate `docker-amiga-check` target checks the proposed 3.1/m68k compiler
+runtime and currently fails for C++20 threading and filesystem support. It
+creates no `native` archive, Vision executable, application link target or
+deployable Amiga package. See [Build system](../book-of-native/BUILD-SYSTEM.md)
+and [ADJUST.md](../../ADJUST.md) for the check and measured prerequisites.
+
+### Haiku GLSL runtime selection
+
+The portable CPU shader profile has no OpenGL dependency. The separate GLSL
+profile loads the optional OSMesa runtime at first use; Mesa development files
+are not needed by the cross-build. The tested Haiku Mesa 22.0.5 package supplies
+libOSMesa.so.8. Its llvmpipe vertex JIT faults on the configured VM; select
+GALLIUM_DRIVER=softpipe in the launching process for verified execution.
+The Haiku F5 profile and GLSL test environment use this setting. An unsupported
+runtime reports a diagnostic/fallback instead of assuming shader availability.

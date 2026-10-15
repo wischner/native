@@ -15,6 +15,7 @@
 
 #include <native.h>
 #include <native/canvas.h>
+#include "wnd_peer.h"
 
 #include "classic_scrollbar.h"
 
@@ -495,6 +496,7 @@ namespace native
     }
 
     void canvas::on_native_paint(wnd_paint_event event) {
+        const detail::window_guard guard(*this);
         const scroll_geometry geometry = resolve_geometry();
 
         // The subscriber owns every client pixel, so nothing is drawn
@@ -508,7 +510,9 @@ namespace native
             on_wnd_paint.emit(client_event);
         }
 
+        if (!guard.alive()) return;
         draw_non_client(event.g);
+        if (!guard.alive()) return;
 
         const auto chrome = event.g.save_state();
         event.g.set_clip(rect(0, 0, _bounds.d.w, _bounds.d.h));

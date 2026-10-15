@@ -329,7 +329,7 @@ namespace native
 
                 case WM_CLOSED:
                     if (target && target->get_input_enabled())
-                        target->destroy();
+                        target->request_close();
                     else if (target)
                         raise_active_modal(target);
                     break;

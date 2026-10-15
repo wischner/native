@@ -44,8 +44,8 @@ namespace
     }
 
     Widget content_for(native::list *owner) {
-        return linux::openmotif::list_content_bindings
-            .object_from_handle(owner);
+        const auto *state = native::detail::peer_state<linux::openmotif::motif_list>(*owner);
+        return state ? state->content : nullptr;
     }
 } // namespace
 namespace native
@@ -90,7 +90,7 @@ namespace native
                       nullptr);
         XtManageChild(w);
         linux::openmotif::wnd_bindings.register_pair(scroller, self);
-        linux::openmotif::list_content_bindings.register_pair(self, w);
+        detail::assign_peer_state(*self, new linux::openmotif::motif_list{w});
         XtAddCallback(w, XmNbrowseSelectionCallback, changed, self);
         replace(w, _items);
         if (_selected_index >= 0)
@@ -109,10 +109,6 @@ namespace native
         auto *self = this;
         Widget w =
             linux::openmotif::wnd_bindings.handle_from_object(self);
-        Widget content = content_for(self);
-        if (content)
-            linux::openmotif::list_content_bindings
-                .unregister_by_handle(self);
         if (w) {
             linux::openmotif::wnd_bindings.unregister_by_handle(w);
             XtDestroyWidget(w);

@@ -128,9 +128,12 @@ namespace native
         g.set_clip(content_bounds);
         g.clear(rgba(255, 255, 255, 255));
         wnd_paint_event pe{content_bounds, g};
+        const native::detail::window_guard paint_guard(*wnd);
         wnd->on_native_paint(pe);
+        if (!paint_guard.alive()) return;
 
         linux::sdl2::render_surfaces(wnd, g);
+        if (!paint_guard.alive()) return;
         linux::sdl2::render_buttons(wnd, g);
         linux::sdl2::render_checks(wnd, g);
         linux::sdl2::render_radios(wnd, g);
@@ -194,8 +197,9 @@ namespace native
                 // windowID.
                 if (event.type == SDL_QUIT) {
                     if (app_wnd *main = app::main_wnd()) {
+                        const detail::window_guard guard(*main);
                         main->request_close();
-                        running = main->get_created();
+                        running = guard.alive();
                     } else {
                         running = false;
                     }
@@ -212,6 +216,7 @@ namespace native
 
                 if (!wnd)
                     continue;
+                const detail::window_guard event_guard(*wnd);
 
                 if (is_input_event(event.type) &&
                     !wnd->get_input_enabled()) {
@@ -232,6 +237,7 @@ namespace native
                     const auto code = detail::usb_key(event.key.keysym.scancode);
                     native::wnd *target = detail::input_target(*wnd);
                     if (!target) target = wnd;
+                    const detail::window_guard target_guard(*target);
                     key_modifiers mods = key_modifiers::none;
                     const auto native_mods = event.key.keysym.mod;
                     if (native_mods & KMOD_SHIFT) mods = mods | key_modifiers::shift;
@@ -257,7 +263,8 @@ namespace native
                                 aw->menu.id()), event.key)) {
                         break;
                     }
-                    target->on_native_key(physical);
+                    if (event_guard.alive() && target_guard.alive())
+                        target->on_native_key(physical);
                     break;
                 }
 
@@ -379,9 +386,12 @@ namespace native
                     }
                     if (event.type == SDL_MOUSEBUTTONDOWN) {
                         detail::reset_input(*wnd);
+                        if (!event_guard.alive()) break;
                         if (auto *old = detail::input_target(*wnd); old && old != wnd)
                             old->on_native_focus(false);
+                        if (!event_guard.alive()) break;
                         wnd->on_native_focus(true);
+                        if (!event_guard.alive()) break;
                     }
                     SDL_CaptureMouse(
                         event.type == SDL_MOUSEBUTTONDOWN
@@ -394,8 +404,8 @@ namespace native
                     // retain renderer state across callback dispatch:
                     // app_wnd::destroy() releases that cache
                     // immediately.
-                    const auto invalidate_live_window = [wnd]() {
-                        if (!wnd || !wnd->get_created())
+                    const auto invalidate_live_window = [wnd, event_guard]() {
+                        if (!event_guard.alive())
                             return;
                         auto *cache =
                             linux::sdl2::wnd_gpx_bindings
@@ -478,7 +488,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_combo_mouse(
                                     wnd,
                                     event.button.x,
@@ -494,7 +504,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_canvas_mouse(
                                     wnd,
                                     event.button.x,
@@ -511,7 +521,7 @@ namespace native
                                 true,
                                 false,
                                 event.button.clicks)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_collection_mouse(
                                     wnd,
                                     event.button.x,
@@ -536,7 +546,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_button_mouse(
                                     wnd,
                                     event.button.x,
@@ -552,7 +562,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_check_mouse(
                                     wnd,
                                     event.button.x,
@@ -568,7 +578,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_radio_mouse(
                                     wnd,
                                     event.button.x,
@@ -592,7 +602,7 @@ namespace native
                                 logical_y,
                                 true,
                                 false)) {
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 linux::sdl2::handle_panel_mouse(
                                     wnd,
                                     event.button.x,
@@ -601,12 +611,12 @@ namespace native
                                     true);
                             handled = true;
                         }
-                        if (!handled && wnd->get_created()) {
+                        if (!handled && event_guard.alive()) {
                             wnd->on_native_mouse_click(mouse_event(
                                 mouse_button::left,
                                 mouse_action::press,
                                 point(event.button.x, logical_y)));
-                            if (wnd->get_created())
+                            if (event_guard.alive())
                                 wnd->on_native_mouse_click(mouse_event(
                                     mouse_button::left,
                                     mouse_action::release,
@@ -823,16 +833,17 @@ namespace native
                         }
                         break;
 
-                    case SDL_WINDOWEVENT_CLOSE:
+                    case SDL_WINDOWEVENT_CLOSE: {
+                        const bool main = wnd == app::main_wnd();
+                        const detail::window_guard guard(*wnd);
                         if (auto *window =
                                 dynamic_cast<app_wnd *>(wnd))
                             window->request_close();
                         else
                             wnd->destroy();
-                        if (wnd == app::main_wnd() &&
-                            !wnd->get_created())
-                            running = false;
+                        if (main && !guard.alive()) running = false;
                         break;
+                    }
 
                     case SDL_WINDOWEVENT_EXPOSED:
                         keep_window_reachable(wnd);
@@ -893,10 +904,11 @@ namespace native
 
             const std::vector<app_wnd *> windows =
                 linux::sdl2::windows;
-            for (app_wnd *window : windows) {
-                if (window && window->get_created())
-                    linux::sdl2::render_window_if_needed(window);
-            }
+            std::vector<detail::window_guard> guards;
+            for (auto *window : windows) guards.emplace_back(*window);
+            for (std::size_t i = 0; i < windows.size(); ++i)
+                if (guards[i].alive())
+                    linux::sdl2::render_window_if_needed(windows[i]);
 
             // Work handed over by worker threads. Drained after
             // input and before the delay, so a posted repaint is
@@ -908,6 +920,8 @@ namespace native
             if (app_wnd *main = app::main_wnd()) {
                 if (!main->get_created())
                     running = false;
+            } else {
+                running = false;
             }
             SDL_Delay(1);
         }

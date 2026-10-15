@@ -1,3 +1,9 @@
+//
+// Implements native split view integration for windows.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 // Implements a Win32 splitter host (Win32 has no stock splitter class).
 
 #include <stdexcept>

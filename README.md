@@ -77,8 +77,14 @@ toolchain with C++20 support. A direct Linux build also needs
 
 - X11 uses Xlib, Xrandr, pixman, Xt, and
   [Athena Widgets (Xaw)](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html).
-- SDL2 uses SDL2 and Xlib on Linux; SDL2_ttf is optional and enables system
-  font loading. Xlib supplies image clipboard formats missing from SDL2.
+- SDL2 uses SDL2 and Xlib on Linux. Optional SDL2_ttf loads stock fonts;
+  optional Fontconfig resolves stock families directly without a shell.
+  Missing either dependency falls back to bitmap stock text. Xlib supplies
+  image clipboard formats missing from SDL2.
+- Haiku GLSL optionally loads Mesa OSMesa at runtime. The tested Mesa 22.0.5
+  requires GALLIUM_DRIVER=softpipe; its llvmpipe JIT is rejected before drawing.
+  No Mesa development package is required by the Docker cross-build. CPU shader
+  execution remains independent of this optional runtime.
 - Linux graphics targets use libpng and libjpeg for PNG/JPEG image I/O;
   Windows, Haiku, and macOS use their native codec services.
 - OpenMotif uses Xlib, Xt, and Motif.
@@ -237,7 +243,9 @@ See [Painting and input](docs/manuals/programming-native/02-PAINTING-AND-INPUT.m
 
 `shader_view` executes the same bounded programmable CPU image package on every
 backend, including multipass/history and typed parameters. It uses the existing
-canvas/image compositor and reports GPU acceleration unavailable. Source-sized
+canvas/image compositor; this CPU profile reports no GPU acceleration. The
+separate `native-glsl-1` profile uses an owned OpenGL context, with live
+capability reporting. Source-sized
 passes suit small emulator frames; large effects can delay UI input. The
 optional standard-library Python 3 packaging tool is a developer dependency
 only. Run `vision --mouse-shaders` for the independently authored CRT demo and
@@ -245,10 +253,49 @@ native-editor/pointer acceptance. See the
 [shader tutorial](docs/manuals/programming-native/20-IMAGE-SHADERS.md) and
 [feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md) for limits and evidence.
 
-`vision --retro-terminal` opens an unaccepted CRT approximation demo using
-selected cool-retro-term shader formulas adapted to the portable CPU profile.
+`vision --retro-terminal` executes the original cool-retro-term and Qt blur
+GLSL pass bodies through a private offscreen OpenGL renderer.
 It includes native command entry, amber/green/color presets and bounded shell
 output. `--terminal-smoke` adds an automated paint-and-close acceptance check.
 Keep the copied `retro-terminal/` assets and license notices beside Vision.
 See [the terminal tutorial](docs/manuals/programming-native/20-IMAGE-SHADERS.md#terminal-acceptance-application)
 for the selected effects, licensing, and the lack of PTY/full-screen program support.
+
+
+Linux GLSL context coexistence is fixed in the EGL adapter: it preserves and
+restores the surrounding EGL/GLX toolkit context, including accelerated SDL
+renderers. Context failures now include the operation and EGL error code.
+The original GLSL pipeline was verified on an Intel Iris Xe desktop. On
+2026-10-14, the macOS Debug build on `leia` also passed four focused shader
+and delivery tests (including real CGL context preservation) and the original
+GLSL terminal smoke. These checks do not establish visual or performance
+acceptance. Windows retains GLSL compile coverage; its VM lacks desktop OpenGL.
+Haiku supports the portable CPU profile and optional software GLSL through Mesa
+OSMesa, verified with GALLIUM_DRIVER=softpipe on the configured VM.
+
+
+## Amiga runtime qualification and standards review
+
+AmigaOS 3.1/m68k is not yet an implemented Native backend. The available
+compiler's C++ runtime fails threading and filesystem qualification:
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-amiga-check
+```
+
+This diagnostic uses the pinned image in `DOCKER_IMAGE_AMIGA`, records both
+failures in `build/amiga-toolchain/`, and produces no Native library or Vision
+binary. The matching VS Code task is **Check Amiga C++20 Runtime (Docker)**.
+The [build chapter](docs/manuals/book-of-native/BUILD-SYSTEM.md) describes the
+check; [ADJUST.md](docs/ADJUST.md) records required toolchain repairs, the
+all-platform standards review, reproduced defects and adjustment acceptance.
+Existing backend build selections remain unchanged. The 2026-10-15 repair
+pass adds lifetime, rollback, geometry, real GLSL history, native-close and
+worker-shutdown regressions. Linux passes 141/141 tests and macOS 17/17.
+The native Windows VM passes 16 tests and skips two desktop-OpenGL tests.
+Haiku passes all 18 regression executables with Mesa softpipe, including real
+GLSL rendering and context ownership, without skips. Per-backend results and independently
+reproduced SDK sanitizer exceptions are recorded in
+[the feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md).
+Passing tests do not certify exhaustive standards compliance.

@@ -9,6 +9,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <stdexcept>
+#include <mutex>
 #include <sys/select.h>
 #include <unistd.h>
 
@@ -47,9 +48,11 @@ extern "C" int select(
 
 namespace
 {
+    std::mutex posted_mutex;
     int posted_pipe[2] = {-1, -1};
 
     void wake_posted_work() {
+        const std::lock_guard<std::mutex> lock(posted_mutex);
         if (posted_pipe[1] < 0)
             return;
         const unsigned char byte = 1;
@@ -68,6 +71,7 @@ namespace
 
     void close_posted_pipe() {
         native::detail::set_loop_wake(nullptr);
+        const std::lock_guard<std::mutex> lock(posted_mutex);
         for (int &fd : posted_pipe) {
             if (fd >= 0)
                 close(fd);
@@ -86,13 +90,25 @@ namespace native
         }
 
         linux::openlook::exit_requested = false;
-        if (pipe(posted_pipe) != 0)
-            throw std::runtime_error(
-                "OpenLook/XView: unable to create event-loop pipe.");
-        for (const int fd : posted_pipe) {
-            const int flags = fcntl(fd, F_GETFL, 0);
-            if (flags >= 0)
-                fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+        {
+            const std::lock_guard<std::mutex> lock(posted_mutex);
+            if (pipe(posted_pipe) != 0)
+                throw std::runtime_error(
+                    "OpenLook/XView: unable to create event-loop pipe.");
+            for (const int fd : posted_pipe) {
+                const int flags = fcntl(fd, F_GETFL, 0);
+                const int descriptor_flags = fcntl(fd, F_GETFD, 0);
+                if (flags < 0 || descriptor_flags < 0 ||
+                    fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0 ||
+                    fcntl(fd, F_SETFD, descriptor_flags | FD_CLOEXEC) < 0) {
+                    for (int &owned : posted_pipe) {
+                        close(owned);
+                        owned = -1;
+                    }
+                    throw std::runtime_error(
+                        "OpenLook/XView: unable to configure event-loop pipe.");
+                }
+            }
         }
         notify_set_input_func(
             linux::openlook::main_frame,

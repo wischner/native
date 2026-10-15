@@ -135,10 +135,10 @@ namespace linux::openmotif
         native::button *, motif_button *> button_bindings;
     inline constexpr native::detail::peer_bindings<
         native::text_edit *, motif_text_edit *> text_edit_bindings;
-    extern native::bindings<native::list *, Widget>
-        list_content_bindings;
-    extern native::bindings<native::combo_box *, Widget>
-        combo_box_bindings;
+    struct motif_list
+    {
+        Widget content = nullptr;
+    };
     inline constexpr native::detail::peer_bindings<
         native::accordion *, motif_collection *> accordion_bindings;
     inline constexpr native::detail::peer_bindings<

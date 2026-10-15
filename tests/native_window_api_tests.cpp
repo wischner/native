@@ -1457,6 +1457,17 @@ namespace
              true},
             {"Disabled", icon, 200, {}, false, false}};
         native::tree_view tree(items, native::rect(0, 0, 180, 65));
+        tree.set_expanded(100, false);
+        expect(tree.get_selected_item() == native::invalid_tree_item_id,
+               "collapsing an unselected branch preserves empty selection");
+        tree.set_expanded(100, true);
+        tree.set_selected_item(101);
+        auto replacement = items;
+        replacement[0].expanded = false;
+        tree.set_items(replacement);
+        expect(tree.get_selected_item() == 101 && tree.get_expanded(100),
+               "replacement reveals a preserved selected descendant");
+        tree.set_selected_item(native::invalid_tree_item_id);
         expect(tree.get_border_visible(),
                "tree outer border is visible by default");
         tree.set_border_visible(false);

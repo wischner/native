@@ -263,7 +263,7 @@ namespace
         native::list sample({"One", "Two"}, 10, 10, 200, 80);
         attach(sample, root);
         pump();
-        Widget list = motif::list_content_bindings.object_from_handle(&sample);
+        Widget list = native::detail::peer_state<motif::motif_list>(sample)->content;
         XmFontList fonts = nullptr;
         XtVaGetValues(list, XmNfontList, &fonts, nullptr);
         XmString text = XmStringCreateLocalized(const_cast<char *>("Mg"));

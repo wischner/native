@@ -114,7 +114,9 @@ namespace
         graphics.set_clip(scene);
         graphics.clear(graphics.get_paper());
         native::wnd_paint_event event(scene, graphics);
+        const native::detail::window_guard paint_guard(*owner);
         owner->on_native_paint(event);
+        if (!paint_guard.alive()) return;
 
         auto *cache = linux::openlook::wnd_gpx_bindings
                           .object_from_handle(owner);
@@ -266,7 +268,7 @@ namespace
             if (!linux::openlook::permit_input(owner))
                 return NOTIFY_DONE;
 
-            owner->destroy();
+            owner->request_close();
 
             // The frame and its panel items are gone. Passing the
             // event on would hand the next procedure in the chain a
@@ -326,11 +328,25 @@ namespace
             type);
     }
 
+    // XView may process a root WM_DELETE_WINDOW through its destroy notifier
+    // instead of the frame event procedure. Veto that unconditional teardown;
+    // accepted requests later destroy the unbound native frame explicitly.
+    Notify_value check_frame_close(Notify_client client, Destroy_status status) {
+        auto frame = reinterpret_cast<Frame>(client);
+        auto *owner = linux::openlook::frame_bindings.object_from_handle(frame);
+        if (status == DESTROY_CHECKING && owner) {
+            notify_veto_destroy(client);
+            owner->request_close();
+            return NOTIFY_DONE;
+        }
+        return notify_next_destroy_func(client, status);
+    }
+
     void frame_done(Frame frame) {
         native::app_wnd *owner =
             linux::openlook::frame_bindings.object_from_handle(frame);
         if (linux::openlook::permit_input(owner))
-            owner->destroy();
+            owner->request_close();
     }
 
     int frame_height(const native::app_wnd *window,
@@ -432,6 +448,8 @@ namespace native
             linux::openlook::window_bindings.register_pair(
                 self, state);
             linux::openlook::frame_bindings.register_pair(frame, self);
+        notify_interpose_destroy_func(frame,
+            reinterpret_cast<Notify_func>(check_frame_close));
             self->menu.attach(*self);
 
             Panel menu_bar = XV_NULL;

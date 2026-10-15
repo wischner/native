@@ -16,6 +16,7 @@
 
 #include "native_window.h"
 #include "globals.h"
+#include "ui_dispatch.h"
 
 namespace native
 {
@@ -34,9 +35,10 @@ namespace native
 
     void app_wnd::create_native() {
         validate_owner_created();
-        if (!haiku::global_app)
+        if (!haiku::global_app) {
             haiku::global_app =
                 new BApplication("application/x-vnd.wischner-native");
+        }
 
         BRect frame(static_cast<float>(_bounds.p.x),
                     static_cast<float>(_bounds.p.y),
@@ -102,12 +104,11 @@ namespace native
 
         if (win) {
             haiku::wnd_bindings.unregister_by_object(self);
-            if (win->IsLocked()) {
-                win->PostMessage(B_QUIT_REQUESTED);
-            } else if (win->Lock()) {
-                win->Quit();
-            } else {
-                win->PostMessage(B_QUIT_REQUESTED);
+            // Always retire on the window's own looper. Synchronous Quit
+            // under the UI gate would wait for a looper acquiring that gate.
+            if (win->Lock()) {
+                static_cast<haiku::native_window *>(win)->retire();
+                win->Unlock();
             }
         }
 

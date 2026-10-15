@@ -16,7 +16,10 @@ the same commit.
 The mouse extension adds client-scoped hidden policy, ordered boundary and
 cancellation events, rich motion and capability-checked scoped capture. The
 portable `shader_view` uses a shared programmable CPU image executor with
-multipass/history; it has no GPU adapter. Current per-backend build and new
+multipass/history and a separate optional OpenGL GLSL profile. Capabilities
+reflect the live renderer, including immediately after transactional live
+replacement. Failed candidates preserve the previous renderer and output.
+Current per-backend build and new
 runtime evidence are recorded separately in the feature matrix.
 
 
@@ -33,8 +36,9 @@ runtime evidence are recorded separately in the feature matrix.
     canvas button identity
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
-  - macOS AppKit backend (native AppleClang build on remote `leia`, six
-    CTests passing normally and with ASan/UBSan, plus targeted desktop checks)
+  - macOS AppKit backend (native AppleClang build on remote `leia`, all 17
+    current CTests passing, plus earlier targeted desktop checks; the older
+    six-test suite also passed with ASan/UBSan)
 - Work in progress:
   - other toolkit targets and ports not listed above
 
@@ -95,44 +99,72 @@ limits are recorded in the [feature matrix](book-of-native/FEATURE-MATRIX.md).
     Snapshot lifetime, work areas, primary selection, and backend detection.
     Expands Architecture Section 9.
 
-13. [Patterns: clipboard and text editing](book-of-native/PATTERNS-CLIPBOARD-TEXT-EDITING.md)
+13. [Patterns: stock and portable fonts](book-of-native/PATTERNS-FONTS.md)
+    Byte ownership, private registrations, measurement and rasterization.
+    Expands Architecture Section 10.
+
+14. [Patterns: clipboard and text editing](book-of-native/PATTERNS-CLIPBOARD-TEXT-EDITING.md)
     Typed clipboard transactions, editor modes, live complete-value
     validation, selection, and direct or keyboard clipboard commands.
     Expands Architecture Sections 11 and 12.
 
-14. [Patterns: advanced table views](book-of-native/PATTERNS-TABLE-VIEW.md)
+15. [Patterns: advanced table views](book-of-native/PATTERNS-TABLE-VIEW.md)
     Model ownership, stable row identity, virtualization, grouping, search,
     and backend adaptation. Expands Architecture Section 13.
 
-15. [Patterns: source editing](book-of-native/PATTERNS-CODE-EDIT.md)
+16. [Patterns: source editing](book-of-native/PATTERNS-CODE-EDIT.md)
     Canonical source storage, overlays, lexers, completion, shared painting,
     and backend input translation. Expands Architecture Section 14.
 
-16. [Patterns: split views and tabs](book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md)
+17. [Patterns: classic tree views](book-of-native/PATTERNS-TREE-VIEW.md)
+    Owned hierarchy, stable IDs, visibility, disclosure and native adapters.
+    Expands Architecture Section 15.
+
+18. [Patterns: split views and tabs](book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md)
     Split/tab layout ownership, native content transitions, floating shells,
     interaction, themed painting, and persistence. Expands Architecture
     Section 16.
 
-17. [Patterns: input, standard dialogs, and window chrome](book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
+19. [Patterns: input, standard dialogs, and window chrome](book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
     File icons, special directories, combo and list boxes, directory and
     message dialogs, non-client rulers, status bars, native adaptation, and
     extensibility. Expands Architecture Section 17.
 
-18. [Patterns: structural panels and paintable canvases](book-of-native/PATTERNS-PANELS-AND-CANVASES.md)
+20. [Patterns: structural panels and paintable canvases](book-of-native/PATTERNS-PANELS-AND-CANVASES.md)
     Container and drawing-surface roles, explicit child lifecycle, chrome
     versus client geometry, 32-bit content bounds, scrollbar resolution,
     and painting order. Expands Architecture Sections 18 and 19.
 
-19. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
+21. [Feature matrix](book-of-native/FEATURE-MATRIX.md)
     Per-backend feature and test status for what is implemented now.
 
-20. [Background delivery, PCM output, and child ownership](book-of-native/PATTERNS-BACKGROUND-SERVICES.md)
+22. [Background delivery, PCM output, and child ownership](book-of-native/PATTERNS-BACKGROUND-SERVICES.md)
     Scoped C++20 UI results, bounded PCM peers and shell-free child ownership.
     Expands Architecture Section 20.
 
-21. [Portable programmable image shaders](book-of-native/PATTERNS-IMAGE-SHADERS.md)
+23. [Portable programmable image shaders](book-of-native/PATTERNS-IMAGE-SHADERS.md)
     Bounded CPU image programs, canvas composition, temporal history and
     coalesced generation-safe scheduling. Expands Architecture Section 21.
 
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).
+
+
+Linux GLSL context coexistence is fixed in the EGL adapter: it preserves and
+restores the surrounding EGL/GLX toolkit context, including accelerated SDL
+renderers. Context failures now include the operation and EGL error code.
+The original GLSL pipeline was verified on an Intel Iris Xe desktop. The
+2026-10-14 macOS Debug audit on `leia` passes four focused tests, including
+real CGL context preservation, and the original GLSL terminal smoke. It does
+not establish visual acceptance or frame-rate guarantees. The final Windows
+VM suite passes 16 tests with two desktop-OpenGL skips. Haiku passes all 18
+regression executables with Mesa softpipe, including real GLSL rendering and
+context ownership, as well as the portable CPU profile. The feature matrix
+records the exact scope of these target runs.
+
+
+The 2026-10-15 review, completed non-Amiga adjustments, current verification
+and narrow SDK sanitizer exceptions are in [ADJUST.md](../ADJUST.md).
+Passing regressions do not establish exhaustive standards conformance.
+`docker-amiga-check` qualifies runtime prerequisites only and currently fails;
+AmigaOS is not an implemented backend.

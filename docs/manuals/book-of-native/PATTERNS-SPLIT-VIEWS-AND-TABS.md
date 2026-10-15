@@ -54,6 +54,15 @@ toolkit provides the widget: Haiku `BSplitView`/`BTabView`, Motif
 `XmPanedWindow`/`XmNotebook`, Window Maker `WMSplitView`/`WMTabView`, and
 AppKit `NSSplitView`/`NSTabView`.
 
+Haiku uses BTabView label drawing on every edge. Native does not select a
+smaller or condensed font for left/right tabs. The SDK rotates the label's
+coordinate system by 270 degrees on the left and 90 degrees on the right,
+using the same label drawing path and configured font. Vertical strips use
+label-sized tab extents; this changes tab geometry, not font size. Preserve
+Haiku's rotated text appearance rather than compensating with another font.
+The native implementation is BTab::DrawLabel in
+[Haiku TabView.cpp](https://github.com/haiku/haiku/blob/master/src/kits/interface/TabView.cpp).
+
 AppKit owns its complete divider and tab rendering. Split views initialize
 full-sized native panes and use `adjustSubviews` before applying the ratio;
 borrowed controls follow the actual pane sizes during dragging and resizing.

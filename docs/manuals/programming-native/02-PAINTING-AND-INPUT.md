@@ -250,3 +250,12 @@ continue outside the client. Check capabilities instead of testing toolkit names
 `vision --mouse-shaders` exercises these policies beside a native editor and
 [programmable image view](20-IMAGE-SHADERS.md). Actual outside/non-client cursor
 behavior and confinement require a target desktop test, not a dummy display.
+
+## Callback teardown
+
+A callback may destroy its native resource or delete its C++ receiver. Once it
+does, application code must stop using the receiver and any borrowed drawer.
+The library checks the original generation before later paint/presentation
+stages. Modal close notification runs after native teardown and peer release,
+so its handler may safely create a new dialog generation. Backend test evidence
+for these paths is recorded in the feature matrix and ADJUST.md.

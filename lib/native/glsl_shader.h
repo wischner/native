@@ -20,8 +20,11 @@ namespace native::detail
                const std::map<std::string, shader_value, std::less<>>
                    &parameters,
                unsigned width, unsigned height, double source_time,
-               double elapsed, double delta, bool reset) = 0;
+               double elapsed, double delta, bool reset,
+               std::uint64_t retained_bytes = 0) = 0;
         virtual bool accelerated() const = 0;
+        // Count retained GPU targets and packaged CPU pixels for replacement admission.
+        virtual std::uint64_t storage_bytes() const = 0;
     };
     // Decode owned shader text, uniform bindings and encoded image
     // textures.

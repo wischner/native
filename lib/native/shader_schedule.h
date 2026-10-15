@@ -27,7 +27,8 @@ namespace native::detail
         const shader_package_data *glsl_package = nullptr;
         std::unique_ptr<img> output;
         std::shared_ptr<shader_schedule_entry> schedule;
-        shader_status status = shader_status::active;
+        // Resource creation alone has not executed the effect.
+        shader_status status = shader_status::pending;
         bool dirty = true, started = false, reported = false;
         std::chrono::steady_clock::time_point start, last;
     };

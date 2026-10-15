@@ -8,6 +8,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include "vision_retro_terminal.h"
+#include "worker_shutdown.h"
 #include "terminal_screen.h"
 #include <chrono>
 #include <cstdlib>
@@ -122,8 +123,7 @@ namespace
             if (_delivery)
                 _delivery->close();
             _worker.request_stop();
-            if (_worker.joinable())
-                _worker.join();
+            vision::retire_worker(std::move(_worker));
         }
         // Defer closure until the current paint or delivery callback
         // unwinds.
@@ -292,6 +292,7 @@ namespace
             _running = true;
             _entry.set_read_only(true);
             const auto sender = _delivery->sender();
+            vision::retire_worker(std::move(_worker));
             _worker = std::jthread([config = std::move(config),
                                     sender](std::stop_token stop) {
                 native::process child(config);

@@ -66,3 +66,5 @@ target_link_libraries(native PRIVATE
 )
 
 target_link_libraries(native PRIVATE opengl32)
+
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/font_locations.cpp)

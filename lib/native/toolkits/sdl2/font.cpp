@@ -9,7 +9,9 @@
 #ifdef HAVE_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
 #endif
-#include <cstdio>
+#ifdef HAVE_FONTCONFIG
+#include <fontconfig/fontconfig.h>
+#endif
 #include <algorithm>
 #include <string>
 
@@ -56,26 +58,34 @@ namespace
         return id;
     }
 
-    // Query the system font path via fontconfig (fc-match).
+    // Resolve stock roles directly through optional Fontconfig, without a shell.
     std::string fc_match(const char *pattern) {
-        std::string cmd = "fc-match --format='%{file}' '";
-        cmd += pattern;
-        cmd += "' 2>/dev/null";
-        FILE *fp = popen(cmd.c_str(), "r");
-        if (!fp)
-            return {};
-        char buf[1024] = {};
-        if (!fgets(buf, sizeof(buf), fp)) {
-            pclose(fp);
-            return {};
-        }
-        pclose(fp);
-        std::string path(buf);
-        while (!path.empty() &&
-               (path.back() == '\n' || path.back() == '\r' ||
-                path.back() == ' '))
-            path.pop_back();
+#ifdef HAVE_FONTCONFIG
+        struct font_config {
+            FcConfig *value = FcInitLoadConfigAndFonts();
+            ~font_config() { if (value) FcConfigDestroy(value); }
+        };
+        static font_config config;
+        if (!config.value) return {};
+        FcPattern *request = FcNameParse(
+            reinterpret_cast<const FcChar8 *>(pattern));
+        if (!request) return {};
+        FcConfigSubstitute(config.value, request, FcMatchPattern);
+        FcDefaultSubstitute(request);
+        FcResult result;
+        FcPattern *match = FcFontMatch(config.value, request, &result);
+        FcPatternDestroy(request);
+        if (!match) return {};
+        FcChar8 *file = nullptr;
+        std::string path;
+        if (FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch)
+            path = reinterpret_cast<const char *>(file);
+        FcPatternDestroy(match);
         return path;
+#else
+        (void)pattern;
+        return {};
+#endif
     }
 
     TTF_Font *open_by_pattern(const char *pattern, int size) {

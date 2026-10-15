@@ -13,11 +13,43 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+## Current standards review (2026-10-15)
+
+All nine existing Docker build targets pass. Current full-suite results are
+SDL2 24/24, X11 19/19, OpenMotif 22/22, OPEN LOOK 22/22, Window Maker 18/18
+and GEMix direct/gemd 18/18 each: 141/141 Linux CTests pass. macOS on leia
+passes 17/17 including real CGL and GLSL history tests. The final Windows VM
+run passes 16 tests and skips two OpenGL tests because no suitable desktop
+OpenGL context is available. The final Haiku VM run passes all 18 regression
+executables, including real GLSL pixels/history and context ownership, native
+inspector input/pixels/recreation, lifecycle/close and two-window stress.
+The original eleven-pass GLSL terminal smoke also passes with Mesa softpipe. Both deployments were user-approved and all deployed test
+hashes match the final Docker artifacts.
+
+The [adjustment record](../../ADJUST.md) documents the A01–A18 repairs and
+verification. Native callback continuations now observe object/resource
+lifetimes, EGL displays have shared leases, GLSL installation/history is
+transactional, geometry widens before calculation, and creation rolls back all
+shared acquisition. These regressions do not certify every execution path.
+
+Toolkit-only controls independently reproduce retained Motif selection/notebook,
+XView drop-interest and WINGs font-pattern allocations. Affected runtime tests
+use narrow SDK allocation-path exceptions with leak checking enabled; Native's
+XView menu-item ownership leak is fixed. The real GLSL test keeps Mesa driver
+metadata resident without leak suppressions. See the build chapter and
+ADJUST.md for exact policies; historical test-specific sanitizer settings are
+not a whole-suite leak-free claim.
+
+`docker-amiga-check` currently fails C++20 runtime qualification. It is not an
+Amiga backend, Native library build or deployment result.
+
 ## Mouse and programmable image shaders (2026-10-07)
 
 The shared `native-image-1` executor runs on the CPU and draws through each
-backend's existing canvas/image compositor. All capabilities report
-`accelerated == false`; no GPU adapter or GPU performance acceptance is claimed.
+backend's existing canvas/image compositor. This CPU profile has no GPU
+acceleration. The separate `native-glsl-1` profile has private OpenGL adapters
+on Linux, Windows, macOS and Haiku; its live execution/capabilities and runtime
+requirements are recorded separately. Haiku uses OSMesa software rendering. No GPU performance acceptance is claimed.
 
 | Backend | Hidden client cursor | Public drag capture | Relative capture | Image profile / history | New adapter evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -28,8 +60,8 @@ backend's existing canvas/image compositor. All capabilities report
 | Window Maker | Yes | Yes | Unsupported | Yes | Docker build; shared pixel/input tests |
 | GEMix, direct and gemd | Yes | Unsupported | Unsupported | Yes | Both Docker builds; shared pixel/input tests |
 | Windows | Yes | Yes | Unsupported | Yes | Docker cross-build; native terminal pixels/shell/hidden-cursor shutdown |
-| Haiku | Yes | Unsupported | Unsupported | Yes | Docker cross-build; native terminal pixels/shell/hidden-cursor shutdown |
-| macOS | Yes | Unsupported | Unsupported | Yes | Source implementation; changed adapter uncompiled (`leia` did not resolve) |
+| Haiku | Yes | Unsupported | Unsupported | Yes | Docker cross-build; 18 native regression executables; real OSMesa context/pixels and original-GLSL terminal smoke with softpipe |
+| macOS | Yes | Unsupported | Unsupported | Yes | Debug build; full 17-test suite and real CGL context test pass; original-GLSL terminal smoke also passes |
 
 No backend guarantees unaccelerated relative input. Unsupported acquisition
 returns an explicit diagnostic. Desktop outside restoration, native occlusion,
@@ -38,7 +70,7 @@ portable event assertions and prior gallery checks do not establish those new
 behaviors on every host. `vision --mouse-shaders` provides the acceptance view
 beside a native editor, with cursor policy, color changes and Escape release.
 
-The Debug Docker validation passed all 84 CTests: X11 12, SDL2 16, Motif 12,
+The historical 2026-10-07 CPU-profile validation passed all 84 CTests: X11 12, SDL2 16, Motif 12,
 OPEN LOOK 12, Window Maker 10, GEMix direct 11 and gemd 11. The new
 `native_mouse_shader_tests` checks ordered boundaries, disabled-child occlusion,
 re-entry deltas, focus-transfer cancellation, generation-safe callbacks, actual identity RGBA
@@ -62,46 +94,35 @@ See [Image shader patterns](PATTERNS-IMAGE-SHADERS.md) for resource limits and
 [the programming chapter](../programming-native/20-IMAGE-SHADERS.md) for the
 portable format and authoring tool.
 
-## CRT command terminal (2026-10-07)
+## CRT command terminal
 
-**Shader acceptance is incomplete.** The current package runs selected CPU
-approximations and independently authored monitor materials. It does not run
-cool-retro-term's original renderer. The user rejected the monitor presentation;
-passing parser, package, pixel and lifecycle tests does not establish visual
-fidelity or fulfil the requirement to use the upstream rendering pipeline.
+`vision --retro-terminal` currently loads the original cool-retro-term and Qt
+blur GLSL pass bodies from `terminal-glsl.nshader`. Its eleven-pass graph uses
+packaged noise and retained burn-in textures in the private OpenGL renderer.
+It no longer uses the earlier eight-pass CPU approximation as the displayed
+terminal effect. Historical `terminal.json`/`terminal.nshader` remain CPU
+fixtures for parser/font/material/pixel tests; passing those fixtures does not
+establish original-GLSL behavior.
 
+The demo renders a bounded ASCII/ANSI screen using the attributed portable
+TrueType font and runs line-oriented commands through bounded `process`
+capture. POSIX hosts use `/bin/sh -c`; Windows uses PowerShell `-Command`.
+There is no PTY, persistent shell session, Unicode cell layout or full-screen
+program support. Asset provenance and licenses remain beside the executable.
 
-`vision --retro-terminal` is the same public-API application on every backend.
-It renders a bounded ASCII/ANSI screen with a portable TrueType font and runs
-line-oriented commands using bounded `process` capture. POSIX targets use
-`/bin/sh -c`; Windows uses PowerShell `-Command`. It has no pseudoterminal,
-persistent shell session, Unicode cell layout, or full-screen program support.
+The original GLSL terminal smoke passes in the Linux Docker selections,
+on macOS leia and on the Haiku VM with Mesa softpipe. Windows has current
+compile coverage only for this GLSL pipeline; its VM lacks desktop OpenGL.
+Older Windows/Haiku terminal evidence refers to the preceding CPU demo.
+Functional smoke success requires active shader output and the expected
+completed shell command; it is not a frame-rate guarantee or proof of exact
+upstream visual parity. The user confirmed the visible Haiku demo works.
+Shared display ownership, live installation and history repairs are recorded
+in ADJUST.md.
 
-Eight CPU passes render the monitor demo. Four adapt selected cool-retro-term formulas: phosphor history,
-raster bands and tint, a reduced bloom approximation, and curvature/edge
-masking. Four more render reflected/vignetted glass, a shaded rounded housing,
-a recessed screen, vents and a power indicator. These material passes are
-independently authored; the frame is shader output rather than application
-chrome. The upstream GLSL is retained with provenance and GPL attribution in
-`src/assets/retro-terminal`; the portable font has its own CC-BY-SA license.
-This is a selected adaptation, not the complete Qt rendering pipeline or a
-GPU implementation.
-
-All nine Docker targets build. All 98 Linux CTests pass: X11 14, SDL2 18,
-OpenMotif 14, OPEN LOOK 14, Window Maker 12, GEMix direct 13, gemd 13.
-External-toolkit runtime suites use the existing `ASAN_OPTIONS=detect_leaks=0`
-setting. Each selection tests incremental ANSI state, actual font and CRT
-pixels, opaque final output, retained history, and the production event loop
-running a host-shell command and closing through scoped UI delivery.
-Native Windows 11 and Haiku both pass the screen/pixel test and desktop
-terminal smoke, including actual shell output and clean shutdown. Windows
-uses PowerShell. Haiku cursor resources are peer-owned and released before
-app-server shutdown. macOS remains uncompiled in this pass because
-`leia` cannot be resolved.
-
-OpenMotif and Window Maker now wake their production loops through a
-nonblocking pipe when workers post results. No timer or test-only queue drain
-is needed by the terminal.
+OpenMotif, Window Maker and OPEN LOOK wake their production loops through
+nonblocking pipes when workers post results. OPEN LOOK synchronizes pipe
+publication/write/close and checks nonblocking/close-on-exec setup.
 
 ## Infinity services (2026-10-06)
 
@@ -120,7 +141,7 @@ control/gallery runtime evidence. The diagnostic application is
 | GEMix direct / gemd | WIP: SDK/viewer lacks complete raw release/focus integration; capability reports false | Yes (build tested): ALSA adapter; audible playback untested | Yes (tested) on both transports: shared tests and real POSIX child |
 | Windows | Yes (build tested): Win32 physical input | Yes (build tested): WASAPI; audible playback untested | Yes (build tested): shared tests and Win32 process adapter |
 | Haiku | Yes (build tested): raw positions and modifier state | Yes (build tested): BSoundPlayer; audible playback untested | Yes (build tested): shared tests and POSIX process adapter |
-| macOS | Yes (untested): AppKit adapter uncompiled this pass | Yes (untested): AudioQueue adapter uncompiled this pass | Yes (untested): new code uncompiled this pass |
+| macOS | Yes (build tested): AppKit adapter; physical held-key acceptance pending | Yes (build tested): AudioQueue adapter; audible playback untested | Yes (tested): shared queue/lifetime, PCM consumer and real process tests on leia |
 
 All nine Docker selections build the service tests and Vision. The shared
 PCM test uses a deterministic private consumer and verifies bounded copying,
@@ -130,22 +151,21 @@ reentrant destruction and resource recreation. Process tests launch a real
 child, verify arguments/environment/directory, drain both full pipes under
 capture limits, and cancel/reap, including POSIX timeout escalation.
 
-The full Linux suites pass: SDL2 15, X11 11, Window Maker 9 and both GEM
-transports 10 each. Motif and OPEN LOOK each pass 11 with
-`ASAN_OPTIONS=detect_leaks=0`; enabling leak detection reports 328 bytes from
-Xt allocation and 2,832 bytes from XView menu/drop-interest allocation at
-shutdown in their existing peer runtime tests. Their behavioral assertions
-pass, but those leak-enabled runs are not clean passes. No leak suppression
-was added to the tests. Windows/Haiku binaries are cross-compiled, not run on
-the target OS. macOS sync to the remote build host was rejected by automatic
-approval; earlier macOS results below do not cover these new services.
+The original 2026-10-06 validation had 15 SDL2, 11 X11, 9 WINGs and 10
+tests per GEM transport; Motif/XView behavior passed with leak detection
+disabled and reported allocations when enabled. That historical result is
+superseded by the current repair results and narrow independently reproduced
+SDK exceptions at the top of this chapter. macOS source sync was subsequently
+authorized and its service suite now runs on leia. Do not infer real-device
+sound or physical-key acceptance from deterministic consumer/model tests.
 
 ## Backend status
 
-SDL2 routes native close and quit requests through the portable
-`app_wnd::request_close()` hook. Its default destroys the resource;
-overrides can keep the event loop alive during asynchronous save prompts.
-Other backends currently retain direct native-close destruction.
+Every backend routes native window-close requests through the portable
+`app_wnd::request_close()` hook. SDL2 also routes application quit through it.
+Its default destroys the resource; overrides can keep the event loop alive
+during asynchronous save prompts. Real native cancellation/acceptance tests
+cover the adapter routes. Explicit destroy() forces resource teardown.
 SDL2 also composes panels, tabs, split views, accordions, and canvases in
 parent-depth order, preserving canvas pixels inside nested containers.
 Viewport changes clear the previous renderer clip so accelerated rendering
@@ -680,3 +700,92 @@ recess, reflection, green power indicator and stable housing under screen
 curvature changes. Its new visual presentation has SDL2 acceptance coverage;
 the preceding native Windows/Haiku evidence refers to the earlier four-pass
 terminal image. These checks establish executor behavior only; the presentation was rejected.
+
+
+### Linux GLSL context handoff (2026-10-07)
+
+The EGL adapter preserves toolkit EGL/GLX context ownership. An accelerated
+SDL/X11 window previously caused `eglMakeCurrent` to return `EGL_BAD_ACCESS`
+while a GLX context remained current. Native now releases and restores that
+context around image passes. `native_glsl_context_tests` covers deterministic
+handoff, repeated activation, error rollback and teardown without a GPU.
+A desktop run on Intel Iris Xe reports active original GLSL shaders with the
+ordinary accelerated SDL renderer; the shader package and stock fonts are
+unchanged. This evidence applies to Linux context coexistence, not other OS
+adapters.
+
+Native's Debug SDL2 Docker build passes all 19 CTests, including the new
+context fixture tests. Its Release build passes the desktop terminal smoke test
+with the normal accelerated SDL renderer. The rebuilt consumer also reports
+active shaders under GDB without graphics environment overrides. Debug desktop
+execution requires the build image's matching sanitizer runtime; the Release
+binary has no sanitizer runtime dependency.
+
+
+### Shader execution status (2026-10-08)
+
+Shader peers start pending; source-less effect installation
+also remains pending. Active requires a successful output.
+The shared mouse/shader regression checks status after
+creation and source-less replacement before its first paint.
+This contract applies independently of fallback pixels and
+prevents consumers from reporting premature shader success.
+
+The SDL2 Docker Release suite passes all nineteen CTests with this status
+correction. The mouse/shader regression also passes in the Docker Debug
+ASan/UBSan build. Infinity's consumer UI gate passes normal, Mesa-override
+and explicit unavailable-EGL runs, including no automatic retry and continued
+input/audio behavior. The Release archive retains SDL2_ttf and stock fonts.
+
+
+### Cross-platform shader handoff review (2026-10-14)
+
+The pending-status, bounded latest delivery and shader pacing implementations
+are common to all backends. Linux toolkits share the EGL/GLX handoff adapter.
+WGL/CGL now reject re-entry, check restoration and restore entered contexts at
+teardown; the shared renderer avoids GL cleanup in a caller context after a
+failed restoration. Incidental exposes do not retry failed continuous effects;
+a source/property update permits retry. At this 2026-10-14 checkpoint Haiku
+had an unavailable GLSL factory and CPU-profile execution; the later OSMesa
+implementation below supersedes that missing adapter. Control kind marks remain unchanged.
+
+`native_desktop_glsl_context_tests` checks real WGL/CGL handoff and teardown;
+unavailable desktop OpenGL is a skip. This test does not establish original
+CRT pipeline acceptance or measured frame performance on those desktops.
+
+Verification for this review: 29 focused CTests pass across SDL2, X11,
+OpenMotif, OPEN LOOK, Window Maker, GEMix and GEMix/gemd. Each runs the
+mouse/shader, terminal-screen, UI-delivery and deterministic EGL/GLX context
+regressions; SDL2 also checks renderer presentation startup. The SDL2 CTest
+uses software rendering and does not verify accelerated refresh behavior.
+Windows and Haiku cross-compilation pass, including the new WGL test
+executable and Haiku's explicit unavailable GLSL adapter. These checks do not
+claim Windows or Haiku desktop execution.
+The macOS Debug build on `leia` passes after selecting the SDK's
+`kCGLOGLPVersion_GL4_Core` profile constant. All four focused CTests pass:
+UI delivery, mouse/shader lifecycle, terminal-screen pixels and real CGL
+context preservation (no skip). The original GLSL CRT terminal smoke also
+exits successfully after active output and its host-shell command complete.
+This is functional execution evidence, not a visual/performance acceptance
+claim or a full macOS suite run.
+
+### Haiku GLSL execution (2026-10-15)
+
+Haiku now loads optional OSMesa dynamically, requests OpenGL 3.3 core and
+composes its software-rendered GLSL output through the existing canvas.
+All 18 deployed regression executables pass without skips under
+GALLIUM_DRIVER=softpipe, including real history/reset/resize/failure pixels,
+transactional live installation and the new native context test. Context tests
+cover re-entry, binding order, viewport preservation, entered/retired teardown
+and rejection of a foreign Mesa context without modifying its binding.
+Foreign GL clients must release their current context before Native activation.
+
+The configured Mesa 22.0.5 llvmpipe crashes inside its vertex JIT. The adapter
+rejects that known combination before drawing, with a diagnostic naming the
+supported softpipe launch setting. The library does not mutate the process
+renderer selection. The Haiku GLSL CTests and F5 profile supply the setting;
+there is no GPU acceleration or passthrough requirement for this software path.
+The original eleven-pass CRT/blur terminal smoke exits zero with active shader
+output and completed shell capture. A visible demo was left open and the user
+confirmed it works. This does not establish exact upstream pixel parity or a
+performance release gate. The remote runtime note records reproducible commands.

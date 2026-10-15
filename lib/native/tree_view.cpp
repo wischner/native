@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "wnd_peer.h"
 #include <native/tree_view.h>
 
 #include <algorithm>
@@ -149,6 +150,12 @@ namespace native
             !contains_item(_selected_item)) {
             _selected_item = invalid_tree_item_id;
         }
+        // A replacement can preserve the selected ID beneath newly
+        // collapsed ancestors. Keep the identity and reveal it silently.
+        if (_selected_item != invalid_tree_item_id)
+            for (auto *parent = find_parent(_selected_item); parent;
+                 parent = find_parent(parent->id))
+                parent->expanded = true;
         _scroll_offset = std::min(_scroll_offset,
                                   maximum_scroll_offset());
         if (_created) {
@@ -343,7 +350,8 @@ namespace native
         if (item->expanded == expanded)
             return *this;
         item->expanded = expanded;
-        if (!expanded && _selected_item != id) {
+        if (!expanded && _selected_item != invalid_tree_item_id &&
+            _selected_item != id) {
             const auto visible = visible_items();
             const bool selection_visible = std::any_of(
                 visible.begin(),
@@ -629,7 +637,8 @@ namespace native
         if (item->expanded == expanded)
             return;
         item->expanded = expanded;
-        if (!expanded && _selected_item != id) {
+        if (!expanded && _selected_item != invalid_tree_item_id &&
+            _selected_item != id) {
             const auto visible = visible_items();
             const bool selection_visible = std::any_of(
                 visible.begin(),
@@ -757,9 +766,10 @@ namespace native
         const tree_view_item &item = get_item(id);
         if (!item.enabled)
             return;
+        const detail::window_guard guard(*this);
         if (!item.children.empty())
             on_native_expansion(id, !item.expanded);
-        on_item_activate.emit(id);
+        if (guard.alive()) on_item_activate.emit(id);
     }
 
     void tree_view::on_native_activate(tree_item_id id) {

@@ -28,7 +28,9 @@ worker.request_stop();
 
 Include `<thread>` and keep the scope and worker in the owning controller.
 Handle worker exceptions as explicit result values. `post_latest()` replaces
-obsolete progress/display snapshots. Use `post()` and handle full/closed for
+obsolete progress/display snapshots. At most one such callback runs per UI
+turn; updates arriving during it wait for the next turn so input can run.
+Use `post()` and handle full/closed for
 completion; never use lossy progress delivery for protocol bytes. Window
 resource destruction automatically invalidates its generation. A new window
 creation needs a new scope; old senders cannot reach the replacement.
@@ -108,3 +110,12 @@ CTest also builds `native_infinity_tests`, `native_audio_queue_tests` and
 `native_process_tests` on every target, plus real SDL dispatch coverage in
 `native_keyboard_runtime_tests`. Consult the feature matrix for verified
 build/runtime status rather than treating a successful compile as a test pass.
+
+
+Vision transfers cancelled workers to an independent joining controller; it
+never waits for a child timeout from a window callback. Workers retain owned
+service state, and each restarted job closes its old delivery endpoint first.
+OPEN LOOK synchronizes wakeup teardown with producers. Haiku serializes posted
+work and native window callbacks under a common UI gate, including multiple
+windows and native looper shutdown. Verification is recorded in
+[ADJUST.md](../../ADJUST.md), A03/A04/A09.

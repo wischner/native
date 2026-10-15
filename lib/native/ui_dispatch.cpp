@@ -53,6 +53,10 @@ namespace
 
     // A bounded turn leaves time for native input and painting.
     void dispatch(const std::shared_ptr<state_type> &state) {
+        // A producer may replace progress during a slow redraw. Deliver
+        // latest at most once per turn so those redraws cannot monopolize
+        // native input/paint dispatch. FIFO work keeps its bounded batch.
+        bool latest_delivered = false;
         for (unsigned index = 0; index < 16; ++index) {
             work_type work;
             native::wnd *receiver = nullptr;
@@ -60,13 +64,14 @@ namespace
                 std::lock_guard guard(state->mutex);
                 if (!live(*state)) { state->pending = false; return; }
                 receiver = state->receiver;
-                if (index == 0 && state->latest) {
+                if (!latest_delivered && state->latest) {
                     work = std::move(state->latest);
+                    latest_delivered = true;
                 } else if (!state->fifo.empty()) {
                     work = std::move(state->fifo.front());
                     state->fifo.pop_front();
                 } else if (state->latest) {
-                    work = std::move(state->latest);
+                    break; // Rearm below for a later native event-loop turn.
                 } else { state->pending = false; return; }
             }
             try {

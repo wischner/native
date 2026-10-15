@@ -6,13 +6,35 @@
 //
 
 #include "wnd_peer.h"
+#include "input_state.h"
 
 #include <utility>
+#include <stdexcept>
 
 #include <native/wnd.h>
 
 namespace native::detail
 {
+    window_guard::window_guard(wnd &owner)
+        : _object(wnd_peer_access::object_lifetime(owner))
+        , _resource(wnd_peer_access::resource_lifetime(owner))
+        , _tracked(owner.get_created()) {}
+
+    bool window_guard::object_alive() const {
+        const auto object = _object.lock();
+        return object && object->alive;
+    }
+    bool window_guard::alive() const {
+        const auto resource = _resource.lock();
+        return object_alive() && (!_tracked || (resource && resource->alive));
+    }
+    std::weak_ptr<wnd_lifetime> wnd_peer_access::object_lifetime(wnd &owner) {
+        return owner._object_lifetime;
+    }
+    std::weak_ptr<wnd_lifetime> wnd_peer_access::resource_lifetime(wnd &owner) {
+        return owner._lifetime;
+    }
+
     // Adapts the established backend hooks to the narrow peer contract.
     class backend_wnd_peer final : public wnd_peer
     {
@@ -79,10 +101,10 @@ namespace native::detail
         std::type_index type,
         void *state,
         void (*destroy)(void *)) {
+        wnd_peer::owned_state acquired(state, destroy);
         if (!owner._peer)
-            return;
-        owner._peer->_states.insert_or_assign(
-            type, wnd_peer::owned_state(state, destroy));
+            throw std::logic_error("Cannot assign state to an uncreated window.");
+        owner._peer->_states.insert_or_assign(type, std::move(acquired));
     }
 
     void *wnd_peer_access::state(

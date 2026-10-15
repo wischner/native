@@ -255,6 +255,8 @@ namespace native
         signal<> on_key_reset;
 
     protected:
+        // Called once after native teardown and peer release; may delete or recreate this object.
+        virtual void on_destroy_completed();
         // Create this window's backend-specific native resource.
         virtual void create_native() = 0;
 
@@ -353,6 +355,7 @@ namespace native
         friend wnd *detail::input_target(wnd &root);
         friend void detail::reset_input(wnd &root);
         std::shared_ptr<detail::wnd_lifetime> _lifetime;
+        std::shared_ptr<detail::wnd_lifetime> _object_lifetime;
         friend class detail::wnd_peer_access;
         friend class detail::mouse_access;
         friend wnd *detail::deepest_at(wnd &root, point position);

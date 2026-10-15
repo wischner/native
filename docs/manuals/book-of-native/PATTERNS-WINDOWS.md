@@ -109,7 +109,16 @@ before a backend is involved.
 The public lifecycle functions are non-virtual and non-`const`. Derived
 controls implement only `create_native()`, `show_native()`, and
 `destroy_native()`; they do not repeat the idempotence or portable event
-policy. If creation throws, the base restores the uncreated state.
+policy. All shared allocations and backend/property hooks belong to the same
+rollback transaction. Failure restores uncreated/invisible state and releases
+any partially acquired backend resource before discarding peer state.
+
+`on_destroy_completed()` is a protected final stage after native teardown and
+peer release. Modal completion uses it, so a subscriber can recreate or delete
+the dialog without a returning old teardown destroying the new peer. Internal
+continuations use both C++ object and native-resource generation guards; a
+recreated resource does not make an old paint/create callback current again.
+
 
 A repeated call while the resource exists does nothing. If a destroyed object
 supports creation again, the next successful creation is a new lifecycle and
@@ -149,9 +158,10 @@ work. The default calls `destroy()`. An override may return with the window
 still created, show an asynchronous dialog, and call `destroy()` after
 acceptance; cancellation leaves the window usable. Explicit destruction
 and destructors remain unconditional resource cleanup.
-SDL2 routes window-manager close and application-quit events through this
-hook and does not terminate its loop while the main window remains alive.
-Other backends currently retain their direct native-close path.
+Desktop backends route window-manager close requests through this hook.
+Explicit `destroy()` remains unconditional cleanup. A deferred or cancelled
+request leaves the native window and application loop alive; accepting it
+later performs normal teardown.
 
 ## Parent and child relationships
 
@@ -583,3 +593,8 @@ Haiku cursor resources belong to each window peer. Cursor changes synchronize
 with the native view before releasing the previous cursor; teardown releases
 these resources while the app-server connection is still valid. Keeping native
 cursors in process-static objects would make their destructors run too late.
+
+
+The callback lifetime and creation rollback regressions are recorded in
+[ADJUST.md](../../ADJUST.md), A01/A18. Source repairs are shared across backends;
+target verification is reported separately in the feature matrix.

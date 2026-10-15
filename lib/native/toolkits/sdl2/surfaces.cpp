@@ -137,7 +137,14 @@ namespace linux::sdl2
             static_cast<int>(content_bounds.d.w),
             static_cast<int>(content_bounds.d.h)};
 
-        for (native::wnd *region : regions) {
+        const native::detail::window_guard root_guard(*owner);
+        std::vector<native::detail::window_guard> guards;
+        guards.reserve(regions.size());
+        for (auto *region : regions) guards.emplace_back(*region);
+        for (std::size_t index = 0; index < regions.size(); ++index) {
+            if (!root_guard.alive()) return;
+            if (!guards[index].alive()) continue;
+            native::wnd *region = regions[index];
             const native::rect bounds = root_bounds(*region);
             if (!bounds.d.w || !bounds.d.h)
                 continue;
@@ -172,6 +179,7 @@ namespace linux::sdl2
             region->on_native_paint(
                 native::wnd_paint_event(invalid, graphics));
 
+            if (!root_guard.alive()) return;
             SDL_RenderSetClipRect(renderer, nullptr);
             SDL_RenderSetViewport(renderer, &content_viewport);
             graphics.set_clip(content_bounds);

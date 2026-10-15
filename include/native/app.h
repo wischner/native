@@ -86,6 +86,7 @@ namespace native
         static char **envp;
 
     private:
+        friend class app_wnd;
         static app_wnd *_main_wnd;
     };
 } // namespace native
