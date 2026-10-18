@@ -299,3 +299,20 @@ GLSL rendering and context ownership, without skips. Per-backend results and ind
 reproduced SDK sanitizer exceptions are recorded in
 [the feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md).
 Passing tests do not certify exhaustive standards compliance.
+
+### Motif/CDE in Xephyr
+
+Select **Linux Motif/CDE, Xephyr** for F5. The configuration builds with
+`docker-openmotif` and runs GDB through the image's `cde-xephyr` helper in
+`wischner/gcc-x86_64-linux-motif:latest`, which supplies CDE, Xephyr,
+headers and libraries. No CDE VM or SSH setup is required.
+For standalone execution:
+
+```bash
+./scripts/linux/toolkit-session-run.sh openmotif ./build/linux-openmotif/src/vision
+```
+
+The helper starts CDE services as container root on Docker's isolated
+network, then runs the command as its CDE user. It forwards the host
+X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
+with LeakSanitizer disabled under GDB.

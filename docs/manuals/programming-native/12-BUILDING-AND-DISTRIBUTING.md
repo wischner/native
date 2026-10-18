@@ -725,3 +725,20 @@ libOSMesa.so.8. Its llvmpipe vertex JIT faults on the configured VM; select
 GALLIUM_DRIVER=softpipe in the launching process for verified execution.
 The Haiku F5 profile and GLSL test environment use this setting. An unsupported
 runtime reports a diagnostic/fallback instead of assuming shader availability.
+
+### Motif/CDE in Xephyr
+
+Select **Linux Motif/CDE, Xephyr** for F5. The configuration builds with
+`docker-openmotif` and runs GDB through the image's `cde-xephyr` helper in
+`wischner/gcc-x86_64-linux-motif:latest`, which supplies CDE, Xephyr,
+headers and libraries. No CDE VM or SSH setup is required.
+For standalone execution:
+
+```bash
+./scripts/linux/toolkit-session-run.sh openmotif ./build/linux-openmotif/src/vision
+```
+
+The helper starts CDE services as container root on Docker's isolated
+network, then runs the command as its CDE user. It forwards the host
+X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
+with LeakSanitizer disabled under GDB.

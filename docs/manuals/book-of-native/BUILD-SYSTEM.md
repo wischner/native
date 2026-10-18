@@ -310,7 +310,7 @@ the VS Code Run and Debug view and press F5.
 | Linux OPEN LOOK | Docker container, Xephyr/olwm session | GDB through Docker |
 | Linux Window Maker | Docker container, Xephyr/Window Maker session | GDB through Docker |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
-| OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
+| Linux Motif/CDE, Xephyr | Docker container, Xephyr/CDE session | GDB through Docker |
 | Windows | Windows 11 VM, interactive autologon desktop | Docker MinGW GDB through SSH to native Win64 GDBserver |
 | Haiku | `Haiku` KVM guest | GDB over SSH |
 | macOS | Remote host `leia` | LLDB over SSH |
@@ -404,27 +404,26 @@ under ptrace. Standalone execution uses:
 ./scripts/linux/toolkit-session-run.sh wmaker ./build/linux-wmaker/src/vision
 ```
 
-### Tribblix CDE preparation
+### Motif/CDE Xephyr session
 
-The OpenMotif configuration expects:
+Select **Linux Motif/CDE, Xephyr** for F5. It builds with
+`docker-openmotif` and starts GDB through `scripts/linux/docker-debug.sh
+--session cde-xephyr` in `wischner/gcc-x86_64-linux-motif:latest`.
+The image supplies CDE, Xephyr, development headers and libraries.
+The executable is `build/linux-openmotif/src/vision`; no CDE VM or SSH
+setup is required. ASan/UBSan remain enabled; LeakSanitizer is disabled
+under GDB. For standalone execution:
 
-- A libvirt domain named `Tribblix-CDE`.
-- The SSH target `tomaz@charlie`, authenticated without an interactive
-  password prompt.
-- CMake, GCC/G++, the 64-bit GDB at `/usr/bin/amd64/gdb`, and rsync installed
-  in the guest.
-- The 64-bit X11, Xt, and Motif development libraries under `/usr/lib/amd64`.
-- A logged-in CDE session using display `:0`.
-- A writable `/export/home/tomaz/Projects/` directory.
+```bash
+./scripts/linux/toolkit-session-run.sh openmotif ./build/linux-openmotif/src/vision
+```
 
-F5 starts the guest if necessary, waits for SSH, synchronizes the source into
-`/export/home/tomaz/Projects/native`, configures a 64-bit
-`build/tribblix-openmotif-debug` tree, builds Vision, and starts remote GDB.
-The target remains a Debug build with GCC warning flags. The task disables the
-project's sanitizer bundle because Tribblix GCC does not support ASan for this
-64-bit configuration.
-The synchronization uses `--delete`; files changed only in the remote project
-copy are not preserved.
+The image's `cde-xephyr` helper starts the full CDE desktop and runs the
+command as its CDE user. Container root starts the required RPC services;
+Docker's default network isolates those services from host RPC ports.
+The runner forwards the host X socket and Xauthority, assigns separate
+nested displays, and uses the helper's headless Xvfb fallback when the
+host display is unavailable.
 
 ### Haiku preparation
 

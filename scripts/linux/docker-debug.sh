@@ -67,7 +67,6 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/../.." && pwd)
 DOCKER_ARGS=(
     run --rm -i
-    --network host
     --cap-add SYS_PTRACE
     --security-opt seccomp=unconfined
     -v "${WORKSPACE_DIR}:${WORKSPACE_DIR}"
@@ -92,6 +91,12 @@ fi
 # defaults. The parent display is only used when the host DISPLAY is
 # absent or cannot be reached from the container.
 case "${SESSION_COMMAND[0]:-}" in
+cde-xephyr)
+    DOCKER_ARGS+=(
+        -e "CDE_DISPLAY=$(find_free_display 100 199)"
+        -e "CDE_PARENT_DISPLAY=$(find_free_display 200 299)"
+    )
+    ;;
 openlook-xephyr)
     DOCKER_ARGS+=(
         -e "OPENLOOK_DISPLAY=$(find_free_display 100 199)"
@@ -122,6 +127,11 @@ window-maker-xephyr)
     fi
     ;;
 esac
+
+# CDE owns RPC services; keep them isolated from host RPC ports.
+if [[ "${SESSION_COMMAND[0]:-}" != cde-xephyr ]]; then
+    DOCKER_ARGS+=(--network host)
+fi
 
 exec docker "${DOCKER_ARGS[@]}" "${IMAGE}" \
     "${SESSION_COMMAND[@]}" "${DEBUGGER_COMMAND[@]}"

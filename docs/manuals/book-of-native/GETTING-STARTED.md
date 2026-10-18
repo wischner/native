@@ -153,12 +153,11 @@ the top-level CMake project.
 
 Every backend builds the same `vision` application from `src/`.
 
-Run a native window-system, SDL2, or OpenMotif build directly:
+Run a native window-system or SDL2 build directly:
 
 ```bash
 ./build/linux-x11/src/vision
 ./build/linux-sdl2/src/vision
-./build/linux-openmotif/src/vision
 ```
 
 OPEN LOOK and Window Maker need the window manager that belongs to them:
@@ -276,3 +275,20 @@ Amiga image and writes `threads.log` and `filesystem.log` below
 created. This is also available through the VS Code **Check Amiga C++20 Runtime
 (Docker)** task. See [the build chapter](BUILD-SYSTEM.md) for details and
 [ADJUST.md](../../ADJUST.md) for the measured blockers.
+
+### Motif/CDE in Xephyr
+
+Select **Linux Motif/CDE, Xephyr** for F5. The configuration builds with
+`docker-openmotif` and runs GDB through the image's `cde-xephyr` helper in
+`wischner/gcc-x86_64-linux-motif:latest`, which supplies CDE, Xephyr,
+headers and libraries. No CDE VM or SSH setup is required.
+For standalone execution:
+
+```bash
+./scripts/linux/toolkit-session-run.sh openmotif ./build/linux-openmotif/src/vision
+```
+
+The helper starts CDE services as container root on Docker's isolated
+network, then runs the command as its CDE user. It forwards the host
+X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
+with LeakSanitizer disabled under GDB.

@@ -140,41 +140,6 @@
             "problemMatcher": []
         },
         {
-            "label": "Start Debug Target (Tribblix CDE)",
-            "type": "process",
-            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
-            "args": ["Tribblix-CDE", "tomaz@charlie"],
-            "problemMatcher": []
-        },
-        {
-            "label": "Sync Source (OpenMotif Tribblix CDE)",
-            "type": "shell",
-            "command": "rsync",
-            "args": [
-                "-az",
-                "--delete",
-                "--exclude",
-                ".git",
-                "--exclude",
-                "build",
-                "${workspaceFolder}/",
-                "tomaz@charlie:~/Projects/${workspaceFolderBasename}/"
-            ],
-            "problemMatcher": [],
-            "dependsOn": "Start Debug Target (Tribblix CDE)"
-        },
-        {
-            "label": "Build Vision Debug (OpenMotif Tribblix CDE)",
-            "type": "process",
-            "command": "ssh",
-            "args": [
-                "tomaz@charlie",
-                "cd $HOME/Projects/${workspaceFolderBasename} && PKG_CONFIG_PATH=/usr/lib/amd64/pkgconfig cmake -S . -B build/tribblix-openmotif-debug -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=MOTIF -DNATIVE_ENABLE_DEVELOPER_CHECKS=OFF -DCMAKE_CXX_FLAGS='-m64 -Wall -Wextra -pedantic' -DCMAKE_EXE_LINKER_FLAGS=-m64 -DCMAKE_LIBRARY_PATH=/usr/lib/amd64 && cmake --build build/tribblix-openmotif-debug"
-            ],
-            "problemMatcher": "$gcc",
-            "dependsOn": "Sync Source (OpenMotif Tribblix CDE)"
-        },
-        {
             "label": "Start Debug Target (Haiku)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",

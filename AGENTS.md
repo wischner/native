@@ -213,6 +213,12 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ### OpenMotif backend
 
+- F5 uses **Linux Motif/CDE, Xephyr**, `docker-openmotif`, and
+  `wischner/gcc-x86_64-linux-motif:latest` with `cde-xephyr`.
+  Standalone runs use `scripts/linux/toolkit-session-run.sh openmotif`.
+  CDE services run as container root on Docker’s isolated network;
+  no Tribblix CDE VM is required. Keep GDB/MI stdout clean.
+
 - Files under `lib/native/toolkits/openmotif/` are for Motif/Xt integration only.
 - Keep Motif and Xt types out of `include/native.h`.
 - Use widget or resource colors when available, so Motif environments such as CDE can provide the default look.

@@ -142,26 +142,31 @@
             "preLaunchTask": "CMake Build Debug (Docker GEMix gemd)"
         },
         {
-            "name": "Debug Vision (OpenMotif, Tribblix CDE VM)",
+            "name": "Linux Motif/CDE, Xephyr",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/export/home/tomaz/Projects/${workspaceFolderBasename}/build/tribblix-openmotif-debug/src/vision",
-            "cwd": "/export/home/tomaz/Projects/${workspaceFolderBasename}",
+            "program": "${workspaceFolder}/build/linux-openmotif/src/vision",
+            "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
             "environment": [
-                {"name": "DISPLAY", "value": ":0"}
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0"
+                }
             ],
-            "sourceFileMap": {
-                "/export/home/tomaz/Projects/native": "${workspaceFolder}"
-            },
             "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": ["-T", "tomaz@charlie"],
-                "debuggerPath": "/usr/bin/amd64/gdb"
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
+                "pipeArgs": [
+                    "--session",
+                    "cde-xephyr",
+                    "wischner/gcc-x86_64-linux-motif:latest"
+                ],
+                "debuggerPath": "/usr/bin/gdb"
             },
-            "preLaunchTask": "Build Vision Debug (OpenMotif Tribblix CDE)"
+            "preLaunchTask": "CMake Build Debug (Docker OpenMotif)"
         },
         {
             "name": "Debug Vision (Windows 11 VM)",
