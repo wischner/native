@@ -163,11 +163,12 @@ Current exercised runtime paths are:
 
 - Linux X11 in monochrome TWM inside Xephyr. Select **Debug Vision (Linux X11,
   Xephyr/TWM mono)** for F5, or run `bash scripts/linux/x11/run-twm.sh` after
-  the Docker build. Host tools and session details are in
+  the Docker build. The session runs entirely from the X11 image and follows
+  the desktop scale; details are in
   [Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session).
 - Linux SDL2, with nine CTests covering nested canvas composition, real
   SDL pointer capture, close-request policy, and the shared UI contracts.
-- Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+- Linux OPEN LOOK/XView in Docker with Xephyr and olwm
 - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
 - Linux GEMix through Docker with the local rasta viewer, using either
   direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration.

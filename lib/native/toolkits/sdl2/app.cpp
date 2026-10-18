@@ -17,6 +17,7 @@
 #include "globals.h"
 #include "../../mouse_state.h"
 #include "../../input_state.h"
+#include "scale.h"
 #include "window_position.h"
 
 namespace native
@@ -45,14 +46,17 @@ namespace native
         int x = 0;
         int y = 0;
         SDL_GetWindowPosition(window, &x, &y);
-        const point current(x, y);
+        const point current(linux::sdl2::to_logical(x),
+                            linux::sdl2::to_logical(y));
         const point position =
             linux::sdl2::constrain_window_position(
                 window, current, owner->get_dimensions());
         if (position.x == current.x && position.y == current.y)
             return;
 
-        SDL_SetWindowPosition(window, position.x, position.y);
+        SDL_SetWindowPosition(window,
+                              linux::sdl2::to_sdl(position.x),
+                              linux::sdl2::to_sdl(position.y));
         owner->on_native_move(position);
     }
 
@@ -108,9 +112,10 @@ namespace native
         if (cache && !cache->invalidated)
             return;
 
-        int w = 0;
-        int h = 0;
-        SDL_GetWindowSize(sdl_win, &w, &h);
+        const size window_size =
+            linux::sdl2::logical_window_size(sdl_win);
+        const int w = window_size.w;
+        const int h = window_size.h;
         const int content_y = content_origin_y(wnd);
         const int content_height = std::max(1, h - content_y);
         rect content_bounds(
@@ -123,6 +128,9 @@ namespace native
         if (!cache || !cache->renderer)
             return;
 
+        // The scale must precede the viewport: SDL converts viewport
+        // and clip rectangles to output pixels when they are set.
+        linux::sdl2::apply_render_scale(sdl_win, cache->renderer);
         SDL_Rect viewport = {0, content_y, w, content_height};
         SDL_RenderSetViewport(cache->renderer, &viewport);
         g.set_clip(content_bounds);
@@ -192,7 +200,7 @@ namespace native
 
         while (running) {
             linux::sdl2::x11_clipboard::service();
-            while (SDL_PollEvent(&event)) {
+            while (linux::sdl2::poll_event(event)) {
                 // Handle quit before window lookup — it has no
                 // windowID.
                 if (event.type == SDL_QUIT) {
@@ -314,14 +322,10 @@ namespace native
                             auto *sm =
                                 linux::sdl2::menu_bindings
                                     .object_from_handle(aw->menu.id());
-                            int win_w = 0;
-                            int win_h = 0;
-                            SDL_Window *menu_sdl_win =
-                                linux::sdl2::wnd_bindings
-                                    .handle_from_object(wnd);
-                            if (menu_sdl_win)
-                                SDL_GetWindowSize(
-                                    menu_sdl_win, &win_w, &win_h);
+                            const int win_w =
+                                linux::sdl2::logical_window_size(
+                                    linux::sdl2::wnd_bindings
+                                        .handle_from_object(wnd)).w;
                             if (sm && linux::sdl2::handle_menu_motion(
                                           sm,
                                           event.motion.x,
@@ -356,12 +360,9 @@ namespace native
                     if (linux::sdl2::handle_panel_motion(
                             wnd, event.motion.x, logical_y))
                         break;
-                    int screen_x = 0;
-                    int screen_y = 0;
-                    SDL_GetGlobalMouseState(&screen_x, &screen_y);
                     wnd->on_native_mouse_move(
                         point(event.motion.x, logical_y),
-                        point(screen_x, screen_y));
+                        linux::sdl2::logical_global_mouse_state());
                     break;
                 }
 
@@ -451,14 +452,10 @@ namespace native
                             auto *menu = linux::sdl2::menu_bindings
                                              .object_from_handle(
                                                  aw->menu.id());
-                            int width = 0;
-                            int height = 0;
-                            SDL_Window *native_window =
-                                linux::sdl2::wnd_bindings
-                                    .handle_from_object(wnd);
-                            if (native_window)
-                                SDL_GetWindowSize(
-                                    native_window, &width, &height);
+                            const int width =
+                                linux::sdl2::logical_window_size(
+                                    linux::sdl2::wnd_bindings
+                                        .handle_from_object(wnd)).w;
                             handled = menu &&
                                 linux::sdl2::handle_menu_click(
                                     menu,
@@ -634,14 +631,10 @@ namespace native
                                 auto *sm = linux::sdl2::menu_bindings
                                                .object_from_handle(
                                                    aw->menu.id());
-                                int btn_win_w = 0, btn_win_h = 0;
-                                SDL_Window *btn_sdl_win =
-                                    linux::sdl2::wnd_bindings
-                                        .handle_from_object(wnd);
-                                if (btn_sdl_win)
-                                    SDL_GetWindowSize(btn_sdl_win,
-                                                      &btn_win_w,
-                                                      &btn_win_h);
+                                const int btn_win_w =
+                                    linux::sdl2::logical_window_size(
+                                        linux::sdl2::wnd_bindings
+                                            .handle_from_object(wnd)).w;
                                 if (sm &&
                                     linux::sdl2::handle_menu_click(
                                         sm,
@@ -786,10 +779,11 @@ namespace native
                                       ? event.wheel.x
                                       : event.wheel.y;
 
-                    int pointer_x = 0;
-                    int pointer_y = 0;
-                    SDL_GetMouseState(&pointer_x, &pointer_y);
-                    pointer_y -= content_origin_y(wnd);
+                    const point pointer =
+                        linux::sdl2::logical_mouse_state();
+                    const int pointer_x = pointer.x;
+                    const int pointer_y =
+                        pointer.y - content_origin_y(wnd);
                     if (dir == wheel_direction::vertical &&
                         linux::sdl2::handle_collection_wheel(
                             wnd,
@@ -865,12 +859,12 @@ namespace native
                         SDL_ShowCursor(SDL_ENABLE);
                         break;
                     case SDL_WINDOWEVENT_ENTER: {
-                        int x = 0;
-                        int y = 0;
-                        SDL_GetMouseState(&x, &y);
+                        const point pointer =
+                            linux::sdl2::logical_mouse_state();
                         linux::sdl2::update_mouse_cursor(
                             wnd,
-                            point(x, y - content_origin_y(wnd)));
+                            point(pointer.x,
+                                  pointer.y - content_origin_y(wnd)));
                         break;
                     }
 

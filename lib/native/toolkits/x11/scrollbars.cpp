@@ -16,6 +16,7 @@
 #include <X11/Xaw/Scrollbar.h>
 
 #include "globals.h"
+#include "scale.h"
 #include "../../table_render.h"
 
 namespace
@@ -95,19 +96,34 @@ namespace
             if (axis.widget && XtIsManaged(axis.widget)) XtUnmanageChild(axis.widget);
             return;
         }
+        // Borders are strokes: one device pixel at every scale.
+        const int border = 1;
         if (!axis.widget) {
             axis.widget = XtVaCreateWidget(axis.horizontal ? "horizontalScrollbar" : "verticalScrollbar",
                 scrollbarWidgetClass, host, XtNorientation,
                 axis.horizontal ? XtorientHorizontal : XtorientVertical,
-                XtNborderWidth, 1, XtNborderColor, BlackPixelOfScreen(XtScreen(host)), nullptr);
+                XtNborderWidth, border, XtNborderColor, BlackPixelOfScreen(XtScreen(host)), nullptr);
+            // Xaw's 50% thumb stipple, each dot one logical pixel.
+            if (linux::x11::coordinate_scale() != 1.0) {
+                // One shared server bitmap; the scale never changes.
+                static constexpr char gray_bits[] = {0x01, 0x02};
+                static const Pixmap thumb = linux::x11::create_device_bitmap(
+                    XtDisplay(host), RootWindowOfScreen(XtScreen(host)),
+                    gray_bits, 2, 2);
+                if (thumb != None)
+                    XtVaSetValues(axis.widget, XtNthumb, thumb, nullptr);
+            }
             XtAddCallback(axis.widget, XtNjumpProc, jump, &axis);
             XtAddCallback(axis.widget, XtNscrollProc, step, &axis);
             XtAddEventHandler(axis.widget, ButtonPressMask, False, wheel, &axis);
         }
-        axis.length = std::max(1, int(axis.horizontal ? track.d.w : track.d.h) - 2);
+        // Xaw reports scroll distances in device pixels.
+        const rect device = linux::x11::rect_to_device(track);
+        axis.length = std::max(1, int(axis.horizontal ? device.d.w : device.d.h) - 2 * border);
         XtVaSetValues(axis.widget,
-            XtNhorizDistance, track.x1(), XtNvertDistance, track.y1(),
-            XtNwidth, track.d.w - 2, XtNheight, track.d.h - 2, nullptr);
+            XtNhorizDistance, device.x1(), XtNvertDistance, device.y1(),
+            XtNwidth, linux::x11::widget_dimension(int(device.d.w) - 2 * border),
+            XtNheight, linux::x11::widget_dimension(int(device.d.h) - 2 * border), nullptr);
         const float shown = total ? std::min(1.0L, static_cast<long double>(page) / total) : 1;
         const float top = total ? static_cast<long double>(axis.position) / total : 0;
         XawScrollbarSetThumb(axis.widget, top, shown);

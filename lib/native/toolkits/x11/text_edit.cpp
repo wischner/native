@@ -22,6 +22,7 @@
 
 #include "../../text_util.h"
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -220,13 +221,13 @@ namespace native
             asciiTextWidgetClass,
             parent_widget(self),
             XtNhorizDistance,
-            _bounds.p.x,
+            linux::x11::to_device(_bounds.p.x),
             XtNvertDistance,
-            _bounds.p.y,
+            linux::x11::to_device(_bounds.p.y),
             XtNwidth,
-            linux::x11::widget_dimension(_bounds.d.w),
+            linux::x11::device_dimension(_bounds.d.w),
             XtNheight,
-            linux::x11::widget_dimension(_bounds.d.h),
+            linux::x11::device_dimension(_bounds.d.h),
             XtNstring,
             _text.c_str(),
             XtNeditType,
@@ -252,8 +253,10 @@ namespace native
                 "X11/Athena: Failed to create text_edit.");
         if (get_border_sides() == border_sides::none)
             XtVaSetValues(widget, XtNborderWidth, 0,
-                XtNtopMargin, 1, XtNbottomMargin, 1,
-                XtNleftMargin, 2, XtNrightMargin, 2, nullptr);
+                XtNtopMargin, linux::x11::to_device(1),
+                XtNbottomMargin, linux::x11::to_device(1),
+                XtNleftMargin, linux::x11::to_device(2),
+                XtNrightMargin, linux::x11::to_device(2), nullptr);
 
         auto *binding = new linux::x11::xaw_text_edit;
         binding->widget = widget;

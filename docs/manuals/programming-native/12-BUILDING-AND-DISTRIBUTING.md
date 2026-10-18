@@ -196,7 +196,7 @@ a monochrome TWM desktop inside Xephyr. The launcher picks a free nested
 display, loads display-local resources and cleans up that session when GDB
 ends. This is a development setup, not a requirement for distributed X11
 applications. See [Build System](../book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session)
-for the host tools and standalone launch command.
+for the scaled session and standalone launch command.
 
 ### Distribute
 
@@ -333,9 +333,13 @@ paths through those modules, and supplies GCC 11 with C++20 support. It is the
 authoritative build environment when a host distribution has no maintained
 XView packages.
 
-The maintained interactive debug path performs a native 32-bit build in the
-`Tribblix-OpenLook` VM and runs it on the guest's logged-in OPEN LOOK desktop.
-The Docker target remains the reproducible build and isolated Xephyr smoke path.
+The maintained F5 profile builds with `docker-openlook` and runs GDB in the
+same image through `openlook-xephyr`, with Xephyr and olwm supplied by the
+image. Run without a debugger using:
+
+```bash
+./scripts/linux/toolkit-session-run.sh openlook ./build/linux-openlook/src/vision
+```
 
 ### Link libraries
 

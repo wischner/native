@@ -3,6 +3,7 @@ set(LINUX_PLATFORM_SOURCE_DIR
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/scale.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/window_position.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp

@@ -21,6 +21,7 @@
 #include <native/menu.h>
 
 #include "globals.h"
+#include "scale.h"
 #include "../../menu_shortcut.h"
 
 namespace

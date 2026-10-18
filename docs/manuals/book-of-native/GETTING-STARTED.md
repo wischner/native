@@ -9,7 +9,7 @@ verified.
   - Linux X11
   - Linux SDL2
   - Linux OpenMotif under Xvfb in its Docker image
-  - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+  - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Windows build through MinGW, run natively in the Windows 11 VM
   - Haiku cross-build, copied to a Haiku machine and run over SSH
@@ -125,8 +125,8 @@ Note:
 - `docker-openmotif` is part of the current build-verified workflow.
   It produces OpenMotif-linked Linux binaries in a separate build tree.
 - `docker-openlook` produces the reproducible XView-linked binary in
-  `build/linux-openlook/`. The maintained graphical debug/runtime path builds
-  the same backend natively in the `Tribblix-OpenLook` guest.
+  `build/linux-openlook/`. The maintained graphical debug/runtime path runs
+  that binary inside the same image using Xephyr and olwm.
 - `docker-wmaker` produces the reproducible WINGs-linked binary in
   `build/linux-wmaker/`. The maintained graphical debug/runtime path builds
   the same backend natively in the `Bookworm-WindowMaker` guest.
@@ -164,21 +164,20 @@ Run a native window-system, SDL2, or OpenMotif build directly:
 OPEN LOOK and Window Maker need the window manager that belongs to them:
 `olwm` owns OPEN LOOK's frames and resize behaviour, and Window Maker owns its
 own. Started on an ordinary desktop they come up under whatever window manager
-is already running, and neither behaves as its toolkit intends. The maintained
-VS Code launch entries start their libvirt guests, synchronize the source,
-build it natively, and debug Vision on the logged-in desktop over SSH.
+is already running, and neither behaves as its toolkit intends. The OPEN LOOK F5 profile builds with `docker-openlook`, then starts GDB
+inside the image's `openlook-xephyr` session. Window Maker's F5 profile
+continues to use its Bookworm guest.
 
-The Docker build artifacts can still be exercised locally through the isolated
-smoke-session script, which raises Xephyr and starts the matching window
-manager inside it:
+Run the Docker-built programs with their image-provided window managers:
 
 ```bash
 ./scripts/linux/toolkit-session-run.sh openlook ./build/linux-openlook/src/vision
 ./scripts/linux/toolkit-session-run.sh wmaker ./build/linux-wmaker/src/vision
 ```
 
-These nested sessions are useful for build-image checks but are separate from
-the VM-native F5 workflow documented in [Build System](BUILD-SYSTEM.md).
+The OPEN LOOK session uses the host display as Xephyr's parent, forwards
+Xauthority, and runs olwm inside the nested display. Without a reachable host
+display, the image supplies a headless Xvfb parent.
 
 The Windows cross-build produces
 `build/windows-mingw-w64/src/vision.exe`. MinGW runtime DLLs must be beside
@@ -194,12 +193,13 @@ The X11 F5 profile, **Debug Vision (Linux X11, Xephyr/TWM mono)**, builds
 through Docker and starts GDB inside a dedicated monochrome Xephyr/TWM
 session. It chooses a free nested display and removes its session when
 debugging ends; other backend profiles keep their existing environments.
-See [Build System](BUILD-SYSTEM.md#monochrome-x11-runtime-session) for host tools
-and the equivalent standalone launcher.
+See [Build System](BUILD-SYSTEM.md#monochrome-x11-runtime-session) for the
+session's image-provided tools, desktop scaling and the equivalent standalone
+launcher.
 
 Status:
 
-- Linux X11/SDL2, OPEN LOOK in Tribblix, Window Maker in Bookworm,
+- Linux X11/SDL2, OPEN LOOK in Docker, Window Maker in Bookworm,
   Windows, and Haiku SSH runs are currently exercised.
 - Linux OpenMotif lifecycle checks run in the Motif Docker image under
   Xvfb.

@@ -170,6 +170,41 @@ namespace
 
 namespace linux::sdl2
 {
+#ifdef HAVE_SDL2_TTF
+    bool draw_ttf_text(SDL_Renderer *renderer,
+                       sdl2_font &font,
+                       const std::string &text,
+                       int x,
+                       int y,
+                       SDL_Color color) {
+        float scale_x = 1.0F;
+        float scale_y = 1.0F;
+        SDL_RenderGetScale(renderer, &scale_x, &scale_y);
+        const device_face face = device_font(font, scale_x);
+        if (!face.font)
+            return false;
+
+        SDL_Surface *surface =
+            TTF_RenderUTF8_Blended(face.font, text.c_str(), color);
+        if (!surface)
+            return false;
+        SDL_Texture *texture =
+            SDL_CreateTextureFromSurface(renderer, surface);
+        if (texture) {
+            // Device pixels map one to one onto the scaled output.
+            const SDL_FRect destination = {
+                static_cast<float>(x),
+                static_cast<float>(y),
+                surface->w / face.scale,
+                surface->h / face.scale};
+            SDL_RenderCopyF(renderer, texture, nullptr, &destination);
+            SDL_DestroyTexture(texture);
+        }
+        SDL_FreeSurface(surface);
+        return true;
+    }
+#endif
+
     int text_width(const std::string &text) {
 #ifdef HAVE_SDL2_TTF
         auto *font_handle =
@@ -209,23 +244,9 @@ namespace linux::sdl2
         auto *font_handle =
             linux::sdl2::font_bindings.object_from_handle(
                 native::font_t::stock(native::font_role::control).id());
-        if (font_handle && font_handle->ttf_font) {
-            SDL_Surface *surface = TTF_RenderUTF8_Blended(
-                font_handle->ttf_font, text.c_str(), color);
-            if (surface) {
-                SDL_Texture *texture =
-                    SDL_CreateTextureFromSurface(renderer, surface);
-                if (texture) {
-                    SDL_Rect destination = {
-                        x, y, surface->w, surface->h};
-                    SDL_RenderCopy(
-                        renderer, texture, nullptr, &destination);
-                    SDL_DestroyTexture(texture);
-                }
-                SDL_FreeSurface(surface);
-                return;
-            }
-        }
+        if (font_handle && font_handle->ttf_font &&
+            draw_ttf_text(renderer, *font_handle, text, x, y, color))
+            return;
 #endif
         draw_fallback_text(renderer, text, x, y, color);
     }

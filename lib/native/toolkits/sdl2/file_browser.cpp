@@ -14,6 +14,7 @@
 #include <native/font.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace linux::sdl2
 {
@@ -288,7 +289,7 @@ namespace linux::sdl2
         bool repost_quit = false;
         while (_window.get_created()) {
             SDL_Event event{};
-            while (_window.get_created() && SDL_PollEvent(&event)) {
+            while (_window.get_created() && poll_event(event)) {
                 if (event.type == SDL_QUIT) {
                     cancel();
                     repost_quit = true;
@@ -413,11 +414,9 @@ namespace linux::sdl2
             break;
         }
         case SDL_MOUSEWHEEL: {
-            int x = 0;
-            int y = 0;
-            SDL_GetMouseState(&x, &y);
+            const native::point pointer = logical_mouse_state();
             handle_collection_wheel(
-                &_window, x, y, event.wheel.y * 24);
+                &_window, pointer.x, pointer.y, event.wheel.y * 24);
             break;
         }
         case SDL_WINDOWEVENT:

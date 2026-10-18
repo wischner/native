@@ -17,6 +17,7 @@
 #include <native/panel.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -35,14 +36,13 @@ namespace
         case ConfigureNotify: {
             Dimension width = 1, height = 1;
             XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height, nullptr);
-            owner->on_native_resize(native::size(
-                static_cast<native::dim>(width),
-                static_cast<native::dim>(height)));
+            owner->on_native_resize(
+                linux::x11::size_to_logical(width, height));
             break;
         }
         case MotionNotify:
-            owner->on_native_mouse_move(
-                native::point(event->xmotion.x, event->xmotion.y));
+            owner->on_native_mouse_move(linux::x11::pointer_to_logical(
+                event->xmotion.x, event->xmotion.y));
             break;
         case ButtonPress:
         case ButtonRelease: {
@@ -50,8 +50,8 @@ namespace
                 event->xbutton.button == Button5) {
                 owner->on_native_mouse_wheel(
                     native::mouse_wheel_event(
-                        native::point(event->xbutton.x,
-                                      event->xbutton.y),
+                        linux::x11::pointer_to_logical(event->xbutton.x,
+                                                       event->xbutton.y),
                         static_cast<native::coord>(
                             event->xbutton.button == Button4 ? 24 : -24),
                         native::wheel_direction::vertical));
@@ -64,7 +64,8 @@ namespace
                 event->type == ButtonPress
                     ? native::mouse_action::press
                     : native::mouse_action::release,
-                native::point(event->xbutton.x, event->xbutton.y)));
+                linux::x11::pointer_to_logical(event->xbutton.x,
+                                               event->xbutton.y)));
             break;
         }
         }
@@ -94,13 +95,13 @@ namespace native
             linux::x11::layout_host_class(),
             parent_widget,
             XtNhorizDistance,
-            _bounds.p.x,
+            linux::x11::to_device(_bounds.p.x),
             XtNvertDistance,
-            _bounds.p.y,
+            linux::x11::to_device(_bounds.p.y),
             XtNwidth,
-            linux::x11::widget_dimension(_bounds.d.w),
+            linux::x11::device_dimension(_bounds.d.w),
             XtNheight,
-            linux::x11::widget_dimension(_bounds.d.h),
+            linux::x11::device_dimension(_bounds.d.h),
             XtNborderWidth,
             0,
             // A structural host follows the geometry its layout gives

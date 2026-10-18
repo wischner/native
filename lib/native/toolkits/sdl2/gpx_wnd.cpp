@@ -17,6 +17,7 @@
 #include <native.h>
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "scale.h"
 
 static void apply_sdl_state(SDL_Renderer *renderer,
                             native::gpx_wnd *self,
@@ -70,6 +71,7 @@ namespace native
             if (!cache->renderer && !software)
                 cache->renderer =
                     SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);
+            linux::sdl2::apply_render_scale(win, cache->renderer);
             linux::sdl2::wnd_gpx_bindings.register_pair(_wnd, cache);
         }
         const size dimensions = window->get_dimensions();
@@ -178,22 +180,9 @@ namespace native
         if (fh && fh->ttf_font) {
             SDL_Color color = {
                 get_ink().r, get_ink().g, get_ink().b, get_ink().a};
-            SDL_Surface *surface =
-                TTF_RenderUTF8_Blended(
-                    fh->ttf_font, text.c_str(), color);
-            if (surface) {
-                SDL_Texture *texture =
-                    SDL_CreateTextureFromSurface(renderer, surface);
-                if (texture) {
-                    SDL_Rect dst_rect = {
-                        p.x, p.y, surface->w, surface->h};
-                    SDL_RenderCopy(
-                        renderer, texture, nullptr, &dst_rect);
-                    SDL_DestroyTexture(texture);
-                }
-                SDL_FreeSurface(surface);
+            if (linux::sdl2::draw_ttf_text(
+                    renderer, *fh, text, p.x, p.y, color))
                 return *this;
-            }
         }
 #endif
         SDL_Color fallback = {

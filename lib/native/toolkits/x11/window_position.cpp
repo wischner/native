@@ -20,6 +20,8 @@
 
 #include <native/screen.h>
 
+#include "scale.h"
+
 namespace
 {
     constexpr int fallback_title_height = 48;
@@ -127,10 +129,15 @@ namespace
             actual_format == 32 && item_count >= 4) {
             auto *values =
                 reinterpret_cast<unsigned long *>(property);
-            extents.left = static_cast<int>(values[0]);
-            extents.right = static_cast<int>(values[1]);
-            extents.top = static_cast<int>(values[2]);
-            extents.bottom = static_cast<int>(values[3]);
+            // Window managers publish device pixels.
+            extents.left = linux::x11::to_logical(
+                static_cast<int>(values[0]));
+            extents.right = linux::x11::to_logical(
+                static_cast<int>(values[1]));
+            extents.top = linux::x11::to_logical(
+                static_cast<int>(values[2]));
+            extents.bottom = linux::x11::to_logical(
+                static_cast<int>(values[3]));
         }
         if (property)
             XFree(property);
@@ -140,11 +147,11 @@ namespace
     // Fall back to the X screen when XRandR detection is unavailable.
     native::rect root_work_area(Widget shell) {
         Screen *x_screen = XtScreen(shell);
-        return native::rect(
+        return linux::x11::rect_to_logical(native::rect(
             0,
             0,
             static_cast<native::dim>(WidthOfScreen(x_screen)),
-            static_cast<native::dim>(HeightOfScreen(x_screen)));
+            static_cast<native::dim>(HeightOfScreen(x_screen))));
     }
 } // namespace
 

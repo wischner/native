@@ -12,6 +12,7 @@
 #include <native.h>
 #include <native/check.h>
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -60,13 +61,13 @@ namespace native
                              toggleWidgetClass,
                              check_parent(this),
                              XtNhorizDistance,
-                             _bounds.p.x,
+                             linux::x11::to_device(_bounds.p.x),
                              XtNvertDistance,
-                             _bounds.p.y,
+                             linux::x11::to_device(_bounds.p.y),
                              XtNwidth,
-                             linux::x11::widget_dimension(_bounds.d.w),
+                             linux::x11::device_dimension(_bounds.d.w),
                              XtNheight,
-                             linux::x11::widget_dimension(_bounds.d.h),
+                             linux::x11::device_dimension(_bounds.d.h),
                              XtNlabel,
                              _text.c_str(),
                              XtNresize,

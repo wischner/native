@@ -19,6 +19,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "scale.h"
 #include "../x_keyboard.h"
 #include "window_position.h"
 
@@ -152,10 +153,9 @@ namespace
                 height = static_cast<int>(widget_height);
             }
 
-            native::rect invalid(0,
-                                 0,
-                                 static_cast<native::dim>(width),
-                                 static_cast<native::dim>(height));
+            const native::size logical =
+                linux::x11::size_to_logical(width, height);
+            native::rect invalid(0, 0, logical.w, logical.h);
             g.set_clip(invalid);
             g.clear(g.get_paper());
 
@@ -194,9 +194,8 @@ namespace
                           nullptr);
             ensure_backbuffer(owner, widget, width, height);
 
-            native::size dimensions(static_cast<native::dim>(width),
-                                    static_cast<native::dim>(height));
-            owner->on_native_resize(dimensions);
+            owner->on_native_resize(
+                linux::x11::size_to_logical(width, height));
             owner->invalidate();
             break;
         }
@@ -205,9 +204,10 @@ namespace
             if (!owner->get_input_enabled())
                 return;
             owner->on_native_mouse_move(
-                native::point(event->xmotion.x, event->xmotion.y),
-                native::point(event->xmotion.x_root,
-                              event->xmotion.y_root));
+                linux::x11::pointer_to_logical(event->xmotion.x,
+                                               event->xmotion.y),
+                linux::x11::pointer_to_logical(event->xmotion.x_root,
+                                               event->xmotion.y_root));
             break;
 
         case ButtonPress:
@@ -217,7 +217,8 @@ namespace
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
                 owner->on_native_mouse_wheel(native::mouse_wheel_event(
-                    native::point(event->xbutton.x, event->xbutton.y),
+                    linux::x11::pointer_to_logical(event->xbutton.x,
+                                                   event->xbutton.y),
                     static_cast<native::coord>(
                         event->xbutton.button == Button4 ? 1 : -1),
                     native::wheel_direction::vertical));
@@ -234,7 +235,8 @@ namespace
                 event->type == ButtonPress
                     ? native::mouse_action::press
                     : native::mouse_action::release,
-                native::point(event->xbutton.x, event->xbutton.y)));
+                linux::x11::pointer_to_logical(event->xbutton.x,
+                                               event->xbutton.y)));
             break;
         }
 
@@ -254,9 +256,9 @@ namespace
 
         XtVaSetValues(shell,
                       XtNx,
-                      position.x,
+                      linux::x11::to_device(position.x),
                       XtNy,
-                      position.y,
+                      linux::x11::to_device(position.y),
                       nullptr);
         owner->on_native_move(position);
     }
@@ -276,7 +278,9 @@ namespace
                 XtTranslateCoords(
                     widget, 0, 0, &root_x, &root_y);
             }
-            native::point position(root_x, root_y);
+            const native::point position(
+                static_cast<native::coord>(linux::x11::to_logical(root_x)),
+                static_cast<native::coord>(linux::x11::to_logical(root_y)));
             owner->on_native_move(position);
             keep_shell_reachable(owner, widget);
         } else if (event->type == MapNotify) {
@@ -345,6 +349,7 @@ namespace native
             if (probe_display && probe_display != XtDisplay(shell))
                 XCloseDisplay(probe_display);
             linux::x11::cached_display = XtDisplay(shell);
+            linux::x11::scale_resources(shell);
         } else if (app_wnd *owner = get_owner()) {
             Widget owner_shell =
                 linux::x11::shell_bindings.handle_from_object(owner);
@@ -391,13 +396,13 @@ namespace native
             XtVaSetValues(shell, XtNoverrideRedirect, True, nullptr);
         XtVaSetValues(shell,
                       XtNx,
-                      position.x,
+                      linux::x11::to_device(position.x),
                       XtNy,
-                      position.y,
+                      linux::x11::to_device(position.y),
                       XtNwidth,
-                      linux::x11::widget_dimension(_bounds.d.w),
+                      linux::x11::device_dimension(_bounds.d.w),
                       XtNheight,
-                      linux::x11::widget_dimension(_bounds.d.h),
+                      linux::x11::device_dimension(_bounds.d.h),
                       XtNtitle,
                       _title.c_str(),
                       nullptr);
@@ -406,11 +411,9 @@ namespace native
                                                      formWidgetClass,
                                                      shell,
                                                      XtNwidth,
-                                                     linux::x11::widget_dimension(
-                                                         _bounds.d.w),
+                                                     linux::x11::device_dimension(_bounds.d.w),
                                                      XtNheight,
-                                                     linux::x11::widget_dimension(
-                                                         _bounds.d.h),
+                                                     linux::x11::device_dimension(_bounds.d.h),
                                                      XtNborderWidth,
                                                      0,
                                                      XtNdefaultDistance,
@@ -442,9 +445,10 @@ namespace native
             XtVaGetValues(menu_bar, XtNheight, &menu_height, nullptr);
         }
 
+        const int device_height = linux::x11::to_device(_bounds.d.h);
         const int canvas_height =
-            _bounds.d.h > menu_height
-                ? static_cast<int>(_bounds.d.h - menu_height)
+            device_height > menu_height
+                ? device_height - static_cast<int>(menu_height)
                 : 1;
 
         Widget canvas = nullptr;
@@ -459,8 +463,7 @@ namespace native
                                              XtNhorizDistance,
                                              0,
                                              XtNwidth,
-                                             linux::x11::widget_dimension(
-                                                 _bounds.d.w),
+                                             linux::x11::device_dimension(_bounds.d.w),
                                              XtNheight,
                                              linux::x11::widget_dimension(
                                                  canvas_height),
@@ -488,11 +491,9 @@ namespace native
                                              XtNvertDistance,
                                              0,
                                              XtNwidth,
-                                             linux::x11::widget_dimension(
-                                                 _bounds.d.w),
+                                             linux::x11::device_dimension(_bounds.d.w),
                                              XtNheight,
-                                             linux::x11::widget_dimension(
-                                                 _bounds.d.h),
+                                             linux::x11::device_dimension(_bounds.d.h),
                                              XtNborderWidth,
                                              0,
                                              XtNdefaultDistance,

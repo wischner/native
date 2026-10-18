@@ -2,14 +2,15 @@
 
 NoGrabServer
 RestartPreviousState
+ClientBorderWidth
 DecorateTransients
 ShowIconManager
-TitleFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
-ResizeFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
-MenuFont "-adobe-helvetica-bold-r-normal--*-120-*-*-*-*-*-*"
-IconFont "-adobe-helvetica-bold-r-normal--*-100-*-*-*-*-*-*"
-IconManagerFont "-adobe-helvetica-bold-r-normal--*-100-*-*-*"
-BorderWidth 1
+TitleFont "fixed"
+ResizeFont "fixed"
+MenuFont "fixed"
+IconFont "fixed"
+IconManagerFont "fixed"
+BorderWidth 2
 TitleButtonBorderWidth 1
 MenuBorderWidth 1
 
@@ -21,6 +22,8 @@ Function "move-or-iconify" { f.move f.deltastop f.iconify }
 Color
 {
     BorderColor "black"
+    BorderTileBackground "white"
+    BorderTileForeground "black"
     DefaultBackground "white"
     DefaultForeground "black"
     TitleBackground "white"
@@ -44,6 +47,8 @@ Color
 Grayscale
 {
     BorderColor "black"
+    BorderTileBackground "white"
+    BorderTileForeground "black"
     DefaultBackground "white"
     DefaultForeground "black"
     TitleBackground "white"
@@ -67,6 +72,8 @@ Grayscale
 Monochrome
 {
     BorderColor "black"
+    BorderTileBackground "white"
+    BorderTileForeground "black"
     DefaultBackground "white"
     DefaultForeground "black"
     TitleBackground "white"

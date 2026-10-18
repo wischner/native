@@ -9,6 +9,7 @@
 //
 
 #include "alert_icons.h"
+#include "scale.h"
 #include <array>
 #include <cstdint>
 
@@ -76,7 +77,8 @@ namespace linux::x11
             for (int x = 0; x < 32; ++x)
                 if (words[y * 2 + x / 16] & (0x8000u >> (x % 16)))
                     bits[y * 4 + x / 8] |= static_cast<char>(1u << (x % 8));
-        return XCreateBitmapFromData(display, drawable, bits.data(), 32, 32);
+        return linux::x11::create_device_bitmap(
+            display, drawable, bits.data(), 32, 32);
     }
 }
 

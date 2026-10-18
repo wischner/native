@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include "globals.h"
+#include "scale.h"
 #include "window_position.h"
 
 #ifdef HAVE_SDL2_TTF
@@ -82,15 +83,21 @@ namespace native
         // Resizable, like the Win32, Cocoa, Haiku, and X11 shells.
         // Without it a toolkit window can never change size, so a
         // layout would arrange its children exactly once and no
-        // resize would ever be reported.
+        // resize would ever be reported. High-DPI drawables are
+        // requested only when SDL, not linux::sdl2, owns the desktop
+        // scale, so the factor is never applied twice.
+        const Uint32 flags = SDL_WINDOW_HIDDEN |
+            (get_native_title_visible() ? SDL_WINDOW_RESIZABLE
+                                        : SDL_WINDOW_BORDERLESS) |
+            (linux::sdl2::sdl_owns_scaling() ? SDL_WINDOW_ALLOW_HIGHDPI
+                                             : 0);
         SDL_Window *window =
             SDL_CreateWindow(_title.c_str(),
-                             position.x,
-                             position.y,
-                             _bounds.d.w,
-                             _bounds.d.h,
-                             SDL_WINDOW_HIDDEN |
-                                 (get_native_title_visible() ? SDL_WINDOW_RESIZABLE : SDL_WINDOW_BORDERLESS));
+                             linux::sdl2::to_sdl(position.x),
+                             linux::sdl2::to_sdl(position.y),
+                             linux::sdl2::to_sdl(_bounds.d.w),
+                             linux::sdl2::to_sdl(_bounds.d.h),
+                             flags);
 
         if (!window) {
             const std::string error = SDL_GetError();
@@ -107,7 +114,8 @@ namespace native
         int actual_x = 0;
         int actual_y = 0;
         SDL_GetWindowPosition(window, &actual_x, &actual_y);
-        self->on_native_move(point(actual_x, actual_y));
+        self->on_native_move(point(linux::sdl2::to_logical(actual_x),
+                                   linux::sdl2::to_logical(actual_y)));
 
         linux::sdl2::wnd_bindings.register_pair(
             window, self);
@@ -142,18 +150,19 @@ namespace native
         // and stop the user shrinking the window into the menu.
         if (menu_height > 0) {
             SDL_SetWindowSize(window,
-                              _bounds.d.w,
-                              _bounds.d.h + menu_height);
+                              linux::sdl2::to_sdl(_bounds.d.w),
+                              linux::sdl2::to_sdl(
+                                  _bounds.d.h + menu_height));
         }
-        SDL_SetWindowMinimumSize(window, 1, menu_height + 1);
+        SDL_SetWindowMinimumSize(
+            window, 1, linux::sdl2::to_sdl(menu_height + 1));
 
-        int window_width = 0;
-        int window_height = 0;
-        SDL_GetWindowSize(window, &window_width, &window_height);
+        const size window_size =
+            linux::sdl2::logical_window_size(window);
         self->on_native_resize(
-            size(static_cast<dim>(std::max(0, window_width)),
+            size(window_size.w,
                  static_cast<dim>(
-                     std::max(1, window_height - menu_height))));
+                     std::max(1, window_size.h - menu_height))));
 
     }
 
@@ -177,12 +186,15 @@ namespace native
         int current_x = 0;
         int current_y = 0;
         SDL_GetWindowPosition(window, &current_x, &current_y);
-        const point current(current_x, current_y);
+        const point current(linux::sdl2::to_logical(current_x),
+                            linux::sdl2::to_logical(current_y));
         const point position =
             linux::sdl2::constrain_window_position(
                 window, current, get_dimensions());
         if (position.x != current.x || position.y != current.y) {
-            SDL_SetWindowPosition(window, position.x, position.y);
+            SDL_SetWindowPosition(window,
+                                  linux::sdl2::to_sdl(position.x),
+                                  linux::sdl2::to_sdl(position.y));
             this->on_native_move(position);
         }
         if (get_modal()) {

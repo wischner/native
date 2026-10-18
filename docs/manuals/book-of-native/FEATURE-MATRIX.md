@@ -13,6 +13,17 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+## OPEN LOOK Docker runtime (2026-10-18)
+
+The maintained OPEN LOOK F5 profile builds and runs in
+`wischner/gcc-x86_64-linux-openlook:latest`, using the image's
+`openlook-xephyr` helper and olwm. The Docker Debug build passes, all 22 CTests
+pass in that nested session, and Vision creates its feature-gallery window.
+The GDB/MI pipe also starts successfully with clean protocol output. This run
+uses the standalone launcher's existing `ASAN_OPTIONS=detect_leaks=0` setting;
+it does not establish new leak-checking coverage. Earlier Tribblix results
+below remain historical evidence.
+
 ## Current standards review (2026-10-15)
 
 All nine existing Docker build targets pass. Current full-suite results are
@@ -242,7 +253,9 @@ for tables, icon grids, trees and canvases, native middle-button dragging,
 horizontal ranges, million-row endpoints, signed canvas origins and hiding.
 Gallery checks run under monochrome TWM inside Xephyr and cover combo hover,
 table/accordion dragging, centered message buttons, the splitter grip and
-menu borders. Seven SDL2 CTests
+menu borders. Combo field text is vertically centred and unclipped at 1x and
+2x (checked 2026-10-18 in the input/chrome window); the backend works around
+libXaw's stale effective top margin after `SetValues`. Seven SDL2 CTests
 passed in the preceding review after the shared tab-text contrast correction.
 
 | Backend | Build path | Runtime status |
@@ -250,7 +263,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Linux X11 | `docker-x11` | Yes (tested) |
 | Linux SDL2 | `docker-sdl2` | Yes (tested) |
 | Linux OpenMotif | `docker-openmotif` | Yes (tested) |
-| Linux OPEN LOOK/XView | `docker-openlook` + Tribblix VM native build | Yes (tested) |
+| Linux OPEN LOOK/XView | `docker-openlook` + Docker Xephyr/olwm | Yes (tested) |
 | Linux Window Maker/WINGs | `docker-wmaker` + Bookworm VM native build | Yes (tested) |
 | Linux GEMix | `docker-gemix` + local rasta | Yes (tested) |
 | Linux GEMix via gemd | `docker-gemix-gemd` + local rasta | Yes (tested) |
@@ -435,6 +448,27 @@ passed in the preceding review after the shared tab-text contrast correction.
 - SDL2 uses `SDL2_ttf` for native stock faces when it is available and a
   built-in bitmap stock-font fallback otherwise. Portable file/memory fonts
   always use the shared byte-backed rasterizer.
+- SDL2 follows the desktop scale factor. Under X11 it reads `Xft.dpi`, and
+  under SDL's own high-DPI drivers it uses SDL's factor; it never applies
+  both. Window, screen, and pointer geometry stays in logical pixels, and
+  stock text is rasterized at device resolution. Tested 2026-10-18 in Docker
+  Xvfb at `Xft.dpi` 96, 144, and 192: vision's top-level window measured
+  exactly 1×, 1.5×, and 2× with identical layout, and XTest clicks at
+  device coordinates hit the expected list row, menu, and modal-dialog item.
+  SDL Wayland high-DPI is untested.
+- X11/Athena follows `Xft.dpi` the same way: geometry, pointer input, and
+  screens stay logical, while widgets, drawing, Athena spacing, and library
+  bitmaps are scaled to device pixels. Strokes and widget borders stay one
+  device pixel. Window text uses the nearest installed bitmap size, for
+  example Lucida Typewriter 26 for the 13-pixel control font at 2x, from the
+  image's `xfonts-75dpi`, `xfonts-100dpi` and `xfonts-terminus`. Tested
+  2026-10-18 in Docker Xvfb at `Xft.dpi` 96, 144, and 192: vision's
+  top-level window measured exactly 1x, 1.5x, and 2x. All 19 CTests pass
+  unscaled. At 192 the X11 scrollbar, window, lifecycle, and close suites
+  pass, including XTest pointer drags. `native_x11_runtime_tests` and
+  `native_inspector_runtime_tests` assume 1x and fail there: they expect
+  32-pixel alert bitmaps, and they read captures in logical coordinates.
+  The gallery was checked visually under 2x TWM in Xephyr.
 - Portable file/memory fonts use the same vendored TrueType rasterizer on all
   backends. Installed-font enumeration remains machine-specific and returns
   file paths and collection face indices for explicit selection.

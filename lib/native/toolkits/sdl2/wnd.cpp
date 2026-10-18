@@ -17,6 +17,7 @@
 #include "gpx_wnd.h"
 #include "globals.h"
 #include "../../mouse_state.h"
+#include "scale.h"
 #include "window_position.h"
 
 namespace
@@ -133,12 +134,16 @@ namespace
                                bool resize) {
         const native::size outer = window_size_for(owner, bounds.d);
         if (resize)
-            SDL_SetWindowSize(window, outer.w, outer.h);
+            SDL_SetWindowSize(window,
+                              linux::sdl2::to_sdl(outer.w),
+                              linux::sdl2::to_sdl(outer.h));
 
         const native::point position =
             linux::sdl2::constrain_window_position(
                 window, bounds.p, outer);
-        SDL_SetWindowPosition(window, position.x, position.y);
+        SDL_SetWindowPosition(window,
+                              linux::sdl2::to_sdl(position.x),
+                              linux::sdl2::to_sdl(position.y));
     }
 } // namespace
 
@@ -190,11 +195,10 @@ namespace native
         if (!window || SDL_GetMouseFocus() != window)
             return;
 
-        int x = 0;
-        int y = 0;
-        SDL_GetMouseState(&x, &y);
-        y -= linux::sdl2::content_origin_y(root);
-        linux::sdl2::update_mouse_cursor(root, point(x, y));
+        point position = linux::sdl2::logical_mouse_state();
+        position.y = static_cast<coord>(
+            position.y - linux::sdl2::content_origin_y(root));
+        linux::sdl2::update_mouse_cursor(root, position);
     }
 
     wnd &wnd::invalidate_native() {

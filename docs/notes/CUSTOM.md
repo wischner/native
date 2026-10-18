@@ -110,7 +110,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `check` | **N** | Xaw `Toggle`. |
 | `radio` | **N** | Xaw `Toggle` with radio grouping. |
 | `list` | **N** | Xaw `List`; column width follows the viewport for full-row selection. |
-| `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. |
+| `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. Text is centred with symmetric Xaw margins; the backend also sets Text's effective top margin, which libXaw 1.0.16 `SetValues` leaves stale (2026-10-18). |
 | `text_edit` | **N/H** | Xaw `AsciiText`; portable validation and clipboard policy wrap the native editor. |
 | `accordion` | **C** | Library-painted collection in an Xaw host. |
 | `tab_view` | **C** | Library-painted tabs, framed/strip-only page chrome, and borrowed-page routing in an Xaw host. |

@@ -17,6 +17,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -32,12 +33,12 @@ namespace
         const int x = strip.x1() + strip.d.w / 2;
         const int y = strip.y1() + strip.d.h / 2;
         for (int offset = -6; offset <= 6; offset += 4) {
-            if (horizontal)
-                XDrawLine(XtDisplay(widget), XtWindow(widget), gc,
-                    x - 1, y + offset, x, y + offset);
-            else
-                XDrawLine(XtDisplay(widget), XtWindow(widget), gc,
-                    x + offset, y - 1, x + offset, y);
+            // Each grip dot is two logical pixels across the strip.
+            const native::rect dot = linux::x11::rect_to_device(horizontal
+                ? native::rect(x - 1, y + offset, 2, 1)
+                : native::rect(x + offset, y - 1, 1, 2));
+            XFillRectangle(XtDisplay(widget), XtWindow(widget), gc,
+                dot.p.x, dot.p.y, dot.d.w, dot.d.h);
         }
         XtReleaseGC(widget, gc);
     }
@@ -51,7 +52,9 @@ namespace
         if (!host || !child.get_created()) return;
         Dimension width = 1, height = 1;
         XtVaGetValues(host, XtNwidth, &width, XtNheight, &height, nullptr);
-        child.set_bounds(native::rect(0, 0, width, height));
+        const native::size logical =
+            linux::x11::size_to_logical(width, height);
+        child.set_bounds(native::rect(0, 0, logical.w, logical.h));
     }
 
     void pane_resized(Widget host, XtPointer data, XEvent *event, Boolean *) {
@@ -59,6 +62,7 @@ namespace
             fit_child(*static_cast<native::wnd *>(data), host);
     }
 
+    // Pane extents in device pixels, as Xaw Paned measures them.
     struct pane_constraints
     {
         int available;
@@ -69,17 +73,18 @@ namespace
     };
 
     pane_constraints constraints(const native::split_view &owner) {
-        const int total = owner.get_orientation() ==
-                                  native::split_orientation::horizontal
-                              ? owner.get_dimensions().w
-                              : owner.get_dimensions().h;
+        const int total = linux::x11::to_device(
+            owner.get_orientation() == native::split_orientation::horizontal
+                ? owner.get_dimensions().w
+                : owner.get_dimensions().h);
         const int available = std::max(
-            2, total-static_cast<int>(owner.get_splitter_size()));
+            2, total - linux::x11::to_device(owner.get_splitter_size()));
         const int first_minimum = std::min(
-            available - 1, std::max(1, static_cast<int>(owner.get_first_minimum())));
+            available - 1, std::max(1, linux::x11::to_device(
+                owner.get_first_minimum())));
         const int second_minimum = std::min(
             available-first_minimum,
-            std::max(1, static_cast<int>(owner.get_second_minimum())));
+            std::max(1, linux::x11::to_device(owner.get_second_minimum())));
         return {available,
                 first_minimum,
                 second_minimum,
@@ -99,9 +104,10 @@ namespace
         } else if (event->type == ConfigureNotify) {
             Dimension width = 1, height = 1;
             XtVaGetValues(widget, XtNwidth, &width, XtNheight, &height, nullptr);
-            owner->on_native_resize(native::size(width, height));
+            owner->on_native_resize(
+                linux::x11::size_to_logical(width, height));
         } else if (event->type == MotionNotify) {
-            owner->on_native_mouse_move(native::point(
+            owner->on_native_mouse_move(linux::x11::pointer_to_logical(
                 event->xmotion.x, event->xmotion.y));
         } else if ((event->type == ButtonPress || event->type == ButtonRelease) &&
                    event->xbutton.button == Button1) {
@@ -116,7 +122,8 @@ namespace
             const auto divider = owner->get_splitter_bounds();
             const auto position = event->type == ButtonPress
                 ? divider.p
-                : native::point(event->xbutton.x, event->xbutton.y);
+                : linux::x11::pointer_to_logical(event->xbutton.x,
+                                                 event->xbutton.y);
             if (event->type == ButtonRelease)
                 XtUngrabPointer(widget, event->xbutton.time);
             owner->on_native_mouse_click(native::mouse_event(
@@ -212,7 +219,7 @@ namespace native
         XawPanedSetRefigureMode(state->paned, False);
         XtVaSetValues(state->paned,
                       XtNinternalBorderWidth,
-                      get_splitter_size(),
+                      linux::x11::to_device(get_splitter_size()),
                       nullptr);
         apply_minimums();
         apply_ratio();
@@ -238,19 +245,19 @@ namespace native
             panedWidgetClass,
             parent_widget,
             XtNhorizDistance,
-            _bounds.p.x,
+            linux::x11::to_device(_bounds.p.x),
             XtNvertDistance,
-            _bounds.p.y,
+            linux::x11::to_device(_bounds.p.y),
             XtNwidth,
-            linux::x11::widget_dimension(_bounds.d.w),
+            linux::x11::device_dimension(_bounds.d.w),
             XtNheight,
-            linux::x11::widget_dimension(_bounds.d.h),
+            linux::x11::device_dimension(_bounds.d.h),
             XtNorientation,
             get_orientation() == split_orientation::horizontal
                 ? XtorientHorizontal
                 : XtorientVertical,
             XtNinternalBorderWidth,
-            get_splitter_size(),
+            linux::x11::to_device(get_splitter_size()),
             XtNinternalBorderColor, background,
             XtNbackground, background,
             XtNborderWidth, 0,
@@ -264,17 +271,19 @@ namespace native
         linux::x11::split_view_bindings.register_pair(self, state);
         state->first = XtVaCreateManagedWidget("firstPane",
             linux::x11::layout_host_class(), state->paned,
-            XtNwidth, linux::x11::widget_dimension(get_first_bounds().d.w),
-            XtNheight, linux::x11::widget_dimension(get_first_bounds().d.h),
-            XtNpreferredPaneSize, std::max(1, resolved_first_extent()),
+            XtNwidth, linux::x11::device_dimension(get_first_bounds().d.w),
+            XtNheight, linux::x11::device_dimension(get_first_bounds().d.h),
+            XtNpreferredPaneSize,
+            std::max(1, linux::x11::to_device(resolved_first_extent())),
             XtNborderWidth, 0, XtNdefaultDistance, 0,
             XtNshowGrip, False, XtNallowResize, True, nullptr);
         state->second = XtVaCreateManagedWidget("secondPane",
             linux::x11::layout_host_class(), state->paned,
-            XtNwidth, linux::x11::widget_dimension(get_second_bounds().d.w),
-            XtNheight, linux::x11::widget_dimension(get_second_bounds().d.h),
+            XtNwidth, linux::x11::device_dimension(get_second_bounds().d.w),
+            XtNheight, linux::x11::device_dimension(get_second_bounds().d.h),
             XtNpreferredPaneSize, std::max(1,
-                constraints(*this).available - resolved_first_extent()),
+                constraints(*this).available -
+                    linux::x11::to_device(resolved_first_extent())),
             XtNborderWidth, 0, XtNdefaultDistance, 0,
             XtNshowGrip, False, XtNallowResize, True, nullptr);
         if (!state->first || !state->second) {

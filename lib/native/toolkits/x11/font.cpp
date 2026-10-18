@@ -11,12 +11,14 @@
 #include <X11/Xaw/Command.h>
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <initializer_list>
 
 #include <native.h>
 #include <native/font.h>
 #include "../../portable_font.h"
 #include "globals.h"
+#include "scale.h"
 
 // font_t on X11: the platform handle (x11_font) owns an X11 core Font
 // and lives in linux::x11::font_bindings, keyed by the font's opaque
@@ -34,6 +36,10 @@ namespace
         if (f) {
             if (f->owned && f->display && f->xfont)
                 XUnloadFont(f->display, f->xfont);
+            if (f->display && f->device_xfont)
+                XUnloadFont(f->display, f->device_xfont);
+            if (f->device_metrics)
+                XFreeFontInfo(nullptr, f->device_metrics, 1);
             if (f->metrics)
                 XFreeFontInfo(nullptr, f->metrics, 1);
             delete f;
@@ -48,6 +54,10 @@ namespace
         h->metrics =
             display && xfont ? XQueryFont(display, xfont) : nullptr;
         h->owned = owned;
+        h->device_xfont =
+            linux::x11::load_device_font(display, h->metrics);
+        h->device_metrics = h->device_xfont
+            ? XQueryFont(display, h->device_xfont) : nullptr;
         uint32_t id = next_id();
         linux::x11::font_bindings.register_pair(id, h);
         return id;
@@ -184,7 +194,8 @@ namespace native
         if (!initialized) {
             initialized = true;
 
-            const char *x_font = XGetDefault(display, "*", "font");
+            const char *x_font =
+                linux::x11::logical_default_font(display);
             Font system_f =
                 x_font ? load_if_available(display, x_font) : 0;
             if (!system_f)
@@ -199,7 +210,17 @@ namespace native
                                     {"-misc-fixed-medium-r-normal--13-"
                                      "120-75-75-c-70-iso8859-1",
                                      "fixed"});
-            const Font control_f = xaw_control_font(system_f);
+            // On a scaled desktop Athena controls carry the device
+            // font; measurement needs its unscaled original.
+            const std::string &control_name =
+                linux::x11::logical_control_font();
+            Font control_f =
+                linux::x11::coordinate_scale() != 1.0 &&
+                        !control_name.empty()
+                    ? load_if_available(display, control_name.c_str())
+                    : 0;
+            if (!control_f)
+                control_f = xaw_control_font(system_f);
 
             // X11 has no separate role concept; title/small/control
             // share the system font. Stock fonts are not owned; the X
@@ -243,6 +264,18 @@ namespace native
             linux::x11::font_bindings.object_from_handle(_id);
         if (!binding || !binding->metrics)
             return {};
+        // Window text is drawn with the device face, so layout
+        // measures that face in logical pixels.
+        if (const XFontStruct *device = binding->device_metrics) {
+            const double scale = linux::x11::coordinate_scale();
+            const auto logical = [scale](int value) {
+                return static_cast<int>(std::ceil(value / scale));
+            };
+            const int ascent = std::max(1, logical(device->ascent));
+            const int descent = std::max(1, logical(device->descent));
+            return {ascent, descent, 1, ascent + descent + 1,
+                    std::max(1, logical(device->max_bounds.width))};
+        }
         const XFontStruct *font = binding->metrics;
         const int ascent = std::max(1, font->ascent);
         const int descent = std::max(1, font->descent);
@@ -263,7 +296,8 @@ namespace native
             linux::x11::font_bindings.object_from_handle(_id);
         if (!binding || !binding->metrics)
             return {};
-        XFontStruct *font = binding->metrics;
+        XFontStruct *font = binding->device_metrics
+            ? binding->device_metrics : binding->metrics;
         int direction = 0;
         int ascent = 0;
         int descent = 0;
@@ -276,10 +310,15 @@ namespace native
                      &ascent,
                      &descent,
                      &extent);
-        const int advance = extent.width;
-        const int width = std::max(advance,
-                                   static_cast<int>(extent.rbearing) -
-                                       extent.lbearing);
+        int advance = extent.width;
+        int width = std::max(advance,
+                             static_cast<int>(extent.rbearing) -
+                                 extent.lbearing);
+        if (binding->device_metrics) {
+            const double scale = linux::x11::coordinate_scale();
+            advance = static_cast<int>(std::ceil(advance / scale));
+            width = static_cast<int>(std::ceil(width / scale));
+        }
         const int height = get_metrics().height;
         return {width, height, advance};
     }

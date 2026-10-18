@@ -5,6 +5,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
 
 #include <X11/Intrinsic.h>
@@ -15,7 +17,47 @@
 #include <native.h>
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "scale.h"
 #include "../../platforms/linux/x_image.h"
+
+namespace
+{
+    // Thin pens draw one device pixel at every scale; wider pens
+    // cover the device pixels of their logical width.
+    bool thick_pen(int pen) {
+        return pen > 1 && linux::x11::coordinate_scale() != 1.0;
+    }
+
+    // Device position of the stroke through logical pixel coordinate c.
+    int stroke_position(int c, int pen) {
+        const int cell = linux::x11::to_device(1);
+        return linux::x11::to_device(c) +
+               (thick_pen(pen) ? cell / 2 : (cell - 1) / 2);
+    }
+
+    XRectangle device_clip(const native::rect &logical) {
+        const native::rect clip = linux::x11::rect_to_device(logical);
+        return {static_cast<short>(clip.p.x),
+                static_cast<short>(clip.p.y),
+                static_cast<unsigned short>(clip.d.w),
+                static_cast<unsigned short>(clip.d.h)};
+    }
+
+    // Repeat each image pixel over the device pixels it covers.
+    std::unique_ptr<native::img> device_image(const native::img &source) {
+        const int width = std::max(1, linux::x11::to_device(source.w()));
+        const int height = std::max(1, linux::x11::to_device(source.h()));
+        auto result = std::make_unique<native::img>(width, height);
+        native::rgba *pixels = result->pixels();
+        for (int y = 0; y < height; ++y) {
+            const int source_y = y * source.h() / height;
+            for (int x = 0; x < width; ++x)
+                pixels[y * width + x] = source.pixels()[
+                    source_y * source.w() + x * source.w() / width];
+        }
+        return result;
+    }
+} // namespace
 
 // Apply portable drawing state to the cached X11 graphics context.
 static void apply_gc(Display *display,
@@ -35,20 +77,20 @@ static void apply_gc(Display *display,
     }
 
     if (cache->current_thickness != self->get_pen()) {
+        // A scaled wide pen covers whole device pixels, endpoints
+        // included, as a thin line does.
+        const int pen = self->get_pen();
+        const bool thick = thick_pen(pen);
         XSetLineAttributes(display,
                            cache->gc,
-                           self->get_pen(),
+                           thick ? linux::x11::to_device(pen) : pen,
                            LineSolid,
-                           CapButt,
+                           thick ? CapProjecting : CapButt,
                            JoinMiter);
         cache->current_thickness = self->get_pen();
     }
 
-    const native::rect clip = self->get_clip();
-    XRectangle xclip = {static_cast<short>(clip.p.x),
-                        static_cast<short>(clip.p.y),
-                        static_cast<unsigned short>(clip.d.w),
-                        static_cast<unsigned short>(clip.d.h)};
+    XRectangle xclip = device_clip(self->get_clip());
     XSetClipRectangles(display, cache->gc, 0, 0, &xclip, 1, Unsorted);
 }
 
@@ -144,11 +186,7 @@ namespace native
             cache->gc,
             detail::x_pixel(
                 DefaultVisual(display, DefaultScreen(display)), color));
-        XRectangle clip = {
-            static_cast<short>(_clip.p.x),
-            static_cast<short>(_clip.p.y),
-            static_cast<unsigned short>(_clip.d.w),
-            static_cast<unsigned short>(_clip.d.h)};
+        XRectangle clip = device_clip(_clip);
         XSetClipRectangles(
             display, cache->gc, 0, 0, &clip, 1, Unsorted);
         cache->current_fg = color; // keep cache in sync so apply_gc
@@ -156,10 +194,10 @@ namespace native
         XFillRectangle(display,
                        cache->backbuffer,
                        cache->gc,
-                       _clip.p.x,
-                       _clip.p.y,
-                       _clip.d.w,
-                       _clip.d.h);
+                       clip.x,
+                       clip.y,
+                       clip.width,
+                       clip.height);
         return *this;
     }
 
@@ -171,13 +209,14 @@ namespace native
             return *this;
 
         apply_gc(display, cache, this);
+        const int pen = get_pen();
         XDrawLine(display,
                   cache->backbuffer,
                   cache->gc,
-                  from.x,
-                  from.y,
-                  to.x,
-                  to.y);
+                  stroke_position(from.x, pen),
+                  stroke_position(from.y, pen),
+                  stroke_position(to.x, pen),
+                  stroke_position(to.y, pen));
         return *this;
     }
 
@@ -190,22 +229,39 @@ namespace native
 
         apply_gc(display, cache, this);
 
-        if (filled)
+        if (filled) {
+            const rect device = linux::x11::rect_to_device(r);
             XFillRectangle(display,
                            cache->backbuffer,
                            cache->gc,
-                           r.p.x,
-                           r.p.y,
-                           r.d.w,
-                           r.d.h);
-        else
+                           device.p.x,
+                           device.p.y,
+                           device.d.w,
+                           device.d.h);
+        } else if (thick_pen(get_pen())) {
+            // Stroke the centres of the scaled edge pixels.
+            const int pen = get_pen();
+            const int left = stroke_position(r.p.x, pen);
+            const int top = stroke_position(r.p.y, pen);
+            XDrawRectangle(
+                display,
+                cache->backbuffer,
+                cache->gc,
+                left,
+                top,
+                stroke_position(r.p.x + int(r.d.w) - 1, pen) - left,
+                stroke_position(r.p.y + int(r.d.h) - 1, pen) - top);
+        } else {
+            // A thin outline traces the outer device edge.
+            const rect device = linux::x11::rect_to_device(r);
             XDrawRectangle(display,
                            cache->backbuffer,
                            cache->gc,
-                           r.p.x,
-                           r.p.y,
-                           r.d.w - 1,
-                           r.d.h - 1);
+                           device.p.x,
+                           device.p.y,
+                           device.d.w - 1,
+                           device.d.h - 1);
+        }
         return *this;
     }
 
@@ -222,14 +278,18 @@ namespace native
 
         auto *fh = linux::x11::font_bindings.object_from_handle(
             get_font().id());
-        if (fh && fh->xfont)
-            XSetFont(display, cache->gc, fh->xfont);
+        if (fh && (fh->device_xfont || fh->xfont))
+            XSetFont(display,
+                     cache->gc,
+                     fh->device_xfont ? fh->device_xfont : fh->xfont);
 
-        const int baseline = p.y + get_font_metrics().ascent;
+        const int baseline = fh && fh->device_metrics
+            ? linux::x11::to_device(p.y) + fh->device_metrics->ascent
+            : linux::x11::to_device(p.y + get_font_metrics().ascent);
         XDrawString(display,
                     cache->backbuffer,
                     cache->gc,
-                    p.x,
+                    linux::x11::to_device(p.x),
                     baseline,
                     text.c_str(),
                     text.length());
@@ -263,12 +323,17 @@ namespace native
                 pixels[index] = rgba(value, value, value, color.a >= 128 ? 255 : 0);
             }
         }
+        const img &logical = monochrome ? *monochrome : src;
+        std::unique_ptr<img> device;
+        if (linux::x11::coordinate_scale() != 1.0)
+            device = device_image(logical);
         detail::blend_x_image(display,
                               cache->backbuffer,
                               cache->gc,
-                              monochrome ? *monochrome : src,
-                              dst,
-                              _clip,
+                              device ? *device : logical,
+                              point(linux::x11::to_device(dst.x),
+                                    linux::x11::to_device(dst.y)),
+                              linux::x11::rect_to_device(_clip),
                               size(cache->buf_w, cache->buf_h));
         return *this;
     }

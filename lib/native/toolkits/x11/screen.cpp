@@ -16,6 +16,7 @@
 #include <native/screen.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace native
 {
@@ -81,8 +82,8 @@ namespace native
                 "X11: Failed to query XRandR screen resources.");
 
         RROutput primary_output = XRRGetOutputPrimary(display, root);
-        rect advertised_work_area =
-            get_work_area_if_supported(display, root);
+        rect advertised_work_area = linux::x11::rect_to_logical(
+            get_work_area_if_supported(display, root));
         std::vector<screen> detected;
 
         for (int i = 0; i < res->noutput; ++i) {
@@ -110,10 +111,11 @@ namespace native
                     "X11: Failed to query XRandR display geometry.");
             }
 
-            rect bounds(crtc_info->x,
-                        crtc_info->y,
-                        crtc_info->width,
-                        crtc_info->height);
+            const rect bounds = linux::x11::rect_to_logical(
+                rect(crtc_info->x,
+                     crtc_info->y,
+                     crtc_info->width,
+                     crtc_info->height));
 
             bool is_primary = (output == primary_output);
             detected.emplace_back(static_cast<int>(detected.size()),

@@ -104,6 +104,23 @@ window-maker-xephyr)
         -e "WINDOW_MAKER_PARENT_DISPLAY=$(find_free_display 200 299)"
     )
     ;;
+*/x11/run-twm.sh)
+    # A rootful Xwayland, when the image has one, is a Wayland client
+    # the compositor scales; other sessions stay on X11 only.
+    for variable in NATIVE_X11_DPI NATIVE_X11_DISPLAY; do
+        if [[ -n "${!variable:-}" ]]; then
+            DOCKER_ARGS+=(-e "${variable}=${!variable}")
+        fi
+    done
+    WAYLAND_SOCKET=${XDG_RUNTIME_DIR:-}/${WAYLAND_DISPLAY:-}
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -S "${WAYLAND_SOCKET}" ]]; then
+        DOCKER_ARGS+=(
+            -e XDG_RUNTIME_DIR=/tmp/native-wayland
+            -e "WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
+            -v "${WAYLAND_SOCKET}:/tmp/native-wayland/${WAYLAND_DISPLAY}"
+        )
+    fi
+    ;;
 esac
 
 exec docker "${DOCKER_ARGS[@]}" "${IMAGE}" \

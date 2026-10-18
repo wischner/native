@@ -14,6 +14,8 @@
 #include <native.h>
 #include <native/screen.h>
 
+#include "scale.h"
+
 namespace native
 {
     const std::vector<screen> &screen::detect() {
@@ -44,8 +46,16 @@ namespace native
                     SDL_GetError());
             }
 
-            rect screen_bounds(bounds.x, bounds.y, bounds.w, bounds.h);
-            rect work_area(usable.x, usable.y, usable.w, usable.h);
+            // Screens share the logical coordinate space of windows.
+            using linux::sdl2::to_logical;
+            rect screen_bounds(to_logical(bounds.x),
+                               to_logical(bounds.y),
+                               to_logical(bounds.w),
+                               to_logical(bounds.h));
+            rect work_area(to_logical(usable.x),
+                           to_logical(usable.y),
+                           to_logical(usable.w),
+                           to_logical(usable.h));
 
             bool is_primary = (i == 0);
 

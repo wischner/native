@@ -170,8 +170,8 @@ native display facilities:
 | GEMix | Full VDI screen | AES desktop work rectangle |
 | OpenMotif | X screen dimensions | EWMH `_NET_WORKAREA`, or full bounds |
 | Window Maker | Active XRandR output bounds | EWMH `_NET_WORKAREA` clipped per output |
-| SDL2 | Display bounds | SDL usable display bounds |
-| X11 | Active XRandR output bounds | EWMH `_NET_WORKAREA` clipped per output |
+| SDL2 | Display bounds, in logical pixels | SDL usable display bounds, in logical pixels |
+| X11 | Active XRandR output bounds, in logical pixels | EWMH `_NET_WORKAREA` clipped per output, in logical pixels |
 
 Backend code must clear the old snapshot before querying, translate all
 coordinates to Native types, add only active displays, release temporary

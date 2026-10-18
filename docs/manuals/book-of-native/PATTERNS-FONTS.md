@@ -12,7 +12,17 @@ examples are in [Drawing primitives](DRAWING-PRIMITIVES.md) and
 role: system, fixed, icon label, title, small or control. Each backend obtains
 its corresponding native resources. Several roles can share a face, and
 stock pixels and metrics can differ across machines. SDL2 can use SDL2_ttf;
-without it, its stock roles retain the built-in bitmap path. GEMix uses its
+without it, its stock roles retain the built-in bitmap path. On a scaled
+desktop, SDL2 measures with the logical face and draws window text with a
+device-size copy of it (see
+[Painting](PATTERNS-PAINTING.md)). X11 core fonts are bitmaps, and
+server-magnified bitmaps look bold and blocky. So each X11 font keeps its
+logical face for image text, and adds the installed, unscaled bitmap face
+nearest its pixel size times the factor for window text: the same family
+first, then Helvetica or Lucida for proportional faces, and Lucida
+Typewriter, Terminus or Fixed for character-cell faces. Metrics and
+measurement come from that device face, divided by the factor, so layout
+matches the drawn text. GEMix uses its
 stock text adapter. Stock font initialization belongs to the initialized
 backend and is distinct from portable byte-backed font loading.
 

@@ -18,6 +18,7 @@
 
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "scale.h"
 #include "../x_pointer.h"
 #include "../x_border.h"
 #include "window_position.h"
@@ -29,11 +30,12 @@ namespace
         auto *owner = static_cast<native::wnd *>(data);
         const auto weak = native::detail::mouse_access::lifetime(*owner);
         if (event->type == LeaveNotify) {
-            native::detail::pointer_leave(*owner, native::point(event->xcrossing.x, event->xcrossing.y));
+            native::detail::pointer_leave(*owner, linux::x11::pointer_to_logical(
+                event->xcrossing.x, event->xcrossing.y));
         } else if (event->type == EnterNotify || event->type == MotionNotify) {
             native::point local = event->type == MotionNotify
-                ? native::point(event->xmotion.x, event->xmotion.y)
-                : native::point(event->xcrossing.x, event->xcrossing.y);
+                ? linux::x11::pointer_to_logical(event->xmotion.x, event->xmotion.y)
+                : linux::x11::pointer_to_logical(event->xcrossing.x, event->xcrossing.y);
             native::detail::pointer_hover(owner, local);
         }
         auto lifetime = weak.lock();
@@ -42,7 +44,8 @@ namespace
     Dimension backing_dimension(Widget widget, int value) {
         Dimension border = 0;
         XtVaGetValues(widget, XtNborderWidth, &border, nullptr);
-        return linux::x11::widget_dimension(value - 2 * border);
+        return linux::x11::widget_dimension(
+            linux::x11::to_device(value) - 2 * border);
     }
     Cursor cursor_for(Display *display, native::mouse_cursor cursor) {
         if (!display)
@@ -94,16 +97,16 @@ namespace native
                     shell, _bounds.p, _bounds.d);
             XtVaSetValues(shell,
                           XtNx,
-                          position.x,
+                          linux::x11::to_device(position.x),
                           XtNy,
-                          position.y,
+                          linux::x11::to_device(position.y),
                           nullptr);
         } else if (widget) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
-                          _bounds.p.x,
+                          linux::x11::to_device(_bounds.p.x),
                           XtNvertDistance,
-                          _bounds.p.y,
+                          linux::x11::to_device(_bounds.p.y),
                           nullptr);
         }
     }
@@ -117,18 +120,18 @@ namespace native
         if (shell) {
             XtVaSetValues(shell,
                           XtNwidth,
-                          linux::x11::widget_dimension(_bounds.d.w),
+                          linux::x11::device_dimension(_bounds.d.w),
                           XtNheight,
-                          linux::x11::widget_dimension(_bounds.d.h),
+                          linux::x11::device_dimension(_bounds.d.h),
                           nullptr);
             const point position =
                 linux::x11::constrain_shell_position(
                     shell, _bounds.p, _bounds.d);
             XtVaSetValues(shell,
                           XtNx,
-                          position.x,
+                          linux::x11::to_device(position.x),
                           XtNy,
-                          position.y,
+                          linux::x11::to_device(position.y),
                           nullptr);
         } else if (widget) {
             XtVaSetValues(widget,
@@ -152,20 +155,20 @@ namespace native
                     shell, _bounds.p, _bounds.d);
             XtVaSetValues(shell,
                           XtNx,
-                          position.x,
+                          linux::x11::to_device(position.x),
                           XtNy,
-                          position.y,
+                          linux::x11::to_device(position.y),
                           XtNwidth,
-                          linux::x11::widget_dimension(_bounds.d.w),
+                          linux::x11::device_dimension(_bounds.d.w),
                           XtNheight,
-                          linux::x11::widget_dimension(_bounds.d.h),
+                          linux::x11::device_dimension(_bounds.d.h),
                           nullptr);
         } else if (widget) {
             XtVaSetValues(widget,
                           XtNhorizDistance,
-                          _bounds.p.x,
+                          linux::x11::to_device(_bounds.p.x),
                           XtNvertDistance,
-                          _bounds.p.y,
+                          linux::x11::to_device(_bounds.p.y),
                           XtNwidth,
                           backing_dimension(widget, _bounds.d.w),
                           XtNheight,
@@ -207,8 +210,10 @@ namespace native
                 False, track_pointer, this);
             tracking->installed = true;
         }
+        const point device =
+            detail::x_pointer_position(display, XtWindow(widget));
         Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
-            detail::x_pointer_position(display, XtWindow(widget))));
+            linux::x11::pointer_to_logical(device.x, device.y)));
         if (cursor != None) {
             XDefineCursor(display, XtWindow(widget), cursor);
             XFreeCursor(display, cursor);
@@ -242,12 +247,13 @@ namespace native
         Widget widget = linux::x11::wnd_bindings.handle_from_object(
             this);
         if (widget && XtIsRealized(widget)) {
+            const rect device = linux::x11::rect_to_device(r);
             XClearArea(linux::x11::cached_display,
                        XtWindow(widget),
-                       r.p.x,
-                       r.p.y,
-                       r.d.w,
-                       r.d.h,
+                       device.p.x,
+                       device.p.y,
+                       device.d.w,
+                       device.d.h,
                        True);
             XFlush(linux::x11::cached_display);
         }

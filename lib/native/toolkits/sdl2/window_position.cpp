@@ -7,6 +7,7 @@
 //
 
 #include "window_position.h"
+#include "scale.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -121,11 +122,13 @@ namespace linux::sdl2
         SDL_Window *window,
         const native::point &preferred,
         const native::size &dimensions) {
+        // Placement runs in SDL screen coordinates, which match the
+        // display and decoration extents SDL reports.
         SDL_Rect requested = {
-            preferred.x,
-            preferred.y,
-            static_cast<int>(dimensions.w),
-            static_cast<int>(dimensions.h)
+            to_sdl(preferred.x),
+            to_sdl(preferred.y),
+            to_sdl(static_cast<int>(dimensions.w)),
+            to_sdl(static_cast<int>(dimensions.h))
         };
         const int display = display_for(requested);
 
@@ -152,7 +155,7 @@ namespace linux::sdl2
                           : std::clamp(requested.y,
                                        minimum_y,
                                        maximum_y);
-        return native::point(static_cast<native::coord>(x),
-                             static_cast<native::coord>(y));
+        return native::point(static_cast<native::coord>(to_logical(x)),
+                             static_cast<native::coord>(to_logical(y)));
     }
 } // namespace linux::sdl2

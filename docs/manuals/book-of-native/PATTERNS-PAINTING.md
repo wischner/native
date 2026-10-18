@@ -155,6 +155,43 @@ Invalidations still coalesce into complete frames; animation producers,
 including shader views, retain their own clocks. The standard SDL render-vsync
 hint can explicitly override this backend default.
 
+SDL2 paints in logical pixels on desktops with a scale factor. Exactly one
+layer applies that scale. Under the X11 video driver, SDL works in device
+pixels, so the backend reads `Xft.dpi` once, divides it by 96 and rounds the
+result to a quarter step (minimum 1). It then converts window sizes and
+positions, display bounds, and pointer coordinates in both directions at the
+SDL boundary. Every event loop polls through one helper, so each event is
+converted exactly once. Relative motion keeps its device-count deltas. Under
+other drivers, SDL owns the factor: windows request a high-DPI drawable and SDL
+already reports points. That flag is never set while the backend applies its
+own factor. Before every frame, the renderer scale is measured as output pixels
+per logical pixel, not multiplied on top of either factor. Viewports and clip
+rectangles are set after it. Stock SDL2_ttf text is rasterized from a cached
+device-size copy of the face and placed at logical size, so text stays sharp.
+Measurement keeps the logical face. Images and the bitmap fallback font are
+scaled by the renderer.
+
+X11 follows the same rule without a renderer. It reads the same quarter-step
+`Xft.dpi / 96` factor once, when the first display is opened. Xt widgets,
+Xlib drawables, pointer events, frame extents, and screen geometry stay in
+device pixels, and the backend converts at that boundary. Widget positions
+and sizes, invalidated areas, and pane constraints go to device pixels.
+Events, configured sizes, and window positions come back as logical
+pixels. `gpx_wnd` converts each primitive. Filled rectangles and clips
+convert edge by edge, so adjacent areas tile. Strokes stay one device pixel
+thick, as the native widgets' borders do: a thin line falls in the first
+device pixel of its logical pixel, and a thin outline traces the rectangle's
+outer device edge. Wider pens cover their scaled width. Images are
+pixel-replicated. Before any library widget exists, the backend scales the
+stock Athena spacing resources (label and list margins, scrollbar
+thickness, menu and text margins, paned and box spacing) in the Xt
+database, and installs a device-size control font there. Border, highlight
+and rule widths stay one pixel. These are loose bindings, so explicitly
+configured resources keep their values. Library bitmaps (alert icons, the
+combo arrow, the scrollbar thumb stipple) are pixel-replicated. A compositor
+that already upscales X clients publishes 96, so the factor is never applied
+twice.
+
 The ordering matters in one direction only: the subscriber must never be able
 to reach the chrome. Clipping the client stage is what enforces that, so a
 handler that ignores `r` and paints its whole surface still cannot overwrite a

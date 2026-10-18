@@ -16,7 +16,8 @@ namespace linux::sdl2
 {
     //
     // Constrain a preferred client position to a usable display area.
-    // A null window uses conservative decoration dimensions.
+    // A null window uses conservative decoration dimensions. Position
+    // and dimensions are logical pixels in both directions.
     //
     native::point constrain_window_position(
         SDL_Window *window,

@@ -21,6 +21,7 @@
 
 #include "../emulated_theme.h"
 #include "globals.h"
+#include "scale.h"
 #include "scrollbars.h"
 #include "../../gpx_wnd.h"
 
@@ -106,16 +107,6 @@ namespace
         if (owns_probe)
             XtDestroyWidget(probe);
         return result;
-    }
-
-    XFontStruct *query_control_font() {
-        const auto &font =
-            native::font_t::stock(native::font_role::control);
-        auto *binding =
-            linux::x11::font_bindings.object_from_handle(font.id());
-        if (!binding || !binding->xfont || !linux::x11::cached_display)
-            return nullptr;
-        return XQueryFont(linux::x11::cached_display, binding->xfont);
     }
 
     class xaw_theme final : public linux::emulated_theme
@@ -284,6 +275,10 @@ namespace
                               &vertical_margin,
                               nullptr);
                 XtDestroyWidget(probe);
+                horizontal_margin = static_cast<Dimension>(
+                    linux::x11::to_logical(horizontal_margin));
+                vertical_margin = static_cast<Dimension>(
+                    linux::x11::to_logical(vertical_margin));
             }
 
             _g.set_pen(1)
@@ -370,24 +365,23 @@ namespace
         }
 
     protected:
+        // Measure the face window text is drawn with, in logical
+        // pixels, so custom controls match native Athena labels.
         int text_width(const std::string &text) const override {
-            XFontStruct *font = query_control_font();
-            if (!font)
+            const auto &font =
+                native::font_t::stock(native::font_role::control);
+            if (!linux::x11::font_bindings.object_from_handle(font.id()))
                 return static_cast<int>(text.size()) * 7;
-            const int width = XTextWidth(
-                font, text.c_str(), static_cast<int>(text.size()));
-            XFreeFontInfo(nullptr, font, 1);
-            return width;
+            return font.measure_text(text).advance;
         }
 
         int text_height() const override {
-            XFontStruct *font = query_control_font();
-            if (!font)
+            const auto &font =
+                native::font_t::stock(native::font_role::control);
+            if (!linux::x11::font_bindings.object_from_handle(font.id()))
                 return 12;
-            const int height =
-                std::max(1, font->ascent + font->descent);
-            XFreeFontInfo(nullptr, font, 1);
-            return height;
+            const auto metrics = font.get_metrics();
+            return std::max(1, metrics.ascent + metrics.descent);
         }
 
     private:

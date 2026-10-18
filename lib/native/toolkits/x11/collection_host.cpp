@@ -20,6 +20,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "scale.h"
 #include "scrollbars.h"
 
 namespace
@@ -61,7 +62,9 @@ namespace
                       nullptr);
         auto &graphics = owner.get_gpx();
         resize_backbuffer(owner, widget, width, height);
-        native::rect invalid(0, 0, width, height);
+        const native::size logical =
+            linux::x11::size_to_logical(width, height);
+        native::rect invalid(0, 0, logical.w, logical.h);
         graphics.set_clip(invalid);
         native::wnd_paint_event event(invalid, graphics);
         owner.on_native_paint(event);
@@ -376,9 +379,8 @@ namespace
                               widget,
                               width,
                               height);
-            owner->on_native_resize(native::size(
-                static_cast<native::dim>(width),
-                static_cast<native::dim>(height)));
+            owner->on_native_resize(
+                linux::x11::size_to_logical(width, height));
             break;
         }
         case FocusIn:
@@ -391,7 +393,7 @@ namespace
             key(*owner, event->xkey);
             break;
         case MotionNotify:
-            owner->on_native_mouse_move(native::point(
+            owner->on_native_mouse_move(linux::x11::pointer_to_logical(
                 event->xmotion.x, event->xmotion.y));
             break;
         case ButtonPress:
@@ -399,7 +401,8 @@ namespace
             if (event->xbutton.button == Button4 ||
                 event->xbutton.button == Button5) {
                 owner->on_native_mouse_wheel(native::mouse_wheel_event(
-                    native::point(event->xbutton.x, event->xbutton.y),
+                    linux::x11::pointer_to_logical(event->xbutton.x,
+                                                   event->xbutton.y),
                     static_cast<native::coord>(
                         event->xbutton.button == Button4 ? 24 : -24),
                     native::wheel_direction::vertical));
@@ -418,7 +421,8 @@ namespace
                 event->type == ButtonPress
                     ? native::mouse_action::press
                     : native::mouse_action::release,
-                native::point(event->xbutton.x, event->xbutton.y)));
+                linux::x11::pointer_to_logical(event->xbutton.x,
+                                               event->xbutton.y)));
             if (event->type != ButtonRelease)
                 break;
             if (auto *table =
@@ -447,8 +451,8 @@ namespace
                 auto *binding = linux::x11::tree_view_bindings
                                     .object_from_handle(tree);
                 const native::tree_view_hit hit = tree->hit_test(
-                    native::point(event->xbutton.x,
-                                  event->xbutton.y));
+                    linux::x11::pointer_to_logical(event->xbutton.x,
+                                                   event->xbutton.y));
                 const native::tree_item_id item = hit.id;
                 if (binding &&
                     hit.part == native::tree_view_hit_part::row &&
@@ -475,8 +479,9 @@ namespace
                                 : nullptr;
             if (!icons || !binding)
                 break;
-            const int item = icons->item_at(native::point(
-                event->xbutton.x, event->xbutton.y));
+            const int item = icons->item_at(
+                linux::x11::pointer_to_logical(event->xbutton.x,
+                                               event->xbutton.y));
             if (item >= 0 && binding->last_item == item &&
                 event->xbutton.time - binding->last_click <= 400) {
                 icons->on_native_activate(item);
@@ -510,13 +515,13 @@ namespace linux::x11
             layout_host_class(),
             parent_widget,
             XtNhorizDistance,
-            bounds.p.x,
+            linux::x11::to_device(bounds.p.x),
             XtNvertDistance,
-            bounds.p.y,
+            linux::x11::to_device(bounds.p.y),
             XtNwidth,
-            linux::x11::widget_dimension(bounds.d.w),
+            linux::x11::device_dimension(bounds.d.w),
             XtNheight,
-            linux::x11::widget_dimension(bounds.d.h),
+            linux::x11::device_dimension(bounds.d.h),
             XtNborderWidth,
             0,
             XtNbackgroundPixmap,

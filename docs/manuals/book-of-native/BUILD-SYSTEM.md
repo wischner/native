@@ -143,7 +143,7 @@ host-side and Docker-side invocation.
   - Linux X11
   - Linux SDL2
   - Linux OpenMotif under Xvfb in its Docker image
-  - Linux OPEN LOOK/XView in the `Tribblix-OpenLook` KVM guest
+  - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
   - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix through Docker and local rasta
   - Windows MinGW binaries run natively in the Windows 11 VM
@@ -195,27 +195,47 @@ readiness signals are delivered normally.
 
 ### Monochrome X11 runtime session
 
-After `docker-x11`, launch the gallery under TWM inside a dedicated Xephyr:
+After `docker-x11`, launch the gallery under TWM inside a dedicated nested X server:
 
 ```bash
 bash scripts/linux/x11/run-twm.sh
 ```
 
-The host needs `Xephyr`, `twm`, `xrdb`, `xdpyinfo`, `xwininfo`, `xsetroot`, and Docker.
-The script starts a normal 1280x900 Xephyr on the first free display from
-`:10` through `:99`, loads only
-that display's black/white resources and the repository's TWM configuration,
-then runs Docker-built Vision. `NATIVE_X11_DISPLAY=:11` selects another free
-display; an explicitly requested occupied display is refused. No host X
-resources or personal TWM files are changed. TWM uses automatic placement
-and a monochrome stippled root; Xephyr retains normal color depth so application
-images remain usable. The local server accepts local clients without X
-authentication (`-ac`) and disables TCP listening; use only on a trusted host.
-Without arguments it runs Vision. With arguments it runs the supplied
-debugger through Docker, keeping stdout exclusively for GDB/MI and session
-diagnostics on stderr. The X11 F5 configuration uses this same wrapper and
-waits for TWM before starting GDB. Closing Vision in standalone mode, or
-ending GDB in debug mode, cleans up only that session's TWM and Xephyr processes.
+The host needs only Docker and a display. Xephyr, TWM, the X utilities and
+GDB come from the published `wischner/gcc-x86_64-linux-x11` image:
+`run-twm.sh` hands itself to `docker-debug.sh` as the session command and
+raises the session inside the container. `NATIVE_X11_IMAGE` selects another
+image. The script starts a nested server on the first free display from
+`:10` through `:99` and loads only that display's black/white resources and
+the repository's TWM configuration (`twmrc-bw`: black/white `Color` block,
+`fixed` fonts, two-pixel borders). Then it runs Docker-built Vision.
+`NATIVE_X11_DISPLAY=:11` selects another free display; an explicitly
+requested occupied display is refused. No host X resources or personal TWM
+files are changed. TWM uses automatic placement over a 50% stippled root.
+The desktop is strictly black and white, but the server keeps the host's
+color depth: Xephyr supports only depths 8, 16 and 24, so a 1-bit screen is
+not available, and application images keep their colors.
+
+The session follows the host desktop scale, read from the host `Xft.dpi`
+(or `NATIVE_X11_DPI`) as `Xft.dpi / 96` in quarter steps. GNOME with
+`xwayland-native-scaling` shows X clients in device pixels, so an unscaled
+1280x900 Xephyr would appear at half size on a 2x monitor. When the image
+provides Xwayland 23.1 or later and the host runs Wayland, a rootful
+Xwayland of 1280x900 is used instead, and the compositor scales it like any
+unscaled program. `docker-debug.sh` forwards the Wayland socket for this
+session only. Otherwise Xephyr gets a 1280x900 screen multiplied by the
+factor and the host value as its `Xft.dpi`, so the X11 backend scales itself
+(see [Painting](PATTERNS-PAINTING.md)). TWM's spacing, icon manager and root
+stipple are scaled to match. Its border widths stay as configured, and
+`fixed` is replaced by the nearest installed bitmap size, such as Lucida
+Typewriter 26 at 2x. The image's `xfonts-75dpi`, `xfonts-100dpi` and
+`xfonts-terminus` (from image 1.4.0) provide those sizes. The local server accepts local clients without X
+authentication (`-ac`) and disables TCP listening; use only on a trusted
+host. Without arguments it runs Vision. With arguments it runs the supplied
+debugger, keeping stdout exclusively for GDB/MI and session diagnostics on
+stderr. The X11 F5 configuration uses this same wrapper and waits for TWM
+before starting GDB. Closing Vision in standalone mode, or ending GDB in
+debug mode, cleans up only that session's TWM and nested server.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.
@@ -287,7 +307,7 @@ the VS Code Run and Debug view and press F5.
 | --- | --- | --- |
 | Linux X11 | Local Docker container, dedicated monochrome Xephyr/TWM display | GDB through Docker |
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
-| Linux OPEN LOOK | `Tribblix-OpenLook` KVM guest | GDB over SSH |
+| Linux OPEN LOOK | Docker container, Xephyr/olwm session | GDB through Docker |
 | Linux Window Maker | `Bookworm-WindowMaker` KVM guest | GDB over SSH |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
 | OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
@@ -306,8 +326,9 @@ The X11 profile disables LeakSanitizer's exit-time leak scan under GDB
 (`ASAN_OPTIONS=detect_leaks=0`), since it cannot run under ptrace; address
 and undefined-behavior checks remain enabled.
 The GEMix pipe starts Rasta locally and shares its framebuffer with the
-container. OPEN LOOK and Window Maker synchronize and build the source in
-their desktop guests, then run GDB against display `:0`.
+container. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
+to start GDB in the build image with Xephyr and olwm. Window Maker synchronizes
+and builds the source in its desktop guest, then runs GDB against display `:0`.
 
 ### Development-host preparation
 
@@ -347,29 +368,23 @@ the exact runtime DLLs reported by the Docker cross-compiler; no host Wine
 installation is involved. The original Wine helper scripts remain historical
 tools and are not referenced by any F5 configuration or task.
 
-### Tribblix OPEN LOOK preparation
+### Docker OPEN LOOK preparation
 
-The OPEN LOOK configuration expects:
+Select **Debug Vision (OPEN LOOK, Docker Xephyr/olwm)**. F5 builds the
+`docker-openlook` target into `build/linux-openlook/` and runs the image's
+GDB through `scripts/linux/docker-debug.sh --session openlook-xephyr`.
+The `wischner/gcc-x86_64-linux-openlook:latest` image supplies XView, OLGX,
+Xephyr, olwm, fonts, X utilities and GDB. No guest setup is required.
 
-- A libvirt domain named `Tribblix-OpenLook` at `192.168.122.28`.
-- The SSH target `tomaz@192.168.122.28`, authenticated without an interactive
-  password prompt.
-- CMake, GCC/G++, rsync, the 32-bit XView and OLGX development files, and
-  X11/Xrandr development files installed in the guest.
-- The multilib GDB at `/usr/bin/amd64/gdb`. It debugs the 32-bit executable;
-  `/usr/bin/gdb` cannot handle the current Tribblix procfs interface reliably.
-- A logged-in `olvwm` or `olwm` session using display `:0`, with
-  `/export/home/tomaz/.Xauthority` available.
-- A writable `/export/home/tomaz/Projects/` directory.
+The pipe forwards the host X11 socket and Xauthority file and allocates free
+nested displays. The image helper starts Xephyr and olwm, runs GDB, and cleans
+up its session when debugging ends. If the host display is unavailable it
+uses an Xvfb parent. Debug builds retain ASan/UBSan; the launch profile disables
+LeakSanitizer under ptrace. Standalone execution uses:
 
-F5 starts the guest if necessary, waits for SSH, synchronizes the source into
-`/export/home/tomaz/Projects/native`, configures the 32-bit
-`build/tribblix-openlook-debug` tree, builds Vision, and starts remote GDB. The
-task keeps Debug symbols and GCC warnings but disables the sanitizer bundle,
-which is unavailable for this Tribblix configuration. Tribblix installs XView
-and OLGX without `pkg-config` files; CMake falls back to their system headers
-and libraries. Synchronization uses `--delete`, so files changed only in the
-guest project copy are not preserved.
+```bash
+./scripts/linux/toolkit-session-run.sh openlook ./build/linux-openlook/src/vision
+```
 
 ### Bookworm Window Maker preparation
 
@@ -473,7 +488,7 @@ those defaults.
 - Backend build trees are separate on purpose.
 - The root project builds the library and Vision, not generated API docs.
 - Runtime verification currently covers Linux X11/SDL2/OpenMotif, OPEN LOOK in
-  Tribblix, Window Maker in Bookworm, the native Windows VM, Haiku deploy-and-run over
+  Docker, Window Maker in Bookworm, the native Windows VM, Haiku deploy-and-run over
   SSH, and Apple on the configured remote host.
 
 ## Background-service regression targets and consumers

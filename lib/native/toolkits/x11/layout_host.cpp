@@ -10,6 +10,7 @@
 #include <X11/Xaw/FormP.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -45,8 +46,10 @@ namespace
             const auto d = owner->get_dimensions();
             const int border = 2 * child->core.border_width;
             XtResizeWidget(child,
-                linux::x11::widget_dimension(int(d.w) - border),
-                linux::x11::widget_dimension(int(d.h) - border),
+                linux::x11::widget_dimension(
+                    linux::x11::to_device(d.w) - border),
+                linux::x11::widget_dimension(
+                    linux::x11::to_device(d.h) - border),
                 child->core.border_width);
         }
         layout(reinterpret_cast<FormWidget>(host), 0, 0, True);
@@ -65,7 +68,8 @@ namespace
         if (!owner) return 1;
         const auto size = owner->get_dimensions();
         return linux::x11::widget_dimension(
-            int(horizontal ? size.w : size.h) - 2 * child->core.border_width);
+            linux::x11::to_device(horizontal ? size.w : size.h) -
+            2 * child->core.border_width);
     }
 
     XtGeometryResult geometry(Widget child, XtWidgetGeometry *request,

@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include <X11/Intrinsic.h>
+#include <X11/IntrinsicP.h>
 #include <X11/Shell.h>
 #include <X11/StringDefs.h>
 #include <X11/Xaw/AsciiText.h>
@@ -16,10 +16,12 @@
 #include <X11/Xaw/MenuButton.h>
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeBSB.h>
+#include <X11/Xaw/TextP.h>
 
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -40,18 +42,27 @@ namespace
     void fit_children(linux::x11::xaw_combo_box *binding) {
         Dimension width = 1, height = 1;
         XtVaGetValues(binding->root, XtNwidth, &width, XtNheight, &height, nullptr);
-        const int button_width = std::min<int>(width, height + 4);
-        const int child_height = std::max(1, int(height) - 2);
+        // Device pixels throughout; borders are one-pixel strokes.
+        const int pixel = 1;
+        const int button_width =
+            std::min<int>(width, height + linux::x11::to_device(4));
+        const int child_height = std::max(1, int(height) - 2 * pixel);
         XFontStruct *font = nullptr;
         XtVaGetValues(XawTextGetSink(binding->text), XtNfont, &font, nullptr);
         const int text_height = font ? font->ascent + font->descent : 13;
         const int margin = std::max(0, (child_height - text_height) / 2);
+        // libXaw's SetValues copies a new bottomMargin into the
+        // effective margin but not a new topMargin: it clears the new
+        // top strip yet lays lines out at the old one, cutting glyph
+        // tops off. Set the effective margin as Initialize would.
+        reinterpret_cast<TextWidget>(binding->text)->text.margin.top =
+            static_cast<Position>(margin);
         XtVaSetValues(binding->text,
-            XtNwidth, std::max(1, int(width) - button_width - 1),
+            XtNwidth, std::max(1, int(width) - button_width - pixel),
             XtNtopMargin, margin, XtNbottomMargin, margin,
             XtNheight, child_height, nullptr);
         XtVaSetValues(binding->button,
-            XtNwidth, std::max(1, button_width - 2),
+            XtNwidth, std::max(1, button_width - 2 * pixel),
             XtNheight, child_height, nullptr);
     }
 
@@ -88,10 +99,11 @@ namespace
         XtTranslateCoords(binding->root, 0, 0, &x, &y);
         const int screen_width = WidthOfScreen(XtScreen(menu));
         const int screen_height = HeightOfScreen(XtScreen(menu));
-        const int top = y + height + popup_height + 2 <= screen_height
-            ? y + height : y - popup_height - 2;
+        const int frame = 2;
+        const int top = y + height + popup_height + frame <= screen_height
+            ? y + height : y - popup_height - frame;
         XtVaSetValues(menu,
-            XtNwidth, std::max(1, int(width) - 2),
+            XtNwidth, std::max(1, int(width) - frame),
             XtNx, std::clamp<int>(x, 0, std::max(0, screen_width - width)),
             XtNy, std::max(0, top), nullptr);
         binding->opening_press = true;
@@ -162,7 +174,8 @@ namespace
             1,
             XtNborderColor, border,
             XtNallowShellResize, False,
-            XtNwidth, std::max(1, int(owner->get_dimensions().w) - 2),
+            XtNwidth, std::max(1, linux::x11::to_device(
+                owner->get_dimensions().w) - 2),
             nullptr);
         XtAddCallback(binding->menu, XtNpopupCallback, opening, owner);
         XtAddCallback(binding->menu, XtNpopdownCallback, closed, owner);
@@ -232,10 +245,10 @@ namespace native
         auto *binding = new linux::x11::xaw_combo_box;
         binding->root = XtVaCreateWidget(
             "comboBox", linux::x11::layout_host_class(), parent,
-            XtNhorizDistance, _bounds.p.x,
-            XtNvertDistance, _bounds.p.y,
-            XtNwidth, linux::x11::widget_dimension(_bounds.d.w),
-            XtNheight, linux::x11::widget_dimension(_bounds.d.h),
+            XtNhorizDistance, linux::x11::to_device(_bounds.p.x),
+            XtNvertDistance, linux::x11::to_device(_bounds.p.y),
+            XtNwidth, linux::x11::device_dimension(_bounds.d.w),
+            XtNheight, linux::x11::device_dimension(_bounds.d.h),
             XtNborderWidth, 0,
             XtNdefaultDistance, 0,
             XtNleft, XtChainLeft,
@@ -244,19 +257,24 @@ namespace native
             XtNbottom, XtChainTop,
             XtNresizable, False,
             nullptr);
-        const int button_width = std::min<int>(_bounds.d.w, _bounds.d.h+4);
-        const int child_height = std::max(1,
-            static_cast<int>(_bounds.d.h)-2);
+        // Child geometry is in device pixels, as fit_children keeps it;
+        // borders are one-pixel strokes.
+        const int pixel = 1;
+        const int device_width = linux::x11::to_device(_bounds.d.w);
+        const int device_height = linux::x11::to_device(_bounds.d.h);
+        const int button_width = std::min<int>(
+            device_width, device_height + linux::x11::to_device(4));
+        const int child_height = std::max(1, device_height - 2 * pixel);
         const int text_width = std::max(1,
-            static_cast<int>(_bounds.d.w)-button_width-1);
-        const int arrow_width = std::max(1, button_width-2);
+            device_width - button_width - pixel);
+        const int arrow_width = std::max(1, button_width - 2 * pixel);
         binding->text = XtVaCreateManagedWidget(
             "comboText", asciiTextWidgetClass, binding->root,
             XtNhorizDistance, 0,
             XtNvertDistance, 0,
             XtNwidth, text_width,
             XtNheight, child_height,
-            XtNborderWidth, 1,
+            XtNborderWidth, pixel,
             XtNtopMargin, 0,
             XtNbottomMargin, 0,
             XtNstring, get_text().c_str(),
@@ -268,18 +286,18 @@ namespace native
         binding->button = XtVaCreateManagedWidget(
             "comboButton", menuButtonWidgetClass, binding->root,
             XtNfromHoriz, binding->text,
-            XtNhorizDistance, -1,
+            XtNhorizDistance, -pixel,
             XtNvertDistance, 0,
             XtNwidth, arrow_width,
             XtNheight, child_height,
-            XtNborderWidth, 1,
+            XtNborderWidth, pixel,
             XtNlabel, "", XtNmenuName, "comboMenu",
             XtNresize, False,
             XtNleft, XtChainRight, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,
             nullptr);
         if (linux::x11::cached_display) {
-            binding->arrow = XCreateBitmapFromData(
+            binding->arrow = linux::x11::create_device_bitmap(
                 linux::x11::cached_display,
                 RootWindowOfScreen(XtScreen(binding->root)),
                 bitmap_arrow_bits,

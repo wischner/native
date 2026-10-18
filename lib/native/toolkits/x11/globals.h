@@ -42,9 +42,13 @@ namespace linux::x11
     struct x11_font
     {
         Display *display;
-        Font xfont;
+        Font xfont; // logical size: metrics and image text
         XFontStruct *metrics;
         bool owned; // if true, XUnloadFont on destruction
+        // Window text on a scaled desktop; 0 when unscaled. Always owned.
+        // Its metrics, divided by the factor, are the logical metrics.
+        Font device_xfont = 0;
+        XFontStruct *device_metrics = nullptr;
     };
 
     // Internally cached values for gc and backbuffer

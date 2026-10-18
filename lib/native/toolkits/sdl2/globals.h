@@ -8,6 +8,9 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <SDL2/SDL.h>
 #ifdef HAVE_SDL2_TTF
@@ -35,11 +38,42 @@ namespace linux::sdl2
     // SDL events carry handles, so process-wide registries
     // recover the corresponding C++ objects during event dispatch.
 #ifdef HAVE_SDL2_TTF
-    // Platform handle for a font_t — owns a TTF_Font.
+    // Platform handle for a font_t — owns a TTF_Font measured in
+    // logical pixels, plus lazily opened copies at device sizes for
+    // drawing into scaled window renderers.
     struct sdl2_font
     {
-        TTF_Font *ttf_font;
+        TTF_Font *ttf_font = nullptr;
+        std::string path;
+        int size = 0;
+        std::vector<std::pair<int, TTF_Font *>> device_fonts;
     };
+
+    // A font to rasterize with and the device pixels per logical pixel
+    // its glyphs carry (1 when no device copy is available).
+    struct device_face
+    {
+        TTF_Font *font = nullptr;
+        float scale = 1.0F;
+    };
+
+    // Return the copy of a font for drawing at a renderer scale.
+    device_face device_font(sdl2_font &font, float scale);
+
+    //
+    // Draw UTF-8 text through SDL_ttf at the renderer's resolution.
+    //
+    // Notes:
+    //      Glyphs are rasterized at device size and placed at logical
+    //      size, so the renderer scale is the only factor applied.
+    //      Returns false when nothing could be rasterized.
+    //
+    bool draw_ttf_text(SDL_Renderer *renderer,
+                       sdl2_font &font,
+                       const std::string &text,
+                       int x,
+                       int y,
+                       SDL_Color color);
 #endif
 
     // Graphics cache structure for SDL2

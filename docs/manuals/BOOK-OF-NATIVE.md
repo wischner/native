@@ -28,7 +28,7 @@ runtime evidence are recorded separately in the feature matrix.
   - Linux SDL2 backend, including nested canvas renderer pixels, real
     SDL pointer routing/capture, and close-policy regressions
   - Linux OpenMotif backend
-  - Linux OPEN LOOK/XView backend in the `Tribblix-OpenLook` KVM guest
+  - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm
   - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
     and serialized libgem/gemd builds; direct-backend regressions also

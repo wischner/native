@@ -13,6 +13,7 @@
 #include <fontconfig/fontconfig.h>
 #endif
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 #include <native.h>
@@ -44,15 +45,22 @@ namespace
     void release(uint32_t id) {
         auto *f = linux::sdl2::font_bindings.object_from_handle(id);
         if (f) {
+            for (auto &device : f->device_fonts)
+                if (device.second)
+                    TTF_CloseFont(device.second);
             TTF_CloseFont(f->ttf_font);
             delete f;
         }
         linux::sdl2::font_bindings.unregister_by_handle(id);
     }
 
-    uint32_t register_font(TTF_Font *ttf_font) {
+    uint32_t register_font(TTF_Font *ttf_font,
+                           const std::string &path,
+                           int size) {
         auto *h = new linux::sdl2::sdl2_font();
         h->ttf_font = ttf_font;
+        h->path = path;
+        h->size = size;
         uint32_t id = next_id();
         linux::sdl2::font_bindings.register_pair(id, h);
         return id;
@@ -88,11 +96,17 @@ namespace
 #endif
     }
 
-    TTF_Font *open_by_pattern(const char *pattern, int size) {
+    // Open a font by file or Fontconfig pattern, reporting the file
+    // used so device-size copies can be opened later.
+    TTF_Font *open_by_pattern(const char *pattern,
+                              int size,
+                              std::string &path) {
         TTF_Font *f = TTF_OpenFont(pattern, size);
-        if (f)
+        if (f) {
+            path = pattern;
             return f;
-        std::string path = fc_match(pattern);
+        }
+        path = fc_match(pattern);
         if (!path.empty())
             f = TTF_OpenFont(path.c_str(), size);
         return f;
@@ -100,9 +114,10 @@ namespace
 
     TTF_Font *open_by_fallbacks(const char *const *fallbacks,
                                 int size,
-                                const char **chosen_pattern) {
+                                const char **chosen_pattern,
+                                std::string &path) {
         for (int i = 0; fallbacks[i]; ++i) {
-            TTF_Font *f = open_by_pattern(fallbacks[i], size);
+            TTF_Font *f = open_by_pattern(fallbacks[i], size, path);
             if (f) {
                 if (chosen_pattern)
                     *chosen_pattern = fallbacks[i];
@@ -112,6 +127,35 @@ namespace
         return nullptr;
     }
 } // namespace
+
+namespace linux::sdl2
+{
+    device_face device_font(sdl2_font &font, float scale) {
+        const int size =
+            static_cast<int>(std::lround(font.size * scale));
+        if (size == font.size || size <= 0 || font.path.empty())
+            return {font.ttf_font, 1.0F};
+
+        auto cached = std::find_if(
+            font.device_fonts.begin(),
+            font.device_fonts.end(),
+            [size](const auto &entry) { return entry.first == size; });
+        TTF_Font *device = nullptr;
+        if (cached != font.device_fonts.end()) {
+            device = cached->second;
+        } else {
+            device = TTF_OpenFont(font.path.c_str(), size);
+            if (device)
+                TTF_SetFontStyle(device,
+                                 TTF_GetFontStyle(font.ttf_font));
+            // Failures are cached too, so a missing file is not
+            // reopened on every frame.
+            font.device_fonts.emplace_back(size, device);
+        }
+        return device ? device_face{device, scale}
+                      : device_face{font.ttf_font, 1.0F};
+    }
+} // namespace linux::sdl2
 
 #endif // HAVE_SDL2_TTF
 
@@ -212,10 +256,12 @@ namespace native
             };
             for (const auto &d : defs) {
                 const char *chosen_pattern = nullptr;
+                std::string path;
                 TTF_Font *ttf = open_by_fallbacks(
-                    d.fallbacks, d.size, &chosen_pattern);
+                    d.fallbacks, d.size, &chosen_pattern, path);
                 if (ttf) {
-                    s[(int)d.role]._id = register_font(ttf);
+                    s[(int)d.role]._id =
+                        register_font(ttf, path, d.size);
                     s[(int)d.role]._spec.family =
                         chosen_pattern ? chosen_pattern : "";
                     s[(int)d.role]._spec.size = d.size;

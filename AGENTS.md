@@ -183,7 +183,16 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
   backend without OpenMotif installed.
 - The X11 F5 profile runs Docker GDB through `scripts/linux/x11/run-twm.sh`
   in a dedicated monochrome Xephyr/TWM display, never directly on the host
-  desktop. Keep GDB/MI stdout clean and other backend profiles independent.
+  desktop. The session's tools come from the X11 image, and it is scaled to
+  the host `Xft.dpi`. Keep GDB/MI stdout clean and other backend profiles independent.
+
+### OPEN LOOK backend
+
+- Build with `docker-openlook`. F5 and standalone execution use the
+  `wischner/gcc-x86_64-linux-openlook:latest` image and its `openlook-xephyr`
+  helper, which supplies Xephyr and olwm. No Tribblix VM is required.
+- Keep GDB/MI stdout clean and use `scripts/linux/docker-debug.sh` for F5,
+  or `scripts/linux/toolkit-session-run.sh openlook` for standalone runs.
 
 ### SDL2 backend
 

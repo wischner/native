@@ -39,27 +39,31 @@
             "preLaunchTask": "CMake Build Debug (Docker SDL2)"
         },
         {
-            "name": "Debug Vision (OPEN LOOK, Tribblix VM)",
+            "name": "Debug Vision (OPEN LOOK, Docker Xephyr/olwm)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/export/home/tomaz/Projects/${workspaceFolderBasename}/build/tribblix-openlook-debug/src/vision",
-            "cwd": "/export/home/tomaz/Projects/${workspaceFolderBasename}",
+            "program": "${workspaceFolder}/build/linux-openlook/src/vision",
+            "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
             "environment": [
-                {"name": "DISPLAY", "value": ":0"},
-                {"name": "XAUTHORITY", "value": "/export/home/tomaz/.Xauthority"}
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0"
+                }
             ],
-            "sourceFileMap": {
-                "/export/home/tomaz/Projects/native": "${workspaceFolder}"
-            },
             "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": ["-T", "tomaz@192.168.122.28"],
-                "debuggerPath": "/usr/bin/amd64/gdb"
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
+                "pipeArgs": [
+                    "--session",
+                    "openlook-xephyr",
+                    "wischner/gcc-x86_64-linux-openlook:latest"
+                ],
+                "debuggerPath": "/usr/bin/gdb"
             },
-            "preLaunchTask": "Build Vision Debug (OPEN LOOK Tribblix VM)"
+            "preLaunchTask": "CMake Build Debug (Docker OpenLook)"
         },
         {
             "name": "Debug Vision (Window Maker, Bookworm VM)",

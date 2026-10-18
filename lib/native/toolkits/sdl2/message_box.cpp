@@ -22,6 +22,7 @@
 #include "../../message_box_common.h"
 #include "../../message_box_icons.h"
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -32,7 +33,8 @@ namespace
         bool repost_quit = false;
         while (dialog.get_created()) {
             SDL_Event event{};
-            while (dialog.get_created() && SDL_PollEvent(&event)) {
+            while (dialog.get_created() &&
+                   linux::sdl2::poll_event(event)) {
                 if (event.type == SDL_QUIT) {
                     cancel();
                     repost_quit = true;

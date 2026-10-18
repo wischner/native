@@ -35,6 +35,7 @@
 #include "../../platforms/linux/file_dialog_process.h"
 #include "file_dialog_fallback.h"
 #include "globals.h"
+#include "scale.h"
 
 namespace
 {
@@ -379,9 +380,9 @@ namespace linux::x11
             XtNtransientFor,
             owner_shell,
             XtNwidth,
-            560,
+            linux::x11::to_device(560),
             XtNheight,
-            410,
+            linux::x11::to_device(410),
             nullptr);
         if (!state->shell) {
             return false;
@@ -392,7 +393,7 @@ namespace linux::x11
             formWidgetClass,
             state->shell,
             XtNdefaultDistance,
-            8,
+            linux::x11::to_device(8),
             nullptr);
         state->directory_label = XtVaCreateManagedWidget(
             "directory",
@@ -403,7 +404,7 @@ namespace linux::x11
             XtNborderWidth,
             0,
             XtNwidth,
-            536,
+            linux::x11::to_device(536),
             nullptr);
         state->path_edit = XtVaCreateManagedWidget(
             "path",
@@ -414,9 +415,9 @@ namespace linux::x11
             XtNeditType,
             XawtextEdit,
             XtNwidth,
-            536,
+            linux::x11::to_device(536),
             XtNheight,
-            28,
+            linux::x11::to_device(28),
             nullptr);
         Widget viewport = XtVaCreateManagedWidget(
             "file_viewport",
@@ -425,9 +426,9 @@ namespace linux::x11
             XtNfromVert,
             state->path_edit,
             XtNwidth,
-            536,
+            linux::x11::to_device(536),
             XtNheight,
-            276,
+            linux::x11::to_device(276),
             XtNallowVert,
             True,
             XtNallowHoriz,
@@ -438,7 +439,7 @@ namespace linux::x11
             listWidgetClass,
             viewport,
             XtNwidth,
-            516,
+            linux::x11::to_device(516),
             XtNdefaultColumns,
             1,
             XtNforceColumns,
@@ -455,7 +456,7 @@ namespace linux::x11
             XtNlabel,
             directory_only ? "Select" : (save ? "Save" : "Open"),
             XtNwidth,
-            88,
+            linux::x11::to_device(88),
             nullptr);
         Widget cancel = XtVaCreateManagedWidget(
             "cancel",
@@ -468,7 +469,7 @@ namespace linux::x11
             XtNlabel,
             "Cancel",
             XtNwidth,
-            88,
+            linux::x11::to_device(88),
             nullptr);
 
         XtAddCallback(state->list,
