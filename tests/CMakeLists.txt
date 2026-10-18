@@ -422,6 +422,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND
 endif()
 
 if(TOOLKIT STREQUAL "WMAKER")
+    add_executable(native_wmaker_repaint_tests native_wmaker_repaint_tests.cpp)
+    target_include_directories(native_wmaker_repaint_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_wmaker_repaint_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_wmaker_repaint_tests COMMAND native_wmaker_repaint_tests)
+    set_tests_properties(native_wmaker_repaint_tests PROPERTIES TIMEOUT 20)
+endif()
+
+if(TOOLKIT STREQUAL "WMAKER")
     add_executable(native_wmaker_allocation_tests native_wmaker_allocation_tests.cpp)
     target_include_directories(native_wmaker_allocation_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)

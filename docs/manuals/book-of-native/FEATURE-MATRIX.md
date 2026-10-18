@@ -13,6 +13,26 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+## Window Maker collection repaint (2026-10-18)
+
+Collection invalidations now coalesce into a deferred buffered repaint,
+bypassing WINGs' synchronous frame redisplay that briefly repainted the native
+border before the collection image. The new icon/tree regression verifies
+one paint per invalidation burst and safe destruction/recreation. The Docker
+Debug build and all 19 Window Maker regressions pass (18 existing tests plus
+the focused repaint test). The rebuilt gallery also starts in Docker Xephyr.
+
+## Window Maker Docker runtime (2026-10-18)
+
+The **Linux Window Maker, Xephyr** F5 profile builds and runs in
+`wischner/gcc-x86_64-linux-window-maker:latest` through the image's
+`window-maker-xephyr` helper. The Docker Debug build passes, all 18 CTests
+pass in that Xephyr/Window Maker session, and Vision creates its gallery
+window. The GDB pipe produces clean MI output. The standalone launcher
+retains its existing `ASAN_OPTIONS=detect_leaks=0` setting; this verification
+does not establish new leak-checking coverage. Earlier Bookworm guest
+results remain historical evidence.
+
 ## OPEN LOOK Docker runtime (2026-10-18)
 
 The maintained OPEN LOOK F5 profile builds and runs in
@@ -264,7 +284,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Linux SDL2 | `docker-sdl2` | Yes (tested) |
 | Linux OpenMotif | `docker-openmotif` | Yes (tested) |
 | Linux OPEN LOOK/XView | `docker-openlook` + Docker Xephyr/olwm | Yes (tested) |
-| Linux Window Maker/WINGs | `docker-wmaker` + Bookworm VM native build | Yes (tested) |
+| Linux Window Maker/WINGs | `docker-wmaker` + Docker Xephyr/Window Maker | Yes (tested) |
 | Linux GEMix | `docker-gemix` + local rasta | Yes (tested) |
 | Linux GEMix via gemd | `docker-gemix-gemd` + local rasta | Yes (tested) |
 | MS Windows (MinGW) | `docker-win` + native Windows 11 VM | Yes (tested) |

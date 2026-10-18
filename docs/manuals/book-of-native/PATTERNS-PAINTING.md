@@ -283,6 +283,13 @@ theme lookup in `on_wnd_create` does not force the shell visible. Collection
 hosts disable server background clearing, coalesce pending Exposes and copy
 the completed backbuffer. Standard Athena controls retain native painting.
 
+WINGs collection hosts coalesce invalidations into one deferred buffered paint.
+They bypass `WMRedisplayWidget`, whose synchronous frame Expose handler
+would draw a native border before the collection buffer replaces it. Native
+Expose events still restore content normally. Deferred paints check both
+object and native-resource lifetime, so destruction or recreation cancels
+stale work. Standard WINGs controls retain their toolkit redisplay path.
+
 Each backend must:
 
 1. Translate native expose or paint notifications into one synchronous public

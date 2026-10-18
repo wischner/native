@@ -194,6 +194,14 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 - Keep GDB/MI stdout clean and use `scripts/linux/docker-debug.sh` for F5,
   or `scripts/linux/toolkit-session-run.sh openlook` for standalone runs.
 
+### Window Maker backend
+
+- Build with `docker-wmaker`. F5 and standalone execution use
+  `wischner/gcc-x86_64-linux-window-maker:latest` and its
+  `window-maker-xephyr` helper for Xephyr and Window Maker.
+- Use `scripts/linux/docker-debug.sh` for F5 and
+  `scripts/linux/toolkit-session-run.sh wmaker` for standalone execution.
+
 ### SDL2 backend
 
 - Files under `lib/native/toolkits/sdl2/` are for SDL2 code only.

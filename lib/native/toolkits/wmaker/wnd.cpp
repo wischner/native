@@ -26,6 +26,7 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+#include "collection_host.h"
 #include "../x_pointer.h"
 #include "../x_border.h"
 
@@ -214,6 +215,8 @@ namespace native
         if (!_created)
             return *this;
         auto *self = this;
+        if (linux::wmaker::schedule_collection_repaint(*self))
+            return *this;
         if (native::detail::peer_state<
                 linux::wmaker::window_state>(*self)) {
             auto *window = static_cast<app_wnd *>(self);
@@ -232,6 +235,8 @@ namespace native
         if (!_created)
             return *this;
         auto *self = this;
+        if (linux::wmaker::schedule_collection_repaint(*self))
+            return *this;
         if (native::detail::peer_state<
                 linux::wmaker::window_state>(*self)) {
             auto *window = static_cast<app_wnd *>(self);

@@ -29,7 +29,7 @@ runtime evidence are recorded separately in the feature matrix.
     SDL pointer routing/capture, and close-policy regressions
   - Linux OpenMotif backend
   - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm
-  - Linux Window Maker/WINGs backend in the `Bookworm-WindowMaker` KVM guest
+  - Linux Window Maker/WINGs backend in Docker with Xephyr and Window Maker
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
     and serialized libgem/gemd builds; direct-backend regressions also
     cover nested tab/split/canvas framebuffer composition and secondary

@@ -375,7 +375,10 @@ namespace
         native::rect invalid(0, 0, dimensions.w, dimensions.h);
         graphics.set_clip(invalid);
         native::wnd_paint_event event(invalid, graphics);
+        const native::detail::window_guard guard(owner);
         owner.on_native_paint(event);
+        if (!guard.alive())
+            return;
         XSetClipMask(linux::wmaker::display, cache->gc, None);
         XCopyArea(linux::wmaker::display,
                   cache->backbuffer,
@@ -816,6 +819,26 @@ namespace
 
 namespace linux::wmaker
 {
+    bool schedule_collection_repaint(native::wnd &owner) {
+        auto *state = state_for(owner);
+        if (!state)
+            return false;
+        if (state->repaint_pending)
+            return true;
+        state->repaint_pending = true;
+        const native::detail::window_guard guard(owner);
+        defer([owner = &owner, guard] {
+            if (!guard.alive())
+                return;
+            auto *state = state_for(*owner);
+            if (!state || !state->repaint_pending)
+                return;
+            state->repaint_pending = false;
+            paint(*owner);
+        });
+        return true;
+    }
+
     native_collection *create_collection_frame(native::wnd &owner) {
         return create_frame(owner);
     }

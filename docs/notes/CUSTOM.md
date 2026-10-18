@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-15.
+Audit date: 2026-10-18.
 
 Shared shader lifecycle review: 2026-10-08. Resource creation and
 source-less installation retain pending status until an output
@@ -264,7 +264,7 @@ retired native list pages hide before their deferred destruction.
 | `list` | **N/H** | `WMList`; supported item drawing aligns selection with the collection palette. |
 | `combo_box` | **H** | `WMPopUpButton` and optional `WMTextField` inside a `WMFrame`; X Shape exposes only the editable field's inset arrow while the native popup retains the complete combo width, and state-aware overlay painting keeps the disclosure glyph centered through press and release. |
 | `text_edit` | **N/H** | `WMTextField` or `WMText`; portable validation and clipboard policy wrap it, including reliable whole-value selection for direct copy/paste commands. |
-| `accordion`, `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content in a `WMFrame`, with native `WMScroller` controls. |
+| `accordion`, `icon_view`, `tree_view`, `table_view` | **C/H** | Library-painted collection content in a `WMFrame`, with native `WMScroller` controls. Invalidations coalesce into a buffered paint without synchronously redisplaying the native frame. |
 | `tab_view` | **N/H** | Native `WMTabView`/`WMTabViewItem` for framed top tabs; WINGs-matched directional painting and borrowed-page hosts for bottom, side, and strip-only tabs. Selected bottom/right tabs retain the same single joining line as top/left; inactive bottom/right tabs suppress their redundant inner closure and shadow their free edge. |
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior; native pane-size notifications synchronize the portable ratio and refit both borrowed children to the exact granted pane sizes, preserving every control edge. |

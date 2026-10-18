@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Vision (Linux X11, Xephyr/TWM mono)",
+            "name": "Linux X11, Xephyr",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-x11/src/vision",
@@ -22,7 +22,7 @@
             "preLaunchTask": "CMake Build Debug (Docker X11)"
         },
         {
-            "name": "Debug Vision (Linux SDL2, local)",
+            "name": "Linux SDL2, local",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-sdl2/src/vision",
@@ -39,7 +39,7 @@
             "preLaunchTask": "CMake Build Debug (Docker SDL2)"
         },
         {
-            "name": "Debug Vision (OPEN LOOK, Docker Xephyr/olwm)",
+            "name": "Linux OPEN LOOK, Xephyr",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-openlook/src/vision",
@@ -66,28 +66,31 @@
             "preLaunchTask": "CMake Build Debug (Docker OpenLook)"
         },
         {
-            "name": "Debug Vision (Window Maker, Bookworm VM)",
+            "name": "Linux Window Maker, Xephyr",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/tomaz/Projects/${workspaceFolderBasename}/build/bookworm-wmaker-debug/src/vision",
-            "cwd": "/home/tomaz/Projects/${workspaceFolderBasename}",
+            "program": "${workspaceFolder}/build/linux-wmaker/src/vision",
+            "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "MIMode": "gdb",
             "externalConsole": false,
             "environment": [
-                {"name": "DISPLAY", "value": ":0"},
-                {"name": "XAUTHORITY", "value": "/home/tomaz/.Xauthority"},
-                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0"
+                }
             ],
-            "sourceFileMap": {
-                "/home/tomaz/Projects/native": "${workspaceFolder}"
-            },
             "pipeTransport": {
-                "pipeProgram": "ssh",
-                "pipeArgs": ["-T", "whiskey"],
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/docker-debug.sh",
+                "pipeArgs": [
+                    "--session",
+                    "window-maker-xephyr",
+                    "wischner/gcc-x86_64-linux-window-maker:latest"
+                ],
                 "debuggerPath": "/usr/bin/gdb"
             },
-            "preLaunchTask": "Build Vision Debug (Window Maker Bookworm VM)"
+            "preLaunchTask": "CMake Build Debug (Docker Window Maker)"
         },
         {
             "name": "Debug Vision (Linux GEMix, local)",

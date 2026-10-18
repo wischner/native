@@ -175,52 +175,6 @@
             "dependsOn": "Sync Source (OpenMotif Tribblix CDE)"
         },
         {
-            "label": "Start Debug Target (Bookworm Window Maker)",
-            "type": "process",
-            "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
-            "args": ["Bookworm-WindowMaker", "whiskey"],
-            "problemMatcher": []
-        },
-        {
-            "label": "Prepare Source Directory (Window Maker Bookworm VM)",
-            "type": "process",
-            "command": "ssh",
-            "args": [
-                "whiskey",
-                "mkdir -p $HOME/Projects/${workspaceFolderBasename}"
-            ],
-            "problemMatcher": [],
-            "dependsOn": "Start Debug Target (Bookworm Window Maker)"
-        },
-        {
-            "label": "Sync Source (Window Maker Bookworm VM)",
-            "type": "shell",
-            "command": "rsync",
-            "args": [
-                "-az",
-                "--delete",
-                "--exclude",
-                ".git",
-                "--exclude",
-                "build",
-                "${workspaceFolder}/",
-                "whiskey:~/Projects/${workspaceFolderBasename}/"
-            ],
-            "problemMatcher": [],
-            "dependsOn": "Prepare Source Directory (Window Maker Bookworm VM)"
-        },
-        {
-            "label": "Build Vision Debug (Window Maker Bookworm VM)",
-            "type": "process",
-            "command": "ssh",
-            "args": [
-                "whiskey",
-                "cd $HOME/Projects/${workspaceFolderBasename} && cmake -S . -B build/bookworm-wmaker-debug -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=WMAKER && cmake --build build/bookworm-wmaker-debug"
-            ],
-            "problemMatcher": "$gcc",
-            "dependsOn": "Sync Source (Window Maker Bookworm VM)"
-        },
-        {
             "label": "Start Debug Target (Haiku)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",

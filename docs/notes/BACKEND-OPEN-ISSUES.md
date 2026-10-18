@@ -9,7 +9,7 @@ This note lists backend-level open issues that are real today.
   - Linux SDL2
   - Linux OpenMotif in the `Tribblix-CDE` KVM guest
   - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
-  - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
+  - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
   - Linux GEMix in Docker with local rasta
   - MS Windows binaries built with MinGW and run natively in the Windows 11 VM
   - Haiku binaries built through Docker, copied to a Haiku machine, and run

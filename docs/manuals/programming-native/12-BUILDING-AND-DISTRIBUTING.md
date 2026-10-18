@@ -400,10 +400,13 @@ wraster headers and shared libraries, and the Pango/Xft font stack used by
 that WINGs build. It is the reproducible environment when a host distribution
 does not package the WINGs development files separately.
 
-The maintained interactive debug path performs a native Debug build in the
-`Bookworm-WindowMaker` VM and runs it on the guest's logged-in Window Maker
-desktop. The guest also needs `libpango1.0-dev` when its WINGs package metadata
-names Pango include paths without declaring that development dependency.
+The **Linux Window Maker, Xephyr** F5 profile builds with `docker-wmaker`
+and starts GDB in the same image using `window-maker-xephyr`. The image
+supplies Xephyr and Window Maker. Run the compiled program directly with:
+
+```bash
+./scripts/linux/toolkit-session-run.sh wmaker ./build/linux-wmaker/src/vision
+```
 
 ### Link libraries
 

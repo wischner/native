@@ -20,6 +20,10 @@ namespace linux::wmaker
     // Create a WINGs frame which routes collection input and painting.
     native_collection *create_collection_frame(native::wnd &owner);
 
+    // Coalesce buffered collection painting without redisplaying its frame.
+    // Return false when the window does not use a collection host.
+    bool schedule_collection_repaint(native::wnd &owner);
+
     // Destroy a WINGs collection frame and notify its owner.
     void destroy_collection_frame(native::wnd &owner,
                                   native_collection *state);

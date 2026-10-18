@@ -144,7 +144,7 @@ host-side and Docker-side invocation.
   - Linux SDL2
   - Linux OpenMotif under Xvfb in its Docker image
   - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
-  - Linux Window Maker/WINGs in the `Bookworm-WindowMaker` KVM guest
+  - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
   - Linux GEMix through Docker and local rasta
   - Windows MinGW binaries run natively in the Windows 11 VM
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
@@ -308,7 +308,7 @@ the VS Code Run and Debug view and press F5.
 | Linux X11 | Local Docker container, dedicated monochrome Xephyr/TWM display | GDB through Docker |
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
 | Linux OPEN LOOK | Docker container, Xephyr/olwm session | GDB through Docker |
-| Linux Window Maker | `Bookworm-WindowMaker` KVM guest | GDB over SSH |
+| Linux Window Maker | Docker container, Xephyr/Window Maker session | GDB through Docker |
 | Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
 | OpenMotif | `Tribblix-CDE` KVM guest | GDB over SSH |
 | Windows | Windows 11 VM, interactive autologon desktop | Docker MinGW GDB through SSH to native Win64 GDBserver |
@@ -320,15 +320,15 @@ This is important because a Debug binary can depend on the sanitizer runtime
 supplied by that image rather than the version installed on the host. The X11
 pipe first creates the nested monochrome session and forwards that `DISPLAY`;
 SDL2 keeps the host display. Both forward the X11 socket and active Xauthority
-file. Select **Debug Vision (Linux X11, Xephyr/TWM mono)** for this X11 F5
+file. Select **Linux X11, Xephyr** for this X11 F5
 workflow; its Docker build task and executable path are unchanged.
 The X11 profile disables LeakSanitizer's exit-time leak scan under GDB
 (`ASAN_OPTIONS=detect_leaks=0`), since it cannot run under ptrace; address
 and undefined-behavior checks remain enabled.
 The GEMix pipe starts Rasta locally and shares its framebuffer with the
 container. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
-to start GDB in the build image with Xephyr and olwm. Window Maker synchronizes
-and builds the source in its desktop guest, then runs GDB against display `:0`.
+to start GDB in the build image with Xephyr and olwm. Window Maker uses the
+same pipe with `--session window-maker-xephyr` and the Window Maker build image.
 
 ### Development-host preparation
 
@@ -370,7 +370,7 @@ tools and are not referenced by any F5 configuration or task.
 
 ### Docker OPEN LOOK preparation
 
-Select **Debug Vision (OPEN LOOK, Docker Xephyr/olwm)**. F5 builds the
+Select **Linux OPEN LOOK, Xephyr**. F5 builds the
 `docker-openlook` target into `build/linux-openlook/` and runs the image's
 GDB through `scripts/linux/docker-debug.sh --session openlook-xephyr`.
 The `wischner/gcc-x86_64-linux-openlook:latest` image supplies XView, OLGX,
@@ -386,35 +386,23 @@ LeakSanitizer under ptrace. Standalone execution uses:
 ./scripts/linux/toolkit-session-run.sh openlook ./build/linux-openlook/src/vision
 ```
 
-### Bookworm Window Maker preparation
+### Docker Window Maker preparation
 
-The Window Maker configuration expects:
+Select **Linux Window Maker, Xephyr**. F5 builds `docker-wmaker` into
+`build/linux-wmaker/` and starts the image's GDB through
+`scripts/linux/docker-debug.sh --session window-maker-xephyr`.
+`wischner/gcc-x86_64-linux-window-maker:latest` supplies the compiler,
+WINGs/wraster libraries, font stack, Xephyr, Window Maker and GDB.
 
-- A libvirt domain named `Bookworm-WindowMaker` and an SSH alias named
-  `whiskey` for `tomaz@192.168.122.99`, authenticated without an interactive
-  password prompt.
-- CMake, GCC/G++, GDB, rsync, `pkg-config`, the WINGs/wraster development
-  files, X11/Xrandr development files, and the Pango development files.
-- A logged-in Window Maker session using display `:0`, with
-  `/home/tomaz/.Xauthority` available.
-
-On the current Bookworm guest the development prerequisites are installed with:
+The pipe forwards the X11 socket and active Xauthority file, choosing free
+nested displays. The image helper starts Xephyr and Window Maker and cleans
+up when GDB exits. Without a reachable host display it uses an Xvfb parent.
+Debug builds retain ASan/UBSan; the launch profile disables LeakSanitizer
+under ptrace. Standalone execution uses:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -t bookworm-backports \
-  cmake pkg-config libwings-dev libwraster-dev libxrandr-dev
-sudo apt-get install gdb rsync libpango1.0-dev
+./scripts/linux/toolkit-session-run.sh wmaker ./build/linux-wmaker/src/vision
 ```
-
-The explicit Pango package is required because the configured Window Maker
-repository's WINGs development package exposes Pango headers in `WINGs.pc` but
-does not declare that development dependency. F5 starts the guest if necessary,
-waits for SSH, creates `/home/tomaz/Projects/native`, synchronizes the source,
-builds `build/bookworm-wmaker-debug`, and starts remote GDB on display `:0`.
-Leak reporting is disabled for the debug launch because the WINGs/font stack
-retains process-lifetime allocations. Synchronization uses `--delete`;
-remote-only source changes are not preserved.
 
 ### Tribblix CDE preparation
 
@@ -488,7 +476,7 @@ those defaults.
 - Backend build trees are separate on purpose.
 - The root project builds the library and Vision, not generated API docs.
 - Runtime verification currently covers Linux X11/SDL2/OpenMotif, OPEN LOOK in
-  Docker, Window Maker in Bookworm, the native Windows VM, Haiku deploy-and-run over
+  Docker, Window Maker in Docker, the native Windows VM, Haiku deploy-and-run over
   SSH, and Apple on the configured remote host.
 
 ## Background-service regression targets and consumers
@@ -583,6 +571,7 @@ selection to the library.
 | `native_glsl_renderer_tests` | Real GLSL later-pass history, reset/resize, failed tick retry and extent/allocation limits; explicit skip if no context |
 | `native_motif_allocation_tests_0..2` | Toolkit-only baseline, selection and notebook allocation controls; no Native linkage |
 | `native_openlook_allocation_tests_0..2` | Toolkit-only baseline, PANEL_TEXT and owned menu teardown controls; no Native linkage |
+| `native_wmaker_repaint_tests` | Deferred, coalesced icon/tree collection repaint and cancellation across destruction/recreation | Window Maker display; Docker Xephyr |
 | `native_wmaker_allocation_tests` | Toolkit-only WINGs font-pattern retention control; no Native linkage |
 | `native_worker_shutdown_tests` | Retire a blocked worker without blocking its caller; join independently of UI turns |
 | `native_close_runtime_tests` | Actual native close cancellation then acceptance on every existing backend |

@@ -126,6 +126,7 @@ namespace linux::wmaker
         WMFrame *frame = nullptr;
         WMScroller *vertical_scroller = nullptr;
         WMScroller *horizontal_scroller = nullptr;
+        bool repaint_pending = false;
         bool vertical_visible = false;
         bool horizontal_visible = false;
         Time last_click = 0;
