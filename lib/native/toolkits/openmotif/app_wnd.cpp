@@ -374,7 +374,9 @@ namespace native
             throw std::runtime_error(
                 "Motif: Missing drawing widget binding for app_wnd.");
 
+        const size requested = _bounds.d;
         XtRealizeWidget(shell);
+        linux::openmotif::set_work_dimensions(this, requested);
         linux::openmotif::cached_display = XtDisplay(shell);
 
         // Prevent XClearArea from blanking the drawing surface before

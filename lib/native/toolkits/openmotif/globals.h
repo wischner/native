@@ -83,6 +83,7 @@ namespace linux::openmotif
         std::vector<XFontStruct *> tree_fonts;
         Pixmap collapsed_tree_pixmap = XmUNSPECIFIED_PIXMAP;
         Pixmap expanded_tree_pixmap = XmUNSPECIFIED_PIXMAP;
+        Widget tree_scroller = nullptr;
         bool native_tree = false;
         bool native_scroll_callbacks = false;
         bool synchronizing_scrollbars = false;
@@ -159,6 +160,9 @@ namespace linux::openmotif
         file_dialog_bindings;
     extern Display *cached_display;
     extern Atom wm_delete_window_atom;
+
+    // Size a shell to retain the requested work area below its menu.
+    void set_work_dimensions(native::wnd *owner, native::size dimensions);
 
     // Return the native parent for a child, including notebook pages.
     Widget parent_widget(native::wnd *child);

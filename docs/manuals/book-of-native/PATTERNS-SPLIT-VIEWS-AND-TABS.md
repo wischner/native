@@ -107,6 +107,9 @@ Motif split views retain `XmPanedWindow` and a centered native sash. Both the
 sash and the full divider route pointer dragging through the portable ratio
 transaction, so pane sizes and saved state agree. Panes allow native resize
 requests and enforce positive minimums; the sash is not hidden.
+The shared pane refresh skips identical bounds and shows only panes that are
+not already visible, so dragging does not repeatedly run native show/setup.
+Motif invalidation merges pending exposes without erasing the divider first.
 
 OPEN LOOK uses two private XView Panel hosts for its borrowed controls. Live
 list sizing uses `PANEL_LIST_WIDTH` and reserves the native scrollbar width;

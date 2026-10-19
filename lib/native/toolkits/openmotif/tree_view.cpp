@@ -13,6 +13,7 @@
 
 #include <Xm/Container.h>
 #include <Xm/IconG.h>
+#include <Xm/Frame.h>
 #include <Xm/ScrolledW.h>
 #include <Xm/Xm.h>
 
@@ -416,10 +417,11 @@ namespace
             throw std::runtime_error(
                 "Motif: tree_view requires a created parent.");
         const native::rect bounds = tree.get_bounds();
-        Widget scroller = XtVaCreateWidget(
-            "treeScroll",
-            xmScrolledWindowWidgetClass,
-            parent_widget,
+        // XmScrolledWindow clears its entire window when the outline
+        // requests a new content size, even if its viewport is unchanged.
+        // Keep the stable border outside that native scrolling surface.
+        Widget frame = XtVaCreateWidget(
+            "treeFrame", xmFrameWidgetClass, parent_widget,
             XmNx,
             bounds.p.x,
             XmNy,
@@ -428,11 +430,17 @@ namespace
             bounds.d.w,
             XmNheight,
             bounds.d.h,
-            XmNscrollingPolicy,
-            XmAUTOMATIC,
-            XmNshadowThickness,
-            tree.get_border_visible() ? 2 : 0,
+            XmNshadowType, XmSHADOW_IN,
+            XmNshadowThickness, tree.get_border_visible() ? 2 : 0,
+            XmNmarginWidth, 0,
+            XmNmarginHeight, 0,
             nullptr);
+        Widget scroller = XtVaCreateManagedWidget(
+            "treeScroll", xmScrolledWindowWidgetClass, frame,
+            XmNscrollingPolicy, XmAUTOMATIC,
+            XmNshadowThickness, 0,
+            nullptr);
+        state.tree_scroller = scroller;
         state.content = XmVaCreateManagedContainer(
             scroller,
             const_cast<char *>("tree"),
@@ -477,8 +485,8 @@ namespace
                       XmNoutlineChangedCallback,
                       outline_changed,
                       &tree);
-        linux::openmotif::wnd_bindings.register_pair(scroller, &tree);
-        return scroller;
+        linux::openmotif::wnd_bindings.register_pair(frame, &tree);
+        return frame;
     }
 
     Widget create_tree_widget(native::tree_view &tree,
@@ -567,7 +575,7 @@ namespace native
         Widget item = widget_for(
             state, get_visible_item(index).id);
         if (item)
-            XmScrollVisible(state.widget, item, 0, 0);
+            XmScrollVisible(state.tree_scroller, item, 0, 0);
     }
 
     void tree_view::create_native() {

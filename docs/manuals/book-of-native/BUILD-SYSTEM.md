@@ -429,12 +429,17 @@ host display is unavailable.
 
 The Haiku configuration expects:
 
-- A libvirt domain named `Haiku` with the fixed address `192.168.122.90`.
-- The SSH target `user@192.168.122.90`, authenticated without an interactive
-  password prompt.
+- A libvirt domain named `Haiku`.
+- The SSH alias `haiku`, authenticated without an interactive password prompt.
+  `ssh haiku` must open the guest shell; the SSH configuration owns its user,
+  address and identity settings.
 - GDB at `/boot/system/bin/gdb` and the SSH server enabled in the guest.
 - A graphical Haiku session for the same user.
 
+The launch profile is named **Haiku, VM**. Its start, directory preparation,
+SCP deployment and SSH debugger transport all use the `haiku` alias.
+The 2026-10-19 guest connection succeeded, but that guest lacks GDB; see the
+[remote runtime note](../../notes/HAIKU-REMOTE-RUNTIME.md) before using F5.
 F5 starts the guest if necessary, waits for SSH, cross-builds the Debug binary,
 creates `/boot/home/Projects/native/run`, copies Vision there, and starts GDB
 inside the guest. Source files stay on the development host; the debug symbols

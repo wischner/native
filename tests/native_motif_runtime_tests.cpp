@@ -12,6 +12,7 @@
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
 #include <Xm/DrawingA.h>
+#include <Xm/PushBG.h>
 #include <Xm/List.h>
 #include <Xm/MessageB.h>
 #include <Xm/PushB.h>
@@ -147,7 +148,207 @@ namespace
         button.destroy();
     }
 
+    class counted_pane : public native::list {
+    public:
+        explicit counted_pane(const char *label)
+            : native::list({label}, 0, 0, 100, 100) {}
+
+        int shows = 0;
+        int arrangements = 0;
+
+    protected:
+        void show_native() override {
+            ++shows;
+            native::list::show_native();
+        }
+
+        void on_bounds_changed() override {
+            ++arrangements;
+            native::list::on_bounds_changed();
+        }
+    };
+
+    // Repeated invalidations retain the displayed frame until one expose.
+    void check_repaint_batch(native::app_wnd &root) {
+        native::canvas surface(10, 10, 220, 100);
+        surface.set_horizontal_scrollbar_policy(native::scrollbar_policy::never);
+        surface.set_vertical_scrollbar_policy(native::scrollbar_policy::never);
+        int paints = 0;
+        surface.on_wnd_paint.connect([&](native::wnd_paint_event event) {
+            ++paints;
+            event.g.clear(native::rgba(200, 30, 80, 255));
+            return true;
+        });
+        attach(surface, root);
+        pump();
+        paints = 0;
+        const auto read_pixel = [&] {
+            XImage *image = XGetImage(motif::cached_display,
+                XtWindow(widget(surface)), 20, 20, 1, 1, AllPlanes, ZPixmap);
+            const auto result = XGetPixel(image, 0, 0);
+            XDestroyImage(image);
+            return result;
+        };
+        const auto displayed = read_pixel();
+        for (int index = 0; index < 20; ++index)
+            surface.invalidate();
+        expect(paints == 0, "invalidation stays asynchronous");
+        expect(read_pixel() == displayed,
+               "invalidation preserves pixels until the next frame");
+        pump();
+        expect(paints == 1, "a burst of invalidations paints only once");
+        surface.invalidate();
+        surface.destroy();
+        pump();
+        surface.create();
+        surface.show();
+        pump();
+        paints = 0;
+        surface.invalidate();
+        pump();
+        expect(paints == 1, "recreated host has a fresh repaint transaction");
+        surface.destroy();
+    }
+
+    void count_tree_exposes(Widget, XtPointer data,
+                             XEvent *event, Boolean *) {
+        if (event->type == Expose)
+            ++*static_cast<int *>(data);
+    }
+
+    // Branch changes repaint the outline without exposing the outer frame.
+    void check_tree_content_repaint(native::app_wnd &root) {
+        native::tree_view tree({native::tree_node("Folder", 1,
+            {native::tree_node("Child", 2)}, true)}, 10, 10, 300, 180);
+        attach(tree, root);
+        pump();
+        auto *state = motif::tree_view_bindings.object_from_handle(&tree);
+        const auto original_items = state->items;
+        const auto border_pixels = [&] {
+            Dimension width = 0, height = 0;
+            XtVaGetValues(state->widget, XmNwidth, &width,
+                          XmNheight, &height, nullptr);
+            XImage *image = XGetImage(motif::cached_display,
+                XtWindow(state->widget), 0, 0, width, height, AllPlanes, ZPixmap);
+            std::vector<unsigned long> pixels;
+            for (int y = 0; y < height; ++y)
+                for (int x = 0; x < width; ++x)
+                    if (x < 2 || y < 2 || x >= width - 2 || y >= height - 2)
+                        pixels.push_back(XGetPixel(image, x, y));
+            XDestroyImage(image);
+            return pixels;
+        };
+        const auto original_border = border_pixels();
+        int frame_exposes = 0, content_exposes = 0;
+        XtAddEventHandler(state->widget, ExposureMask, False,
+                          count_tree_exposes, &frame_exposes);
+        XtAddEventHandler(state->content, ExposureMask, False,
+                          count_tree_exposes, &content_exposes);
+        tree.set_selected_item(2);
+        pump();
+        frame_exposes = content_exposes = 0;
+        tree.set_expanded(1, false);
+        pump();
+        expect(tree.get_selected_item() == 1,
+               "collapsing a selected descendant selects its ancestor");
+        expect(frame_exposes == 0 && content_exposes > 0,
+               "programmatic collapse exposes content without the frame");
+        frame_exposes = content_exposes = 0;
+        int changes = 0;
+        tree.on_expanded_change.connect([&](native::tree_item_id, bool) {
+            ++changes;
+            return false;
+        });
+        WidgetList children = nullptr;
+        Cardinal count = 0;
+        XtVaGetValues(state->content, XmNchildren, &children,
+                      XmNnumChildren, &count, nullptr);
+        Widget disclosure = nullptr;
+        for (Cardinal index = 0; index < count; ++index) {
+            if (XmIsPushButtonGadget(children[index]) &&
+                XtIsManaged(children[index])) {
+                disclosure = children[index];
+                break;
+            }
+        }
+        expect(disclosure != nullptr, "tree exposes a native disclosure gadget");
+        Position disclosure_x = 0, disclosure_y = 0;
+        Dimension disclosure_width = 0, disclosure_height = 0;
+        XtVaGetValues(disclosure, XmNx, &disclosure_x, XmNy, &disclosure_y,
+                      XmNwidth, &disclosure_width,
+                      XmNheight, &disclosure_height, nullptr);
+        const auto activate_disclosure = [&] {
+            XEvent event{};
+            event.xbutton.type = ButtonRelease;
+            event.xbutton.display = motif::cached_display;
+            event.xbutton.window = XtWindow(state->content);
+            event.xbutton.button = Button1;
+            event.xbutton.x = disclosure_x + disclosure_width / 2;
+            event.xbutton.y = disclosure_y + disclosure_height / 2;
+            XmPushButtonCallbackStruct activation{};
+            activation.reason = XmCR_ACTIVATE;
+            activation.event = &event;
+            activation.click_count = 1;
+            XtCallCallbacks(disclosure, XmNactivateCallback, &activation);
+            pump();
+        };
+        activate_disclosure();
+        expect(tree.get_expanded(1) && changes == 1,
+               "native expansion updates the model and signals once");
+        expect(frame_exposes == 0 && content_exposes > 0,
+               "native expansion exposes content without the frame");
+        expect(state->items == original_items,
+               "branch changes retain native item resources");
+        expect(border_pixels() == original_border,
+               "native disclosure leaves frame pixels unchanged");
+        frame_exposes = content_exposes = 0;
+        activate_disclosure();
+        expect(!tree.get_expanded(1) && changes == 2,
+               "a second native disclosure click collapses the branch");
+        expect(frame_exposes == 0 && border_pixels() == original_border,
+               "native collapse neither clears nor changes the outer frame");
+        tree.set_border_visible(false);
+        pump();
+        Dimension shadow = 1;
+        XtVaGetValues(state->widget, XmNshadowThickness, &shadow, nullptr);
+        expect(shadow == 0, "explicit border changes still update the frame");
+        std::vector<native::tree_view_item> rows;
+        for (native::tree_item_id id = 1; id <= 40; ++id)
+            rows.push_back(native::tree_node("Scroll row", id));
+        tree.set_items(std::move(rows));
+        tree.set_selected_item(40);
+        pump();
+        Position content_y = 0;
+        XtVaGetValues(state->content, XmNy, &content_y, nullptr);
+        expect(content_y < 0,
+               "framed tree scrolls its inner work widget to reveal selection");
+        tree.destroy();
+    }
+
     void checks(native::app_wnd &root) {
+        // A menu must not consume the requested work-area height.
+        native::modeless_wnd sized(root, "Menu geometry", 40, 40, 820, 660);
+        sized.menu << "File" << native::menu_items("Close");
+        sized.create();
+        sized.show();
+        pump();
+        auto check_work_size = [&sized](int width, int height) {
+            Dimension actual_width = 0, actual_height = 0;
+            XtVaGetValues(widget(sized), XmNwidth, &actual_width,
+                          XmNheight, &actual_height, nullptr);
+            expect(actual_width == width && actual_height == height,
+                   "menu preserves requested work dimensions");
+        };
+        check_work_size(820, 660);
+        sized.set_dimensions({760, 700});
+        pump();
+        check_work_size(760, 700);
+        sized.set_bounds({50, 50, 800, 680});
+        pump();
+        check_work_size(800, 680);
+        sized.destroy();
+        check_repaint_batch(root);
+        check_tree_content_repaint(root);
         check_border_metrics(root);
         native::modeless_wnd early(root, "Early graphics", 80, 80, 300, 200);
         early.create();
@@ -405,16 +606,27 @@ namespace
                "code editor has a light surface for default syntax colors");
         code.destroy();
 
-        native::list first({"Left"}, 0, 0, 100, 100);
-        native::list second({"Right"}, 0, 0, 100, 100);
+        counted_pane first("Left");
+        counted_pane second("Right");
         native::split_view split(first, second,
             native::split_orientation::horizontal, 10, 10, 500, 250);
         attach(split, root);
         pump();
+        const int first_shows = first.shows;
+        const int second_shows = second.shows;
+        const int first_arrangements = first.arrangements;
+        const int second_arrangements = second.arrangements;
+        split.set_bounds(split.get_bounds());
+        pump();
+        expect(first.arrangements == first_arrangements &&
+                   second.arrangements == second_arrangements,
+               "unchanged split geometry does not rearrange panes");
         const auto before = split.get_ratio();
         const auto bar = split.get_splitter_bounds();
         pointer(widget(split), ButtonPress, bar.p.x + 1, 40);
         pointer(widget(split), ButtonRelease, bar.p.x + 70, 40);
+        expect(first.shows == first_shows && second.shows == second_shows,
+               "divider dragging does not show visible panes again");
         expect(split.get_ratio() > before + 0.05f,
                "full divider dragging changes ratio");
         Dimension first_width = 0;
@@ -433,12 +645,16 @@ namespace
     }
 }
 
-int program(int, char **) {
+int program(int argc, char **argv) {
+    const bool tree_only = argc > 1 && std::string(argv[1]) == "--tree-repaint";
     native::app_wnd root("Motif peer regressions", 20, 20, 660, 400);
-    root.on_wnd_create.connect([&root] {
-        native::app::post([&root] {
+    root.on_wnd_create.connect([&root, tree_only] {
+        native::app::post([&root, tree_only] {
             try {
-                checks(root);
+                if (tree_only)
+                    check_tree_content_repaint(root);
+                else
+                    checks(root);
                 std::cout << "Motif peer regressions passed\n";
             } catch (const std::exception &error) {
                 ++failures;

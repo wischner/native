@@ -766,7 +766,8 @@ namespace linux::openmotif
 
 namespace native
 {
-    void accordion::apply_items() { invalidate(); }
+    // The shared refresh transaction schedules the repaint once.
+    void accordion::apply_items() {}
 
     void accordion::create_native() {
         auto *self = this;

@@ -7,6 +7,8 @@
 
 #include <Xm/Xm.h>
 #include <X11/Xlib.h>
+#include <X11/Shell.h>
+#include <algorithm>
 
 #include <native.h>
 #include <bindings.h>
@@ -27,6 +29,29 @@ namespace linux::openmotif
         file_dialog_bindings;
     Display *cached_display = nullptr;
     Atom wm_delete_window_atom = None;
+
+    void set_work_dimensions(native::wnd *owner, native::size dimensions) {
+        Widget shell = shell_bindings.handle_from_object(owner);
+        Widget canvas = wnd_bindings.handle_from_object(owner);
+        if (!shell || !canvas)
+            return;
+
+        Dimension shell_width = 0, shell_height = 0;
+        Dimension canvas_width = 0, canvas_height = 0;
+        XtVaGetValues(shell, XtNwidth, &shell_width,
+                      XtNheight, &shell_height, nullptr);
+        XtVaGetValues(canvas, XmNwidth, &canvas_width,
+                      XmNheight, &canvas_height, nullptr);
+        // Use negotiated geometry so CDE font/menu resources determine
+        // the reservation, including any main-window margins.
+        const int extra_width = std::max(0,
+            int(shell_width) - int(canvas_width));
+        const int extra_height = std::max(0,
+            int(shell_height) - int(canvas_height));
+        XtVaSetValues(shell,
+                      XtNwidth, dimensions.w + extra_width,
+                      XtNheight, dimensions.h + extra_height, nullptr);
+    }
 
     Widget parent_widget(native::wnd *child) {
         native::wnd *parent = child ? child->get_parent() : nullptr;

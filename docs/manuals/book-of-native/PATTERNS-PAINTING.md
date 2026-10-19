@@ -116,6 +116,14 @@ backend presents output and ends painting
 
 `invalidate()` must not emit `on_wnd_paint` directly. Toolkits need the freedom
 to merge invalid regions and choose when the native drawing surface is valid.
+Motif keeps one cancellable, peer-owned Xt timeout for pending invalidation.
+Requests merge their clipped rectangles and dispatch one Xt expose without
+clearing the visible window first. Native widgets retain their expose methods;
+buffered hosts copy a complete frame. Destroying the peer cancels pending work.
+For native Motif trees, the pending expose targets the inner outline container
+with translated coordinates; the outer border belongs to a separate native frame. Motif's scrolled-window
+layout clears stay inside that frame; scrollbar updates remain native.
+
 Changing a window's mouse cursor is likewise independent of invalidation:
 `wnd::apply_cursor()` updates the native pointer resource without initiating a
 paint pass.

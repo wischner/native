@@ -181,15 +181,24 @@ namespace native
             first.p = point(0, 0);
             second.p = point(0, 0);
         }
-        _first->set_bounds(first);
-        _second->set_bounds(second);
+        // Reapplying identical bounds can rebuild native collections.
+        const auto arrange = [](wnd &pane, const rect &bounds) {
+            const rect previous = pane.get_bounds();
+            if (previous.p.x != bounds.p.x || previous.p.y != bounds.p.y ||
+                previous.d.w != bounds.d.w || previous.d.h != bounds.d.h)
+                pane.set_bounds(bounds);
+        };
+        arrange(*_first, first);
+        arrange(*_second, second);
         if (_created) {
             if (!_first->get_created())
                 _first->create();
             if (!_second->get_created())
                 _second->create();
-            _first->show();
-            _second->show();
+            if (!_first->get_visible())
+                _first->show();
+            if (!_second->get_visible())
+                _second->show();
         }
     }
 

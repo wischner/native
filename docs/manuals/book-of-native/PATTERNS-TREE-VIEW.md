@@ -28,6 +28,20 @@ a preserved selected ID by silently expanding its ancestors, so it cannot leave
 keyboard selection on a hidden row. Boundary regressions are recorded in
 [ADJUST.md](../../ADJUST.md), A12.
 
+Motif retains an `XmContainer` outline inside an automatic
+`XmScrolledWindow`. A separate native `XmFrame` owns the outer sunken border;
+the scrolled window has no shadow of its own. Motif clears its entire scrolling
+surface when expand/collapse changes the outline's preferred dimensions, even
+when the viewport dimensions stay unchanged. Keeping the frame outside that
+surface prevents those internal clears from erasing the border. Explicit border
+changes update the frame's shadow resource. Item gadgets survive branch changes.
+
+Library-requested repaints target the inner container with translated
+coordinates. Native disclosure actions still perform their own row relayout and
+scrollbar updates; this routing alone does not suppress Motif's internal clears.
+`native_motif_runtime_tests --tree-repaint` isolates the native disclosure,
+frame-expose/pixel, border-property and scrolling regression for CDE runs.
+
 ## State and notifications
 
 Programmatic setters validate and cache items, selection, expansion, icon size,

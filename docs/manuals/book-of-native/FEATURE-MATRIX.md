@@ -513,6 +513,31 @@ passed in the preceding review after the shared tab-text contrast correction.
   [Windows VM Runtime](../../notes/WINDOWS-VM-RUNTIME.md) for setup and checks.
   Source breakpoints work; interruption of the running GUI remains an open
   debugger issue, so the Windows workflow is not fully debugger-validated.
+- Motif trees use a native `XmFrame` around a shadowless automatic scroller
+  and retained outline container. CDE/Xlib tracing identified whole-scroller
+  clears during native disclosure layout; the separate frame isolates the
+  border from those clears. Library invalidations target the inner outline.
+  The 2026-10-19 native disclosure-activation regression passes in CDE and
+  checks all frame exposes, unchanged border pixels, selection repair, retained
+  gadgets, explicit border changes and scrolling. The isolated command is
+  `native_motif_runtime_tests --tree-repaint`. All 22 CTests pass under Xvfb;
+  the full CDE run hit a table-grid pixel assertion and an inspector artifact
+  write-permission failure, so it is not a full-suite CDE pass. Real CDE mouse
+  clicks were traced through first collapse, expand and repeated collapse;
+  the outer frame received no Xlib clear requests and settled screenshots
+  showed clean collapsed rows.
+- OpenMotif invalidations merge into a peer-owned deferred Xt expose without
+  clearing the visible frame first. Accordion refresh no longer requests the
+  same repaint twice; split refresh skips identical pane bounds and repeated
+  shows of visible panes. The 2026-10-19 Docker/Xvfb run passed all 22
+  Motif CTests, including repaint batching, retained pixels, cancellation on
+  teardown, recreation, and pane show/geometry counts. Visual CDE flicker
+  acceptance remains unverified.
+- OpenMotif shell sizing reserves the negotiated menu area when showing or
+  programmatically resizing a window, preserving the requested work dimensions.
+  The 2026-10-19 Docker/Xvfb Motif regression checks initial menu-bearing
+  work size and both dimension and bounds setters; CDE visual acceptance
+  remains separate.
 - OpenMotif uses widget resource colors when they are available through Motif/Xt.
   Its theme also uses Motif `Xme` shadow primitives for native-window targets.
   If resource lookup or native drawing is unavailable, the backend supplies a

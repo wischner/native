@@ -143,7 +143,7 @@
             "label": "Start Debug Target (Haiku)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
-            "args": ["Haiku", "user@192.168.122.90"],
+            "args": ["Haiku", "haiku"],
             "problemMatcher": []
         },
         {
@@ -151,7 +151,7 @@
             "type": "shell",
             "command": "ssh",
             "args": [
-                "user@192.168.122.90",
+                "haiku",
                 "mkdir -p /boot/home/Projects/${workspaceFolderBasename}/run"
             ],
             "problemMatcher": [],
@@ -166,7 +166,7 @@
                 "-r",
                 "${workspaceFolder}/build/haiku/src/vision",
                 "${workspaceFolder}/build/haiku/src/retro-terminal",
-                "user@192.168.122.90:/boot/home/Projects/${workspaceFolderBasename}/run/"
+                "haiku:/boot/home/Projects/${workspaceFolderBasename}/run/"
             ],
             "problemMatcher": [],
             "dependsOrder": "sequence",

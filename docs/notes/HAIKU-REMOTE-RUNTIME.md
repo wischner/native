@@ -11,8 +11,16 @@ This note records the current Haiku workflow that is actually exercised.
   target does not provide the SFTP subsystem required by newer SCP clients.
 - Debug the binaries on the Haiku machine through GDB over `ssh`.
 
-The VS Code tasks and launch entry include VM start, deploy, and remote-debug
-workflows.
+The VS Code launch entry is **Haiku, VM**. Its VM readiness check, remote
+directory preparation, `scp -O -r` deployment and SSH/GDB transport all use the
+SSH alias `haiku`. The host SSH configuration supplies the user, address and
+identity; a plain `ssh haiku` must open the guest shell without a password.
+The libvirt domain remains `Haiku`.
+
+On 2026-10-19, `ssh haiku` opened the guest shell successfully; the session
+reported `Haiku` as `user`. This guest currently has no `gdb` on `PATH` or
+at the configured `/boot/system/bin/gdb`; SSH access is verified, but F5 remote
+debugging requires GDB to be installed in the guest.
 
 ## VM keyboard input
 

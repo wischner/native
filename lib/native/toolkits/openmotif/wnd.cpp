@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <Xm/Xm.h>
@@ -23,6 +24,89 @@
 
 namespace
 {
+    // One deferred expose per peer avoids clearing native gadgets between
+    // successive model/layout updates. Teardown cancels pending delivery.
+    struct pending_repaint {
+        Widget widget = nullptr;
+        XtIntervalId timer = 0;
+        native::rect area;
+
+        ~pending_repaint() {
+            if (timer)
+                XtRemoveTimeOut(timer);
+        }
+    };
+
+    void deliver_repaint(XtPointer data, XtIntervalId *) {
+        auto *pending = static_cast<pending_repaint *>(data);
+        Widget widget = pending->widget;
+        const native::rect area = pending->area;
+        pending->timer = 0;
+        if (!widget || !XtIsRealized(widget))
+            return;
+        XEvent event{};
+        event.xexpose.type = Expose;
+        event.xexpose.display = XtDisplay(widget);
+        event.xexpose.window = XtWindow(widget);
+        event.xexpose.send_event = True;
+        event.xexpose.x = area.p.x;
+        event.xexpose.y = area.p.y;
+        event.xexpose.width = area.d.w;
+        event.xexpose.height = area.d.h;
+        // Dispatch through Xt so native widgets retain their own expose
+        // methods and buffered hosts present complete frames.
+        XtDispatchEvent(&event);
+    }
+
+    void schedule_repaint(native::wnd &owner, native::rect area) {
+        Widget widget = linux::openmotif::wnd_bindings
+            .handle_from_object(&owner);
+        if (!widget || !XtIsRealized(widget))
+            return;
+        int offset_x = 0, offset_y = 0;
+        const auto *tree = native::detail::peer_state<
+            linux::openmotif::motif_collection>(owner);
+        if (tree && tree->native_tree && tree->content &&
+            XtIsRealized(tree->content)) {
+            // Outline changes affect the work widget, not the scrolled
+            // window's shadow or scrollbars. Motif owns their geometry
+            // and schedules their redraws when those resources change.
+            Position outer_x = 0, outer_y = 0, inner_x = 0, inner_y = 0;
+            XtTranslateCoords(widget, 0, 0, &outer_x, &outer_y);
+            XtTranslateCoords(tree->content, 0, 0, &inner_x, &inner_y);
+            offset_x = int(outer_x) - int(inner_x);
+            offset_y = int(outer_y) - int(inner_y);
+            widget = tree->content;
+        }
+        Dimension width = 0, height = 0;
+        XtVaGetValues(widget, XmNwidth, &width,
+                      XmNheight, &height, nullptr);
+        const int left = std::max(0, int(area.p.x) + offset_x);
+        const int top = std::max(0, int(area.p.y) + offset_y);
+        const int right = std::min(int(width), int(area.x2()) + offset_x);
+        const int bottom = std::min(int(height), int(area.y2()) + offset_y);
+        if (right <= left || bottom <= top)
+            return;
+        area = native::rect(left, top, right - left, bottom - top);
+        auto *pending = native::detail::peer_state<pending_repaint>(owner);
+        if (!pending) {
+            pending = new pending_repaint;
+            native::detail::assign_peer_state(owner, pending);
+        }
+        if (pending->timer) {
+            const int x = std::min(int(pending->area.p.x), left);
+            const int y = std::min(int(pending->area.p.y), top);
+            pending->area = native::rect(x, y,
+                std::max(int(pending->area.x2()), right) - x,
+                std::max(int(pending->area.y2()), bottom) - y);
+            return;
+        }
+        pending->widget = widget;
+        pending->area = area;
+        pending->timer = XtAppAddTimeOut(
+            linux::openmotif::app_instance, 0, deliver_repaint, pending);
+    }
+
     struct pointer_tracking { bool installed = false; };
     void track_pointer(Widget, XtPointer data, XEvent *event, Boolean *) {
         auto *owner = static_cast<native::wnd *>(data);
@@ -111,12 +195,8 @@ namespace native
             linux::openmotif::wnd_bindings.handle_from_object(this);
 
         if (shell) {
-            XtVaSetValues(shell,
-                          XtNwidth,
-                          _bounds.d.w,
-                          XtNheight,
-                          _bounds.d.h,
-                          nullptr);
+            linux::openmotif::set_work_dimensions(this, _bounds.d);
+            return;
         }
         if (widget) {
             XtVaSetValues(widget,
@@ -140,18 +220,16 @@ namespace native
                           _bounds.p.x,
                           XtNy,
                           _bounds.p.y,
-                          XtNwidth,
-                          _bounds.d.w,
-                          XtNheight,
-                          _bounds.d.h,
                           nullptr);
+            linux::openmotif::set_work_dimensions(this, _bounds.d);
+            return;
         }
         if (widget) {
             XtVaSetValues(widget,
                           XmNx,
-                          shell ? 0 : _bounds.p.x,
+                          _bounds.p.x,
                           XmNy,
-                          shell ? 0 : _bounds.p.y,
+                          _bounds.p.y,
                           XmNwidth,
                           _bounds.d.w,
                           XmNheight,
@@ -205,19 +283,7 @@ namespace native
         if (!_created)
             return *this;
 
-        Widget canvas =
-            linux::openmotif::wnd_bindings.handle_from_object(
-                this);
-        if (canvas && XtIsRealized(canvas)) {
-            XClearArea(linux::openmotif::cached_display,
-                       XtWindow(canvas),
-                       0,
-                       0,
-                       0,
-                       0,
-                       True);
-            XFlush(linux::openmotif::cached_display);
-        }
+        schedule_repaint(*this, rect(0, 0, _bounds.d.w, _bounds.d.h));
 
         return *this;
     }
@@ -226,19 +292,7 @@ namespace native
         if (!_created)
             return *this;
 
-        Widget canvas =
-            linux::openmotif::wnd_bindings.handle_from_object(
-                this);
-        if (canvas && XtIsRealized(canvas)) {
-            XClearArea(linux::openmotif::cached_display,
-                       XtWindow(canvas),
-                       r.p.x,
-                       r.p.y,
-                       r.d.w,
-                       r.d.h,
-                       True);
-            XFlush(linux::openmotif::cached_display);
-        }
+        schedule_repaint(*this, r);
 
         return *this;
     }

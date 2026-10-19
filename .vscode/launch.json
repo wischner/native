@@ -191,7 +191,7 @@
             "postDebugTask": "Stop Vision Debug (Windows VM)"
         },
         {
-            "name": "Debug Vision (Haiku VM)",
+            "name": "Haiku, VM",
             "type": "cppdbg",
             "request": "launch",
             "program": "/boot/home/Projects/${workspaceFolderBasename}/run/vision",
@@ -207,7 +207,7 @@
             },
             "pipeTransport": {
                 "pipeProgram": "ssh",
-                "pipeArgs": ["-T", "user@192.168.122.90"],
+                "pipeArgs": ["-T", "haiku"],
                 "debuggerPath": "/boot/system/bin/gdb"
             },
             "preLaunchTask": "Deploy Vision Debug (Haiku)"

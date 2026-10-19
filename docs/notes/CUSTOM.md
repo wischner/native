@@ -5,7 +5,22 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-18.
+Audit date: 2026-10-19.
+
+Motif tree repaint review: expand/collapse and selection invalidations target
+the retained inner `XmContainer`. The border is a separate native `XmFrame`
+around a shadowless automatic `XmScrolledWindow`, isolating it from Motif's
+whole-scroller clears on outline size changes. Explicit border changes update
+the frame shadow. The **N/H** tree classification is unchanged.
+
+Motif repaint review: collection and split-view kind marks are unchanged.
+Peer-owned pending exposes merge repeated invalidations without clearing the
+visible frame. Accordion refresh schedules one invalidation; shared split
+refresh avoids unchanged pane bounds and repeated shows of visible panes.
+
+Motif window geometry review: native shell/main-window/menu hosts retain
+their existing kind marks. Shell sizing reserves the negotiated menu area
+so the requested work area remains available to bottom-aligned controls.
 
 Shared shader lifecycle review: 2026-10-08. Resource creation and
 source-less installation retain pending status until an output
@@ -199,7 +214,7 @@ destruction, not a timeout that could outlive their parent.
 | `accordion` | **C** | Library-painted collection in `XmDrawingArea`. |
 | `tab_view` | **N/H** | `XmNotebook`; side-tab labels are rotated, page hosts use Motif forms, and strip-only mode uses `XmSeparatorGadget`. |
 | `icon_view` | **N/H** | Spatial `XmContainer` and `XmIconGadget` entries in `XmScrolledWindow`; portable code materializes the owned item vector and images. |
-| `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget` with centered image/label alignment; the mode changes native gadget relief rather than selecting a custom painter. |
+| `tree_view` | **N/H** | Both visual modes use `XmContainer` outline and `XmIconGadget` with centered image/label alignment in a shadowless `XmScrolledWindow`; a separate native `XmFrame` keeps the border outside scrolling clears. The mode changes native gadget relief rather than selecting a custom painter. |
 | `table_view` | **H** | Both data modes use the same buffered Motif-themed viewport and native `XmScrollBar` peers, with matching columns, colors, grouping, grids and scrolling. |
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N/H** | `XmPanedWindow` with a centered native sash and resizable panes. Sash and full-divider pointer dragging share the portable ratio transaction. |

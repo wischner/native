@@ -31,7 +31,7 @@ It includes the measured Amiga runtime prerequisites; it is not a backend manual
 - [Infinity emulator: portable services, migration and remaining limits](INFINITY.md)
 - [Infinity mouse and shader design review](MOUSE-AND-SHADERS-REVIEW.md)
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
-- [Haiku remote runtime, USB keyboard, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
+- [Haiku remote runtime via `ssh haiku`, USB keyboard, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
 - [macOS remote runtime, AppKit/GLSL regressions and desktop permissions (leia)](MACOS-REMOTE-RUNTIME.md)
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)

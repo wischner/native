@@ -4,6 +4,9 @@ OpenMotif modal windows use `XmDialogShell`, so CDE supplies the same base
 palette to their controls and theme probes as to native message boxes.
 The main work widget receives its requested dimensions before management;
 an empty intermediate widget must not shrink the dialog during creation.
+OpenMotif sizes top-level shells around the requested drawing area, adding
+the negotiated menu/main-window reservation. Initial showing and live
+dimension/bounds setters preserve that work area under CDE font resources.
 Perpendicular rulers share a themed corner painted before either strip.
 
 Windows top-level hosts clip background painting around native child HWNDs.
