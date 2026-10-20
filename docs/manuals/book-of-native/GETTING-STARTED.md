@@ -77,10 +77,10 @@ cmake --build build/cmake --target docker-gemix-gemd
 ```
 
 The second target selects `GEMIX_USE_GEMD=ON` and writes to
-`build/linux-gemix-gemd/`. Select **Debug Vision (Linux GEMix, gemd proxy)**
-in VS Code to start a private server and Rasta viewer automatically. The
-existing **Linux GEMix, local** configuration keeps using in-process AES/VDI.
-The Docker image must include matching `libgem` and `/opt/gemix/bin/gemd`.
+`build/linux-gemix-gemd/`. Select **GEM, Rasta@SDL2**
+for F5: the published image supplies GDB, gemd, GEM resources and the SDL2
+Rasta viewer. No host Rasta checkout is needed. The local launch profile
+has been removed; the direct AES/VDI build target remains available.
 
 Build the Linux toolkit target backed by the SDL-based image:
 

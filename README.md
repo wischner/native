@@ -169,8 +169,8 @@ Current exercised runtime paths are:
   SDL pointer capture, close-request policy, and the shared UI contracts.
 - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
 - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
-- Linux GEMix through Docker with the local rasta viewer, using either
-  direct AES/VDI or the separate **Linux GEMix, gemd proxy** debug configuration.
+- **GEM, Rasta@SDL2** runs GEM through gemd with the image-provided SDL2
+  Rasta viewer and GDB in `wischner/gcc-x86_64-gemix:latest`.
   Direct-backend regressions cover nested tab/split/canvas framebuffer
   composition and right/middle canvas button identity.
 - Windows MinGW binaries run natively in the Windows 11 VM; select

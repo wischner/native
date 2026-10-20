@@ -483,7 +483,9 @@ libraries.
 
 The separate `docker-gemix-gemd` target selects `GEMIX_USE_GEMD=ON` and
 links `libgem` instead of AES/VDI. It requires a matching `gemd` server;
-the **Linux GEMix, gemd proxy** debug configuration starts one automatically.
+the **GEM, Rasta@SDL2** debug configuration starts the server and the
+image-provided SDL2 Rasta viewer automatically inside the Docker container.
+The local GEMix launch configuration and host-checkout runner are removed.
 Deploy `libgem` and its runtime dependencies to the client, and AES/VDI/Rasta
 and resources to the server. Both processes must see the same file-selector
 and clipboard paths. This changes transport, not the public Native API.

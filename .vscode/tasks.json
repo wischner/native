@@ -26,16 +26,7 @@
             "group": "build"
         },
         {
-            "label": "CMake Build Debug (Docker GEMix)",
-            "type": "shell",
-            "command": "cmake",
-            "args": ["--build", "build/cmake", "--target", "docker-gemix"],
-            "problemMatcher": "$gcc",
-            "group": "build",
-            "dependsOn": "CMake Configure Debug (Docker Targets)"
-        },
-        {
-            "label": "CMake Build Debug (Docker GEMix gemd)",
+            "label": "CMake Build Debug (GEM, Rasta@SDL2)",
             "type": "shell",
             "command": "cmake",
             "args": ["--build", "build/cmake", "--target", "docker-gemix-gemd"],

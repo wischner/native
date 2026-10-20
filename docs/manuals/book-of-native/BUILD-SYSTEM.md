@@ -145,7 +145,7 @@ host-side and Docker-side invocation.
   - Linux OpenMotif under Xvfb in its Docker image
   - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
   - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
-  - Linux GEMix through Docker and local rasta
+  - GEM, Rasta@SDL2 through Docker
   - Windows MinGW binaries run natively in the Windows 11 VM
   - Haiku binaries built through Docker, copied to a Haiku machine, and run there
   - Apple binaries built and run on the configured remote macOS host
@@ -309,7 +309,7 @@ the VS Code Run and Debug view and press F5.
 | Linux SDL2 | Local Docker container and local display | GDB through Docker |
 | Linux OPEN LOOK | Docker container, Xephyr/olwm session | GDB through Docker |
 | Linux Window Maker | Docker container, Xephyr/Window Maker session | GDB through Docker |
-| Linux GEMix | Local Docker container and local Rasta display | GDB through Docker |
+| Linux GEMix | Docker container with image-provided SDL2 Rasta | GDB through Docker |
 | Linux Motif/CDE, Xephyr | Docker container, Xephyr/CDE session | GDB through Docker |
 | Windows | Windows 11 VM, interactive autologon desktop | Docker MinGW GDB through SSH to native Win64 GDBserver |
 | Haiku | `Haiku` KVM guest | GDB over SSH |
@@ -325,8 +325,11 @@ workflow; its Docker build task and executable path are unchanged.
 The X11 profile disables LeakSanitizer's exit-time leak scan under GDB
 (`ASAN_OPTIONS=detect_leaks=0`), since it cannot run under ptrace; address
 and undefined-behavior checks remain enabled.
-The GEMix pipe starts Rasta locally and shares its framebuffer with the
-container. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
+The **GEM, Rasta@SDL2** profile uses `scripts/gemix/debug-pipe.sh`
+to run the image-provided SDL2 Rasta viewer, gemd and GDB in one container.
+`scripts/gemix/rasta-session.sh` owns the private framebuffer and viewer
+lifetime; `gemd-session.sh` owns the server. Logs go to stderr, keeping
+GDB/MI stdout clean. The local GEMix launch profile is removed. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
 to start GDB in the build image with Xephyr and olwm. Window Maker uses the
 same pipe with `--session window-maker-xephyr` and the Window Maker build image.
 
@@ -338,8 +341,6 @@ The development host needs:
 - CMake, Docker, GDB, SSH, SCP, rsync, and libvirt's `virsh`.
 - TCP port 31337 available on loopback for the Windows VM SSH debug tunnel.
 - Permission to use Docker and to start the required libvirt domains.
-- The Rasta executable at `/home/tstih/data/tstih/rasta/bin/rasta`, or a
-  different executable selected through `RASTA_BIN`.
 - The Docker images named by the top-level CMake project. In particular, the
   GEMix image must contain its runtime resources; Native does not mount a
   repository-owned resource directory.

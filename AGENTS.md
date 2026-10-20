@@ -132,6 +132,9 @@ libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
 no local SDK image build and no sibling GEM checkout is needed.
+The **GEM, Rasta@SDL2** F5 profile runs the image-provided Rasta SDL2 viewer,
+gemd and GDB together in Docker; no local GEMix profile or host Rasta
+checkout is used.
 
 The expected workflow is:
 

@@ -93,36 +93,7 @@
             "preLaunchTask": "CMake Build Debug (Docker Window Maker)"
         },
         {
-            "name": "Debug Vision (Linux GEMix, local)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/linux-gemix/src/vision",
-            "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
-            "MIMode": "gdb",
-            "externalConsole": false,
-            "environment": [
-                {"name": "GEM_VDI_WIDTH", "value": "904"},
-                {"name": "GEM_VDI_HEIGHT", "value": "900"},
-                {"name": "GEM_RASTA_FRAMEBUFFER", "value": "/tmp/rasta.fb"},
-                {"name": "GEM_RASTA_HOST", "value": "127.0.0.1"},
-                {"name": "GEM_RASTA_PORT", "value": "5000"},
-                {"name": "GEM_RASTA_SCALE", "value": "1"},
-                {"name": "GEM_RASTA_CURSOR", "value": "off"},
-                {"name": "GEM_RASTA_INVERSE", "value": "on"},
-                {"name": "LD_PRELOAD", "value": "/usr/lib/gcc/x86_64-linux-gnu/11/libasan.so:/usr/lib/gcc/x86_64-linux-gnu/11/libubsan.so"},
-                {"name": "ASAN_OPTIONS", "value": "detect_leaks=0"}
-            ],
-            "pipeTransport": {
-                "pipeCwd": "${workspaceFolder}",
-                "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest"],
-                "debuggerPath": "/usr/bin/gdb"
-            },
-            "preLaunchTask": "CMake Build Debug (Docker GEMix)"
-        },
-        {
-            "name": "Debug Vision (Linux GEMix, gemd proxy)",
+            "name": "GEM, Rasta@SDL2",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/linux-gemix-gemd/src/vision",
@@ -136,10 +107,10 @@
             "pipeTransport": {
                 "pipeCwd": "${workspaceFolder}",
                 "pipeProgram": "${workspaceFolder}/scripts/gemix/debug-pipe.sh",
-                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest", "--gemd"],
+                "pipeArgs": ["wischner/gcc-x86_64-gemix:latest"],
                 "debuggerPath": "/usr/bin/gdb"
             },
-            "preLaunchTask": "CMake Build Debug (Docker GEMix gemd)"
+            "preLaunchTask": "CMake Build Debug (GEM, Rasta@SDL2)"
         },
         {
             "name": "Linux Motif/CDE, Xephyr",
