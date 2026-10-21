@@ -26,7 +26,7 @@ If you are looking for a straightforward, understandable UI library, or if you w
 ## Features
 
 - **Backend coverage today**: Linux (X11/Athena, SDL2, OpenMotif,
-  OPEN LOOK/XView, Window Maker/WINGs, and GEMix), Windows (WinAPI),
+  OPEN LOOK/XView, Window Maker/WINGs, GEMix, GTK Wayland, and elementary OS), Windows (WinAPI),
   Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
 - **Classic trees**: Stable-ID hierarchical `tree_view` with native
@@ -174,7 +174,8 @@ Current exercised runtime paths are:
   Direct-backend regressions cover nested tab/split/canvas framebuffer
   composition and right/middle canvas button identity.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
-  **Debug Vision (Windows 11 VM)** for F5. See the
+  **Windows 11, VM** for F5 through `ssh whiskey`. Changed-file deployment
+  and a local VM DLL cache reduce repeat startup work (host Python 3.11+). See the
   [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
 - macOS AppKit, built natively with AppleClang and run on remote `leia`.
@@ -316,3 +317,42 @@ The helper starts CDE services as container root on Docker's isolated
 network, then runs the command as its CDE user. It forwards the host
 X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
 with LeakSanitizer disabled under GDB.
+
+## GTK 4.14 Wayland and elementary OS
+
+Two independent toolkits are available: `WAYLAND` uses GTK 4.14's GDK Wayland
+backend; `ELEMENTARY` adds Granite 7 through its C API. Both are written in C++
+and restrict GDK to Wayland, with no X11 fallback or X socket forwarding.
+Custom theme primitives reuse actual GTK/Granite widget snapshots and GTK CSS
+part rendering. Windows retain native vector drawing through the device
+transform; memory images rasterize the same native nodes.
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
+```
+
+The targets build the shared local `native-wayland-sdk:24.04` image from
+`scripts/linux/wayland/Dockerfile`. Dependencies include GCC, GTK 4.14.x,
+Granite 7.4, GtkSourceView 5.12, GLib/GIO, Cairo/Pango/HarfBuzz, Fontconfig,
+xkbcommon, PNG/JPEG and EGL/Mesa. The image also contains Weston, elementary
+icons and the pinned elementary OS 8 stylesheet. Outputs are
+`build/linux-wayland/src/vision` and `build/linux-elementary/src/vision`.
+
+Select **Elementary OS, VM** to build with Docker, deploy to `ssh echo`,
+and debug Vision in the VM's existing Wayland desktop. Its deployment task
+bundles GtkSourceView privately; no system package installation is needed.
+
+Select **Linux GTK4, Wayland** in F5 for Docker execution on a host
+Wayland desktop. Elementary uses only **Elementary OS, VM**, with its
+installed desktop theme. See
+[Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#gtk-414-wayland-and-elementary-os)
+for the headless Weston test command and image provenance. Headless widget,
+collection and terminal checks do not replace a Pantheon desktop acceptance
+pass; advanced table/custom-paint and pointer limits are listed in the
+[feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md).
+
+The [elementary VM runtime note](docs/notes/ELEMENTARY-VM-RUNTIME.md) records
+Docker binary deployment to `ssh echo`, native-theme pixel comparisons,
+current VM test results, and remaining desktop acceptance limits.

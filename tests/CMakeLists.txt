@@ -81,7 +81,8 @@ target_link_libraries(native_inspector_tests PRIVATE native native_developer_opt
 add_test(NAME native_inspector_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_inspector_tests>)
 
-if(NOT APPLE AND NOT TOOLKIT STREQUAL "GEMIX")
+if(NOT APPLE AND NOT TOOLKIT STREQUAL "GEMIX"
+   AND NOT TOOLKIT STREQUAL "WAYLAND" AND NOT TOOLKIT STREQUAL "ELEMENTARY")
     add_executable(native_inspector_runtime_tests
         native_inspector_runtime_tests.cpp inspector_input.cpp)
     target_include_directories(native_inspector_runtime_tests PRIVATE
@@ -318,6 +319,9 @@ if(UNIX AND NOT APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Haiku")
         ${PROJECT_SOURCE_DIR}/lib/native)
     target_link_libraries(native_glsl_context_tests PRIVATE
         native native_glsl_context_fixture native_developer_options)
+    if(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
+        target_compile_definitions(native_glsl_context_tests PRIVATE NATIVE_TEST_WAYLAND_ONLY)
+    endif()
     add_test(NAME native_glsl_context_tests COMMAND native_glsl_context_tests)
     set_tests_properties(native_glsl_context_tests PROPERTIES TIMEOUT 15
         ENVIRONMENT
@@ -394,6 +398,9 @@ endif()
 target_include_directories(native_close_runtime_tests PRIVATE
     $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
 target_compile_definitions(native_close_runtime_tests PRIVATE NATIVE_CLOSE_${TOOLKIT})
+if(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
+    target_link_libraries(native_close_runtime_tests PRIVATE PkgConfig::GTK4)
+endif()
 target_link_libraries(native_close_runtime_tests PRIVATE native native_developer_options)
 add_test(NAME native_close_runtime_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_close_runtime_tests>)
@@ -461,4 +468,21 @@ endif()
 if(TOOLKIT STREQUAL "WMAKER")
     set_tests_properties(native_close_runtime_tests native_wmaker_allocation_tests PROPERTIES
         ENVIRONMENT "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-wmaker-suppressions.txt")
+endif()
+
+if(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
+    add_executable(native_wayland_runtime_tests native_wayland_runtime_tests.cpp
+        native_gtk_theme_tests.cpp)
+    target_include_directories(native_wayland_runtime_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_wayland_runtime_tests PRIVATE native
+        native_developer_options PkgConfig::GTK4 PkgConfig::SOURCEVIEW)
+    if(TOOLKIT STREQUAL "ELEMENTARY")
+        target_link_libraries(native_wayland_runtime_tests PRIVATE PkgConfig::GRANITE)
+        target_compile_definitions(native_wayland_runtime_tests PRIVATE NATIVE_TEST_ELEMENTARY)
+    endif()
+    add_test(NAME native_wayland_runtime_tests COMMAND native_wayland_runtime_tests)
+    add_test(NAME native_collection_runtime_tests COMMAND native_collection_runtime_tests)
+    set_tests_properties(native_collection_runtime_tests PROPERTIES TIMEOUT 30)
+    set_tests_properties(native_wayland_runtime_tests PROPERTIES TIMEOUT 20)
 endif()

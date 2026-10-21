@@ -338,7 +338,8 @@ namespace vision
             native::theme::create(event.g);
         native::theme::state selected;
         selected.selected = true;
-        appearance->draw_button(native::rect(390, 286, 150, 30),
+        appearance->draw_button(native::rect(390, 286, 150,
+                                             appearance->get_button_height()),
                                 "Theme primitive");
         appearance->draw_check(native::rect(390, 326, 160, 24),
                                "Custom check", selected);

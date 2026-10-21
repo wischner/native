@@ -2,6 +2,55 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Elementary OS, VM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/tomaz/Projects/native/run/vision",
+            "cwd": "/home/tomaz/Projects/native/run",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "sourceFileMap": {
+                "/home/tomaz/repos/wischner/native": "${workspaceFolder}"
+            },
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/elementary-vm/debug-pipe.sh",
+                "pipeArgs": [],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "Deploy Vision Debug (Elementary VM)"
+        },
+        {
+            "name": "Linux GTK4, Wayland",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux-wayland/src/vision",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "environment": [
+                {
+                    "name": "GDK_BACKEND",
+                    "value": "wayland"
+                },
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0"
+                }
+            ],
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "${workspaceFolder}/scripts/linux/wayland/debug-pipe.sh",
+                "pipeArgs": [
+                    "native-wayland-sdk:24.04"
+                ],
+                "debuggerPath": "/usr/bin/gdb"
+            },
+            "preLaunchTask": "CMake Build Debug (Docker Wayland)"
+        },
+        {
             "name": "Linux X11, Xephyr",
             "type": "cppdbg",
             "request": "launch",
@@ -140,7 +189,7 @@
             "preLaunchTask": "CMake Build Debug (Docker OpenMotif)"
         },
         {
-            "name": "Debug Vision (Windows 11 VM)",
+            "name": "Windows 11, VM",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/windows-mingw-w64/src/vision.exe",
@@ -148,6 +197,7 @@
             "stopAtEntry": false,
             "MIMode": "gdb",
             "miDebuggerPath": "${workspaceFolder}/scripts/windows/vm/debug-pipe.sh",
+            "additionalSOLibSearchPath": "${workspaceFolder}/build/windows-mingw-w64/src;${workspaceFolder}/build/windows-vm/libraries",
             "miDebuggerServerAddress": "127.0.0.1:31337",
             "setupCommands": [
                 {"text": "-gdb-set mi-async on", "ignoreFailures": false}

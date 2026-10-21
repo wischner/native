@@ -6,14 +6,17 @@ $taskName = 'Native-Vision-Debug'
 $server = Join-Path $directory 'gdbserver.exe'
 $program = Join-Path $directory 'vision.exe'
 $ruleName = 'Native-GDB-Local-Only'
-$shell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
-$taskArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+$legacyShell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+$shell = Join-Path $env:WINDIR 'System32/wscript.exe'
+$legacyArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
     (Join-Path $directory 'session.ps1') + '" -Action Run'
+$taskArguments = '//B //Nologo "' + (Join-Path $directory 'session.vbs') + '"'
 
 if ($Action -eq 'Install') {
     $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($existing -and $existing.Actions.Execute -ne $server -and
-        !($existing.Actions.Execute -eq $shell -and $existing.Actions.Arguments -eq $taskArguments)) {
+        !($existing.Actions.Execute -eq $shell -and $existing.Actions.Arguments -eq $taskArguments) -and
+        !($existing.Actions.Execute -eq $legacyShell -and $existing.Actions.Arguments -eq $legacyArguments)) {
         throw 'An unrelated task already uses the Native debug task name.'
     }
     # GDBserver ignores the host part of its listen address. Explicitly block
@@ -42,7 +45,38 @@ if ($Action -eq 'Install') {
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
     $process = [System.Diagnostics.Process]::Start($start)
-    $process.WaitForExit()
+    # Cache only DLLs actually loaded by this deployment, including WinSxS
+    # versions chosen by its manifest. GDB keeps using the local full EXE.
+    $cache = Join-Path $directory 'gdb-libraries'
+    $version = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+    $stamp = "$($version.CurrentBuildNumber).$($version.UBR)"
+    New-Item -ItemType Directory -Force $cache | Out-Null
+    $versionFile = Join-Path $cache 'version.txt'
+    if (!(Test-Path $versionFile) -or (Get-Content $versionFile) -ne $stamp) {
+        Get-ChildItem "$cache/*.dll" | Remove-Item
+    }
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    while (!$process.WaitForExit(500)) {
+        try {
+            $target = Get-Process vision -ErrorAction SilentlyContinue | Where-Object {
+                $_.Path -eq $program -and $_.SessionId -eq $process.SessionId
+            }
+            foreach ($module in $target.Modules) {
+                $source = $module.FileName
+                if ([IO.Path]::GetExtension($source) -ne '.dll' -or !$seen.Add($source)) { continue }
+                $file = Get-Item -LiteralPath $source
+                $destination = Join-Path $cache $file.Name
+                $cached = Get-Item -LiteralPath $destination -ErrorAction SilentlyContinue
+                if (!$cached -or $cached.Length -ne $file.Length -or $cached.LastWriteTimeUtc -ne $file.LastWriteTimeUtc) {
+                    Copy-Item -LiteralPath $source -Destination $destination -Force
+                }
+            }
+            if ($seen.Count) { Set-Content -LiteralPath $versionFile -Value $stamp }
+        } catch {
+            # Cache collection must not interrupt a debugging session.
+            $_ | Out-String | Set-Content (Join-Path $cache 'error.log')
+        }
+    }
     exit $process.ExitCode
 } elseif ($Action -eq 'Start') {
     $rule = Get-NetFirewallRule -Name $ruleName -ErrorAction Stop
@@ -53,14 +87,19 @@ if ($Action -eq 'Install') {
     if (!(Get-Process explorer -ErrorAction SilentlyContinue)) {
         throw 'Log in to the Windows desktop before debugging.'
     }
-    if (Get-NetTCPConnection -LocalPort 2345 -State Listen -ErrorAction SilentlyContinue) {
+    if ([Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() |
+        Where-Object { $_.Port -eq 2345 }) {
         throw 'Guest debug port 2345 is already in use.'
     }
     try {
         Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
         for ($attempt = 0; $attempt -lt 50; ++$attempt) {
-            $listener = Get-NetTCPConnection -LocalPort 2345 -State Listen -ErrorAction SilentlyContinue
-            if ($listener) {
+            $listening = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() |
+                Where-Object { $_.Port -eq 2345 }
+            if ($listening) {
+                # Resolve ownership only once a listener exists; polling the
+                # networking CIM provider dominates short debug startups.
+                $listener = Get-NetTCPConnection -LocalPort 2345 -State Listen -ErrorAction Stop
                 $process = Get-Process -Id $listener[0].OwningProcess
                 if ($process.Path -eq $server -and $process.SessionId -ne 0) {
                     Write-Output 'Native Windows desktop debugger ready.'

@@ -469,3 +469,14 @@ handles or runtime graphics/compiler dependencies to `gpx`. Source submission
 copies pixels and property getters retain cached values before creation.
 See [Portable image shaders](PATTERNS-IMAGE-SHADERS.md) and its
 [application tutorial](../programming-native/20-IMAGE-SHADERS.md).
+
+### GTK/elementary theme targets
+
+GTK 4.14 and elementary draw complete control primitives with actual native
+widget snapshots, including Granite entry frames. Partial backgrounds, borders,
+focus and selection use GTK CSS-part rendering. Windows draw native vector nodes into their frame context, preserving device
+scaling, offsets and clips; images rasterize those same nodes. Flat palette colors are not a replacement for a native gradient
+or indicator. Use measured theme heights rather than hard-coded short bounds,
+as the supplied primitive rectangle remains its clip. The gallery's button
+primitive uses `get_button_height()` for that reason. Native steady states are
+rendered; the API has no animation-progress parameter.

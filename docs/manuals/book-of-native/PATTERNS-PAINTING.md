@@ -403,3 +403,12 @@ destroyed drawer. These guards do not extend a borrowed drawer's public usable
 lifetime: application code stops drawing when it destroys the receiver.
 Modal completion runs through `on_destroy_completed()` after peer release.
 The regression evidence is recorded in [ADJUST.md](../../ADJUST.md), A01.
+
+GTK/elementary theme primitives compose immutable native GTK render nodes
+directly into the existing window Cairo frame. They save/restore that context,
+intersect the portable graphics clip with the primitive bounds, and retain the
+window offset and device transform. A narrow internal `gpx_wnd_access` grants
+only portable offset access; no GTK/Cairo types enter the shared header. Image
+targets rasterize the same native nodes. The snapshot host is cached in the
+window's opaque peer and never maps a desktop surface. Controlled 2x frame
+comparisons verify native pixels, including nonzero offsets and clipping.

@@ -15,6 +15,49 @@ so both remain distinguishable in CDE's dark data palette.
 For a table of the available control parts, state fields, and application
 examples, see [Drawing Primitives](DRAWING-PRIMITIVES.md#themed-control-primitives).
 
+## GTK 4.14 and elementary native rendering
+
+GTK Wayland and elementary themes use GTK's own renderer instead of inheriting
+`emulated_theme`. Complete buttons, checks, radios, lists, menu-bar titles and
+editable frames snapshot actual GTK widgets; elementary entries use the same
+`GraniteValidatedEntry` factory as live controls. Parsed semantic state selects
+native checked/selected, hover, press, insensitive, focus-visible and backdrop
+CSS. Labels and indicators therefore retain the widget's native fonts, CSS
+padding, gradients, rounded borders, icons and shadows.
+
+A private `GtkWindow` subclass roots the probes. Its widget map/unmap methods
+use the base `GtkWidget` implementation, so children can be snapshotted while
+the native desktop surface is never mapped. No visible probe window or popup
+is presented. Window graphics cache this root in their opaque peer; image
+graphics own a short-lived snapshot root. Each probe is released after its
+immutable GTK render node has been built.
+Window graphics draw that node directly into the frame-owned Cairo context,
+preserving its device scaling, portable offset, active clip and primitive
+bounds. Image graphics rasterize the same node to straight-alpha RGBA. Window
+themes therefore avoid enlarging a pre-rasterized 1x control on HiDPI targets.
+Snapshot coordinates account for GTK's distinction between content origins and
+full border/margin bounds. The internal graphics accessor exposes only the
+portable offset; Cairo/GSK types remain inside the toolkit.
+
+Partial surfaces, frames, focus outlines, selections and scrollbar troughs or
+thumbs use `gtk_snapshot_render_background`, `render_frame` and `render_focus`
+with actual native CSS contexts. Menu rows also use `render_layout` and the
+native model-button label context. These supported GTK 4.14 entry points are
+deprecated since GTK 4.10; their use is isolated behind a scoped compiler
+annotation because there is no equivalent public style-context part painter
+in this baseline. Actual GTK column-view headers/sort indicators, expander
+indicators, grid selections, window close controls and separators provide the
+other parts. GTK4 scrollbars have no stepper buttons, so those parts paint
+nothing. Pin/unpin captions use native themed icon buttons because GTK has no
+standard pinned-window caption control. Rulers/status strips retain portable
+layout and compose GTK surface parts rather than simulating a widget skin.
+
+Control metrics are measured from real widgets and their native parts. Respect
+the reported minimum sizes: a primitive's supplied bounds remain its clip.
+Palette colors are flat semantic samples, not substitutes for a CSS gradient
+or a complete control. The explicit state API describes a steady state; it
+does not encode a live widget's intermediate CSS animation progress.
+
 ## Semantic drawing
 
 macOS follows the same stock-versus-derived distinction as Windows. Ordinary

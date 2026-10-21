@@ -110,10 +110,12 @@ namespace {
 }
 int main() {
     try {
+#ifndef NATIVE_TEST_WAYLAND_ONLY
         round_trip(true, false);
+        activation_failure(true, false);
+#endif
         round_trip(false, true);
         round_trip(false, false);
-        activation_failure(true, false);
         activation_failure(false, true);
         creation_failure();
         shared_display(false);

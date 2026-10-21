@@ -164,6 +164,7 @@ executables:
 
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
+| `native_wayland_runtime_tests` | Real GTK/Granite widgets; live-control/theme pixel parity, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
 | `native_mac_runtime_tests` | Stock AppKit painting, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `leia` |
 | `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and CDE VM |
@@ -174,7 +175,7 @@ executables:
 | `native_inspector_tests` | Typed property validation, event silence, all sixteen border masks, multiple edge bars, sticky groups and exact 16x16/24x24/32x32 icon pixels | Every hosted build; gemd session wrapper for proxy GEM |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
-| `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif/OPEN LOOK parent-child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2, Motif, OPEN LOOK and macOS; run on Haiku over SSH |
+| `native_collection_runtime_tests` | Live collections, source-editor lifecycle, combo composition and four-edge tab switching; Motif/OPEN LOOK parent-child teardown; Haiku native visibility, inset-arrow geometry, scrollbar endpoints, and drawing-state checks | Registered on SDL2, Motif, OPEN LOOK, macOS, GTK Wayland and elementary; run on Haiku over SSH |
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_mouse_shader_tests` | Generation-safe pointer transitions/cancellation, rich deltas, package validation, orientation/color/alpha, multipass/history, transaction rollback, copied source and recreation | All backends; inert window hooks, image drawing; no desktop cursor/raw-input claim |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
@@ -351,16 +352,28 @@ The Windows library propagates a Common Controls v6 manifest resource into
 consuming executables. This enables operating-system visual styles, not a
 library-painted skin. The backend uses Windows 7-or-newer API declarations.
 
-**Debug Vision (Windows 11 VM)** retains the `docker-win` Debug build and
+**Windows 11, VM** retains the `docker-win` Debug build and
 deploys its executable, MinGW DLLs and native Win64 GDBserver through SSH.
-The `Windows` guest is identified by UUID so a name change does not break F5.
+The guest is reached through `ssh whiskey`; SSH configuration supplies its
+account and key. Optional `WINDOWS_VM_DOMAIN` enables libvirt startup.
 `Native-Vision-Debug` is an interactive-user scheduled task: Vision runs on
 the visible Windows desktop, not SSH's session 0 and not Wine. The debugger
-wrapper owns a loopback SSH tunnel and cleans up only its deployed debug
-processes when GDB exits; a post-debug task also handles forced adapter
+wrapper waits for its loopback SSH tunnel before starting the desktop server.
+A workspace-specific SSH control socket lets normal and post-debug cleanup
+close an orphaned tunnel without touching unrelated port owners. It cleans up
+only its deployed debug processes when GDB exits; a post-debug task handles forced adapter
 termination. It leaves Windows running. Source breakpoints work, but
 interrupting a running GUI remains an open debugger issue; close Vision's
 window to end a running session cleanly.
+
+Windows preparation uses Python 3.11+ to compare content hashes and transfer
+only changed deployment files. A debug-section-free staging executable under
+`build/windows-vm/` reduces transfer size; GDB still reads the full local
+`build/windows-mingw-w64/src/vision.exe`. The desktop launcher caches loaded
+DLL versions for the next preparation's local GDB sysroot. Windows revision
+changes invalidate that cache. Its scheduled action uses Windows Script Host
+to start PowerShell hidden, and the Windows-specific F5 tasks keep terminal
+output in the background.
 
 The one-time key-only SSH setup, host-key verification, guest firewall rule,
 connection overrides and exact deployed paths are documented in
@@ -617,3 +630,69 @@ on the configured VM, and Native diagnoses that known combination before drawing
 The Haiku F5 profile supplies the same per-process environment. No global VM
 setting or application environment is modified by the library. Copy the normal
 Vision assets and use the same setting for --retro-terminal --terminal-smoke.
+
+## GTK 4.14 Wayland and elementary OS
+
+`TOOLKIT=WAYLAND` selects GTK 4.14's GDK Wayland backend. `TOOLKIT=ELEMENTARY`
+selects the same private adapter plus Granite 7's C interface. The implementation
+is C++ throughout. It neither includes Xlib nor falls back to X11. The optional
+image-shader adapter uses EGL and omits GLX discovery for these selections.
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
+```
+
+Both targets first build `docker-wayland-sdk` from
+`scripts/linux/wayland/Dockerfile`, tagged `native-wayland-sdk:24.04`.
+`DOCKER_IMAGE_WAYLAND` overrides that local image name. The pinned Ubuntu 24.04
+base supplies GCC, GTK 4.14.x, Granite 7.4, GtkSourceView 5.12, GLib/GIO,
+Pango/HarfBuzz, Cairo, Fontconfig, xkbcommon, PNG/JPEG and EGL/Mesa. The SDK
+installs elementary's icon theme and stylesheet 8.0.0, pinned to commit
+`9c713d0f4c35f80a783e5fa6845a39d977c7140c`; upstream source and GPL notices
+remain in `/opt/elementary-stylesheet`. GTK API availability is capped at 4.14.
+The independent output trees are `build/linux-wayland/` and
+`build/linux-elementary/`; each contains `src/vision`.
+
+The **Linux GTK4, Wayland** F5 profile uses
+`scripts/linux/wayland/debug-pipe.sh` and requires a host Wayland compositor.
+It forwards the Wayland socket and available session/system D-Bus sockets,
+with no X11 socket or Xauthority mount. **Elementary OS, VM** builds the
+elementary toolkit and deploys to `ssh echo`; no local elementary F5 profile
+exists. The VM follows the installed theme and Granite color preference.
+Debugging retains address/undefined-behavior checks and disables only the
+ptrace-incompatible exit-time leak scan.
+
+A real headless Weston compositor provides unattended runtime checks:
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" \
+  native-wayland-sdk:24.04 bash scripts/linux/wayland/headless-session.sh \
+  ctest --test-dir build/linux-elementary --output-on-failure
+```
+
+Use `build/linux-wayland` for the generic selection. Weston uses its headless
+Pixman backend, not Xwayland. This verifies adapter behavior, not a Pantheon
+visual/accessibility or portal-dialog acceptance pass. The focused
+`native_wayland_runtime_tests` checks native widget types, silent setters,
+validated edits, source synchronization, lazy million-row tables and recreation.
+
+Wayland intentionally leaves top-level placement to the compositor. Monitor
+work areas use the advertised monitor geometry; no global pointer position,
+explicit pointer capture or relative-motion protocol is claimed by this adapter.
+Native GTK implicit pointer gestures and cursor shapes remain available.
+
+### elementary OS VM debugging
+
+Select **Elementary OS, VM** in VS Code and press F5. The pre-launch task
+builds `docker-elementary`, then `scripts/linux/elementary-vm/deploy.sh`
+copies Vision, all retro-terminal assets and a private GtkSourceView runtime
+to `echo:/home/tomaz/Projects/native/run`. The debug pipe runs the VM's GDB
+through SSH with its existing Wayland and D-Bus session, Cairo rendering,
+and the installed desktop theme. It keeps stdout reserved for GDB/MI.
+`ELEMENTARY_VM_HOST` overrides the default SSH alias `echo`; the remote
+user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
+login session at `wayland-0`. See the elementary VM runtime note for observed
+desktop test limits. For deployment without debugging, build the target and
+run `scripts/linux/elementary-vm/deploy.sh` directly.

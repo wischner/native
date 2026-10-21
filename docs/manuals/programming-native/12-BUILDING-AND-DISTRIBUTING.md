@@ -1,6 +1,6 @@
 # Chapter 12: Building, Linking, and Distributing
 
-Native has nine supported build selections: six Linux toolkits plus Windows,
+Native has eleven build selections: eight Linux toolkits plus Windows,
 Haiku, and macOS. Application source remains the same, but each selection has
 its own compiler, link closure, and deployment requirements.
 
@@ -133,7 +133,7 @@ image and target distribution.
 
 ## Linux dependencies shared by all toolkits
 
-All six Linux selections require:
+The six original Linux selections require:
 
 - CMake 3.20 or newer and a C++20 compiler.
 - `pkg-config` where the selected toolkit CMake file uses it.
@@ -567,7 +567,10 @@ x86_64-w64-mingw32-g++ -print-file-name=libwinpthread-1.dll
 Recheck every release with `objdump -p`; changing toolchain flags can add,
 remove, or statically link compiler runtimes. The maintained F5 workflow
 deploys the Docker-built executable and these runtime DLLs to the native
-Windows 11 VM, with an interactive desktop debug server and SSH tunnel.
+Windows 11 VM (`Windows 11, VM` F5 profile, `ssh whiskey`), with an
+interactive desktop debug server and SSH tunnel. Preparation uses host Python
+3.11+ to send changed files, keeps the full local executable for symbols and
+caches loaded Windows DLLs under `build/windows-vm/` for repeat launches.
 Neither execution nor debugging uses Wine. See
 [Windows VM Runtime](../../notes/WINDOWS-VM-RUNTIME.md) for the one-time guest
 setup and debugger lifecycle.
@@ -711,7 +714,7 @@ at runtime. The library itself does not embed them.
 
 ## AmigaOS qualification status
 
-The nine supported backend selections above do not include AmigaOS. The
+The eleven backend selections do not include AmigaOS. The
 separate `docker-amiga-check` target checks the proposed 3.1/m68k compiler
 runtime and currently fails for C++20 threading and filesystem support. It
 creates no `native` archive, Vision executable, application link target or
@@ -744,3 +747,43 @@ The helper starts CDE services as container root on Docker's isolated
 network, then runs the command as its CDE user. It forwards the host
 X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
 with LeakSanitizer disabled under GDB.
+
+## GTK 4.14 Wayland and elementary OS
+
+The `WAYLAND` and `ELEMENTARY` selections both require GTK 4.14.x,
+GtkSourceView 5.12, GLib/GIO, Cairo/Pango/HarfBuzz, xkbcommon, Fontconfig,
+PNG/JPEG and EGL/Mesa. `ELEMENTARY` additionally links Granite 7.4 through
+its C ABI. Applications continue to use only the pure C++ public API.
+
+| Target | SDK image | Program |
+| --- | --- | --- |
+| `docker-wayland` | `native-wayland-sdk:24.04` | `build/linux-wayland/src/vision` |
+| `docker-elementary` | `native-wayland-sdk:24.04` | `build/linux-elementary/src/vision` |
+
+Both Docker targets depend on `docker-wayland-sdk`, which builds the local
+image from `scripts/linux/wayland/Dockerfile`, including the elementary OS 8
+stylesheet and icons. Build them through `build/cmake` like the other Docker
+targets. **Linux GTK4, Wayland** forwards the host Wayland and available
+D-Bus sockets without X11/Xauthority. **Elementary OS, VM** deploys to
+`ssh echo` and uses its installed desktop theme. It is the only elementary
+F5 profile.
+
+Deploy with the same GTK/Granite/GtkSourceView major ABIs and native theme
+assets. Top-level placement belongs to the compositor. See the book's
+[Build System](../book-of-native/BUILD-SYSTEM.md#gtk-414-wayland-and-elementary-os)
+for pinned SDK provenance and headless Weston commands, and the feature matrix
+for advanced-table/custom-paint and interactive desktop acceptance limits.
+
+### elementary OS VM debugging
+
+Select **Elementary OS, VM** in VS Code and press F5. The pre-launch task
+builds `docker-elementary`, then `scripts/linux/elementary-vm/deploy.sh`
+copies Vision, all retro-terminal assets and a private GtkSourceView runtime
+to `echo:/home/tomaz/Projects/native/run`. The debug pipe runs the VM's GDB
+through SSH with its existing Wayland and D-Bus session, Cairo rendering,
+and the installed desktop theme. It keeps stdout reserved for GDB/MI.
+`ELEMENTARY_VM_HOST` overrides the default SSH alias `echo`; the remote
+user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
+login session at `wayland-0`. See the elementary VM runtime note for observed
+desktop test limits. For deployment without debugging, build the target and
+run `scripts/linux/elementary-vm/deploy.sh` directly.

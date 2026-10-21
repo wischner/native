@@ -182,9 +182,12 @@ host display, each image supplies a headless Xvfb parent.
 
 The Windows cross-build produces
 `build/windows-mingw-w64/src/vision.exe`. MinGW runtime DLLs must be beside
-the executable in Windows. The **Debug Vision (Windows 11 VM)** F5 profile
+the executable in Windows. The **Windows 11, VM** F5 profile
 deploys the program, matching DLLs and native debug server to the autologon
-desktop. It does not use Wine. See the
+desktop through `ssh whiskey`. Preparation transfers only changed files and
+keeps full symbols locally while staging a smaller executable. Loaded VM DLLs
+are cached under `build/windows-vm/` for subsequent debugger launches. The host
+requires Python 3.11+. It does not use Wine. See the
 [Windows VM note](../../notes/WINDOWS-VM-RUNTIME.md) for one-time SSH setup.
 
 The Haiku cross-build produces `build/haiku/src/vision`. Copy that binary to
@@ -292,3 +295,37 @@ The helper starts CDE services as container root on Docker's isolated
 network, then runs the command as its CDE user. It forwards the host
 X display or supplies a headless Xvfb parent. Debugging retains ASan/UBSan
 with LeakSanitizer disabled under GDB.
+
+## GTK 4.14 Wayland and elementary OS
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
+```
+
+These targets build their shared `native-wayland-sdk:24.04` image first.
+The separate outputs are `build/linux-wayland/src/vision` and
+`build/linux-elementary/src/vision`. Select **Linux GTK4, Wayland** for
+Docker execution on the host Wayland compositor, or **Elementary OS, VM**
+for deployment to `ssh echo`. Both use Wayland; X11 is not used.
+
+Both adapters are C++ using GTK 4.14 C APIs. Elementary adds Granite 7 C APIs
+and the image's elementary stylesheet. See [Build System](BUILD-SYSTEM.md#gtk-414-wayland-and-elementary-os)
+for dependencies, image provenance and headless Weston regressions. Window
+placement is compositor-owned, and advertised monitor geometry is used as
+work area; the feature matrix records the current desktop-acceptance limits.
+
+### elementary OS VM debugging
+
+Select **Elementary OS, VM** in VS Code and press F5. The pre-launch task
+builds `docker-elementary`, then `scripts/linux/elementary-vm/deploy.sh`
+copies Vision, all retro-terminal assets and a private GtkSourceView runtime
+to `echo:/home/tomaz/Projects/native/run`. The debug pipe runs the VM's GDB
+through SSH with its existing Wayland and D-Bus session, Cairo rendering,
+and the installed desktop theme. It keeps stdout reserved for GDB/MI.
+`ELEMENTARY_VM_HOST` overrides the default SSH alias `echo`; the remote
+user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
+login session at `wayland-0`. See the elementary VM runtime note for observed
+desktop test limits. For deployment without debugging, build the target and
+run `scripts/linux/elementary-vm/deploy.sh` directly.

@@ -17,6 +17,8 @@
 #include "../lib/native/platforms/mac/globals.h"
 #elif defined(__HAIKU__)
 #include "../lib/native/platforms/haiku/globals.h"
+#elif defined(NATIVE_CLOSE_WAYLAND) || defined(NATIVE_CLOSE_ELEMENTARY)
+#include "../lib/native/toolkits/wayland/globals.h"
 #elif defined(NATIVE_CLOSE_SDL2)
 #include <SDL2/SDL.h>
 #include "../lib/native/toolkits/sdl2/globals.h"
@@ -57,6 +59,9 @@ namespace
 #elif defined(__HAIKU__)
         haiku::wnd_bindings.handle_from_object(&window)->PostMessage(
             B_QUIT_REQUESTED);
+#elif defined(NATIVE_CLOSE_WAYLAND) || defined(NATIVE_CLOSE_ELEMENTARY)
+        gboolean handled = false;
+        g_signal_emit_by_name(linux::wayland::state(window).widget, "close-request", &handled);
 #elif defined(NATIVE_CLOSE_SDL2)
         SDL_Event event{};
         event.type = SDL_WINDOWEVENT;

@@ -11,6 +11,7 @@
 
 namespace native
 {
+    namespace detail { class gpx_wnd_access; }
 
     class gpx_wnd : public gpx
     {
@@ -48,6 +49,7 @@ namespace native
         gpx &draw_img(const img &src, point dst) override;
 
     private:
+        friend class detail::gpx_wnd_access;
         wnd *_wnd;
         rect _clip;
         point _offset;

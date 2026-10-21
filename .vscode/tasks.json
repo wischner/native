@@ -2,6 +2,41 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Deploy Vision Debug (Elementary VM)",
+            "type": "process",
+            "command": "${workspaceFolder}/scripts/linux/elementary-vm/deploy.sh",
+            "problemMatcher": [],
+            "dependsOn": "CMake Build Debug (Docker elementary)"
+        },
+        {
+            "label": "CMake Build Debug (Docker Wayland)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build/cmake",
+                "--target",
+                "docker-wayland"
+            ],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
+            "label": "CMake Build Debug (Docker elementary)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build/cmake",
+                "--target",
+                "docker-elementary"
+            ],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "Check Amiga C++20 Runtime (Docker)",
             "type": "process",
             "command": "cmake",
@@ -98,13 +133,22 @@
             "dependsOn": "CMake Configure Debug (Docker Targets)"
         },
         {
+            "label": "CMake Configure Debug (Windows VM)",
+            "type": "process",
+            "command": "cmake",
+            "args": ["-S", ".", "-B", "build/cmake", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
+            "problemMatcher": [],
+            "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false}
+        },
+        {
             "label": "CMake Build Debug (Docker Windows)",
-            "type": "shell",
+            "type": "process",
             "command": "cmake",
             "args": ["--build", "build/cmake", "--target", "docker-win"],
             "problemMatcher": "$gcc",
             "group": "build",
-            "dependsOn": "CMake Configure Debug (Docker Targets)"
+            "dependsOn": "CMake Configure Debug (Windows VM)",
+            "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false}
         },
         {
             "label": "CMake Build Debug (Docker Haiku)",
@@ -120,6 +164,7 @@
             "type": "process",
             "command": "/bin/bash",
             "args": ["${workspaceFolder}/scripts/windows/vm/prepare.sh"],
+            "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false},
             "problemMatcher": [],
             "dependsOn": "CMake Build Debug (Docker Windows)"
         },
@@ -128,6 +173,7 @@
             "type": "process",
             "command": "/bin/bash",
             "args": ["${workspaceFolder}/scripts/windows/vm/stop.sh"],
+            "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false},
             "problemMatcher": []
         },
         {

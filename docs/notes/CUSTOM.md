@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-19.
+Audit date: 2026-10-20.
 
 Motif tree repaint review: expand/collapse and selection invalidations target
 the retained inner `XmContainer`. The border is a separate native `XmFrame`
@@ -58,6 +58,9 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 
 | Backend and control | Decision |
 | --- | --- |
+| Wayland/elementary `toolbar`, `ruler`, `status_bar` | Keep **C**. These are arbitrary-edge portable non-client strips with staged application painting. GTK 4 has no ruler or multipart in-client status-bar control, and removed the GTK 3 toolbar widget. Native editors are used inside the property grid. |
+| Wayland/elementary advanced source/table drawing | Keep **H**. Stock content uses GtkSourceView/GtkColumnView; application lexer overlays, markers, diagnostics, derived drawing and grouped/headerless/alternating tables retain the shared semantic painter because GTK widgets do not implement those portable staged hooks. |
+| Wayland/elementary `shader_view` | Keep **C**. GTK drawing areas host application-owned multipass/history image programs; no Granite widget provides that program contract. |
 | Haiku `status_bar` | Keep **C**. `BStatusBar` is a progress indicator, not a window footer. |
 | Window Maker `ruler` | Keep **C**. `WMRuler` represents `WMText` margin and tab-stop state, not a generic measuring strip. |
 | macOS `ruler` | Keep **C** for the public control. `NSRulerView` requires an `NSScrollView` client, while the portable ruler attaches to any `wnd`. A future text-editor-specific ruler can use it. |
@@ -372,7 +375,7 @@ the client inset with a canvas painting to its edges.
 | `button`, `check`, `radio` | **N** | Win32 `BUTTON` with `BS_PUSHBUTTON`, `BS_CHECKBOX`, and `BS_RADIOBUTTON`; native painting, metrics, focus, and input. Derived controls and partial-border buttons retain `BS_OWNERDRAW` for protected drawing stages. |
 | `list` | **N** | Win32 `LISTBOX`. |
 | `combo_box` | **N/H** | Win32 `COMBOBOX`; property-grid value cells use owner-drawn text/paper, retaining the native arrow, popup, keyboard and selection behavior. |
-| `text_edit` | **N/H** | Win32 `EDIT`; portable validation and clipboard policy subclass it. |
+| `text_edit` | **N/H** | Win32 `EDIT`; portable validation and clipboard policy subclass it. The 2026-10-20 cursor repair preserves top-level pointer activity when focus enters a stock child; native single/multiline editor cursor and explicit overrides remain effective. |
 | `accordion` | **C** | Library child-window class and theme painting. |
 | `tab_view` | **N/H** | Common-controls `WC_TABCONTROL` with native classic painting on all four edges, since visual styles do not support bottom/vertical placement. Vertical items use content-sized widths for centered short labels; portable borrowed-page routing and a post-paint separator for strip-only pages. |
 | `icon_view` | **N** | Common-controls v6 `WC_LISTVIEW` with native image-list, label, focus and selection painting. Derived controls retain custom stages. |
@@ -582,3 +585,68 @@ image effects have no stock native widget. Optional GLSL software rendering
 returns image pixels to the existing canvas compositor and adds no custom
 window chrome. Actual rendering and context tests pass with Mesa softpipe;
 this is not a GPU acceleration or visual approval claim.
+
+
+## GTK Wayland and elementary OS (2026-10-20)
+
+These separate toolkit selections share the private GTK 4.14 Wayland adapter.
+The elementary specialization calls Granite 7's C API from C++.
+
+| Public control | WAYLAND | ELEMENTARY | Current implementation |
+| --- | --- | --- | --- |
+| `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | **N/H** | GTK application windows and header bars; modeless top levels stack independently, modal windows retain native transience. Portable ownership and close policy remain. |
+| `main_menu` | **N** | **N** | GMenu/GAction and GtkPopoverMenuBar. |
+| `button`, `check`, `radio` | **N** | **N** | GtkButton and GtkCheckButton; portable radio groups and silent setters. |
+| `list`, `combo_box` | **N/H** | **N/H** | GtkListBox/scroller; GtkDropDown plus a native editable entry. |
+| `text_edit` | **N** | **N** | GTK entry/text view; elementary single-line fields use GraniteValidatedEntry. |
+| `accordion` | **N/H** | **N/H** | GtkExpander sections with borrowed portable pages. |
+| `tab_view` | **N/H** | **N/H** | GtkNotebook and portable page lifecycle. |
+| `split_view` | **N/H** | **N/H** | GtkPaned and portable ratio/borrowed children. |
+| `icon_view` | **N/H** | **N/H** | Virtual GtkGridView with native selection and RGBA textures. |
+| `tree_view` | **H** | **H** | Native GtkListBox rows and disclosure buttons adapted to the stable-ID hierarchy. |
+| `table_view` | **N/H** | **N/H** | Virtual GtkColumnView and lazy GListModel for stock tables; shared Cairo rendering for groups, alternating/headerless layouts and derived drawing. |
+| `code_edit` | **N/H** | **N/H** | GtkSourceView 5 for stock editing; shared Cairo rendering for application overlays and derived drawing, with one canonical portable document. |
+| `panel`, `canvas` | **H** | **H** | GtkOverlay/GtkFixed child hosting and GtkDrawingArea/Cairo application painting. |
+| `property_grid` | **H** | **H** | Portable property layout and native entry/check/combo editors. |
+| `toolbar`, `ruler`, `status_bar` | **C** | **C** | Portable edge-strip composition using Cairo/Pango and native GTK CSS parts. |
+| `shader_view` | **C** | **C** | Shared canvas image programs and EGL image compositor. |
+| File open/save/directory | **N** | **N** | Asynchronous GtkFileDialog with cancellable peer lifetime. |
+| `message_box` | **N** | **N** | GtkAlertDialog; elementary uses GraniteMessageDialog. |
+
+Native widget presentation does not establish every portable custom-paint hook
+or advanced model feature; the current limits are recorded in the feature
+matrix and backend open issues.
+
+The 2026-10-20 GTK interaction repair retains these kinds: native buttons
+remain **N**, menus **N**, and panel/canvas composition **H**. Fixed child
+hosts participate in overlay measurement and pointer targeting; background
+controllers run only at the target phase, preserving native child input.
+Top-level default sizes account for GTK header/menu chrome. Menu mnemonics
+translate parsed portable labels to GTK underscore syntax, escaping literal
+underscores and preserving ampersands.
+
+The 2026-10-20 GTK close-lifetime repair retains all GTK/elementary control
+kinds. Each peer now owns its root GTK widget reference rather than relying
+on container ownership. Native removal retains the parent across synchronous
+unmap callbacks. The close regression reproduces parent destruction from a
+child input reset, checks balanced reference release, and exercises native
+unmap reentry and closing a populated window with an editor focused.
+
+The 2026-10-20 GTK theme audit retains the live-control kinds. Theme drawing
+now snapshots actual GTK/Granite controls and uses GTK native CSS-part functions
+for custom surfaces, frames, focus, selections, headers and scrollbars; it no
+longer uses `emulated_theme`. Toolbar, ruler and status-strip **C** marks still
+describe portable composition/behavior, not a separately emulated widget skin.
+The same native pixels are composed into both window and image graphics, with
+a peer-owned offscreen renderer cache. The pixel-parity fixture independently
+captures live controls, including complete borders, padding and margins.
+
+GTK window theme stages retain vector rendering through Cairo's device matrix
+and clip; image stages rasterize the same GTK nodes. The native-theme fixture
+passes 96 exact live-control comparisons, including controlled 2x window
+frames, offsets and clipping. This verifies steady-state rendering of the
+tested controls, not every CSS animation frame or physical display scale.
+
+The 2026-10-20 modeless stacking follow-up retains the GTK/elementary **N/H**
+window classification. Modeless windows omit GTK transience; modal dialogs
+retain it. Portable ownership continues to govern lifetime.

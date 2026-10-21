@@ -42,6 +42,16 @@ Rectangle x2()/y2() return std::int32_t so endpoint addition cannot narrow;
 containment/intersection widen intermediate calculations, and line cross-products
 use std::int64_t. Consumers must rebuild after the endpoint return-type change.
 
+### GTK Wayland toolkit sharing
+
+The `wayland` toolkit owns the GTK 4.14/GDK Wayland adapter and Cairo/Pango
+rendering. The separate `elementary` toolkit selects it and adds Granite 7
+through its C ABI. Shared code must not acquire an X11 fallback. Native controls
+remain GTK/Granite widgets, while portable model values and native peers retain
+the ordinary ownership boundary. Wayland compositor placement and unavailable
+capture capabilities must remain explicit rather than emulated with X APIs.
+
+
 ## 2. Native Bindings
 
 Public C++ classes must not contain native types, even in private members. To
@@ -316,9 +326,10 @@ object must safely detach the non-owning relationship.
   equivalent top-level relationship. It remains in the normal application
   event loop, accepts controls through that loop, and does not disable its
   owner.
-- On Windows, modeless windows use independent, unowned top-level HWNDs so
-  they can move behind the main window. The portable owner relationship still
-  governs lifetime and modal exclusion; modal HWNDs retain native ownership.
+- On Windows and GTK Wayland (including elementary), modeless windows use
+  independent native top levels so either window can move behind the other.
+  The portable owner relationship still governs lifetime and modal exclusion;
+  modal windows retain native ownership/transience.
 - A `modal_wnd` is an owner-modal dialog. Showing it starts a modal session,
   moves focus to the dialog, and prevents input to its owner and the owner's
   other owned branches. The event loop must continue to dispatch paint and
@@ -652,7 +663,12 @@ Theme rendering follows these rules:
   XView's OLGX primitives, and WINGs `W_DrawRelief` and indicator resources,
   as well as equivalent AppKit or BeAPI facilities.
 - Fall back to portable `gpx` operations when no suitable native primitive
-  exists, or when drawing into an image rather than a native window.
+  exists. When a toolkit can snapshot its controls, compose those native
+  pixels into image graphics too; an image destination alone does not require
+  a different control appearance.
+- Reusing colors alone is not equivalent to using the native renderer. A
+  derived control's stock theme stages must use the matching native control
+  or native CSS-part painter when one is available.
 - Obtain colors, fonts, spacing, and dimensions from the backend wherever
   possible; do not hard-code one platform's appearance into shared code.
 - Preserve the caller's `gpx` state after drawing a theme primitive.

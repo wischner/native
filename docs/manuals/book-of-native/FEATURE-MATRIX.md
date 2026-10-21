@@ -13,6 +13,83 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+
+## Windows editor cursors (2026-10-20)
+
+The Windows native-peer regression covers single-line and multiline editor
+I-beam selection after root-to-child focus transfer, explicit crosshair
+overrides, inactive-root arrow selection and reactivation. The original
+focus-transfer assertion reproduced the arrow defect on `whiskey`. The repair
+separates top-level activation from stock-child keyboard focus and resumes
+native-child hover on forwarded cursor messages. It retains native `EDIT`
+controls and their non-client cursor behavior. The Docker build and updated
+interactive native-peer fixture pass on `whiskey`; Vision is redeployed.
+
+## GTK Wayland and elementary OS (2026-10-20)
+
+Both toolkit selections build with GCC, warnings and Debug ASan/UBSan in the
+GTK 4.14.5/Granite 7.4 Docker SDK. All 18 tests pass for each toolkit under
+headless Weston/Pixman. The latest elementary OS 8.1 VM run also passes 18/18
+(`ssh echo`, GTK 4.14.5, Granite 7.8.1). The later generic GTK VM run passed
+15/18 before three GUI initialization timeouts. All three affected fixtures
+(close, widget/theme and collection) pass on subsequent focused reruns after
+the compositor recovered. Both VM toolkits pass 96 native-theme pixel comparisons.
+GDB located the earlier wait inside `gtk_init_check()`; Gala logged recursive
+main-context warnings. Earlier full generic VM runs also passed;
+see the [VM runtime note](../../notes/ELEMENTARY-VM-RUNTIME.md) for scoped evidence. The focused regression
+asserts GTK/Granite native control types, silent setters, live validation,
+native column actions, container lifetimes and reparenting,
+independent modeless stacking without GTK transience (modal transience retained),
+canonical source updates, lazy million-row tables and destroy/recreate behavior.
+The production GLSL retro-terminal smoke verifies Cairo image lifetimes and
+posted completion on this path. LeakSanitizer's exit scan is disabled in the
+runtime session because GTK/desktop libraries retain process resources.
+
+The shared GTK adapter measures the fixed child overlay, preserves child
+pointer targeting, and routes background controllers at the target phase.
+Top-level defaults include header/menu height. Native menus translate portable
+mnemonics to GTK underscores while escaping literal underscores. The focused
+regression checks allocated client height, bottom-button hit testing and
+native action delivery, plus top-level/item mnemonic labels. Elementary's
+only F5 profile is **Elementary OS, VM**; generic GTK retains its Docker profile.
+
+The GTK close regression also covers a parent closed synchronously by a child
+input-reset callback, and parent destruction during native unmapping. ASan
+reproduced a freed child widget before the fix. Peers now hold their own GTK
+widget reference and retain the native parent during removal; the regression
+asserts that the child reference is released and closes a populated window
+through GTK with an editor focused. Both 18-test Docker suites pass; 25
+repeated elementary close checks pass under sanitizers, and 10 repeated checks
+pass on `echo` with fatal GTK criticals.
+
+Custom theme primitives now use actual GTK/Granite widget snapshots and native
+CSS-part functions, not palette-based emulation. Window primitives draw GTK
+vector nodes directly through their frame's device transform, offset and clip;
+image targets rasterize the same nodes. The fixture passes 96 exact pixel
+comparisons against independently captured live controls: 84 image cases for
+buttons, checks, radios, entries and lists across light/dark and normal, hover,
+press, disabled, focus and inactive states (including unchecked indicators),
+plus 12 controlled 2x window cases with offsets/clips. These pass in both
+Docker toolkits and on the elementary VM. Primitives express steady state;
+intermediate CSS animations and physical HiDPI monitors are not qualified by
+these controlled comparisons.
+
+| Area | Current implementation and limits |
+| --- | --- |
+| Desktop integration | Native GTK 4.14 widgets; elementary adds Granite validated entries, message dialogs and live color preference when the system service is reachable. |
+| Display | GDK Wayland only; separate generic and elementary F5/build selections. Top-level placement remains compositor-owned; advertised monitor geometry is also used as work area. |
+| Drawing | Frame-owned Cairo, native GTK vector/CSS theme parts, Pango text, and portable TrueType/image rendering. Native theme snapshots also serve image targets. EGL image shaders omit GLX discovery. |
+| Collections | Native GTK list/grid/column/outline composition; icon and table item objects are lazy. Stable portable data/selection remain library-owned. |
+| Source editor | GtkSourceView 5 with UTF-8 canonical-document and caret/selection synchronization. Native language highlighting is used for stock editing. Application lexers, markers, diagnostics, style runs, completion and derived drawing select the shared Cairo editor path. |
+| Advanced tables | Native columns, virtual row binding, selection and activation. Sort, resize and reorder events are forwarded to the portable model. Native header menus implement column visibility. Grouped, alternating, headerless and derived tables use the shared Cairo model painter to retain staged drawing; interactive column operations remain unqualified. |
+| Precision pointer | Hidden cursors and ordinary GTK gestures; explicit capture, relative motion and raw/unaccelerated delivery are unavailable. |
+| Desktop acceptance | The VM control snapshot and automated hit testing are verified. Physical mouse/keyboard input, accessibility, cross-application clipboard exchange and interactive file portals remain manual acceptance limits. |
+
+The X11-specific inspector-input fixture is not built for these selections;
+its shared model tests and the dedicated Wayland widget regression remain built.
+The EGL fixture covers EGL preservation/failure rollback; GLX-only scenarios
+remain covered by existing X-capable builds.
+
 ## Window Maker collection repaint (2026-10-18)
 
 Collection invalidations now coalesce into a deferred buffered repaint,

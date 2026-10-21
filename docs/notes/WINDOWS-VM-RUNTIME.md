@@ -1,18 +1,18 @@
 # Windows VM Runtime and Debugging
 
-The Windows F5 profile targets the native Windows 11 desktop in the libvirt
-guest **Windows** (formerly `Windows10`). It does not invoke Wine. Builds
+The **Windows 11, VM** F5 profile targets the Windows 11 desktop reachable
+through the SSH alias `whiskey`. It does not invoke Wine. Builds
 remain Docker-backed through `docker-win`; the guest receives the resulting
 MinGW `vision.exe`, three runtime DLLs and the SDK's native Win64
 `gdbserver.exe`. No source code or Linux executable is run in the guest.
 
 ## Connection and guest preparation
 
-The reference VM UUID is `95319e95-537b-4479-9b79-53419fe70fe9`; using the
-UUID keeps the workflow independent of the VM's display name. The scripts
-discover its IPv4 address from the libvirt lease. The reference SSH account
-is `tomaz stih` and the autologon desktop must be available. Override
-`WINDOWS_VM_DOMAIN`, `WINDOWS_VM_HOST` or `WINDOWS_VM_USER` for another setup.
+The scripts use `ssh whiskey`, including the account, key and host settings in
+SSH configuration. The current account is `WHISKEY\tomaz`; an interactive
+desktop must be logged in. Override `WINDOWS_VM_HOST` or `WINDOWS_VM_USER`
+for another setup. Setting `WINDOWS_VM_DOMAIN` additionally enables optional
+libvirt startup; the default does not depend on libvirt or lease discovery.
 
 Run `scripts/windows/vm/setup-ssh.ps1` once in an elevated guest PowerShell,
 passing the host's **public** ed25519 key as `-AuthorizedKey`. It installs
@@ -24,26 +24,27 @@ with access restricted to Administrators and SYSTEM, following Microsoft's
 [Windows OpenSSH key guidance](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement).
 No private key is copied into Windows.
 
-Verify the displayed guest ed25519 host-key fingerprint independently against
-the key collected from that guest. Store the verified public host key under
-the alias `native-windows-vm` in `~/.ssh/native_windows_known_hosts`. The scripts
-require strict host-key checking and non-interactive key authentication;
-they do not accept unknown or changed server keys automatically.
+The scripts require strict host-key checking and non-interactive key
+authentication using normal SSH configuration and known-hosts files. They do
+not accept unknown or changed server keys automatically. The existing
+`whiskey` SSH connection supplies these settings.
 
 ## F5 workflow
 
-Select **Debug Vision (Windows 11 VM)**:
+Select **Windows 11, VM**:
 
 1. The existing Docker Debug build produces `build/windows-mingw-w64/`.
-2. `scripts/windows/vm/prepare.sh` starts the VM if needed, waits for SSH,
-   copies the exact executable/runtime/debugger files to
+2. `scripts/windows/vm/prepare.sh` waits for SSH (optionally starting an explicitly
+   configured libvirt domain),
+   synchronizes changed executable/runtime/debugger files to
    `C:\NativeDebug\native`, and registers the `Native-Vision-Debug` task.
    It refuses deployment while that directory's Vision/debugger is running.
 3. `scripts/windows/vm/debug-pipe.sh` starts the task with the logged-in user's
    interactive token, then connects Docker's MinGW-aware GDB through an SSH
    tunnel. A normal SSH process runs in session 0, so it is not used as the
    GUI program's parent. The task runs at limited privilege on the desktop,
-   using a hidden PowerShell launcher and a console-less debug server.
+   using `wscript.exe` to start PowerShell hidden before its console can be
+   displayed, plus a console-less debug server.
    VS Code uses this wrapper as `miDebuggerPath`, with a remote-server
    address. An identity source map retains full breakpoint paths, avoiding
    ambiguity between the application's and backend's `main.cpp` files.
@@ -51,23 +52,57 @@ Select **Debug Vision (Windows 11 VM)**:
    `127.0.0.1:31337`. A guest firewall rule blocks non-loopback access to 2345.
    This is necessary because [GDBserver ignores the host portion of its listen
    address](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Server.html).
-5. When GDB exits, the wrapper stops this directory's debug processes and
-   removes its tunnel. `Stop Vision Debug (Windows VM)` is also a
+5. Tunnel setup uses a workspace-specific SSH control socket and waits for
+   forwarding to succeed before starting the guest debugger. An occupied port
+   fails startup immediately. When GDB exits, the wrapper stops this directory's
+   debug processes and closes its SSH master. `Stop Vision Debug (Windows VM)` is also a
    `postDebugTask`, covering adapter failures that terminate the wrapper.
-   Cleanup leaves the VM and other applications running. The scheduled task
+   The post-debug task also closes this workspace's orphaned SSH master; it never
+   kills an arbitrary process holding port 31337. Cleanup leaves the VM and
+   other applications running. The scheduled task
    and deployed files remain available for subsequent launches.
 
 Session diagnostics use stderr, preserving GDB/MI stdout. The scripts do not
 store a Windows password, change autologon, reboot the guest, or alter Windows
-Update. The DLLs are `libgcc_s_seh-1.dll`, `libstdc++-6.dll` and
+Update. The full local executable retains debug information; the staging executable
+uses `objcopy --strip-debug` before deployment. DLL and asset contents remain
+unchanged. The DLLs are `libgcc_s_seh-1.dll`, `libstdc++-6.dll` and
 `libwinpthread-1.dll`, resolved from the same Docker cross-compiler that builds
 Vision. GDBserver is supplied by that image, not downloaded from an unrelated
 binary provider.
 
-The host needs libvirt tools, OpenSSH, Docker, `flock`, `iconv` and `base64`.
+The host needs OpenSSH, Docker, `flock`, `iconv` and `base64`. Libvirt tools
+are needed only when `WINDOWS_VM_DOMAIN` is explicitly configured.
 The VM must retain its SSH host keys and have its interactive user logged in.
 An occupied host or guest debug port is an error, not a reason to kill an
 unrelated debugger.
+
+## Incremental deployment and DLL cache
+
+`prepare.sh` extracts runtime tools from the Docker SDK and produces
+`build/windows-vm/vision.exe` without debug sections. The full
+`build/windows-mingw-w64/src/vision.exe` remains the debugger's symbol source.
+`sync.py` compares SHA256 hashes against the remote deployment, archives only
+changed files and installs the scheduled task only when its launcher changes
+or the task is absent. Unchanged assets, runtimes and executables are skipped.
+The host requires Python 3.11 or newer; Windows uses its built-in `tar.exe`,
+PowerShell and Windows Script Host, with no additional software installation.
+
+The desktop launcher collects the exact DLL versions loaded by Vision,
+including its manifest-selected WinSxS libraries, in
+`C:\NativeDebug\native\gdb-libraries`. Preparation synchronizes changed
+DLLs into `build/windows-vm/libraries`, verifies their hashes and supplies
+case aliases for Windows names. GDB uses a local sysroot, DOS path semantics
+and local library search paths when this cache is ready. The launch profile
+explicitly includes that search path so the C++ adapter does not replace it;
+current SDK runtime DLLs take precedence over cached copies. The first uncached
+launch reads DLLs remotely; subsequent preparations import its cache.
+Windows build/revision changes invalidate it and trigger another cold run.
+Newly loaded modules are captured for the next preparation. Cache collection
+errors are recorded in `gdb-libraries/error.log` and do not abort debugging.
+
+Windows F5 configure/build/deploy/stop tasks use quiet presentation without
+focusing the Linux terminal panel. Output remains available in the task log.
 
 ## Runtime checks (2026-09-05)
 
@@ -165,3 +200,85 @@ pass retro-terminal to native_terminal_screen_tests. Preserve the MinGW runtime
 DLLs and attributed asset directory. Run GUI regressions in the interactive user
 session, not the SSH service desktop. Temporary acceptance tasks should be removed
 after verification; retain Native-Vision-Debug for the maintained debugger flow.
+
+## SSH alias and F5 verification (2026-10-20)
+
+The current **Windows 11, VM** profile uses `ssh whiskey` (account
+`WHISKEY\tomaz`, Windows 11 Home build 26300). The Docker MinGW Debug build
+completed, and `prepare.sh` deployed Vision, its complete retro-terminal
+assets, matching runtime DLLs and GDBserver. The existing interactive task and
+local-only debug-port protection were installed through the same script.
+
+The installed VS Code C++ adapter (`OpenDebugAD7`, cpptools 1.34.4) launched
+this profile and hit `src/main.cpp:24` and the Windows application loop at
+`lib/native/platforms/windows/app.cpp:50`, with correct full source paths.
+Both Vision and GDBserver ran in session 1. A temporary interactive desktop
+probe confirmed a visible main-window handle and the title
+`Vision Native Feature Gallery`; it closed that window normally, and the
+adapter reported exit code 0 and successful disconnect. The temporary probe
+task was removed. A separate paused-breakpoint disconnect also passed.
+These checks validate build/deployment and F5 startup, breakpoints and normal
+shutdown; they do not repeat the historical full backend acceptance suite.
+
+## Editor I-beam repair (2026-10-20)
+
+The native-peer fixture reproduced an arrow over a focused Win32 text editor.
+Root keyboard-focus loss to a stock child was marking the application pointer
+state inactive and suspending child hover; stock editors consume their own
+mouse-move messages. The Windows backend now tracks top-level activation,
+recognizes focus transfer inside the same native root, and resumes hover from
+forwarded client cursor messages with a window-lifetime guard.
+
+The final Docker build and interactive `native_windows_runtime_tests.exe` on
+`whiskey` pass. Cursor assertions cover both editor modes, root-to-editor focus
+transfer, explicit crosshair overrides, inactive-root arrow selection and
+reactivation. Existing native-peer, modeless/modal, grid, tab and chrome
+regressions also pass in that executable. The normal deployment script copied
+the corrected Vision binary and assets to the F5 directory.
+
+## Tunnel recovery (2026-10-20)
+
+An orphaned workspace SSH process held host port 31337 after the launcher
+exited. The old asynchronous startup started the Windows server before
+noticing a failed tunnel. Startup now waits for SSH authentication and port
+forwarding to succeed, using a dedicated control socket at
+`build/windows-vm-ssh.sock`. The SSH master does not inherit the launcher lock.
+Normal exit, the next locked startup and the post-debug task can close that
+workspace master; an unreachable stale socket is removed. Other processes
+holding the port are left intact and produce an immediate startup failure.
+
+Validation reproduced an occupied port and confirmed that no desktop server
+was started. The actual C++ adapter then hit application and event-loop source
+breakpoints, displayed Vision in desktop session 1 and reported normal exit
+code 0 after window closure. A simulated leftover control master was removed
+by `stop.sh`, and a fresh bind confirmed port 31337 was released. The original
+verified orphan was stopped during this repair.
+
+## Faster F5 verification (2026-10-20)
+
+The staged executable is about 17 MiB versus 69 MiB with full local debug
+information. Unchanged preparation transferred zero deployment files and,
+after the initial cache fill, zero DLLs. Forty loaded DLLs were cached. A
+cold adapter launch reached the first application breakpoint in 14.57 seconds;
+the completed cache configuration reached it in 8.91 seconds, then 8.89
+seconds after verifying SDK runtime search precedence. These are launch-to-breakpoint observations, excluding build and
+preparation, rather than a guarantee for all VM loads.
+
+The actual C++ adapter hit application and Windows event-loop breakpoints,
+loaded cached system DLL symbols without remote DLL reads or missing-library
+messages, displayed the gallery and reported exit code 0 after window
+closure. The interactive probe found no visible window handles for WScript,
+the launch PowerShell process or GDBserver. The Windows-specific task
+presentation uses `reveal: never`; compiler problems may still reveal the
+Problems panel, and task output remains accessible manually. DLL case aliases
+cover the reported Windows spellings while preserving verified bytes.
+
+## Quiet SSH and deployment output (2026-10-20)
+
+VM scripts suppress only OpenSSH's non-post-quantum key-exchange advisory
+using `WarnWeakCrypto=no-pq-kex`; they retain strict host-key verification and
+other SSH diagnostics. `IgnoreUnknown=WarnWeakCrypto` supports older host
+clients without that option. This changes warning presentation, not the
+server's negotiated cryptography. Successful deployment/cache summaries are
+silent by default; set `WINDOWS_VM_VERBOSE=1` to display them. Failures still
+report normally and retain their nonzero exit status.

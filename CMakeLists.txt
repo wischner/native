@@ -106,6 +106,9 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
 
+    set(DOCKER_IMAGE_WAYLAND "native-wayland-sdk:24.04" CACHE STRING
+        "Locally built GTK 4.14 and Granite 7 Docker SDK")
+
     set(DOCKER_IMAGE_AMIGA
         "wischner/gcc-m68k-amiga@sha256:7622740b8aaa5c1a5444ec3ccf04e9506f71375300b0946e1382d67c56692cff"
         CACHE STRING "Amiga compiler image for runtime qualification")
@@ -175,6 +178,18 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                 COMMENT "Building ${target_name} with Docker image ${image}"
             )
         endfunction()
+
+        add_custom_target(docker-wayland-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build -t ${DOCKER_IMAGE_WAYLAND}
+                -f ${CMAKE_SOURCE_DIR}/scripts/linux/wayland/Dockerfile
+                ${CMAKE_SOURCE_DIR}/scripts/linux/wayland
+            USES_TERMINAL)
+        add_docker_cmake_build_target(docker-wayland build/linux-wayland
+            ${DOCKER_IMAGE_WAYLAND} -DTOOLKIT=WAYLAND)
+        add_docker_cmake_build_target(docker-elementary build/linux-elementary
+            ${DOCKER_IMAGE_WAYLAND} -DTOOLKIT=ELEMENTARY)
+        add_dependencies(docker-wayland docker-wayland-sdk)
+        add_dependencies(docker-elementary docker-wayland-sdk)
 
         add_docker_cmake_build_target(docker-gemix build/linux-gemix ${DOCKER_IMAGE_GEMIX}
             -DTOOLKIT=GEMIX)

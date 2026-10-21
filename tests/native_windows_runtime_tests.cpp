@@ -98,6 +98,47 @@ namespace
                 &check, &radio, &edit, &list, &tree, &icons, &table,
                 &combo})
             attach(*child, root);
+        {
+            native::text_edit single("Cursor", native::text_edit_mode::single_line,
+                                     10, 320, 200, 24);
+            attach(single, root);
+            POINT saved_cursor{};
+            GetCursorPos(&saved_cursor);
+            for (auto *editor : {&edit, &single}) {
+                SetFocus(handle(root));
+                SetFocus(handle(*editor));
+                POINT editor_cursor{10, 10};
+                ClientToScreen(handle(*editor), &editor_cursor);
+                SetCursorPos(editor_cursor.x, editor_cursor.y);
+                int cursor_stage = 0;
+                auto check_cursor = [&](HCURSOR expected) {
+                    ++cursor_stage;
+                    SetCursor(LoadCursorW(nullptr, IDC_ARROW));
+                    SendMessageW(handle(*editor), WM_SETCURSOR,
+                                 reinterpret_cast<WPARAM>(handle(*editor)),
+                                 MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
+                    const bool matches = GetCursor() == expected;
+                    if (!matches)
+                        std::cerr << "cursor mode=" << int(editor->get_mode())
+                                  << " stage=" << cursor_stage
+                                  << " focus=" << GetFocus()
+                                  << " expected=" << expected
+                                  << " actual=" << GetCursor() << '\n';
+                    SetCursorPos(saved_cursor.x, saved_cursor.y);
+                    expect(matches, "native editor cursor must follow focus and cursor policy");
+                    SetCursorPos(editor_cursor.x, editor_cursor.y);
+                };
+                check_cursor(LoadCursorW(nullptr, IDC_IBEAM));
+                editor->set_cursor(native::mouse_cursor::crosshair);
+                check_cursor(LoadCursorW(nullptr, IDC_CROSS));
+                editor->set_cursor(native::mouse_cursor::ibeam);
+                SendMessageW(handle(root), WM_ACTIVATE, WA_INACTIVE, 0);
+                check_cursor(LoadCursorW(nullptr, IDC_ARROW));
+                SendMessageW(handle(root), WM_ACTIVATE, WA_ACTIVE, 0);
+                check_cursor(LoadCursorW(nullptr, IDC_IBEAM));
+            }
+            SetCursorPos(saved_cursor.x, saved_cursor.y);
+        }
         decorated_button decorated;
         attach(decorated, root);
         expect(decorated.paints > 0,

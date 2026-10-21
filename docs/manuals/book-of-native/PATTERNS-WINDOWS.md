@@ -244,9 +244,10 @@ Window Maker additionally invalidates the surviving owner after either a
 modal or modeless close, because removing a WINGs top-level view may expose
 owner pixels without producing an immediate portable paint request.
 
-Windows modeless windows have independent, unowned native HWNDs: either the
+Windows and GTK Wayland/elementary modeless windows have independent native
+top levels (GTK modeless windows have no transient parent): either the
 main window or a modeless window can be brought to the front. Their portable
-owner still controls lifetime and modal exclusion. Modal HWNDs retain native
+owner still controls lifetime and modal exclusion. Modal windows retain native
 ownership. Other backends express the relationship with an Xt transient
 shell, an AppKit child window, a Haiku
 floating subset, a WINGs top-level window tracked through the portable owner
@@ -403,6 +404,16 @@ Keyboard focus is also a window-level native notification. A backend calls
 `on_native_focus()` on the `wnd` it already recovered from the event instead
 of enumerating focusable subclasses. Plain windows cache input focus and cancel pointer/keyboard sessions on loss;
 painted controls additionally repaint the transition through `custom_control`.
+
+Windows distinguishes top-level activation (`WM_ACTIVATE`) from keyboard-focus
+transfers (`WM_KILLFOCUS`) into stock child controls. A child focus transfer
+keeps the root pointer state active; real deactivation cancels it. Stock
+controls do not route their focus messages through the library window
+procedure, so the parent resolves the destination control during transfer.
+Forwarded `WM_SETCURSOR` messages resume hover for stock controls that consume
+their own `WM_MOUSEMOVE`; a lifetime guard handles closure from hover callbacks.
+This preserves editor I-beam and explicit cursor selection after a control
+receives focus.
 
 ## Mouse cursors
 
@@ -601,3 +612,22 @@ cursors in process-static objects would make their destructors run too late.
 The callback lifetime and creation rollback regressions are recorded in
 [ADJUST.md](../../ADJUST.md), A01/A18. Source repairs are shared across backends;
 target verification is reported separately in the feature matrix.
+
+### GTK Wayland window composition
+
+The GTK and elementary adapters keep a drawing area below a fixed child
+host in a `GtkOverlay`. The child host participates in size measurement and
+pointer picking, including nested panel children. Top-level default geometry
+adds the measured header/menu height to the requested drawing-client height;
+resize notifications still report the drawing region. Background input
+controllers target the fixed host itself and leave native descendant controls
+to GTK. The same arrangement is used for panel/canvas child hosting.
+
+GTK peers own a reference to their root widget independently of its native
+parent. A synchronous input-reset callback can close the parent before a
+child's pending destruction reaches native removal; the child reference keeps
+that resource valid. Teardown clears the peer's widget and callback binding
+before removal, transfers the reference locally across callbacks, then releases
+it after GTK removal. The native parent is also retained across unparenting,
+which can synchronously close its window through unmap/focus callbacks. This
+keeps both sides valid without changing portable destruction ordering.

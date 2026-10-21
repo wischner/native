@@ -187,3 +187,13 @@ macOS window delegates are peer-owned; Motif combos reuse the callback widget
 binding. Haiku button commands use non-reused callback identities, removed
 before native teardown, so a queued command never dereferences a deleted C++
 owner. See [ADJUST.md](../../ADJUST.md), A01/A10/A11.
+
+## GTK Wayland adapter reuse
+
+`toolkits/wayland` is the shared GTK 4.14/GDK Wayland implementation.
+`toolkits/elementary` is a separate CMake selection that reuses it and supplies
+Granite 7 settings, validated entries and message dialogs through the C ABI.
+Both adapters are C++; GTK and Granite types stay inside private peers. GDK is
+restricted to Wayland before initialization and the optional image context skips
+GLX discovery. A process-wide GTK-widget binding is used only for callback
+object recovery; ordinary widget state belongs to each window's opaque peer.

@@ -58,6 +58,7 @@ namespace
                 load(destroy_surface, "eglDestroySurface");
                 load(terminate, "eglTerminate");
                 // GLX is optional: Wayland and headless clients need only EGL.
+#ifndef NATIVE_GTK_WAYLAND
                 glx_library = dlopen("libGLX.so.0", loader_flags);
                 if (glx_library) {
                     glx_get_context =
@@ -76,6 +77,7 @@ namespace
                         reinterpret_cast<int (*)(void *, unsigned long, unsigned long, void *)>(
                             dlsym(glx_library, "glXMakeContextCurrent"));
                 }
+#endif
                 auto platform = reinterpret_cast<void *(*)(unsigned, void *, const int *)>(
                         get_proc("eglGetPlatformDisplayEXT"));
                 if (!platform)

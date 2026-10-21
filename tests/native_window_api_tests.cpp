@@ -251,8 +251,10 @@ namespace
             return *this;
         }
 
-        native::gpx &draw_img(const native::img &,
-                              native::point) override {
+        native::gpx &draw_img(const native::img &image,
+                              native::point destination) override {
+            image_bounds.emplace_back(
+                destination, native::size(image.w(), image.h()));
             painted = true;
             ++image_count;
             return *this;
@@ -261,6 +263,7 @@ namespace
         native::rect clip = native::rect(0, 0, 40, 20);
         bool painted = false;
         int image_count = 0;
+        std::vector<native::rect> image_bounds;
         std::vector<std::pair<native::point, native::point>> lines;
         std::vector<native::rgba> line_inks;
     };
@@ -667,7 +670,18 @@ namespace
                 return line.first.x == 0 && line.second.x == 299 &&
                        line.first.y == line.second.y;
             });
-        expect(has_full_width_separator,
+        const int separator_extent =
+            native::theme::create(flush_graphics)->get_separator_extent();
+        const int separator_y = tabs.get_content_bounds().p.y;
+        const bool has_native_separator = std::any_of(
+            flush_graphics.image_bounds.begin(),
+            flush_graphics.image_bounds.end(),
+            [&](const native::rect &image) {
+                return image.p.x == 0 && image.d.w == 300 &&
+                       image.y2() == separator_y &&
+                       image.d.h == separator_extent;
+            });
+        expect(has_full_width_separator || has_native_separator,
                "strip-only top tabs draw one full-width separator");
         tabs.set_page_frame_visible(true);
         tabs.set_tab_placement(native::tab_placement::bottom);
@@ -702,7 +716,23 @@ namespace
         side_graphics.set_clip(native::rect(0, 0, 300, 180));
         tabs.on_native_paint(native::wnd_paint_event(
             native::rect(0, 0, 300, 180), side_graphics));
-        expect(side_graphics.image_count == 2,
+        int rotated_labels = 0;
+        for (std::size_t i = 0; i < tabs.get_item_count(); ++i) {
+            const auto bounds = tabs.get_tab_bounds(i);
+            const bool label = std::any_of(
+                side_graphics.image_bounds.begin(),
+                side_graphics.image_bounds.end(),
+                [&](const native::rect &image) {
+                    return image.d.w < bounds.d.w &&
+                           image.d.h < bounds.d.h &&
+                           image.x1() >= bounds.x1() &&
+                           image.y1() >= bounds.y1() &&
+                           image.x2() <= bounds.x2() &&
+                           image.y2() <= bounds.y2();
+                });
+            rotated_labels += label ? 1 : 0;
+        }
+        expect(rotated_labels == 2,
                "side tab labels use the portable rotated-text path");
         tabs.set_tab_placement(native::tab_placement::bottom);
 

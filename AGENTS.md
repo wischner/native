@@ -100,10 +100,28 @@ has no equivalent.
   first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
+### Wayland and elementary backend rules
+
+- Shared GTK 4.14/GDK Wayland integration lives in `lib/native/toolkits/wayland/`;
+  Granite 7 C-interface specialization lives in `lib/native/toolkits/elementary/`.
+- Both are C++ adapters. Do not add Vala code or X11 fallback paths.
+- Use GTK/Granite native widgets where their semantics match the public API.
+  Cairo/Pango serve custom drawing; keep all native types private.
+- `docker-wayland` and `docker-elementary` depend on `docker-wayland-sdk`, which
+  builds `native-wayland-sdk:24.04` from `scripts/linux/wayland/Dockerfile`.
+  The image pins elementary OS 8's stylesheet and uses GTK 4.14 API limits.
+- Keep separate `build/linux-wayland/` and `build/linux-elementary/` trees.
+  F5 forwards the compositor's Wayland socket through
+  `scripts/linux/wayland/debug-pipe.sh`; unattended tests use the headless Weston
+  helper beside it. Neither path starts X nor mounts its socket.
+
 ### Docker targets
 
 The top-level CMake project provides:
 
+- `docker-wayland` (GTK 4.14, GDK Wayland only)
+- `docker-elementary` (GTK 4.14 + Granite 7 C interface)
+- `docker-wayland-sdk` (builds the shared local SDK image)
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
@@ -116,6 +134,7 @@ The top-level CMake project provides:
 
 These targets use the following Docker images:
 
+- GTK Wayland/elementary SDK: `native-wayland-sdk:24.04` (built locally by `docker-wayland-sdk`)
 - X11: `wischner/gcc-x86_64-linux-x11`
 - GEMix: `wischner/gcc-x86_64-gemix:latest`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
@@ -173,6 +192,17 @@ launch configuration exists. The VS Code task exposes the same diagnostic.
 Do not collapse multiple platform or toolkit builds into the same CMake build directory.
 
 ## Linux backend rules
+
+### elementary OS VM
+
+- Keep **Elementary OS, VM** as the only elementary F5 profile; the generic
+  **Linux GTK4, Wayland** Docker profile remains independent.
+- **Elementary OS, VM** F5 builds `docker-elementary`, deploys Vision, its
+  complete retro-terminal assets and private GtkSourceView runtime to
+  `echo:/home/tomaz/Projects/native/run`, then runs GDB over SSH in the
+  existing Wayland desktop. Scripts live in `scripts/linux/elementary-vm/`.
+- Keep GDB/MI stdout clean. Do not force a Docker stylesheet on the native
+  desktop or forward X. `ELEMENTARY_VM_HOST` can override the SSH alias.
 
 ### X11 backend
 
@@ -233,9 +263,12 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ## Windows backend rules
 
 - Files under `lib/native/platforms/windows/` are for Win32 integration only.
-- Windows F5 runs `vision.exe` natively in the Windows VM through the
+- The **Windows 11, VM** F5 profile reaches `ssh whiskey` and runs
+  `vision.exe` natively in the Windows VM through the
   `scripts/windows/vm/` deployment and interactive-desktop debug scripts,
-  not Wine. The Docker MinGW build remains the build source.
+  not Wine. The Docker MinGW build remains the build source. F5 retains full
+  symbols locally, stages a smaller executable under `build/windows-vm/`,
+  transfers changed files, and caches loaded VM DLLs there for GDB.
 - Keep Win32 handle types and message-loop details out of `include/native.h`.
 - Mouse press/release/move/wheel events must map to the same `native` semantics used by Linux backends.
 - `painter` behavior must match Linux stable backends:
@@ -363,7 +396,7 @@ instructions.
 | [09-OWNED-WINDOWS-AND-DIALOGS.md](docs/manuals/programming-native/09-OWNED-WINDOWS-AND-DIALOGS.md) | Owned/modeless/modal windows and standard file dialogs. |
 | [10-GRAPHICS-IMAGES-FONTS-THEMES.md](docs/manuals/programming-native/10-GRAPHICS-IMAGES-FONTS-THEMES.md) | The `gpx` drawing interface, images, fonts, themes. |
 | [11-CLIPBOARD-AND-TEXT-EDITING.md](docs/manuals/programming-native/11-CLIPBOARD-AND-TEXT-EDITING.md) | UTF-8 encoding boundary, clipboard, text controls. |
-| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The nine build selections (six Linux toolkits plus Windows, Haiku, macOS), linking, distribution. |
+| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The eleven build selections (eight Linux toolkits plus Windows, Haiku, macOS), linking, distribution. |
 | [13-COLLECTION-AND-DISCLOSURE-CONTROLS.md](docs/manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md) | `accordion`, `icon_view`, `tree_view`. |
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |
@@ -388,6 +421,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [INFINITY.md](docs/notes/INFINITY.md) | Infinity/nemu migration, implemented input/audio/background/process contracts, manual acceptance entry point and outstanding GEM/macOS verification constraints. |
 | [MOUSE-AND-SHADERS-REVIEW.md](docs/notes/MOUSE-AND-SHADERS-REVIEW.md) | Review of Infinity's proposed pointer and shader contracts against Native naming, ownership, lifecycle, composition, and verification requirements. No implementation claim. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
+| [ELEMENTARY-VM-RUNTIME.md](docs/notes/ELEMENTARY-VM-RUNTIME.md) | Docker binary deployment to `ssh echo`, private runtime dependencies, Pantheon Wayland verification and current GUI timeouts. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
 | [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit/GLSL regression and sanitizer commands, desktop permissions, and visual-coverage limits. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |

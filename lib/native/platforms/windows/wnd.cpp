@@ -195,9 +195,16 @@ namespace windows
                 POINT cursor{};
                 GetCursorPos(&cursor);
                 ScreenToClient(hovered, &cursor);
-                SetCursor(cursor_handle(native::detail::pointer_cursor(*owner,
-                    native::point(static_cast<native::coord>(cursor.x),
-                                  static_cast<native::coord>(cursor.y)))));
+                const native::point local(
+                    static_cast<native::coord>(cursor.x),
+                    static_cast<native::coord>(cursor.y));
+                // Stock controls own WM_MOUSEMOVE; this forwarded message
+                // also resumes their hover state after focus cancellation.
+                const native::detail::window_guard guard(*owner);
+                native::detail::pointer_hover(owner, local);
+                if (!guard.alive()) return TRUE;
+                SetCursor(cursor_handle(
+                    native::detail::pointer_cursor(*owner, local)));
                 return TRUE;
             }
             break;
@@ -247,13 +254,33 @@ namespace windows
             break;
         }
 
+        case WM_ACTIVATE:
+            // Native child controls do not pass their focus messages through
+            // this procedure. Track top-level activation independently.
+            if (LOWORD(wparam) == WA_INACTIVE) {
+                wnd->on_native_focus(false);
+            } else {
+                auto *focused = cursor_owner(GetFocus());
+                (focused ? focused : wnd)->on_native_focus(true);
+            }
+            break;
+
         case WM_SETFOCUS:
             wnd->on_native_focus(true);
             break;
 
-        case WM_KILLFOCUS:
+        case WM_KILLFOCUS: {
             wnd->on_native_focus(false);
+            HWND next = reinterpret_cast<HWND>(wparam);
+            if (next && GetAncestor(next, GA_ROOT) ==
+                            GetAncestor(hwnd, GA_ROOT)) {
+                // Moving focus into EDIT (or another stock child) keeps
+                // its application window active for pointer handling.
+                if (auto *focused = cursor_owner(next))
+                    focused->on_native_focus(true);
+            }
             break;
+        }
 
         case WM_SYSKEYDOWN:
         case WM_KEYDOWN:

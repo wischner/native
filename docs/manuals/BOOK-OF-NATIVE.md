@@ -23,6 +23,16 @@ Current per-backend build and new
 runtime evidence are recorded separately in the feature matrix.
 
 
+- GTK 4.14 Wayland and elementary OS adapters are separately buildable and
+  exercised under headless Weston (18/18 tests each) and elementary OS 8.1
+  Pantheon Wayland (latest elementary run 18/18). The generic VM recheck hit
+  GTK/compositor initialization timeouts; all three affected fixtures passed
+  focused reruns after recovery, as documented in the VM note. They use
+  native GTK controls and Granite 7
+  C interfaces, with the advanced-table and interactive desktop
+  limits listed in the feature matrix. Manual desktop acceptance limits are
+  recorded in
+  the [VM note](../notes/ELEMENTARY-VM-RUNTIME.md).
 - Runtime-tested in this project workflow:
   - Linux X11 backend
   - Linux SDL2 backend, including nested canvas renderer pixels, real

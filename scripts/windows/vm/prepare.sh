@@ -2,7 +2,7 @@
 # Deploy only the Docker-built program, runtime DLLs and native debug server.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-if [[ $(virsh domstate "${vm_domain}") != running ]]; then
+if [[ -n ${vm_domain} ]] && [[ $(virsh domstate "${vm_domain}") != running ]]; then
     virsh start "${vm_domain}"
 fi
 ready=false
@@ -17,25 +17,20 @@ if [[ ${ready} != true ]]; then
     echo 'Windows SSH is unavailable. Complete the guest/key setup first.' >&2
     exit 1
 fi
-vm_powershell "\$ErrorActionPreference='Stop';
-    New-Item -ItemType Directory -Force '${vm_remote_dir}' | Out-Null;
-    if (Get-Process vision,gdbserver -ErrorAction SilentlyContinue | Where-Object {
-        \$_.Path -like 'C:\NativeDebug\native\*'}) {
-        throw 'Close the previous Native VM debug session before deploying.'
-    }"
+mkdir -p "${vm_workspace}/build/windows-vm"
 docker run --rm -u "$(id -u):$(id -g)" \
     -v "${vm_workspace}:${vm_workspace}" -w "${vm_workspace}" "${vm_image}" \
     bash -c 'set -e; output=build/windows-mingw-w64/src
         for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
             cp "$(x86_64-w64-mingw32-g++ -print-file-name="$dll")" "$output/"
         done
-        cp /usr/share/win64/gdbserver.exe "$output/"'
-vm_copy "${vm_workspace}/build/windows-mingw-w64/src/vision.exe" \
-    "${vm_workspace}/build/windows-mingw-w64/src/libgcc_s_seh-1.dll" \
-    "${vm_workspace}/build/windows-mingw-w64/src/libstdc++-6.dll" \
-    "${vm_workspace}/build/windows-mingw-w64/src/libwinpthread-1.dll" \
-    "${vm_workspace}/build/windows-mingw-w64/src/gdbserver.exe" \
-    "${vm_script_dir}/session.ps1"
-vm_copy -r "${vm_workspace}/build/windows-mingw-w64/src/retro-terminal"
-vm_powershell "& '${vm_remote_dir}/session.ps1' -Action Install"
-echo "Windows VM deployment ready at ${vm_ip}."
+        cp /usr/share/win64/gdbserver.exe "$output/"
+        x86_64-w64-mingw32-objcopy --strip-debug "$output/vision.exe" build/windows-vm/vision.exe'
+sync_options=()
+for ((index = 0; index < ${#vm_ssh_options[@]}; index += 2)); do
+    sync_options+=("--ssh-option=${vm_ssh_options[index + 1]}")
+done
+python3 "${vm_script_dir}/sync.py" "${vm_ip}" "${sync_options[@]}"
+if [[ ${WINDOWS_VM_VERBOSE:-0} == 1 ]]; then
+    echo "Windows VM deployment ready at ${vm_ip}."
+fi
