@@ -7,9 +7,6 @@
 
 #include <gem.h>
 
-#include <cstdlib>
-#include <cstring>
-
 #include <native.h>
 
 #include "gpx_wnd.h"
@@ -19,27 +16,16 @@
 
 namespace
 {
-    bool inverse_raster_output() {
-        const char *value = std::getenv("GEM_RASTA_INVERSE");
-        if (!value || value[0] == '\0')
-            value = std::getenv("RASTA_INVERSE");
-
-        if (!value || value[0] == '\0')
-            return true;
-
-        return std::strcmp(value, "off") != 0 &&
-               std::strcmp(value, "false") != 0 &&
-               std::strcmp(value, "0") != 0;
-    }
-
     WORD gem_color(native::rgba color) {
         const int brightness = static_cast<int>(color.r) +
                                static_cast<int>(color.g) +
                                static_cast<int>(color.b);
         const bool bright = brightness > (255 * 3 / 2);
-        if (inverse_raster_output())
-            return bright ? BLACK : WHITE;
-        return bright ? WHITE : BLACK;
+        // The pinned hosted VDI maps index 0 to pixel 1 and other indices
+        // to pixel 0. Its RGBA raster (also used directly by AES) displays
+        // pixel 0 as white and pixel 1 as black. Match that physical palette;
+        // viewer inversion is a session-wide presentation setting.
+        return bright ? BLACK : WHITE;
     }
 
     bool clip_to_vdi(native::rect r) {

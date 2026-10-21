@@ -417,6 +417,18 @@ receives focus.
 
 ## Mouse cursors
 
+AppKit windows enable ordinary mouse-moved events. Their tracking callback
+forwards window-space motion to the shared window input path independently
+of which child owns the cursor, so window rulers receive pointer positions
+without a drag. Cursor callbacks may replace their own tracking target;
+the motion handler retains that target until dispatch completes.
+
+AppKit pointer tracking checks the deepest hit view before setting a cursor.
+An ancestor's overlapping tracking area cannot replace a text field's I-beam
+or a split divider's hover cursor. `hitTest:` receives coordinates in the
+superview's space, including during immediate cursor refresh after geometry
+changes.
+
 `mouse_cursor` names eight portable pointer policies: `arrow` for ordinary
 pointing, `ibeam` for text, `crosshair` for precision drawing, horizontal and
 vertical resize cursors, both diagonal resize cursors, and client-scoped `hidden`. A window defaults

@@ -47,6 +47,36 @@ set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 set(CMAKE_OBJCXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Some Apple SDKs still gate C++20 cooperative threads behind libc++'s
+# experimental library. Apply the option to all C++/Objective-C++ targets,
+# including standalone tests, only when the ordinary library lacks them.
+if(APPLE)
+    include(CheckCXXSourceCompiles)
+    set(native_thread_probe "
+        #include <thread>
+        #include <stop_token>
+        int main() {
+            std::jthread worker([](std::stop_token) {});
+            worker.request_stop();
+        }")
+    check_cxx_source_compiles("${native_thread_probe}"
+        NATIVE_HAS_CXX20_THREADS)
+    if(NOT NATIVE_HAS_CXX20_THREADS)
+        set(native_saved_required_flags "${CMAKE_REQUIRED_FLAGS}")
+        string(APPEND CMAKE_REQUIRED_FLAGS " -fexperimental-library")
+        check_cxx_source_compiles("${native_thread_probe}"
+            NATIVE_HAS_EXPERIMENTAL_CXX20_THREADS)
+        set(CMAKE_REQUIRED_FLAGS "${native_saved_required_flags}")
+        if(NOT NATIVE_HAS_EXPERIMENTAL_CXX20_THREADS)
+            message(FATAL_ERROR
+                "The Apple SDK must provide std::jthread and std::stop_token")
+        endif()
+        add_compile_options(-fexperimental-library)
+        add_link_options(-fexperimental-library)
+    endif()
+endif()
+
+
 option(NATIVE_ENABLE_DEVELOPER_CHECKS
     "Enable full GCC warnings and hosted debug sanitizers"
     ON)

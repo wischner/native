@@ -1,19 +1,31 @@
-# macOS Remote Runtime (leia)
+# macOS VM Remote Runtime (mike)
 
 This note records the current remote macOS workflow used from Linux.
 
 ## Target
 
-- Host: `leia`
-- User: `tomaz`
+- Host: `mike` (connect directly with password-free `ssh mike`)
+- User: SSH-configured user (`tomaz` on the VM)
 - Remote project path: `/Users/tomaz/Projects/native`
 
 The scripts are parameterized through environment variables:
 
-- `MAC_REMOTE_HOST` (default `leia`)
-- `MAC_REMOTE_USER` (default `tomaz`)
-- `MAC_REMOTE_BASE` (default `/Users/<user>/Projects`)
+- `MAC_REMOTE_HOST` (default `mike`)
+- `MAC_REMOTE_USER` (default empty; honors the SSH alias user)
+- `MAC_REMOTE_BASE` (default `/Users/tomaz/Projects`, or `/Users/<user>/Projects` with a user override)
 - `MAC_REMOTE_PROJECT` (default local repo basename)
+
+The VS Code launch profile is **macOS, VM**. Historical
+verification results below refer to the former host `leia`; they do not
+establish test coverage on `mike`. The 2026-10-21 Debug build on `mike`
+succeeds with AppleClang 17 and all 17 CTests pass. Password-free SSH, Clang,
+LLDB and rsync were verified on `mike`. Apple Command Line Tools are now
+installed, together with checksum-verified CMake 4.4.4 in
+`~/Applications/CMake.app`. Developer Tools authorization is enabled; interactive breakpoint and
+automatic debugger-exit checks pass.
+The build helper checks compiler/CMake availability before syncing and finds
+the user-local CMake bundle. CMake probes C++20 cooperative threads and enables
+`-fexperimental-library` for Apple SDKs that require it.
 
 ## Scripts
 
@@ -39,11 +51,26 @@ no `com.apple.quarantine` xattr remains on the bundle.
 ## VS Code tasks and launch
 
 - Tasks now use the script-backed labels:
-  - `Build Vision Debug (macOS leia)`
-  - `Smoke Test Vision Debug (macOS leia)`
+  - `Build Vision Debug (macOS, VM)`
+  - `Smoke Test Vision Debug (macOS, VM)`
 - The launch entry builds and starts the remote LLDB session through SSH.
 
 ## Native-control regression checks
+
+The 2026-10-21 VM follow-up covers I-beams before text editing, split-divider
+resize cursors before clicking, panel/canvas clipping in the composed
+Properties and Toolbars dialog, and themed check/radio pixels compared with
+real AppKit drawing in light/dark, selected and disabled states. Native
+button/check/radio primitives use native drawing with the real destination
+window state; image targets use a native bitmap context. The cached-display
+path is excluded because it changes indicator appearance. Window motion
+updates ruler markers without pressing a mouse button.
+
+The LLDB helper launches to the entry stop, imports `lldb_autoquit.py`, then
+continues. The helper listens for the inferior's final state and ends the
+owned debugger process with the inferior's exit status after termination.
+Breakpoint and crash stops remain interactive; an exited inferior no longer
+leaves LLDB and the SSH terminal running in VS Code.
 
 The 2026-09-05 AppKit audit passes all six CTests on `leia`. The dedicated
 `native_mac_runtime_tests` renders controls into AppKit bitmap targets and
@@ -64,10 +91,10 @@ then run CTest on the Mac (these commands use the default target above):
 
 ```bash
 bash scripts/macos/remote/build.sh
-ssh tomaz@leia 'export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; cd /Users/tomaz/Projects/native && ctest --test-dir build/macos-debug --output-on-failure'
+ssh mike 'export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH; cd /Users/tomaz/Projects/native && ctest --test-dir build/macos-debug --output-on-failure'
 ```
 
-For the separate sanitizer audit, SSH into `tomaz@leia` and run:
+For the separate sanitizer audit, SSH into `mike` and run:
 
 ```bash
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH

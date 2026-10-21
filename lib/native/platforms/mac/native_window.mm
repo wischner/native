@@ -60,11 +60,11 @@
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
-    (void)notification;
+    [[[notification object] contentView] setNeedsDisplay:YES];
     if (_owner) _owner->on_native_focus(true);
 }
 - (void)windowDidResignKey:(NSNotification *)notification {
-    (void)notification;
+    [[[notification object] contentView] setNeedsDisplay:YES];
     if (_owner) _owner->on_native_focus(false);
 }
 
@@ -195,6 +195,7 @@ namespace mac
                                           backing:NSBackingStoreBuffered
                                             defer:NO];
         [win setReleasedWhenClosed:NO];
+        [win setAcceptsMouseMovedEvents:YES];
 
         native_content_view *content =
             [[native_content_view alloc]

@@ -172,19 +172,33 @@ Current exercised runtime paths are:
 - **GEM, Rasta@SDL2** runs GEM through gemd with the image-provided SDL2
   Rasta viewer and GDB in `wischner/gcc-x86_64-gemix:latest`.
   Direct-backend regressions cover nested tab/split/canvas framebuffer
-  composition and right/middle canvas button identity.
+  composition and right/middle canvas button identity. The viewer uses 32-bit
+  output with inversion off; Native drawing matches AES's white paper and
+  black ink. The full-desktop screenshot and live GDB/MI viewer-close test
+  pass. Closing Rasta also stops GDB, Vision and gemd. Complete suites pass
+  17/18 direct and 18/19 proxy tests; the final menu-strip restoration
+  assertion remains failing on the pinned SDK.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
   **Windows 11, VM** for F5 through `ssh whiskey`. Changed-file deployment
   and a local VM DLL cache reduce repeat startup work (host Python 3.11+). See the
   [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
 - Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
-- macOS AppKit, built natively with AppleClang and run on remote `leia`.
+- macOS AppKit, built natively with AppleClang and run on VM `mike`.
   Stock controls retain AppKit painting, including native splitters, tabs,
   table grids and row backgrounds. Six CTests pass normally and with
   ASan/UBSan; targeted desktop checks cover image text, accordion scrolling
   and table contrast. The full-gallery interactive walkthrough is not yet
   complete. See [macOS remote runtime](docs/notes/MACOS-REMOTE-RUNTIME.md)
   for build, test and desktop-permission details.
+
+The 2026-10-21 Debug build on macOS VM `mike` passes all 17 CTests.
+LLDB Developer Tools authorization is enabled. The SSH debug session ends
+automatically when Vision exits and retains interactive breakpoint stops.
+
+The macOS remote build checks Apple Command Line Tools and CMake before
+source synchronization, including `~/Applications/CMake.app` in its search
+path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
+`-fexperimental-library` on Apple SDKs only when required.
 
 Current additional build-verified path is:
 

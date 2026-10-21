@@ -29,8 +29,8 @@ The image must supply matching proxy libraries and `/opt/gemix/bin/gemd`.
 exports its `GEMD_SOCKET`, runs the command, and cleans up only that server.
 Its inherited framebuffer, dimensions and resource environment configure the
 server. Client and server share filesystem paths for file selectors and scrap.
-The proxy debug configuration invokes this wrapper around GDB, while the
-original direct configuration remains available. Server logs go to stderr,
+The proxy debug configuration invokes this wrapper around GDB through the
+Rasta session runner. The direct build target remains available. Server logs go to stderr,
 not GDB's MI output. GEMix runtime and window API tests also use this wrapper
 when built with the proxy option, retaining their isolated test framebuffers.
 
@@ -166,7 +166,7 @@ executables:
 | --- | --- | --- |
 | `native_wayland_runtime_tests` | Real GTK/Granite widgets; live-control/theme pixel parity, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
-| `native_mac_runtime_tests` | Stock AppKit painting, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `leia` |
+| `native_mac_runtime_tests` | Stock AppKit painting, text/split hover cursors, ruler motion, composed property-dialog toolbars, native button/check/radio theme parity in light/dark and disabled states, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `leia` |
 | `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and CDE VM |
 | `native_openlook_runtime_tests` | Radio exclusion, intrinsic button height, identical partial-expose pixels, keyboard focus/text/completion, pre-show chrome construction, pane/list resizing and repeated modal/modeless teardown | OPEN LOOK display; Docker Xvfb and Tribblix VM |
 | `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
@@ -182,10 +182,15 @@ executables:
 | `native_sdl_presentation_tests` | Accelerated renderer flags exclude a blocking vertical-refresh wait by default | SDL2 dummy video startup in CTest; policy assertion requires a desktop accelerated renderer |
 | `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; desktop pixel readback also requires `SDL_RENDER_DRIVER=software` |
 | `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, drag/release capture and cancellation without synthetic releases | SDL2 dummy video with software rendering |
-| `native_gemix_runtime_tests` | Initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_runtime_tests` | Absolute displayed white/black colors (`--colors-only` isolates it), packed/RGBA framebuffer decoding, initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_session_tests` | Real viewer screenshot checks for AES menus/title/edges and Native content; WM close with live GDB/MI stdin, owned process shutdown, command exit status and clean MI stdout | GEMix proxy; Python 3, Xvfb, Xlib, ImageMagick and GDB from the pinned Docker image; saves `tests/rasta-desktop.png` in the backend build tree |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, single/multiline typing, clipboard buttons and shortcuts, input after owned-window and file-selector closure, nested icon-grid/tree scrollbar arrows, paging, thumb capture outside the window, selection preservation, capture cleanup on destruction, compact property editing/scrolling, and toolbar activation/cancellation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
 | `native_x11_runtime_tests` | Pre-show graphics, full-row selection, grow/shrink layout, idle repaint counts, collection/table edges, bottom rows, bordered full-width combo menus with hover/selection, four open tab joins, individual menu borders without a full-width rule, teardown, centered message buttons/shells with edge and hidden-owner placement, and live bordered-pane drag | X11; X server (including private Xvfb) and the image's XTest runtime |
 | `native_x11_scrollbar_tests` | Stock Xaw widget identity, table/icon/tree/canvas ranges, million-row endpoints, horizontal scrolling, signed canvas origins, real middle-button dragging and automatic/policy hiding | X11; X server and the image's XTest runtime |
+
+The macOS runtime target includes `native_mac_presentation_checks.mm` and
+Vision's property-dialog source, so pointer/theme comparisons and composed
+toolbar checks exercise the actual gallery implementation.
 
 Portable runtime executables are built on each applicable backend; SDL2
 registers them with `SDL_VIDEODRIVER=dummy`. GEMix and X11-specific tests are
@@ -314,7 +319,7 @@ the VS Code Run and Debug view and press F5.
 | Linux Motif/CDE, Xephyr | Docker container, Xephyr/CDE session | GDB through Docker |
 | Windows | Windows 11 VM, interactive autologon desktop | Docker MinGW GDB through SSH to native Win64 GDBserver |
 | Haiku | `Haiku` KVM guest | GDB over SSH |
-| macOS | Remote host `leia` | LLDB over SSH |
+| macOS | VM host `mike` | LLDB over SSH |
 
 The X11 and SDL2 debugger pipes keep the program inside their build images.
 This is important because a Debug binary can depend on the sanitizer runtime
@@ -328,9 +333,14 @@ The X11 profile disables LeakSanitizer's exit-time leak scan under GDB
 and undefined-behavior checks remain enabled.
 The **GEM, Rasta@SDL2** profile uses `scripts/gemix/debug-pipe.sh`
 to run the image-provided SDL2 Rasta viewer, gemd and GDB in one container.
-`scripts/gemix/rasta-session.sh` owns the private framebuffer and viewer
-lifetime; `gemd-session.sh` owns the server. Logs go to stderr, keeping
-GDB/MI stdout clean. The local GEMix launch profile is removed. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
+`scripts/gemix/rasta-session.sh` owns a private 32-bit framebuffer and starts
+the viewer and server with inversion off. AES chrome and portable controls
+therefore display the same white paper and black ink. The runner supervises
+both viewer and debugger exits: closing Rasta terminates its owned process
+session, including GDB, gemd and Vision, even while MI stdin remains open.
+Command exit status is preserved. `gemd-session.sh` owns the server; logs go
+to stderr, keeping GDB/MI stdout clean. The local GEMix launch profile is
+removed. OPEN LOOK uses `docker-debug.sh --session openlook-xephyr`
 to start GDB in the build image with Xephyr and olwm. Window Maker uses the
 same pipe with `--session window-maker-xephyr` and the Window Maker build image.
 
@@ -461,10 +471,19 @@ retain their absolute host paths so VS Code can open them locally.
 
 ### macOS preparation
 
-The macOS configuration expects `tomaz@leia` to accept key-based SSH and the
+The macOS remote build checks Apple Command Line Tools and CMake before
+source synchronization, including `~/Applications/CMake.app` in its search
+path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
+`-fexperimental-library` on Apple SDKs only when required.
+
+The macOS configuration expects `ssh mike` to connect without a password and the
 Mac to have an active graphical login. Remote Login must be enabled. The Mac
 needs rsync, Clang, LLDB, and CMake either in Homebrew, `/usr/local/bin`, or the
 CMake application bundle.
+
+The terminal launcher stops at entry to install its process-exit listener,
+then continues under interactive LLDB. Breakpoint/crash stops retain the
+prompt; final process exit closes the debugger and SSH session automatically.
 
 LLDB also needs Developer Tools authorization. Run this once in a local
 terminal on the Mac:

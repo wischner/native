@@ -1,5 +1,21 @@
 # Backend Open Issues
 
+The 2026-10-21 GEMix correction matches portable drawing to the pinned
+hosted SDK's physical palette and disables inversion across the 32-bit Rasta
+desktop. Full viewer screenshots verify AES menus/chrome and Native content
+together. Closing the viewer terminates the owned GDB/Vision/gemd session
+with MI stdin still open; command status and clean MI stdout are verified.
+The full suites pass 17/18 direct and 18/19 proxy tests. Their final
+menu-strip restoration assertion remains failing: a captured framebuffer
+shows that the pinned SDK removes application commands but retains a blank
+AES menu strip instead of restoring the desktop checker there. This remains
+a runtime qualification limit; the assertion has not been weakened.
+
+The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
+and all 17 CTests pass. CMake enables libc++ experimental threading support
+when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
+session shutdown after inferior exit have been verified on the VM.
+
 This note lists backend-level open issues that are real today.
 
 

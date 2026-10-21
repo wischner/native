@@ -60,6 +60,17 @@ does not encode a live widget's intermediate CSS animation progress.
 
 ## Semantic drawing
 
+macOS button, check and radio primitives draw real `NSButton` controls.
+Window drawing temporarily associates a probe outside the destination
+window's visible bounds, so AppKit reads the same native window state as
+live controls. The probe draws into the caller's clipped context with its
+native coordinate orientation and is removed immediately. No visible probe
+window is mapped. This preserves native accent colors, fonts and spacing.
+Image drawing uses an unmapped host and a premultiplied AppKit bitmap
+context, converting its pixels to straight RGBA for composition. It calls
+the control renderer directly: AppKit's cached-display path changes active
+control appearance and therefore is not the theme reference.
+
 macOS follows the same stock-versus-derived distinction as Windows. Ordinary
 buttons/checks/radios call AppKit's renderer. Table and outline rows use native
 `NSTableCellView` text and image subviews, and headers use `NSTableHeaderCell`.

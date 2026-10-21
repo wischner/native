@@ -485,6 +485,9 @@ The separate `docker-gemix-gemd` target selects `GEMIX_USE_GEMD=ON` and
 links `libgem` instead of AES/VDI. It requires a matching `gemd` server;
 the **GEM, Rasta@SDL2** debug configuration starts the server and the
 image-provided SDL2 Rasta viewer automatically inside the Docker container.
+The viewer and server use 32-bit output with inversion off so AES chrome
+and portable content share white paper and black ink. Closing the viewer
+terminates the owned debugger, Vision and server session.
 The local GEMix launch configuration and host-checkout runner are removed.
 Deploy `libgem` and its runtime dependencies to the client, and AES/VDI/Rasta
 and resources to the server. Both processes must see the same file-selector
@@ -619,6 +622,11 @@ with the application.
 
 ## macOS
 
+The macOS remote build checks Apple Command Line Tools and CMake before
+source synchronization, including `~/Applications/CMake.app` in its search
+path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
+`-fexperimental-library` on Apple SDKs only when required.
+
 ### Compile
 
 Build on macOS with CMake, Xcode Command Line Tools, and a C++20-capable Apple
@@ -634,7 +642,8 @@ cmake --build build/macos-release --parallel
 The output is the application bundle
 `build/macos-release/src/vision.app`. The repository also provides
 `scripts/macos/remote/build.sh` for its configured remote-Mac development
-workflow; that script currently creates a Debug build.
+workflow on VM `mike` (password-free `ssh mike`); that script creates a
+Debug build. VS Code exposes **macOS, VM** with LLDB.
 
 ### Link libraries
 

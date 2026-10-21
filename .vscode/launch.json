@@ -234,12 +234,12 @@
             "preLaunchTask": "Deploy Vision Debug (Haiku)"
         },
         {
-            "name": "Debug Vision (macOS leia, LLDB)",
+            "name": "macOS, VM",
             "type": "node-terminal",
             "request": "launch",
             "command": "exec \"${workspaceFolder}/scripts/macos/remote/debug.sh\"",
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Build Vision Debug (macOS leia)"
+            "preLaunchTask": "Build Vision Debug (macOS, VM)"
         }
     ]
 }

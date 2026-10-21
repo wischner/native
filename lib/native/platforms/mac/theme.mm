@@ -1,7 +1,7 @@
 //
 // Implements the macOS theme with AppKit cells, colors, fonts, and
-// drawing. Image targets use an equivalent backend-local AppKit-color
-// emulation.
+// drawing. Button/check/radio primitives use real native controls in window
+// and bitmap contexts; remaining image parts use AppKit-color fallbacks.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -18,6 +18,17 @@
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
+
+// An unmapped host supplies the semantic active state for bitmap probes.
+@interface native_theme_window : NSWindow {
+@public
+    BOOL _active;
+}
+@end
+@implementation native_theme_window
+- (BOOL)isKeyWindow { return _active; }
+- (BOOL)isMainWindow { return _active; }
+@end
 
 namespace
 {
@@ -159,26 +170,7 @@ namespace
         theme &draw_button(const native::rect &r,
                            const std::string &text,
                            const state &s) override {
-            const bool painted = with_view(_g, [&](NSView *view) {
-                NSString *label =
-                    [NSString stringWithUTF8String:text.c_str()];
-                NSButtonCell *cell =
-                    [[NSButtonCell alloc] initTextCell:label];
-                [cell setBezelStyle:NSBezelStyleRounded];
-                [cell setButtonType:NSButtonTypeMomentaryPushIn];
-                [cell setControlSize:NSControlSizeRegular];
-                [cell setFont:[NSFont systemFontOfSize:
-                                      [NSFont
-                                          systemFontSizeForControlSize:
-                                              NSControlSizeRegular]]];
-                [cell setEnabled:s.disabled ? NO : YES];
-                [cell setHighlighted:s.pressed ? YES : NO];
-                [cell
-                    drawWithFrame:NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h)
-                           inView:view];
-                [cell release];
-            });
-            return painted ? *this : draw_button_fallback(r, text, s);
+            return draw_native_button(r, text, s, NSButtonTypeMomentaryPushIn);
         }
 
         theme &draw_menu_bar(const native::rect &r) override {
@@ -348,24 +340,102 @@ namespace
                               const std::string &text,
                               const state &s,
                               bool radio) {
-            const bool painted = with_view(_g, [&](NSView *view) {
-                NSString *label =
-                    [NSString stringWithUTF8String:text.c_str()];
-                NSButtonCell *cell =
-                    [[NSButtonCell alloc] initTextCell:label];
-                [cell setButtonType:radio ? NSButtonTypeRadio
-                                          : NSButtonTypeSwitch];
-                [cell setState:s.selected ? NSControlStateValueOn
-                                          : NSControlStateValueOff];
-                [cell setEnabled:s.disabled ? NO : YES];
-                [cell setHighlighted:s.pressed ? YES : NO];
-                [cell
-                    drawWithFrame:NSMakeRect(r.p.x, r.p.y, r.d.w, r.d.h)
-                           inView:view];
-                [cell release];
-            });
-            return painted ? *this
-                           : draw_selection_fallback(r, text, s, radio);
+            return draw_native_button(r, text, s,
+                radio ? NSButtonTypeRadio : NSButtonTypeSwitch);
+        }
+
+        theme &draw_native_button(const native::rect &r,
+                                  const std::string &text,
+                                  const state &s,
+                                  NSButtonType type) {
+            if (!r.d.w || !r.d.h) return *this;
+            // A real control supplies AppKit's modern indicator rendering,
+            // font, spacing and appearance; a detached NSButtonCell does not.
+            NSButton *button = [[NSButton alloc] initWithFrame:
+                NSMakeRect(0, 0, r.d.w, r.d.h)];
+            [button setButtonType:type];
+            if (type == NSButtonTypeMomentaryPushIn) {
+                [button setBezelStyle:NSBezelStyleRounded];
+                [button setControlSize:NSControlSizeRegular];
+                [button setFont:[NSFont systemFontOfSize:
+                    [NSFont systemFontSizeForControlSize:NSControlSizeRegular]]];
+            }
+            [button setTitle:[NSString stringWithUTF8String:text.c_str()]];
+            [button setState:s.selected ? NSControlStateValueOn : NSControlStateValueOff];
+            [button setEnabled:!s.disabled];
+            [button highlight:s.pressed];
+            [[button cell] setShowsFirstResponder:s.focused];
+            NSView *view = view_from(_g);
+            [button setAppearance:view ? [view effectiveAppearance]
+                                      : [NSAppearance currentDrawingAppearance]];
+            if (view && [view window] && s.active && [NSGraphicsContext currentContext]) {
+                // AppKit consults the real view hierarchy for accent state.
+                // Keep the probe outside the window, then draw it explicitly
+                // into the caller's context without mapping a probe window.
+                [button setFrameOrigin:NSMakePoint(-r.d.w - 1.0, -r.d.h - 1.0)];
+                [[[view window] contentView] addSubview:button];
+                with_view(_g, [&](NSView *destination) {
+                    CGContextRef context = [[NSGraphicsContext currentContext] CGContext];
+                    CGContextTranslateCTM(context, r.p.x,
+                        r.p.y + ([destination isFlipped] ? r.d.h : 0));
+                    if ([destination isFlipped]) CGContextScaleCTM(context, 1, -1);
+                    [NSGraphicsContext setCurrentContext:[NSGraphicsContext
+                        graphicsContextWithCGContext:context flipped:NO]];
+                    [[button effectiveAppearance] performAsCurrentDrawingAppearance:^{
+                        [button drawRect:[button bounds]];
+                    }];
+                });
+                [button removeFromSuperview];
+                [button release];
+                return *this;
+            }
+            native_theme_window *host = [[native_theme_window alloc]
+                initWithContentRect:NSMakeRect(0, 0, r.d.w, r.d.h)
+                styleMask:NSWindowStyleMaskBorderless
+                backing:NSBackingStoreBuffered defer:YES];
+            [host setReleasedWhenClosed:NO];
+            // Image primitives use the caller's explicit active state.
+            host->_active = s.active;
+            [host setAppearance:view ? [view effectiveAppearance]
+                                    : [NSAppearance currentDrawingAppearance]];
+            [host setContentView:button];
+            // Render AppKit drawing in top-down bitmap rows. This also gives
+            // image painters the same native indicator as window painters.
+            NSBitmapImageRep *bitmap = [[[NSBitmapImageRep alloc]
+                initWithBitmapDataPlanes:nullptr pixelsWide:r.d.w pixelsHigh:r.d.h
+                bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO
+                colorSpaceName:NSCalibratedRGBColorSpace
+                bitmapFormat:0
+                bytesPerRow:r.d.w * 4 bitsPerPixel:32] autorelease];
+            if (!bitmap) {
+                [host release];
+                [button release];
+                return type == NSButtonTypeMomentaryPushIn
+                    ? draw_button_fallback(r, text, s)
+                    : draw_selection_fallback(r, text, s, type == NSButtonTypeRadio);
+            }
+            // cacheDisplayInRect deliberately changes AppKit's rendering
+            // state. Draw the native control into our bitmap context instead
+            // so active accent colors remain the same as live controls.
+            [NSGraphicsContext saveGraphicsState];
+            [NSGraphicsContext setCurrentContext:
+                [NSGraphicsContext graphicsContextWithBitmapImageRep:bitmap]];
+            [[NSColor clearColor] setFill];
+            NSRectFillUsingOperation([button bounds], NSCompositingOperationCopy);
+            [[button effectiveAppearance] performAsCurrentDrawingAppearance:^{
+                [button drawRect:[button bounds]];
+            }];
+            [NSGraphicsContext restoreGraphicsState];
+            native::img image(static_cast<native::dim>([bitmap pixelsWide]),
+                              static_cast<native::dim>([bitmap pixelsHigh]));
+            for (int y = 0; y < image.h(); ++y)
+                for (int x = 0; x < image.w(); ++x)
+                    image.pixels()[y * image.w() + x] =
+                        from_native([bitmap colorAtX:x y:y]);
+            _g.draw_img(image, r);
+            [host release];
+            [button release];
+            return *this;
         }
 
         theme &draw_selection_fallback(const native::rect &r,

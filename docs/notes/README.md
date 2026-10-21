@@ -33,7 +33,7 @@ It includes the measured Amiga runtime prerequisites; it is not a backend manual
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
 - [elementary OS VM runtime and current Pantheon test limits](ELEMENTARY-VM-RUNTIME.md)
 - [Haiku remote runtime via `ssh haiku`, USB keyboard, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
-- [macOS remote runtime, AppKit/GLSL regressions and desktop permissions (leia)](MACOS-REMOTE-RUNTIME.md)
+- [macOS remote runtime, debugger shutdown, AppKit/GLSL regressions and desktop permissions (macOS VM, mike)](MACOS-REMOTE-RUNTIME.md)
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)
 - [Windows Wine runtime note](WINDOWS-WINE-RUNTIME.md)

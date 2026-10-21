@@ -166,6 +166,9 @@ namespace native
                                      _bounds.d.w,
                                      _bounds.d.h)];
         view->_owner = self;
+        // Recent AppKit versions allow drawing outside an NSView's bounds
+        // by default. Panels and canvases must not cover sibling chrome.
+        [view setClipsToBounds:YES];
         [view setHidden:YES];
         [parent addSubview:view];
 
@@ -212,6 +215,9 @@ namespace native
                                      _bounds.d.w,
                                      _bounds.d.h)];
         view->_owner = self;
+        // Recent AppKit versions allow drawing outside an NSView's bounds
+        // by default. Panels and canvases must not cover sibling chrome.
+        [view setClipsToBounds:YES];
         [view setHidden:YES];
         [parent addSubview:view];
 

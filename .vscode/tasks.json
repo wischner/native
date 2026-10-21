@@ -213,17 +213,17 @@
             ]
         },
         {
-            "label": "Build Vision Debug (macOS leia)",
+            "label": "Build Vision Debug (macOS, VM)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/macos/remote/build.sh",
             "problemMatcher": "$gcc"
         },
         {
-            "label": "Smoke Test Vision Debug (macOS leia)",
+            "label": "Smoke Test Vision Debug (macOS, VM)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/macos/remote/smoke-test.sh",
             "problemMatcher": [],
-            "dependsOn": "Build Vision Debug (macOS leia)"
+            "dependsOn": "Build Vision Debug (macOS, VM)"
         }
     ]
 }

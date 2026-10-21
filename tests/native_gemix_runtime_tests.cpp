@@ -31,8 +31,52 @@ namespace
         return {std::istreambuf_iterator<char>(file), {}};
     }
 
-    bool pixel(const std::vector<unsigned char> &frame, int x, int y) {
+    bool colors_only = false;
+
+    // Read a packed physical bit or the darkness of an RGBA pixel.
+    bool raw_pixel(const std::vector<unsigned char> &frame, int x, int y) {
+        if (frame.size() == 904U * 900U * 4U) {
+            const auto offset = (y * 904 + x) * 4;
+            return int(frame.at(offset)) + frame.at(offset + 1) +
+                frame.at(offset + 2) < 3 * 128;
+        }
+        expect(frame.size() == 113U * 900U, "known Rasta framebuffer format");
         return (frame.at(y * 113 + x / 8) & (0x80 >> (x % 8))) != 0;
+    }
+
+    // The configured non-inverted raster uses set bits/dark RGBA for ink.
+    bool pixel(const std::vector<unsigned char> &frame, int x, int y) {
+        return raw_pixel(frame, x, y);
+    }
+
+    // Verify absolute displayed colors. Calibrating against VDI's logical
+    // names would hide the hosted SDK's reversed monochrome index mapping.
+    void check_color_indices(native::wnd &owner) {
+        const auto handle = linux::gemix::runtime.vdi_handle;
+        WORD area[4] = {640, 600, 671, 615};
+        vs_clip(handle, 1, area);
+        vswr_mode(handle, MD_REPLACE);
+        vsf_interior(handle, FIS_SOLID);
+        WORD white[4] = {640, 600, 655, 607};
+        WORD black[4] = {656, 600, 671, 607};
+        vsf_color(handle, BLACK);
+        vr_recfl(handle, white);
+        vsf_color(handle, WHITE);
+        vr_recfl(handle, black);
+        vs_clip(handle, 0, nullptr);
+        // A query fences void drawing commands on the gemd transport.
+        WORD attributes[6] = {};
+        expect(vqt_attributes(handle, attributes), "VDI color reference is complete");
+        auto frame = framebuffer();
+        expect(!pixel(frame, 644, 604) && pixel(frame, 660, 604),
+            "hosted VDI reference displays white paper and black ink");
+        native::gpx_wnd graphics(&owner, {640, 608});
+        graphics.set_clip({0, 0, 32, 8}).clear({255, 255, 255, 255});
+        graphics.set_ink({0, 0, 0, 255}).draw_rect({16, 0, 16, 8}, true);
+        expect(vqt_attributes(handle, attributes), "Native color reference is complete");
+        frame = framebuffer();
+        expect(!pixel(frame, 644, 612) && pixel(frame, 660, 612),
+            "Native white backgrounds and black ink have correct displayed colors");
     }
 
     // Fill a titleless popup's client up to every edge, as a custom editor can.
@@ -98,8 +142,7 @@ namespace
         expect(vqt_attributes(handle, previous_text), "VDI text state is available");
         vst_font(handle, 1);
         for (const auto &arrow : arrows) {
-            // The runtime test uses inverse Rasta colors. Reserve an
-            // unused desktop cell for the original 8x16 font glyph.
+            // Reserve an unused desktop cell for the original 8x16 glyph.
             WORD cell[4] = {640, 640, 647, 655};
             vs_clip(handle, 1, cell);
             vswr_mode(handle, MD_REPLACE);
@@ -205,6 +248,12 @@ namespace
             try {
                 v_hide_c(runtime.vdi_handle);
                 flush_repaints();
+                check_color_indices(*this);
+                if (colors_only) {
+                    std::cout << "GEM displayed color checks passed\n";
+                    destroy();
+                    return;
+                }
                 const auto initial = framebuffer();
                 for (int y = 800; y < 808; ++y) {
                     for (int x = 600; x < 608; ++x) {
@@ -488,7 +537,8 @@ namespace
     };
 }
 
-int program(int, char **) {
+int program(int argc, char **argv) {
+    colors_only = argc > 1 && std::string(argv[1]) == "--colors-only";
     test_window window;
     const int result = native::app::run(window);
     return result ? result : window.failures;

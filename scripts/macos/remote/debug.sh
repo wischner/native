@@ -13,4 +13,5 @@ if ! /usr/sbin/DevToolsSecurity -status 2>&1 | grep -q enabled; then \
   exit 1; \
 fi; \
 cd '${REMOTE_BUILD_DIR}'; \
-exec lldb -o run '${REMOTE_VISION_EXE}'"
+exec lldb -o \"process launch --stop-at-entry\" -o \"command script import '${REMOTE_PROJECT_DIR}/scripts/macos/remote/lldb_autoquit.py'\" \
+    -o continue '${REMOTE_VISION_EXE}'"

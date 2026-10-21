@@ -1,5 +1,10 @@
 # Feature Matrix
 
+The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
+and all 17 CTests pass. CMake enables libc++ experimental threading support
+when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
+session shutdown after inferior exit have been verified on the VM.
+
 This chapter records what is implemented now and what is currently exercised in
 runtime checks. For the contracts and examples behind the drawing rows, see
 [Drawing Primitives](DRAWING-PRIMITIVES.md).
@@ -289,6 +294,25 @@ peers.
 The 2026-09-06 SDL2 follow-up passes all nine CTests under the Docker
 toolchain, including the renderer-pixel, real SDL input, and close-policy
 regressions.
+
+The 2026-10-21 GEMix correction accounts for the pinned hosted VDI's reversed
+monochrome index mapping and disables inversion for the entire 32-bit Rasta
+session. Absolute screenshot checks cover white paper and black borders in
+AES menus, title bars, window edges and Native's client. The framebuffer
+reader handles packed monochrome and RGBA output without calibrating away
+incorrect colors. The real viewer-close regression runs Vision through live
+GDB/MI, keeps MI stdin open while closing Rasta, and verifies termination of
+the owned debugger/server/inferior session. Command exit status is retained
+and viewer/server logs stay off MI stdout. Full suites pass 17/18 direct and
+18/19 proxy tests; the final menu-strip restoration assertion still fails
+on the pinned SDK, which leaves a blank AES menu strip after detachment.
+
+The 2026-10-21 macOS VM regressions cover text-field I-beams before editing,
+split-divider hover cursors, the composed Properties and Toolbars dialog,
+ruler marker updates from ordinary window motion, and button/check/radio
+theme pixels against live AppKit drawing in light/dark
+appearances with selected and disabled states. Child surface clipping keeps
+panel backgrounds from covering neighboring toolbar icons and labels.
 
 The 2026-09-05 macOS native-control audit replaces default portable drawing
 inside AppKit button/check/radio, table, outline, icon and accordion hosts.

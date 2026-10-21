@@ -101,6 +101,11 @@ namespace
     auto lifetime = _lifetime.lock();
     if (!lifetime || !lifetime->alive) return;
     const NSPoint position = [_view convertPoint:[event locationInWindow] fromView:nil];
+    // An ancestor's tracking area also covers its child controls. Only
+    // the actual hit view may replace AppKit's child cursor.
+    NSView *hit = [_view hitTest:[_view convertPoint:position
+        toView:[_view superview]]];
+    if (hit != _view) return;
     const native::point local(static_cast<native::coord>(position.x),
                               static_cast<native::coord>(position.y));
     const auto weak = _lifetime;
@@ -111,7 +116,22 @@ namespace
 }
 
 - (void)mouseEntered:(NSEvent *)event { [self cursorUpdate:event]; }
-- (void)mouseMoved:(NSEvent *)event { [self cursorUpdate:event]; }
+- (void)mouseMoved:(NSEvent *)event {
+    // Refreshing mouse state can replace this tracking area's target.
+    [self retain];
+    [self cursorUpdate:event];
+    auto lifetime = _lifetime.lock();
+    if (lifetime && lifetime->alive &&
+        dynamic_cast<native::app_wnd *>(_owner)) {
+        // Window rulers track even when a native child owns the cursor.
+        const NSPoint position = [_view convertPoint:[event locationInWindow]
+            fromView:nil];
+        _owner->on_native_mouse_move(native::point(
+            static_cast<native::coord>(position.x),
+            static_cast<native::coord>(position.y)));
+    }
+    [self release];
+}
 - (void)mouseExited:(NSEvent *)event {
     (void)event;
     auto lifetime = _lifetime.lock();
@@ -265,7 +285,8 @@ namespace native
             NSPoint point = [view convertPoint:
                 [window mouseLocationOutsideOfEventStream]
                                       fromView:nil];
-            if ([window isKeyWindow] && [view hitTest:point] == view &&
+            if ([window isKeyWindow] && [view hitTest:[view convertPoint:point
+                    toView:[view superview]]] == view &&
                 NSMouseInRect(point, [view bounds], [view isFlipped]))
                 [cursor set];
         }

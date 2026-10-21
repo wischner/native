@@ -7,6 +7,7 @@
 //
 
 #import <AppKit/AppKit.h>
+#import <dispatch/dispatch.h>
 #include <native.h>
 #include "../lib/native/platforms/mac/globals.h"
 #include <iostream>
@@ -14,6 +15,9 @@
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
+
+// Run native drawing and pointer regressions from the companion test unit.
+void native_mac_presentation_checks(native::app_wnd &root);
 
 namespace
 {
@@ -210,6 +214,7 @@ namespace
     }
 
     void checks(native::app_wnd &root) {
+        native_mac_presentation_checks(root);
         image_text_checks();
         geometry_checks(root);
         virtual_grid_checks(root);
@@ -397,14 +402,16 @@ namespace
 int program(int, char **) {
     native::app_wnd root("AppKit control regressions", 80, 80, 680, 500);
     root.on_wnd_create.connect([&] {
-        native::app::post([&] {
+        auto *window = &root;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2),
+            dispatch_get_main_queue(), ^{
             try {
-                checks(root);
+                checks(*window);
             } catch (const std::exception &error) {
                 std::cerr << error.what() << '\n';
                 ++failures;
             }
-            native::app::post([&] { root.destroy(); });
+            native::app::post([window] { window->destroy(); });
         });
         return true;
     });

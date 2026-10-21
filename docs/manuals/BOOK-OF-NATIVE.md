@@ -1,5 +1,10 @@
 # The Book of Native
 
+The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
+and all 17 CTests pass. CMake enables libc++ experimental threading support
+when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
+session shutdown after inferior exit have been verified on the VM.
+
 This book explains the Native architecture, the implementation patterns used
 to preserve it, and the current build and backend status. It is the detailed
 companion to the concise, normative
@@ -43,7 +48,10 @@ runtime evidence are recorded separately in the feature matrix.
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
     and serialized libgem/gemd builds; direct-backend regressions also
     cover nested tab/split/canvas framebuffer composition and secondary
-    canvas button identity
+    canvas button identity. On 2026-10-21, full Rasta desktop colors and
+    viewer-driven GDB/MI shutdown pass with 32-bit output and inversion off;
+    full suites pass 17/18 direct and 18/19 proxy tests, with a remaining
+    final menu-strip restoration assertion failure
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
   - macOS AppKit backend (native AppleClang build on remote `leia`, all 17

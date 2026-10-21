@@ -100,6 +100,11 @@ has no equivalent.
   first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
+The macOS remote build checks Apple Command Line Tools and CMake before
+source synchronization, including `~/Applications/CMake.app` in its search
+path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
+`-fexperimental-library` on Apple SDKs only when required.
+
 ### Wayland and elementary backend rules
 
 - Shared GTK 4.14/GDK Wayland integration lives in `lib/native/toolkits/wayland/`;
@@ -153,7 +158,9 @@ libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 no local SDK image build and no sibling GEM checkout is needed.
 The **GEM, Rasta@SDL2** F5 profile runs the image-provided Rasta SDL2 viewer,
 gemd and GDB together in Docker; no local GEMix profile or host Rasta
-checkout is used.
+checkout is used. Keep its 32-bit viewer non-inverted so AES chrome and
+Native drawing share white paper and black ink. Closing the viewer must
+terminate the owned debugger/server/inferior session even with MI stdin open.
 
 The expected workflow is:
 
@@ -423,7 +430,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [ELEMENTARY-VM-RUNTIME.md](docs/notes/ELEMENTARY-VM-RUNTIME.md) | Docker binary deployment to `ssh echo`, private runtime dependencies, Pantheon Wayland verification and current GUI timeouts. |
 | [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
-| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against host `leia`, `MAC_REMOTE_*` settings, driving scripts, AppKit/GLSL regression and sanitizer commands, desktop permissions, and visual-coverage limits. |
+| [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against VM host `mike`, `MAC_REMOTE_*` settings, driving scripts, AppKit/GLSL regression and sanitizer commands, desktop permissions, and visual-coverage limits. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |
 | [WINDOWS-VM-RUNTIME.md](docs/notes/WINDOWS-VM-RUNTIME.md) | Native Windows 11 VM deployment, key-only SSH, interactive desktop GDBserver and the F5 tunnel lifecycle. |
 | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md) | Inventory of TODO markers in `include/`, `lib/native/`, and `src/`. Must be updated in the same commit that adds or removes a production TODO. |

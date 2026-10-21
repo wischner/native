@@ -5,7 +5,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-20.
+Audit date: 2026-10-21.
 
 Motif tree repaint review: expand/collapse and selection invalidations target
 the retained inner `XmContainer`. The border is a separate native `XmFrame`
@@ -296,6 +296,12 @@ retired native list pages hide before their deferred destruction.
 | `message_box` | **N/H** | Native WINGs alert panel, controls, fonts, and modal loop, with the requested frame title and attributed embedded PNG semantic badge. |
 ## Linux GEMix/AES
 
+The 2026-10-21 color review retains the control kinds below. Portable
+painting compensates for the pinned hosted VDI's reversed monochrome index
+mapping, and the 32-bit Rasta session disables inversion globally. Full
+viewer captures verify white backgrounds and black ink across AES menus,
+title bars and window edges as well as portable controls and content.
+
 The 2026-09-05 local-rasta audit retains the classifications below. AES owns
 window stacking and menu tracking; child controls share coalesced damage in
 their root peer. VDI clipping cannot be widened past the current AES visible
@@ -428,6 +434,14 @@ registration is complete, preventing early custom-draw callbacks.
 | File open/save/directory | **N** | `BFilePanel`, configured for files, save, or directories. |
 | `message_box` | **N** | `BAlert`. |
 ## Apple macOS
+
+The 2026-10-21 VM review retains the kind marks below. Parent pointer
+trackers leave child cursors alone, so native text fields retain I-beams and
+split dividers advertise resizing on hover. Panel/canvas NSViews explicitly
+clip to bounds, preserving sibling toolbar strips during property-grid
+repaints. Theme button/check/radio primitives draw real NSButtons. Window probes
+borrow the actual native hierarchy outside visible bounds; image probes draw
+into a premultiplied native bitmap rather than cached-display snapshots. Stock controls still use their own AppKit painting.
 
 The 2026-09-05 audit found portable drawing overrides inside several native
 containers. Exact stock controls now bypass them: AppKit paints the buttons,

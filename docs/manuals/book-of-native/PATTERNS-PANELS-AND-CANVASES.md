@@ -99,7 +99,7 @@ native resource colors:
 | Window Maker/WINGs | `WMFrame` with `WRFlat` relief |
 | Windows | Child window of a Native class whose brush is `COLOR_BTNFACE` |
 | Haiku | Child `BView` with the panel background view color and no `B_WILL_DRAW` |
-| macOS | Child `NSView` filling `windowBackgroundColor` |
+| macOS | Child `NSView` filling `windowBackgroundColor`, explicitly clipped to its bounds |
 | SDL2, GEMix | Nested region of the emulated-control tree, filled with the themed `surface_kind::panel` |
 
 The emulated backends are the interesting case. SDL2 and GEMix have no real
@@ -339,3 +339,8 @@ coordinate. Consumers terminate held gestures through `on_mouse_cancel`.
 CPU image output under the same client clip. Inherited chrome remains available
 when an application explicitly enables it. See
 [Portable image shaders](PATTERNS-IMAGE-SHADERS.md) for execution and ownership.
+
+On macOS both panel and canvas hosts set `clipsToBounds`. Recent AppKit
+versions otherwise allow a dirty region to extend outside the host. A panel
+background must remain inside its own frame so it cannot cover sibling
+non-client toolbar canvases or their icons.

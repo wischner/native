@@ -80,7 +80,10 @@ The second target selects `GEMIX_USE_GEMD=ON` and writes to
 `build/linux-gemix-gemd/`. Select **GEM, Rasta@SDL2**
 for F5: the published image supplies GDB, gemd, GEM resources and the SDL2
 Rasta viewer. No host Rasta checkout is needed. The local launch profile
-has been removed; the direct AES/VDI build target remains available.
+has been removed; the direct AES/VDI build target remains available. Rasta
+uses a non-inverted 32-bit framebuffer for white paper and black ink across
+both controls and AES chrome. Closing Rasta ends the debugger, Vision and
+gemd together.
 
 Build the Linux toolkit target backed by the SDL-based image:
 
@@ -208,11 +211,16 @@ Status:
 - Linux OpenMotif lifecycle checks run in the Motif Docker image under
   Xvfb.
 - Apple builds, startup smoke tests, and lifecycle assertions run on the
-  configured remote macOS host.
+  macOS VM at `ssh mike` using **macOS, VM**.
 
 For Haiku runtime checks in the current workflow, the binaries are copied to a
 Haiku machine and launched there. The repository includes VS Code tasks and
 launch entries for that deploy-and-run path.
+
+The macOS remote build checks Apple Command Line Tools and CMake before
+source synchronization, including `~/Applications/CMake.app` in its search
+path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
+`-fexperimental-library` on Apple SDKs only when required.
 
 ## Repository layout
 

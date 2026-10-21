@@ -313,6 +313,17 @@ Each backend must:
 Backends can differ in buffering and presentation, but handlers must observe
 the same event, coordinate, clipping, and lifetime rules.
 
+The pinned hosted GEM SDK's VDI maps index zero (`WHITE`) to raster pixel
+one and other indices to pixel zero. Its RGBA raster displays pixel zero as
+white and pixel one as black, while AES paints directly with that raster
+palette. GEMix therefore sends `BLACK` for light RGBA colors and `WHITE`
+for dark colors to match AES's displayed paper and ink. This backend
+compatibility mapping is independent of viewer inversion. The maintained
+Rasta session uses 32-bit output with inversion off for the entire desktop;
+inverting only portable client painting would leave AES chrome inconsistent.
+Tests check absolute displayed colors, including menus and window edges,
+rather than calibrating their expected colors against VDI's reversed names.
+
 GEMix merges child invalidations in the root window's peer and flushes them at
 event boundaries. Root invalidation starts at client origin, not at the
 window's screen position. Each flush intersects damage with the work area and
