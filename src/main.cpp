@@ -42,6 +42,7 @@ int program(int argc, char **argv) {
     bool open_splitter = false;
     bool open_input_chrome = false;
     bool open_properties = false;
+    bool open_settings = false;
     for (int index = 1; index < argc; ++index) {
         if (std::string_view(argv[index]) == "--split-view")
             open_splitter = true;
@@ -49,7 +50,9 @@ int program(int argc, char **argv) {
             open_input_chrome = true;
         else if (std::string_view(argv[index]) == "--properties")
             open_properties = true;
+        else if (std::string_view(argv[index]) == "--settings")
+            open_settings = true;
     }
-    vision::vision_window window(open_splitter, open_input_chrome, open_properties);
+    vision::vision_window window(open_splitter, open_input_chrome, open_properties, open_settings);
     return native::app::run(window);
 }

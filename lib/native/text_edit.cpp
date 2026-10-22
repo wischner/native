@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "property_grid_peer.h"
 #include "wnd_peer.h"
 #include <native/text_edit.h>
 #include <native/property_grid.h>
@@ -18,8 +19,14 @@
 
 #include "text_util.h"
 
+#include "input_geometry.h"
+
 namespace native
 {
+    rect text_edit::constrain_bounds(const rect &bounds) const {
+        return _mode == text_edit_mode::single_line ? detail::input_bounds(*this, bounds) : bounds;
+    }
+
     text_edit::text_edit(std::string text,
                          text_edit_mode mode,
                          coord x,
@@ -156,8 +163,9 @@ namespace native
     bool text_edit::paste() {
         if (_read_only)
             return false;
+        const detail::window_guard guard(*this);
         clipboard input = clipboard::open_read();
-        if (!input.has(clipboard_format::text))
+        if (!guard.alive() || !input.has(clipboard_format::text))
             return false;
         return replace_selected_text(input.read_text());
     }
@@ -183,7 +191,7 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &) {
-        graphics.set_ink(dynamic_cast<property_grid *>(get_parent())
+        graphics.set_ink(native::detail::property_grid_owner(*this)
                 ? appearance.native_palette().button_bg
                 : appearance.get_content_background_color())
             .draw_rect(bounds, true);

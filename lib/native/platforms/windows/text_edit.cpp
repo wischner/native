@@ -67,6 +67,80 @@ namespace
                             ? windows::text_edit_bindings
                                   .object_from_handle(editor)
                             : nullptr;
+        if (binding && editor->get_mode() ==
+                           native::text_edit_mode::single_line) {
+            if (message == WM_NCCALCSIZE) {
+                const LRESULT result = CallWindowProcW(
+                    binding->original_proc, window, message, wparam, lparam);
+                RECT &client = wparam
+                    ? reinterpret_cast<NCCALCSIZE_PARAMS *>(lparam)->rgrc[0]
+                    : *reinterpret_cast<RECT *>(lparam);
+                HDC dc = GetDC(window);
+                HGDIOBJ previous = SelectObject(dc, reinterpret_cast<HFONT>(
+                    SendMessageW(window, WM_GETFONT, 0, 0)));
+                TEXTMETRICW metrics{};
+                GetTextMetricsW(dc, &metrics);
+                SelectObject(dc, previous);
+                ReleaseDC(window, dc);
+                if (metrics.tmHeight > 0 &&
+                    client.bottom - client.top > metrics.tmHeight) {
+                    client.top += (client.bottom - client.top -
+                                   metrics.tmHeight) / 2;
+                    client.bottom = client.top + metrics.tmHeight;
+                }
+                return result;
+            }
+            if (message == WM_NCPAINT) {
+                const LRESULT result = CallWindowProcW(
+                    binding->original_proc, window, message, wparam, lparam);
+                RECT frame{}, client{};
+                GetWindowRect(window, &frame);
+                GetClientRect(window, &client);
+                POINT origin{};
+                ClientToScreen(window, &origin);
+                HDC dc = GetWindowDC(window);
+                const int saved = SaveDC(dc);
+                HBRUSH paper = reinterpret_cast<HBRUSH>(SendMessageW(
+                    GetParent(window), editor->get_read_only()
+                        ? WM_CTLCOLORSTATIC : WM_CTLCOLOREDIT,
+                    reinterpret_cast<WPARAM>(dc),
+                    reinterpret_cast<LPARAM>(window)));
+                if (!paper) paper = GetSysColorBrush(COLOR_WINDOW);
+                const int edge = GetSystemMetrics(SM_CYEDGE);
+                RECT padding{GetSystemMetrics(SM_CXEDGE), edge,
+                    frame.right - frame.left - GetSystemMetrics(SM_CXEDGE),
+                    origin.y - frame.top};
+                FillRect(dc, &padding, paper);
+                padding.top = origin.y - frame.top + client.bottom;
+                padding.bottom = frame.bottom - frame.top - edge;
+                FillRect(dc, &padding, paper);
+                RestoreDC(dc, saved);
+                ReleaseDC(window, dc);
+                return result;
+            }
+            if (message == WM_SETFONT) {
+                const LRESULT result = CallWindowProcW(
+                    binding->original_proc, window, message, wparam, lparam);
+                SetWindowPos(window, nullptr, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                    SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                return result;
+            }
+        }
+        if (editor && binding && message == WM_PAINT &&
+            dynamic_cast<native::settings_sidebar *>(editor->get_parent())) {
+            const auto result = CallWindowProcW(binding->original_proc, window, message, wparam, lparam);
+            RECT area{}; GetClientRect(window, &area);
+            HDC dc = GetDC(window);
+            const int saved = SaveDC(dc);
+            HPEN pen = CreatePen(PS_SOLID, 1, GetSysColor(COLOR_GRAYTEXT));
+            SelectObject(dc, pen); SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
+            const int y = (area.bottom - 11) / 2;
+            Ellipse(dc, 6, y, 14, y + 8);
+            MoveToEx(dc, 13, y + 7, nullptr); LineTo(dc, 17, y + 11);
+            RestoreDC(dc, saved); DeleteObject(pen); ReleaseDC(window, dc);
+            return result;
+        }
         if (editor && message == WM_KEYDOWN &&
             (GetKeyState(VK_CONTROL) & 0x8000) != 0) {
             switch (wparam) {
@@ -137,6 +211,10 @@ namespace native
             throw std::runtime_error(
                 "Windows: Missing text-edit window.");
         SendMessageW(window, EM_SETREADONLY, _read_only, 0);
+        if (dynamic_cast<settings_sidebar *>(get_parent())) {
+            SendMessageW(window, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELONG(22, 4));
+            SendMessageW(window, EM_SETCUEBANNER, TRUE, LPARAM(L"Search settings"));
+        }
     }
 
     void text_edit::create_native() {

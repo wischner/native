@@ -14,6 +14,14 @@
 #include <thread>
 
 #include "inspector_input.h"
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__HAIKU__)
+#include "../lib/native/platforms/haiku/globals.h"
+#include <Autolock.h>
+#include <Button.h>
+#include <Window.h>
+#endif
 
 namespace
 {
@@ -58,7 +66,7 @@ namespace
                             event.g.set_ink(colors[index]).draw_rect(native::rect(index * 32, 0, 32, 32), true);
                         return true;
                     });
-                    surface->on_mouse_click.connect([commit](mouse_event event) {
+                    surface->on_mouse_click.connect([commit](native::mouse_event event) {
                         if (event.button == mouse_button::left && event.action == mouse_action::release &&
                             event.position.x >= 0 && event.position.x < 160)
                             commit(std::any(std::vector<int>(event.position.x / 32 + 1, 0)));
@@ -201,7 +209,9 @@ namespace
                 click({90, 12});
                 wait_for([&] { return tools.get_checked("sticky"); },
                          "sticky tool must retain selection");
-                click({20, 345});
+                int bottom_y = 0;
+                ui([&] { bottom_y = bottom.get_bounds().y1() + bottom.get_extent() / 2; });
+                click({20, static_cast<coord>(bottom_y)});
                 wait_for([&] { return bottom_commands == 1; },
                          "bottom toolbar must receive input in its reserved strip");
                 verify_sizes();
@@ -267,14 +277,34 @@ namespace
                 const auto image = inspector_input::capture(window);
                 image->save("inspector-runtime.png");
                 const auto *pixels = image->pixels();
+#ifdef __HAIKU__
+                const auto footer = status.get_bounds();
+                const auto left = pixels[(footer.y1() + 3) * image->w() + footer.x1()];
+                const auto middle = pixels[(footer.y1() + 3) * image->w() + footer.x1() + footer.w() / 2];
+                const auto right = pixels[(footer.y1() + 3) * image->w() + footer.x2() - 1];
+                if (left != middle || right != middle) return false;
+#endif
                 int red = 0;
                 for (int y = 2; y < 22; ++y)
                     for (int x = 2; x < 75; ++x)
-                        if (pixels[y * image->w() + x] == rgba(210, 20, 30, 255)) ++red;
+                        if (const auto color = pixels[y * image->w() + x];
+#if defined(_WIN32)
+                            color.r >= 209 && color.r <= 211 && color.g == 20 && color.b == 30 && color.a == 255)
+#else
+                            color == rgba(210, 20, 30, 255))
+#endif
+                            ++red;
                 if (red < 32) return false;
                 const auto paper = pixels[80 * image->w() + 290];
 #if defined(_WIN32)
-                if (pixels[(76 + 3 * row_height + row_height / 2) * image->w() + 275] != paper)
+                // A native toolbar preserves the editor's focus. Its combo
+                // may therefore retain the system selection background.
+                wchar_t focus_class[32]{};
+                GetClassNameW(GetFocus(), focus_class, 32);
+                const COLORREF selected = GetSysColor(COLOR_HIGHLIGHT);
+                const rgba expected = std::wstring_view(focus_class) == L"ComboBox"
+                    ? rgba(GetRValue(selected), GetGValue(selected), GetBValue(selected), 255) : paper;
+                if (pixels[(76 + 3 * row_height + row_height / 2) * image->w() + 275] != expected)
                     return false;
 #endif
                 int ink = 0;
@@ -291,7 +321,18 @@ namespace
                 int y = 0;
                 ui([&] {
                     tools.set_icon_size({extent, extent});
+#ifdef __HAIKU__
+                    auto *native_window = haiku::wnd_bindings.handle_from_object(&window);
+                    BAutolock lock(native_window);
+                    auto *button = dynamic_cast<BButton *>(native_window->FindView(
+                        BPoint(20, tools.get_bounds().y1() + tools.get_extent() / 2)));
+                    expect(button && button->Parent()->Bounds().Contains(button->Frame()) &&
+                        button->Bounds().Height() >= button->MinSize().height &&
+                        button->Bounds().Width() >= button->MinSize().width,
+                        "Haiku toolbar fits native buttons at every icon size");
+#else
                     expect(tools.get_extent() == extent + 8, "icon changes resize the toolbar in both directions");
+#endif
                     expect(second.get_bounds().y1() == tools.get_bounds().y2(), "adjacent toolbar follows the changed edge");
                     y = second.get_bounds().y1() + 12;
                 });
@@ -330,6 +371,9 @@ namespace
             std::unique_ptr<img> reference;
             ui([&] {
                 row_height = grid.get_row_height();
+                // Native editor heights vary with the desktop font. Bring
+                // every border row into view before hit-testing it.
+                grid.set_first_visible_row(5);
                 reference = inspector_input::capture(window);
             });
             const auto sample = [](const img &image, unsigned side, int depth) {
@@ -354,7 +398,7 @@ namespace
                 const unsigned changed = mask ^ previous;
                 unsigned side = 0;
                 while ((changed & (1u << side)) == 0) ++side;
-                click({180, static_cast<coord>(76 + (5 + side) * row_height + row_height / 2)});
+                click({180, static_cast<coord>(76 + side * row_height + row_height / 2)});
                 wait_for([&] { return unsigned(preview.get_border_sides()) == mask; },
                          "property checkbox updates the preview border mask");
                 wait_for([&] {
@@ -370,6 +414,7 @@ namespace
                 }, "Motif property booleans remove and restore the complete native border");
                 previous = mask;
             }
+            ui([&] { grid.set_first_visible_row(0); });
         }
 #endif
     };

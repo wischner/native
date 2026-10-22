@@ -1,5 +1,13 @@
 # Patterns: Input, Standard Dialogs, and Window Chrome
 
+GTK editable combos retain the native entry's caret and selection when
+synchronizing a typed exact match with its popup. Ordinary keystrokes do not
+rewrite unchanged text or reset an unchanged active index. Windows date/time
+pickers retain their native segmented editors, with literal space fields
+before and after the value; dates read the current locale's short-date pattern.
+Property-grid outer right edges occupy a separate one-pixel canvas outside
+the scrolling strip, including its native scrollbar painting.
+
 Ruler paper and shared corners use the distinct `ruler` and `ruler_corner`
 surface roles. Motif gives both native menu-bar paper, with menu-foreground
 ticks, labels and edge marks; other backends retain header/panel defaults.
@@ -12,6 +20,129 @@ This chapter describes the portable contracts for combo boxes, list boxes,
 standard directory and message dialogs, and edge-attached rulers and status
 bars. Public objects keep their state in C++; each backend adapts that state to
 its native widget or to its existing native-theme renderer.
+
+Single-line editors, both combo styles and date/time pickers use the same
+active-theme input height with vertically centered content. A taller bounds
+allocation centers that standard-height field; multiline editors still fill
+their bounds. A status bar always occupies the outermost bottom strip, so
+bottom toolbars appear above it regardless of construction order. Setting a
+status bar's edge to another edge throws `invalid_argument`.
+
+## Settings navigation and civil pickers
+
+`settings_sidebar` is a composite navigation and page host, with the same
+borrowed-content convention as `tab_view`. A `settings_page` holds a positive
+stable ID, title, uncreated content window, optional shared image, section
+and enabled flag. Stream insertion and `add_item()` share the same model.
+Selection uses IDs, never native row numbers. Zero clears selection. Mutation
+functions update native presentation without emitting user signals.
+
+Only the selected enabled page has native resources. Its `on_wnd_create`
+handler recreates child controls on each visit; their C++ values survive.
+Pages outlive the sidebar or are explicitly removed before deletion. Removing
+or clearing destroys native resources and detaches pages without deleting
+their objects. The requested sidebar width and `get_content_bounds()` define
+the logical geometry. Sections are native headings or non-selectable text
+rows; disabled proposals restore the previous selection.
+
+Search is optional and hidden by default. `set_search_visible(true)` shows a
+query editor; `set_search_text()` silently filters titles and section names
+with the shared case-insensitive UTF-8 substring matcher. The selected page
+stays open even when its row is filtered out or no rows match. Hiding search
+suspends filtering while retaining the query. User edits emit `on_search_change`
+after refresh. The Mac adapter uses `NSSearchField`; Windows uses WinUI
+`AutoSuggestBox`. Other adapters reuse the existing native text editor above
+navigation.
+
+Granite navigation uses `GraniteSettingsSidebar` and a private `GtkStack` of
+metadata pages. A private concrete GType derives from Granite's abstract page
+class; no Vala source or native type enters the public API. Native manages the
+real page windows. Its native sidebar CSS class enables the installed
+stylesheet's row padding and colors. Granite 7's row grid receives a
+six-logical-pixel icon/title gap only when its native column spacing is zero.
+macOS has a dedicated `NSOutlineView` source list with native group rows,
+`NSVisualEffectMaterialSidebar` and `NSSearchField`. Its reusable cells contain
+AppKit text and image views; AppKit draws selection and focus. Workspace icons resolve lazy native image
+representations into a Quartz premultiplied buffer, then convert to the
+portable straight-RGBA format; an empty render uses the existing fallback. Other backends
+reuse native image trees (Haiku outline, Motif container, GTK rows). GTK rows
+create native texture-backed image widgets for optional page icons. The fixed
+page host is clipped and excluded from overlay measurement, allowing a
+client-filling sidebar to shrink after the window has been enlarged. Athena, XView and
+WINGs instead use native text lists: their tree adapters require painting,
+while the sidebar's flat navigation can remain native. These text lists
+retain optional image ownership but display text only. SDL2 and GEM reuse
+the existing themed tree and its input/scrolling contract.
+
+Windows hosts the actual WinUI 3 `NavigationView` in a
+`DesktopWindowXamlSource` island inside the sidebar panel. The peer owns the
+island, native section/item objects, optional `AutoSuggestBox`, and image
+buffers. An opaque UI-thread session initializes the App SDK bootstrap,
+XAML application/resources and dispatcher. Native input is pretranslated by
+WinUI; selection/search delivery is deferred and guarded against destroyed
+windows. Events are revoked and islands closed before their parent HWNDs;
+the UI session shuts down after the application loop. No WinUI types enter
+the public API. The build and distribution dependency is documented in
+[Build System](BUILD-SYSTEM.md#windows-vm-preparation).
+
+`date_picker` and `time_picker` derive from `panel`; each keeps its values
+and rules in portable C++. The panel's one opaque peer owns native picker
+state. Dedicated widgets are hosted as native children of the panel, so
+existing geometry, clipping and parent teardown remain applicable.
+Granite supplies date/time widgets (a GTK seconds field extends its minute
+editor); AppKit and Win32 supply their native date/time pickers. Haiku uses
+the installed shared-kit `DateEdit`/`TimeEdit` through private SDK headers,
+`libshared` and `localestub`, isolated in its platform adapter. Generic GTK
+uses a native calendar/popover and spin fields. Other toolkits compose the
+existing year entry and month/day choices, or hour/minute/second choices.
+A numeric year entry avoids materializing the entire 1601..9999 range.
+No new calendar painter or input dispatcher exists. AppKit editors retain
+one enclosing field at the standard NSTextField intrinsic height, using the
+native adaptive control background. AppKit baseline metrics align text with
+a standard field after applying the native editor height. The enclosing field
+clips native decoration; the time stepper's alignment edge meets its right
+edge without an added gutter. Calendar image-cell padding is accounted for
+separately so the painted symbol centers vertically. Dates use a text-only
+editor without a stepper and include a borderless calendar-symbol button
+inside that same field and
+an `NSPopover` containing AppKit's calendar-style `NSDatePicker`; the same
+validation applies to both. Time retains its native stepper inside the same
+standard-height field.
+Borderless read-only AppKit text fields/views draw no background, allowing
+help and status text to share their containing page's native surface.
+
+Dates are Gregorian civil fields in 1601..9999; times are wall-clock fields
+within one day. They carry no time zone. AppKit's private UTC Gregorian
+conversion preserves these fields through DST transitions without exposing
+timestamps. Standard C++ arithmetic implements calendar validation and weekday
+calculation because some maintained cross-toolchains lack chrono calendars.
+
+Date availability combines inclusive limits, explicit dates, weekday
+exclusions and a pure application predicate. Time availability combines
+inclusive same-day limits, a minute step dividing 60 and a predicate.
+Applications can define annual holidays, booking calendars or office hours
+without adding country-specific policy to Native. Predicates run on the UI
+thread; exceptions mean unavailable. Changing rules never silently moves the
+cached value. `get_valid()` reports a value invalidated by new rules.
+
+Value setters throw for unavailable proposals and remain silent. Native
+proposals are validated before committing; rejection restores the native
+widget and emits `on_rejected`, while accepted changes emit once after the
+cache is updated. A native one-minute stepper move is translated to the
+configured minute step. Hidden seconds are retained. GTK marks unavailable
+calendar dates and explains the marks; native calendars without per-day
+disabling reject selection, and composed day choices omit excluded dates.
+
+Granite's date property can queue notifications until an active notification
+handler returns. The adapter compares civil fields before setting it; a
+temporary suppression flag alone would allow endless notification replay.
+The SDK includes `gsettings-desktop-schemas` because Granite's time picker
+reads `org.gnome.desktop.interface` to choose its clock format.
+
+Vision's **Settings and pickers** window (`--settings`) exercises these
+contracts with optional filesystem images, independent date/time pages,
+weekend and annual-holiday toggles, explicit excluded dates, office-hour
+limits, minute steps, seconds visibility and accepted/rejected status text.
 
 ## Combo boxes and list boxes
 
@@ -73,8 +204,13 @@ copies of GEM's 32-pixel monochrome alert artwork, supplied to the native Xaw
 Dialog icon resource; there are no GEM headers, libraries or runtime assets
 in that path. Information/warning use the exclamation, question uses the
 question mark, and error uses the stop sign.
-Haiku composes native buttons, `BTextControl`, and `BPopUpMenu`. A
-selection-only button paints through the system menu-field primitives;
+Haiku composes native buttons, `BTextControl`, and `BPopUpMenu`. The editable
+arrow child shares the editor paper and draws only the common native arrow;
+it adds no second menu-field background or inner bezel. Its narrow hit area
+centers the glyph and uses the native pressed background during pointer
+tracking and while the menu is open. Native menu tracking latches a second
+trigger click as dismissal, including quick repeat clicks. A selection-only
+button paints through the system menu-field primitives;
 editable mode places its arrow child inside one full-width native text border,
 reserving editor space to keep text clear of the arrow. Both popup styles
 open immediately below the field and match its width, rather than following
@@ -294,7 +430,7 @@ Derived status bars stay on the painted path so
 their protected-stage overrides continue to work.
 
 The Haiku backend uses its native compact status-view recipe: a system
-menu-bar background, dark top rule, short dividers, panel text, and a platform
+flat panel background, dark top rule, short internal dividers, panel text, and a platform
 theme height that aligns with the titled-window resize marker. That height is
 distinct from the smaller scrollbar extent. `BStatusBar` is Haiku's progress
 indicator; it does not represent this text-only multipart window strip.
@@ -317,17 +453,19 @@ the ticks (Maestro uses 32 pixels for one-pixel minor/eight-pixel major ticks).
 ## Compact property grids and edge toolbars
 
 `property_grid` composes a structural panel, separate canvas regions for
-labels/frame edges and the right scrollbar, and existing text/check/combo
-controls. These regions never overlap native editors, so realization and
-sibling stacking cannot hide values or intercept clicks. The value fields
+labels, the value background, frame edges and the right scrollbar, and existing text/check/combo
+controls. The value canvas is the editors’ native parent, so its painting and hit
+testing cannot cover a sibling editor. Label, frame and scrollbar regions
+do not overlap editor input. The value fields
 and labels use the control-host background. Property rows have unique string IDs and
 `property_value` values (`std::string`, `double`, `bool`, or custom `std::any`). A choice row
 stores one of its declared strings. Invalid types, non-finite numbers,
 duplicate IDs, and unknown choices are rejected before changing the model.
 Programmatic setters are silent; `on_change` reports a committed user edit.
 Intermediate numeric text such as a lone minus sign leaves the last committed
-number intact. Read-only rows use read-only text. The automatic row height is
-font height plus six pixels; explicit heights cannot shrink below that floor.
+number intact. Read-only rows use read-only text. The automatic row height accommodates the control font plus six pixels and
+the native editor/check height plus two pixels. Explicit heights cannot shrink
+below that floor. A light dotted grid continues across labels and values.
 Labels occupy half the viewport unless `set_label_width()` overrides it.
 Only complete visible rows have editor resources. Scrolling preserves
 committed values when those resources are recreated.
@@ -339,6 +477,18 @@ bars at the same edge stack in attachment order. Its canvas owns pointer
 input and paints the main-menu background and arrow-free toolbar-button primitive.
 The window creation/configuration path creates that surface even if an
 application consumes the create signal. Painting does not create children.
+On Windows, stock bars use the flat toolbar common control; on Haiku they
+use BToolBar with native flat buttons and oriented separators. Haiku reserves
+the native layout's minimum cross-axis size plus its surrounding border inset,
+and updates that layout synchronously when icons or orientation change.
+On macOS, exact stock bars create flexible-height native flat `NSButton` tools and
+`NSBox` separators during configuration. AppKit owns pressed/checked feedback,
+keyboard interaction, disabled appearance and template-image tinting. Native
+cell measurements reserve enough width for complete toolbar labels and images. The
+portable bar can appear on any edge and several bars can share an edge, so it
+does not replace a window's single titlebar-owned `NSToolbar`. Derived bars
+retain their painting hook. Stock rounded AppKit buttons keep native bezel
+painting for every edge mask; changing border sides only changes clipping.
 Momentary buttons emit commands; toggles flip; exclusive tools select one
 member of their named group. Setters emit no commands. Disabled tools reject
 activation, and releasing outside a pressed tool cancels it. Each bar owns
@@ -353,6 +503,11 @@ Font measurement does not obtain a child-window graphics
 context, since composited backends can share the top-level renderer.
 Changing edge preserves items and selection. Overflowing tools are clipped;
 use additional bars when more strip space is needed.
+
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
 
 Controls and non-client strips expose `set_border_sides()`, defaulting to
 `border_sides::all`. It applies to the outer frame, preserving inner separators
@@ -375,3 +530,42 @@ Native checkboxes retain their assigned compact width across label changes.
 Row separators use exactly one filled pixel row. WINGs clips and centers its
 native text line within a cell; Haiku resizes and centers the text rectangle
 when the grid changes dimensions after creation.
+
+Picker widgets use the standard input height; macOS keeps compact intrinsic
+widths. Haiku dates also keep their native preferred width, including the
+accessory and complete date segments, capped by the allocation. Both fields
+match BTextControl height and use native font metrics for text centering.
+The date field contains a flat calendar dropdown button
+in place of arrows; time keeps equal-sized native arrows. BCalendarView supplies
+month navigation and native disabled-day painting. The popup anchors to the
+whole field's bottom-left and is at least that field's width. Its minimum
+leaves seven readable day columns, so a narrow editor never squeezes the
+calendar. Month buttons are compact native squares. The internal trigger
+uses document paper and the same public native arrow painter as both combo
+styles, avoiding a second idle menu bezel. Measured date separators remove
+fixed spacer cells. The calendar arrow retains its native pressed highlight
+until dismissal; a second arrow click closes it. Deactivation over the pressed
+trigger lets that click close the existing popup rather than reopen it.
+Messenger identities reject delayed close notifications from older popups. The Haiku navigator has
+equal outer margins and native frames around both its search field and white
+outline-list viewport.
+Single-line BTextView controls center their actual text line after resizing.
+Haiku file panels center after BFilePanel::Show has applied its native
+placement. Docked status chrome retains its top rule and internal dividers,
+omitting the outer left/right rules.
+GraniteDatePicker displays the initial date and accepts typed locale dates
+(or ISO dates) on Enter, through the same acceptance policy as its calendar.
+GTK calendars retain native labels and apply insensitive states to unavailable
+current-month days; rejected proposals still restore the cached value.
+Optional search uses the full navigator width and includes a magnifier.
+GTK's editable combo uses its native GtkComboBoxText rather than a separate
+entry beside a full dropdown. Matching typed text selects the native list item.
+
+Visible-owner macOS message boxes use native NSAlert sheets, preserving the
+synchronous result while AppKit attaches and positions the alert on its owner.
+A hidden owner uses AppKit application-modal presentation.
+
+Vision supplies embedded Font Awesome Free navigation tiles on every backend.
+The AppKit sidebar allocates 24-pixel images in 32-pixel page rows. Native
+selection retains the original full-color image. Attribution and regeneration
+are documented in `src/assets/navigation/README.md`.

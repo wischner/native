@@ -31,13 +31,13 @@ It includes the measured Amiga runtime prerequisites; it is not a backend manual
 - [Infinity emulator: portable services, migration and remaining limits](INFINITY.md)
 - [Infinity mouse and shader design review](MOUSE-AND-SHADERS-REVIEW.md)
 - [Backend open issues](BACKEND-OPEN-ISSUES.md)
-- [elementary OS VM runtime and current Pantheon test limits](ELEMENTARY-VM-RUNTIME.md)
-- [Haiku remote runtime via `ssh haiku`, USB keyboard, VM walkthrough, and debug](HAIKU-REMOTE-RUNTIME.md)
-- [macOS remote runtime, debugger shutdown, AppKit/GLSL regressions and desktop permissions (macOS VM, mike)](MACOS-REMOTE-RUNTIME.md)
+- [elementary OS VM runtime, sidebar spacing, GTK resize corrections and Pantheon test limits](ELEMENTARY-VM-RUNTIME.md)
+- [Haiku remote runtime via `ssh hotel`, USB keyboard, VM walkthrough, footer/input/table checks and debug](HAIKU-REMOTE-RUNTIME.md)
+- [macOS remote runtime, debugger shutdown, native sidebar/search/toolbar and picker/GLSL regressions, desktop permissions (macOS VM, mike)](MACOS-REMOTE-RUNTIME.md)
 - [Production source TODOs](PRODUCTION-SOURCE-TODOS.md)
 - [Lab source TODOs](LAB-SOURCE-TODOS.md)
 - [Windows Wine runtime note](WINDOWS-WINE-RUNTIME.md)
-- [Windows 11 VM runtime and debugging](WINDOWS-VM-RUNTIME.md)
+- [Windows 11 VM runtime, WinUI dependency, native control checks and debugging](WINDOWS-VM-RUNTIME.md)
 
 The backend-open-issues inventory also records GTK 4.14 Wayland/elementary
 advanced-table, pointer and Pantheon acceptance limits. Normal

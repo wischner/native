@@ -18,6 +18,7 @@
 
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "control_border.h"
 
 @interface native_button_view : NSButton {
 @public
@@ -29,9 +30,15 @@
 - (void)drawRect:(NSRect)dirty {
     auto *owner = static_cast<native::button *>(_nativeOwner);
     if (!owner || !owner->get_created() ||
-        (typeid(*owner) == typeid(native::button) &&
-         owner->get_border_sides() == native::border_sides::all)) {
-        [super drawRect:dirty];
+        typeid(*owner) == typeid(native::button)) {
+        if (owner && owner->get_created() &&
+            owner->get_border_sides() != native::border_sides::all &&
+            owner->get_border_sides() != native::border_sides::none) {
+            [NSGraphicsContext saveGraphicsState];
+            NSRectClip(mac::border_clip_bounds(*owner, self));
+            [super drawRect:dirty];
+            [NSGraphicsContext restoreGraphicsState];
+        } else [super drawRect:dirty];
         return;
     }
     native::gpx &graphics = owner->get_gpx();

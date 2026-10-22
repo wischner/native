@@ -160,6 +160,11 @@ namespace native
     }
     void table_view::apply_table() {
         auto &peer = state(*this);
+        // Painting snapshots this peer's GTK root. Hit testing and paging
+        // must use that same root's resolved CSS/font metrics.
+        _theme_metrics = theme::create(get_gpx())->defaults();
+        _native_row_height = std::max(1, _theme_metrics.table_row_height);
+        _native_header_height = std::max(1, _theme_metrics.header_height);
         peer.portable_drawing =
             typeid(*this) != typeid(table_view) ||
             !get_header_visible() || get_alternating_rows() ||

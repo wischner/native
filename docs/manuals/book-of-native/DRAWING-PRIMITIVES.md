@@ -480,3 +480,7 @@ or indicator. Use measured theme heights rather than hard-coded short bounds,
 as the supplied primitive rectangle remains its clip. The gallery's button
 primitive uses `get_button_height()` for that reason. Native steady states are
 rendered; the API has no animation-progress parameter.
+
+On macOS, `draw_toolbar_button()` draws an AppKit accessory-style button,
+matching the native controls used by edge toolbars. Selected/pressed feedback
+uses AppKit's accessory appearance rather than a menu selection fill.

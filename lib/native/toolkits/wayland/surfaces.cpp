@@ -6,6 +6,62 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include "globals.h"
+
+namespace
+{
+    struct splitter_style
+    {
+        GdkDisplay *display;
+        GtkCssProvider *provider;
+        ~splitter_style() {
+            gtk_style_context_remove_provider_for_display(
+                display, GTK_STYLE_PROVIDER(provider));
+            g_object_unref(provider);
+            g_object_unref(display);
+        }
+    };
+
+    // Some desktop themes give separators negative margins, leaving a
+    // one-pixel allocation even when GTK's wide handle is enabled.
+    void size_splitter(native::split_view &owner) {
+        auto *widget = linux::wayland::state(owner).widget;
+        const auto name =
+            "native-split-" +
+            std::to_string(reinterpret_cast<std::uintptr_t>(widget));
+        gtk_widget_set_name(widget, name.c_str());
+        auto *provider = gtk_css_provider_new();
+        const auto size = std::to_string(owner.get_splitter_size());
+        const auto css =
+            "#" + name + " > separator { margin: 0; } #" + name +
+            ".horizontal > separator { min-width: " + size +
+            "px; min-height: 0; } #" + name +
+            ".vertical > separator { min-height: " + size +
+            "px; min-width: 0; }";
+        gtk_css_provider_load_from_string(provider, css.c_str());
+        auto *display = gtk_widget_get_display(widget);
+        auto *style = new splitter_style{
+            GDK_DISPLAY(g_object_ref(display)), provider};
+        g_object_set_data_full(
+            G_OBJECT(widget),
+            "native-split-style",
+            style,
+            +[](gpointer value) {
+                delete static_cast<splitter_style *>(value);
+            });
+        gtk_style_context_add_provider_for_display(
+            display,
+            GTK_STYLE_PROVIDER(provider),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        gtk_paned_set_wide_handle(GTK_PANED(widget),
+                                  owner.get_splitter_size() > 4);
+    }
+
+    struct splitter_position
+    {
+        native::split_view &owner;
+        native::detail::window_guard guard;
+    };
+} // namespace
 namespace native
 {
     void panel::create_native() {
@@ -36,6 +92,9 @@ namespace native
                 ? GTK_ORIENTATION_HORIZONTAL
                 : GTK_ORIENTATION_VERTICAL);
         linux::wayland::attach(*this, paned, paned);
+        size_splitter(*this);
+        gtk_paned_set_shrink_start_child(GTK_PANED(paned), true);
+        gtk_paned_set_shrink_end_child(GTK_PANED(paned), true);
         _content_hosts_are_panes = true;
         refresh_contents();
         apply_ratio();
@@ -51,10 +110,41 @@ namespace native
                             split_orientation::horizontal
                         ? gtk_widget_get_width(GTK_WIDGET(w))
                         : gtk_widget_get_height(GTK_WIDGET(w));
-                if (extent > 0)
-                    owner.on_native_ratio(
+                if (extent > owner.get_splitter_size()) {
+                    // Position notifications also run inside GTK
+                    // allocation. Coalesce portable child layout until
+                    // that allocation ends.
+                    auto &peer = linux::wayland::state(owner);
+                    peer.position_ratio =
                         float(gtk_paned_get_position(GTK_PANED(w))) /
-                        extent);
+                        (extent - owner.get_splitter_size());
+                    if (!peer.position_source)
+                        peer.position_source = g_idle_add_full(
+                            G_PRIORITY_DEFAULT_IDLE,
+                            +[](gpointer data) -> gboolean {
+                                auto &pending =
+                                    *static_cast<splitter_position *>(
+                                        data);
+                                if (!pending.guard.alive())
+                                    return G_SOURCE_REMOVE;
+                                auto &peer = linux::wayland::state(
+                                    pending.owner);
+                                peer.position_source = 0;
+                                peer.updating = true;
+                                pending.owner.on_native_ratio(
+                                    peer.position_ratio);
+                                if (pending.guard.alive())
+                                    linux::wayland::state(pending.owner)
+                                        .updating = false;
+                                return G_SOURCE_REMOVE;
+                            },
+                            new splitter_position{
+                                owner, detail::window_guard(owner)},
+                            +[](gpointer data) {
+                                delete static_cast<splitter_position *>(
+                                    data);
+                            });
+                }
             }),
             this);
     }
@@ -68,28 +158,31 @@ namespace native
     }
     void split_view::apply_ratio() {
         auto &peer = linux::wayland::state(*this);
+        if (peer.updating) return;
         peer.updating = true;
         const int extent =
             get_orientation() == split_orientation::horizontal
                 ? get_dimensions().w
                 : get_dimensions().h;
         gtk_paned_set_position(GTK_PANED(peer.widget),
-                               extent * get_ratio());
+                               std::max(0, extent - int(get_splitter_size())) * get_ratio());
         peer.updating = false;
     }
     void split_view::apply_minimums() {
         apply_ratio();
     }
     void split_view::apply_splitter_size() {
-        gtk_paned_set_wide_handle(
-            GTK_PANED(linux::wayland::state(*this).widget),
-            get_splitter_size() > 4);
+        size_splitter(*this);
+        apply_ratio();
     }
     void split_view::show_native() {
         gtk_widget_set_visible(linux::wayland::state(*this).widget,
                                true);
     }
     void split_view::destroy_native() {
+        auto &peer = linux::wayland::state(*this);
+        peer.updating = true;
+        g_signal_handlers_disconnect_by_data(peer.widget, this);
         destroy_children();
         linux::wayland::destroy(*this);
     }
@@ -140,6 +233,10 @@ namespace native
             peer.pages.push_back(page);
             auto *label =
                 gtk_label_new(get_item(i).get_title().c_str());
+            gtk_widget_set_margin_start(label, 6);
+            gtk_widget_set_margin_end(label, 6);
+            gtk_widget_set_margin_top(label, 2);
+            gtk_widget_set_margin_bottom(label, 2);
             gtk_widget_set_sensitive(label, get_item(i).get_enabled());
             gtk_notebook_append_page(notebook, page, label);
             if (contents[i]) {

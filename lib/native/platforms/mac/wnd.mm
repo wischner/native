@@ -6,6 +6,7 @@
 //
 
 #include <algorithm>
+#include <typeinfo>
 #include <native.h>
 #include <native/wnd.h>
 #include <bindings.h>
@@ -14,6 +15,7 @@
 #include <objc/runtime.h>
 
 #include "gpx_wnd.h"
+#include "control_border.h"
 #include "globals.h"
 #include "../../mouse_state.h"
 
@@ -40,6 +42,8 @@ namespace
                 owner.on_native_resize(actual);
             return NSMakeRect(0, 0, actual.w, actual.h);
         }
+        if (dynamic_cast<native::combo_box *>(&owner))
+            return [view frameForAlignmentRect:proposed];
         return proposed;
     }
 
@@ -64,6 +68,47 @@ namespace
         return [NSCursor arrowCursor];
     }
 } // namespace
+
+namespace mac
+{
+    NSRect border_clip_bounds(native::wnd &owner, NSView *view) {
+        const auto sides = owner.get_border_sides();
+        NSRect bounds = [view bounds];
+        NSRect edges = bounds;
+        if (typeid(owner) == typeid(native::button)) {
+            // Rounded AppKit buttons keep an intrinsic bezel height inside
+            // caller-supplied frames. The view margin is not its border.
+            NSRect frame = [view frame];
+            const CGFloat intrinsic = [view intrinsicContentSize].height;
+            if (intrinsic > 0) {
+                // Intrinsic sizes describe the alignment rectangle, not the
+                // full NSView frame with its native margins.
+                const CGFloat height = [view frameForAlignmentRect:
+                    NSMakeRect(0, 0, frame.size.width, intrinsic)].size.height;
+                frame.origin.y += (frame.size.height - height) / 2;
+                frame.size.height = height;
+            }
+            const NSRect aligned = [view alignmentRectForFrame:frame];
+            edges = NSIntersectionRect(bounds,
+                [[view superview] convertRect:aligned toView:view]);
+        }
+        const CGFloat left = native::has_border(sides, native::border_sides::left)
+            ? 0 : std::max<CGFloat>(2, NSMinX(edges) - NSMinX(bounds));
+        const CGFloat right = native::has_border(sides, native::border_sides::right)
+            ? 0 : std::max<CGFloat>(2, NSMaxX(bounds) - NSMaxX(edges));
+        const CGFloat low = NSMinY(edges) - NSMinY(bounds);
+        const CGFloat high = NSMaxY(bounds) - NSMaxY(edges);
+        const CGFloat top = native::has_border(sides, native::border_sides::top)
+            ? 0 : std::max<CGFloat>(2, [view isFlipped] ? low : high);
+        const CGFloat bottom = native::has_border(sides, native::border_sides::bottom)
+            ? 0 : std::max<CGFloat>(2, [view isFlipped] ? high : low);
+        bounds.origin.x += left;
+        bounds.origin.y += [view isFlipped] ? top : bottom;
+        bounds.size.width = std::max<CGFloat>(0, bounds.size.width - left - right);
+        bounds.size.height = std::max<CGFloat>(0, bounds.size.height - top - bottom);
+        return bounds;
+    }
+}
 
 @interface native_cursor_target : NSObject {
     NSCursor *_cursor;
@@ -151,20 +196,40 @@ namespace native
         NSView *view = mac::view_from_control(this);
         if (!view) return;
         const auto sides = get_border_sides();
+        if (typeid(*this) == typeid(button)) {
+            // Removing a rounded bezel by clipping its straight edges leaves
+            // four curved fragments. Let AppKit omit the complete bezel.
+            [(NSButton *)view setBordered:sides != border_sides::none];
+            if (sides == border_sides::none) {
+                [[view layer] setMask:nil];
+                [view setNeedsDisplay:YES];
+                return;
+            }
+        }
+        // Borderless read-only text serves as native selectable static text.
+        // Neither its scroll host nor its editor should add a white rectangle.
+        if (auto *editor = dynamic_cast<text_edit *>(this)) {
+            auto *binding = mac::text_edit_bindings.object_from_handle(editor);
+            const bool label = editor->get_read_only() && sides == border_sides::none;
+            if (binding && binding->field) {
+                [binding->field setBezeled:sides != border_sides::none];
+                [binding->field setDrawsBackground:!label];
+                [binding->field setTextColor:label ? [NSColor labelColor] : [NSColor controlTextColor]];
+            } else if (binding && binding->text_view) {
+                [binding->scroll setBorderType:sides == border_sides::none ? NSNoBorder : NSBezelBorder];
+                [binding->scroll setDrawsBackground:!label];
+                [binding->scroll setHasVerticalScroller:!label];
+                [binding->text_view setDrawsBackground:!label];
+                [binding->text_view setTextColor:label ? [NSColor labelColor] : [NSColor textColor]];
+                if (label) [binding->text_view setFont:[NSFont systemFontOfSize:[NSFont systemFontSize]]];
+            }
+        }
         if (sides == border_sides::all) {
             [[view layer] setMask:nil];
             return;
         }
         [view setWantsLayer:YES];
-        NSRect bounds = [view bounds];
-        const CGFloat left = has_border(sides, border_sides::left) ? 0 : 2;
-        const CGFloat right = has_border(sides, border_sides::right) ? 0 : 2;
-        const CGFloat top = has_border(sides, border_sides::top) ? 0 : 2;
-        const CGFloat bottom = has_border(sides, border_sides::bottom) ? 0 : 2;
-        bounds.origin.x += left;
-        bounds.origin.y += [view isFlipped] ? top : bottom;
-        bounds.size.width = std::max<CGFloat>(0, bounds.size.width - left - right);
-        bounds.size.height = std::max<CGFloat>(0, bounds.size.height - top - bottom);
+        const NSRect bounds = mac::border_clip_bounds(*this, view);
         CAShapeLayer *mask = [CAShapeLayer layer];
         CGPathRef path = CGPathCreateWithRect(NSRectToCGRect(bounds), nullptr);
         [mask setPath:path];
@@ -177,6 +242,7 @@ namespace native
         if (NSView *control = mac::view_from_control(this)) {
             NSRect frame = [control frame];
             frame.origin = NSMakePoint(_bounds.p.x, _bounds.p.y);
+            if (dynamic_cast<combo_box *>(this)) frame.size = NSMakeSize(_bounds.w(), _bounds.h());
             [control setFrame:content_frame(*this, control, frame)];
             return;
         }
@@ -192,6 +258,7 @@ namespace native
         if (NSView *control = mac::view_from_control(this)) {
             NSRect frame = [control frame];
             frame.size = NSMakeSize(_bounds.d.w, _bounds.d.h);
+            if (dynamic_cast<combo_box *>(this)) frame.origin = NSMakePoint(_bounds.x1(), _bounds.y1());
             [control setFrame:content_frame(*this, control, frame)];
             return;
         }

@@ -26,10 +26,18 @@ namespace
 namespace linux::wayland
 {
     native::theme::metrics gtk_theme::defaults() const {
+        if (_metrics) return *_metrics;
         metrics result;
         result.button_height =
             _snapshot->measure(gtk_button_new_with_label("M")).h;
         result.text_edit_height = _snapshot->measure(new_entry()).h;
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+        result.text_edit_height = std::max({result.text_edit_height,
+            result.button_height,
+            int(_snapshot->measure(gtk_drop_down_new(nullptr, nullptr)).h),
+            int(_snapshot->measure(gtk_combo_box_text_new_with_entry()).h),
+            int(_snapshot->measure(gtk_spin_button_new_with_range(0, 59, 1)).h)});
+        G_GNUC_END_IGNORE_DEPRECATIONS
         result.check_height =
             _snapshot->measure(gtk_check_button_new_with_label("M")).h;
         result.radio_height =
@@ -95,9 +103,11 @@ namespace linux::wayland
             _snapshot->measure_part(scroll, "slider").h;
         result.status_bar_height = result.list_item_height;
         result.ruler_extent = result.header_height;
+        _metrics = result;
         return result;
     }
     native::theme::palette gtk_theme::native_palette() const {
+        if (_palette) return *_palette;
         using native::rgba;
         palette p{};
         auto *widget = gtk_label_new(nullptr);
@@ -168,6 +178,7 @@ namespace linux::wayland
         p.selection_inactive_text = p.content_text;
         p.separator = border;
         p.focus = selection;
+        _palette = p;
         return p;
     }
 } // namespace linux::wayland

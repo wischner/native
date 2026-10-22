@@ -24,22 +24,30 @@
 // Translate AppKit window lifecycle events to a borrowed app_wnd.
 @interface native_window_delegate : NSObject <NSWindowDelegate> {
     native::app_wnd *_owner;
+    std::weak_ptr<native::detail::wnd_lifetime> _lifetime;
 }
 
 - (id)init_with_owner:(native::app_wnd *)owner;
+- (BOOL)ownerAlive;
 @end
 
 @implementation native_window_delegate
+- (BOOL)ownerAlive {
+    auto lifetime = _lifetime.lock();
+    return lifetime && lifetime->alive;
+}
 
 - (id)init_with_owner:(native::app_wnd *)owner {
     self = [super init];
-    if (self)
+    if (self) {
         _owner = owner;
+        _lifetime = native::detail::wnd_peer_access::resource_lifetime(*owner);
+    }
     return self;
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
-    if (!_owner)
+    if (![self ownerAlive])
         return;
 
     NSRect frame = [[notification object] frame];
@@ -49,7 +57,7 @@
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
-    if (!_owner)
+    if (![self ownerAlive])
         return;
 
     NSRect bounds = [[[notification object] contentView] bounds];
@@ -61,22 +69,23 @@
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
     [[[notification object] contentView] setNeedsDisplay:YES];
-    if (_owner) _owner->on_native_focus(true);
+    if ([self ownerAlive]) _owner->on_native_focus(true);
 }
 - (void)windowDidResignKey:(NSNotification *)notification {
     [[[notification object] contentView] setNeedsDisplay:YES];
-    if (_owner) _owner->on_native_focus(false);
+    if ([self ownerAlive]) _owner->on_native_focus(false);
 }
 
 - (BOOL)windowShouldClose:(id)sender {
     (void)sender;
     // request_close may destroy the window, defer, or delete its C++ owner.
     // AppKit must never perform a second unconditional close afterward.
-    if (_owner) _owner->request_close();
+    if ([self ownerAlive]) _owner->request_close();
     return NO;
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
+    if (![self ownerAlive]) { _owner = nullptr; return; }
     NSWindow *window = [notification object];
     native::app_wnd *owner = _owner;
     _owner = nullptr;
@@ -116,16 +125,24 @@
 // Dispatch AppKit drawing through the portable window paint signal.
 @interface native_content_view : NSView {
     native::app_wnd *_owner;
+    std::weak_ptr<native::detail::wnd_lifetime> _lifetime;
 }
 - (id)init_with_frame:(NSRect)frame owner:(native::app_wnd *)owner;
+- (BOOL)ownerAlive;
 @end
 
 @implementation native_content_view
+- (BOOL)ownerAlive {
+    auto lifetime = _lifetime.lock();
+    return lifetime && lifetime->alive;
+}
 
 - (id)init_with_frame:(NSRect)frame owner:(native::app_wnd *)owner {
     self = [super initWithFrame:frame];
-    if (self)
+    if (self) {
         _owner = owner;
+        _lifetime = native::detail::wnd_peer_access::resource_lifetime(*owner);
+    }
     return self;
 }
 
@@ -135,21 +152,22 @@
 
 - (BOOL)acceptsFirstResponder { return YES; }
 - (void)mouseDown:(NSEvent *)event {
+    if (![self ownerAlive]) return;
     [[self window] makeFirstResponder:self];
     _owner->on_native_focus(true);
     [super mouseDown:event];
 }
 - (void)keyDown:(NSEvent *)event {
-    if (!_owner || !_owner->get_input_enabled() ||
+    if (![self ownerAlive] || !_owner->get_input_enabled() ||
         [[self window] firstResponder] != self) return;
     if (!_owner->on_native_key(mac::physical_key(event, native::key_action::press)))
         [super keyDown:event];
 }
 - (void)keyUp:(NSEvent *)event {
-    if (_owner) _owner->on_native_key(mac::physical_key(event, native::key_action::release));
+    if ([self ownerAlive]) _owner->on_native_key(mac::physical_key(event, native::key_action::release));
 }
 - (void)flagsChanged:(NSEvent *)event {
-    if (!_owner || !_owner->get_input_enabled() ||
+    if (![self ownerAlive] || !_owner->get_input_enabled() ||
         [[self window] firstResponder] != self) return;
     auto physical = mac::physical_key(event, native::key_action::press);
     physical.repeat = false;
@@ -158,7 +176,7 @@
 
 - (void)drawRect:(NSRect)dirty_rect {
     [super drawRect:dirty_rect];
-    if (!_owner || !_owner->get_created())
+    if (![self ownerAlive] || !_owner->get_created())
         return;
 
     native::rect invalid(

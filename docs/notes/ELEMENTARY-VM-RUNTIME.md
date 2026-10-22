@@ -72,7 +72,7 @@ On 2026-10-20, both rebuilt toolkit suites pass all 18 tests under Docker
 Weston and on the actual Pantheon Wayland session on `echo`, with ASan/UBSan
 and exit-time leak scanning disabled. The VM runs completed in 17.17 seconds
 (elementary) and 16.18 seconds (generic GTK Wayland). The shared interaction
-repair measures child overlays, preserves native pointer targets, accounts for
+repair preserves native pointer targets, accounts for
 header/menu height, and translates mnemonic labels to GTK underscore syntax.
 The regression checks full requested client height, bottom-button visibility
 and GTK hit testing through nested panels, native action delivery and mnemonic
@@ -165,3 +165,83 @@ modal dialogs retain GTK transience and modality. The updated elementary VM
 fixture passes assertions for both relationships, and fixed Vision is deployed
 to the normal F5 location. These assertions verify the GTK configuration;
 physical window switching remains desktop acceptance.
+
+
+### Settings sidebar spacing (2026-10-21)
+
+The GraniteSettingsSidebar adapter now opts into the installed theme's
+`sidebar` class. Native CSS supplies row padding, background, border and
+selection colors. A six-logical-pixel column gap separates images and
+labels when Granite's grid has no spacing; native nonzero spacing is kept.
+This fixes flush-to-edge icons without replacing Granite's row renderer.
+
+The Docker elementary suite passes 20/20 with the elementary stylesheet.
+The normal deployment script updated Vision on `echo`. A debugger-owned
+Vision process rendered the actual settings window under the VM's Granite
+7.8.1 and installed desktop theme; the captured navigation has clear row
+insets and icon/title separation. The verification used native GTK snapshots,
+not a forced Docker theme or a replacement drawing path. It does not claim
+a physical-input walkthrough.
+
+The date and time fields remain GraniteDatePicker and GraniteTimePicker.
+The optional seconds editor is a GtkSpinButton composed beside the latter;
+Granite's own popup edits hours and minutes. No emulated picker was added.
+
+
+### Shared GTK resize and row-image correction (2026-10-21)
+
+The fixed child host now stays out of overlay measurement and is clipped to
+the current viewport. Its current allocation no longer raises the window's
+minimum size after enlargement. Native GTK tree rows now display optional
+image textures, which also makes the generic GTK settings navigator show its
+supplied images. The full GTK and elementary Docker suites each pass 20/20;
+the enhanced settings fixture verifies real texture pixels and compositor
+allocation after growing and shrinking both dimensions. The existing
+bottom-row geometry/picking checks still pass.
+
+The normal deployment script updated the elementary Vision executable after
+this shared correction. The production generic GTK gallery was inspected
+under headless Weston and returned to its initial size after enlargement;
+that capture is separate from a complete interactive Pantheon walkthrough.
+
+
+## Clipboard and native control review (2026-10-21)
+
+Both the generic GTK and elementary Docker suites pass 20/20 after the control
+review. The deployed elementary build also passes the focused GTK runtime,
+settings runtime and collection runtime checks on `echo`, using its installed
+desktop theme. The GTK runtime reports 96 live-control pixel comparisons.
+These checks exercise local clipboard copy/paste without blocking its provider,
+Ctrl/Shift table selection, Tab completion, splitter movement, editable native
+combos, date entry initialization/editing and native sidebar image sizing.
+
+Ordinary buttons retain their original native GtkButton hierarchy. The later
+2026-10-22 review replaces the clipped-overlay approach for partial borders
+with scoped CSS on that original button. Selected edges use the desktop
+border color; restoring all edges removes the override and restores the
+complete installed theme.
+
+The desktop locked during the final visible picker walkthrough, so no final
+unlocked-desktop date-popup screenshot is claimed. The native snapshot and
+callback checks above completed successfully; no desktop lock setting was
+changed. Vision and its private runtime were deployed through the normal
+script, and only the test-owned demo process was stopped afterward.
+
+## Table, splitter and border review (2026-10-22)
+
+Both GTK selections pass all 20 CTests under headless Weston; the elementary
+run explicitly uses `io.elementary.stylesheet.blueberry`. The native GTK
+fixture covers complete pointer press/release sequences with Ctrl/Shift,
+collapsed groups remaining collapsed, ordinary typing and middle insertion
+in editable combos, fifty split allocations/orientation changes and pending
+callback destruction. Native snapshots check all sixteen button edge masks.
+
+The deployed gallery on `echo` confirms physical Ctrl multiselection, Shift
+range selection, group collapse after release and repeated native splitter
+drags. Live typing preserves `hello` in order; native tab labels,
+individual preview edges, the fully borderless preview and the property
+grid's right frame were also inspected. The separator retains native theme painting with a usable allocated
+strip; portable ratio notifications run after GTK allocation. Tabs remain
+GtkNotebook, with padded native labels; Granite 7 supplies no separate tab
+widget in the pinned SDK. The property grid reserves its right frame outside
+the scrolling strip. Screenshots use `build/elementary-control-review-*.png`.

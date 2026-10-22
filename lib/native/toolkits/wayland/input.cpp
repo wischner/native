@@ -39,7 +39,9 @@ namespace
             gtk_widget_grab_focus(gtk_event_controller_get_widget(
                 GTK_EVENT_CONTROLLER(gesture)));
         const point p = position(x, y);
-        if (!press)
+        const auto native_button = gtk_gesture_single_get_current_button(GTK_GESTURE_SINGLE(gesture));
+        const bool primary = native_button == 0 || native_button == GDK_BUTTON_PRIMARY;
+        if (!press && primary)
             if (auto *table = dynamic_cast<table_view *>(&owner)) {
                 auto &peer = linux::wayland::state(owner);
                 if (peer.dragging_scrollbar) {
@@ -49,15 +51,17 @@ namespace
                         peer.horizontal_scrollbar,
                         peer.scrollbar_grab);
                     peer.dragging_scrollbar = false;
-                    return;
                 }
+                // Selection/disclosure was handled on press with modifiers.
+                // Do not dispatch a second, unmodified portable release.
+                return;
             }
         if (press) {
             if (auto *icons = dynamic_cast<icon_view *>(&owner)) {
                 icons->on_native_selection(icons->item_at(p));
                 return;
             }
-            if (auto *table = dynamic_cast<table_view *>(&owner)) {
+            if (auto *table = dynamic_cast<table_view *>(&owner); table && primary) {
                 auto &peer = linux::wayland::state(owner);
                 peer.dragging_scrollbar =
                     detail::begin_table_scrollbar_drag(
@@ -65,8 +69,12 @@ namespace
                         p,
                         peer.horizontal_scrollbar,
                         peer.scrollbar_grab);
-                if (!peer.dragging_scrollbar)
-                    detail::handle_table_click(*table, p);
+                if (!peer.dragging_scrollbar) {
+                    const auto modifiers = gtk_event_controller_get_current_event_state(
+                        GTK_EVENT_CONTROLLER(gesture));
+                    detail::handle_table_click(*table, p,
+                        modifiers & GDK_CONTROL_MASK, modifiers & GDK_SHIFT_MASK);
+                }
                 return;
             }
             if (auto *accordion =
@@ -215,7 +223,7 @@ namespace linux::wayland
             }
         }
         }
-        owner.on_native_navigation(action);
+        owner.on_native_navigation(action, modifiers & GDK_SHIFT_MASK);
         return true;
     }
     void install_input(native::wnd &owner, GtkWidget *widget) {

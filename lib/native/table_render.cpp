@@ -527,7 +527,8 @@ namespace native::detail
         return true;
     }
 
-    bool handle_table_click(table_view &control, point position) {
+    bool handle_table_click(table_view &control, point position,
+                            bool toggle, bool extend) {
         // Emulated collection controls are painted into their root window
         // and deliberately have no graphics binding of their own. Hit-test
         // with the metrics synchronized during native creation instead of
@@ -630,7 +631,24 @@ namespace native::detail
         table_model *model = control.get_model();
         if (!model)
             return false;
-        control.on_native_selection({model->row_id(row.model_row)});
+        const auto id = model->row_id(row.model_row);
+        std::vector<table_row_id> selection{id};
+        if (control.get_selection_mode() == table_selection_mode::multiple) {
+            if (extend) {
+                const auto anchor = control.display_row_for_id(control._focused_row).value_or(display);
+                selection.clear();
+                for (auto index = std::min(anchor, display); index <= std::max(anchor, display); ++index) {
+                    const auto item = control.get_display_row(index);
+                    if (!item.group) selection.push_back(model->row_id(item.model_row));
+                }
+            } else if (toggle) {
+                selection = control.get_selected_rows();
+                const auto found = std::find(selection.begin(), selection.end(), id);
+                if (found == selection.end()) selection.push_back(id);
+                else selection.erase(found);
+            }
+        }
+        control.on_native_selection(selection);
         return true;
     }
 } // namespace native::detail

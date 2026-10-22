@@ -30,6 +30,7 @@ namespace
     constexpr int command_splitter = 306;
     constexpr int command_input_chrome = 307;
     constexpr int command_properties = 308;
+    constexpr int command_settings = 309;
     constexpr int command_installed_font = 401;
 
     // Create and show a native child after its parent exists.
@@ -53,7 +54,8 @@ namespace vision
 {
     vision_window::vision_window(bool open_splitter_on_start,
                                  bool open_input_chrome_on_start,
-                                 bool open_properties_on_start)
+                                 bool open_properties_on_start,
+                                 bool open_settings_on_start)
         : native::app_wnd("Vision Native Feature Gallery",
                           36, 36, 820, 660)
         , _action("Activate", 20, 20, 120, 32)
@@ -82,10 +84,12 @@ namespace vision
         , _show_input_chrome("Input and window chrome...",
                              20, 606, 210, 30)
         , _show_properties("Properties and toolbars...", 244, 606, 236, 30)
+        , _show_settings("Settings and pickers...", 494, 606, 272, 30)
         , _status("Starting portable feature gallery...")
         , _open_splitter_on_start(open_splitter_on_start)
         , _open_input_chrome_on_start(open_input_chrome_on_start)
         , _open_properties_on_start(open_properties_on_start)
+        , _open_settings_on_start(open_settings_on_start)
         , _inspector(*this)
         , _layout(*this)
         , _collections(*this)
@@ -94,6 +98,7 @@ namespace vision
         , _splitter(*this)
         , _input_chrome(*this)
         , _properties(*this)
+        , _settings(*this)
         , _dialog(*this)
         , _open_image(*this, "Open PNG or JPEG")
         , _save_image(*this, "Save PNG or JPEG")
@@ -150,7 +155,8 @@ namespace vision
                  << std::pair<int, std::string>(
                         command_input_chrome,
                         "&Input and window chrome")
-                 << std::pair<int, std::string>(command_properties, "&Properties and toolbars"))
+                 << std::pair<int, std::string>(command_properties, "&Properties and toolbars")
+                 << std::pair<int, std::string>(command_settings, "Settings and date/time &pickers"))
              << "&Demo"
              << (native::menu_items("&Reset image")
                  << native::menu_separator
@@ -226,6 +232,10 @@ namespace vision
             _properties.show();
             return true;
         });
+        _show_settings.on_click.connect([this] {
+            if (!_settings.get_created()) _settings.create();
+            _settings.show(); return true;
+        });
         _show_input_chrome.on_click.connect(
             this, &vision_window::on_show_input_chrome);
         _dialog.on_modal_close.connect(
@@ -259,6 +269,7 @@ namespace vision
         create_child(_show_splitter, *this);
         create_child(_show_input_chrome, *this);
         create_child(_show_properties, *this);
+        create_child(_show_settings, *this);
 
         try {
             reset_image();
@@ -269,6 +280,11 @@ namespace vision
         }
         if (_open_splitter_on_start)
             native::app::post([this] { show_splitter(); });
+        if (_open_settings_on_start)
+            native::app::post([this] {
+                if (!_settings.get_created()) _settings.create();
+                _settings.show();
+            });
         if (_open_properties_on_start)
             native::app::post([this] {
                 if (!_properties.get_created()) _properties.create();
@@ -413,6 +429,9 @@ namespace vision
         } else if (command == command_properties) {
             if (!_properties.get_created()) _properties.create();
             _properties.show();
+        } else if (command == command_settings) {
+            if (!_settings.get_created()) _settings.create();
+            _settings.show();
         } else if (command == command_input_chrome) {
             on_show_input_chrome();
         } else if (command == _reset_image_command) {

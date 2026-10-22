@@ -71,6 +71,8 @@ namespace native
         }
 
         const detail::window_guard guard(*this);
+        center_to_parent();
+        if (!guard.alive()) return;
         begin_modal_session();
         if (!guard.alive()) return;
         try {

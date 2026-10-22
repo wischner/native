@@ -17,7 +17,7 @@
 namespace native
 {
     status_bar::status_bar(wnd &owner, int height)
-        : non_client(owner, window_edge::bottom, height)
+        : non_client(owner, window_edge::bottom, height, true)
         , _native_peer(detail::create_status_bar_peer()) {}
 
     status_bar::~status_bar() = default;

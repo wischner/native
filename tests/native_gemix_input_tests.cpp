@@ -362,7 +362,10 @@ namespace
                 inspector.show();
                 origin = linux::gemix::work_rect(linux::gemix::wnd_bindings.handle_from_object(&inspector)).p;
                 row_height = properties.get_row_height();
-                return row_height > 0 && row_height <= 24;
+                properties.set_dimensions({330, native::dim(4 * row_height + 2)});
+                const int field_height = native::theme::create(inspector.get_gpx())->get_text_edit_height();
+                return row_height >= field_height + 2 &&
+                    row_height <= std::max(24, field_height + 2);
             }, "create compact property grid and toolbar");
             const auto row_center = [row_height](int index) {
                 return 41 + index * row_height + row_height / 2;

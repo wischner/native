@@ -313,6 +313,10 @@ namespace native
         // React after cached client dimensions have changed.
         virtual void on_bounds_changed();
 
+        // Resolve requested geometry before creation or resizing. The default
+        // preserves it; single-line inputs use their theme's standard height.
+        virtual rect constrain_bounds(const rect &bounds) const;
+
         // Apply cached geometry to a created backend resource.
         virtual void apply_position();
         virtual void apply_dimensions();

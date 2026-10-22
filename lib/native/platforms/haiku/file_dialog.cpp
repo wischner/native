@@ -279,8 +279,14 @@ namespace haiku
         BFilePanel *panel = state->panel;
         state.release();
         panel->Show();
-        if (panel_window)
+        // BFilePanel::Show applies AlertPosition even after MoveTo/CenterIn.
+        // Apply owner centering after that native placement has completed.
+        if (panel_window && panel_window->Lock()) {
+            if (owner_window)
+                panel_window->CenterIn(owner_window->Frame());
             panel_window->Activate(true);
+            panel_window->Unlock();
+        }
     }
 } // namespace haiku
 

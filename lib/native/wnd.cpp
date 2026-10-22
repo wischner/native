@@ -146,9 +146,8 @@ namespace native
             // the cache, so the single pass below arranges children
             // against the granted size rather than the requested one.
             const scoped_flag pass(_layout_suspended, *this);
-            _bounds.d = dimensions;
-            if (_created)
-                apply_dimensions();
+            _bounds.d = constrain_bounds(rect(_bounds.p, dimensions)).d;
+            if (_created) apply_dimensions();
         }
 
         if (!guard.alive()) return *this;
@@ -223,7 +222,7 @@ namespace native
         const detail::window_guard guard(*this);
         {
             const scoped_flag pass(_layout_suspended, *this);
-            _bounds = bounds;
+            _bounds = constrain_bounds(bounds);
             if (_created && _peer)
                 _peer->apply_bounds(_bounds);
         }
@@ -368,6 +367,7 @@ namespace native
             detail::assign_peer_state(*this, new detail::mouse_state);
             native_started = true;
             const detail::window_guard generation(*this);
+            _bounds = constrain_bounds(_bounds);
             create_native();
             if (!generation.alive()) return;
             apply_cursor();
@@ -777,12 +777,14 @@ namespace native
         }
 
         int before = 0;
+        bool preceding = true;
         for (const non_client *element : _non_client) {
-            if (element == target)
-                break;
-            if (element && element->_visible &&
-                element->_edge == target->_edge)
-                before += element->_extent;
+            if (element == target) { preceding = false; continue; }
+            if (!element || !element->_visible || element->_edge != target->_edge)
+                continue;
+            if (target->_edge == window_edge::bottom && element->_footer != target->_footer) {
+                if (element->_footer) before += element->_extent;
+            } else if (preceding) before += element->_extent;
         }
 
         // Strips stack inside the area this window's own edge chrome
@@ -827,6 +829,8 @@ namespace native
     }
 
     void wnd::on_bounds_changed() {}
+
+    rect wnd::constrain_bounds(const rect &bounds) const { return bounds; }
 
     void wnd::destroy_children() {
         const detail::window_guard owner(*this);

@@ -54,16 +54,31 @@ namespace native::detail
             if (!state.stream)
                 continue;
             std::vector<std::uint8_t> bytes;
-            std::uint8_t chunk[8192];
             for (;;) {
-                const auto size = g_input_stream_read(state.stream,
-                                                      chunk,
-                                                      sizeof(chunk),
-                                                      nullptr,
-                                                      &state.error);
-                if (size <= 0)
-                    break;
-                bytes.insert(bytes.end(), chunk, chunk + size);
+                struct chunk_state {
+                    bool done = false;
+                    GBytes *bytes = nullptr;
+                    GError *error = nullptr;
+                } chunk;
+                // A local clipboard provider writes on this same main
+                // context. A synchronous stream read deadlocks its producer.
+                g_input_stream_read_bytes_async(state.stream, 8192,
+                    G_PRIORITY_DEFAULT, nullptr,
+                    +[](GObject *stream, GAsyncResult *result, gpointer data) {
+                        auto &chunk = *static_cast<chunk_state *>(data);
+                        chunk.bytes = g_input_stream_read_bytes_finish(
+                            G_INPUT_STREAM(stream), result, &chunk.error);
+                        chunk.done = true;
+                    }, &chunk);
+                while (!chunk.done) g_main_context_iteration(nullptr, true);
+                state.error = chunk.error;
+                if (!chunk.bytes) break;
+                gsize size = 0;
+                const auto *data = static_cast<const std::uint8_t *>(
+                    g_bytes_get_data(chunk.bytes, &size));
+                if (size) bytes.insert(bytes.end(), data, data + size);
+                g_bytes_unref(chunk.bytes);
+                if (!size || state.error) break;
             }
             g_object_unref(state.stream);
             if (state.error) {

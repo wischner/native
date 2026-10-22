@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../property_grid_peer.h"
 #include <native/text_edit.h>
 #include <native/property_grid.h>
 
@@ -205,7 +206,7 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "Motif: Failed to create text_edit.");
-        if (dynamic_cast<property_grid *>(get_parent())) {
+        if (native::detail::property_grid_owner(*this)) {
             Pixel paper = 0;
             XtVaGetValues(XtParent(widget), XmNbackground, &paper, nullptr);
             XtVaSetValues(widget, XmNbackground, paper,

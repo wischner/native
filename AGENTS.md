@@ -114,7 +114,8 @@ path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
   Cairo/Pango serve custom drawing; keep all native types private.
 - `docker-wayland` and `docker-elementary` depend on `docker-wayland-sdk`, which
   builds `native-wayland-sdk:24.04` from `scripts/linux/wayland/Dockerfile`.
-  The image pins elementary OS 8's stylesheet and uses GTK 4.14 API limits.
+  The image pins elementary OS 8's stylesheet, installs
+  `gsettings-desktop-schemas` for GraniteTimePicker, and uses GTK 4.14 API limits.
 - Keep separate `build/linux-wayland/` and `build/linux-elementary/` trees.
   F5 forwards the compositor's Wayland socket through
   `scripts/linux/wayland/debug-pipe.sh`; unattended tests use the headless Weston
@@ -127,6 +128,7 @@ The top-level CMake project provides:
 - `docker-wayland` (GTK 4.14, GDK Wayland only)
 - `docker-elementary` (GTK 4.14 + Granite 7 C interface)
 - `docker-wayland-sdk` (builds the shared local SDK image)
+- `docker-win-sdk` (builds the pinned GNU/WinUI SDK image)
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
@@ -146,7 +148,7 @@ These targets use the following Docker images:
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
 - Window Maker: `wischner/gcc-x86_64-linux-window-maker`
-- Windows MinGW-w64: `wischner/gcc-x86_64-windows-mingw-w64`
+- Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
@@ -269,6 +271,12 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ## Windows backend rules
 
+- `docker-win` builds its local GNU/WinUI SDK first. The pinned Windows App
+  SDK 1.8 metadata and C++/WinRT projections compile with GCC 13; Wine runs
+  the SDK metadata generator only. Vision runs natively in Windows. Settings
+  navigation uses a genuine WinUI NavigationView in a XAML island, with all
+  SDK types private. Deploy its bootstrap DLL beside the executable and
+  install Windows App Runtime 1.8 (x64) in the guest.
 - Files under `lib/native/platforms/windows/` are for Win32 integration only.
 - The **Windows 11, VM** F5 profile reaches `ssh whiskey` and runs
   `vision.exe` natively in the Windows VM through the
@@ -285,6 +293,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
   - wheel clears strokes
 
 ## Haiku backend rules
+
+- **Haiku, VM** uses `ssh hotel` for readiness checks, directory preparation,
+  deployment and GDB transport. The libvirt domain remains `Haiku`.
 
 - Files under `lib/native/platforms/haiku/` are for Haiku API integration only.
 - Keep `BApplication`, `BWindow`, and `BView` usage behind the platform layer.
@@ -370,7 +381,7 @@ contents.
 | [PATTERNS-CODE-EDIT.md](docs/manuals/book-of-native/PATTERNS-CODE-EDIT.md) | Canonical source storage, overlays, lexers, completion, shared painting, backend input translation. Expands Architecture 14. |
 | [PATTERNS-TREE-VIEW.md](docs/manuals/book-of-native/PATTERNS-TREE-VIEW.md) | Owned hierarchy, stable IDs, visible rows, selection/disclosure, native adapters and scrolling. Expands Architecture 15. |
 | [PATTERNS-SPLIT-VIEWS-AND-TABS.md](docs/manuals/book-of-native/PATTERNS-SPLIT-VIEWS-AND-TABS.md) | Split/tab layout ownership, native content transitions, floating shells, interaction, themed painting, persistence. Expands Architecture 16. |
-| [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | File icons, special directories, combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
+| [PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md](docs/manuals/book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md) | File icons, special directories, settings navigation, date/time pickers, combo and list boxes, directory and message dialogs, non-client rulers, status bars, native adaptation, extensibility. Expands Architecture 17. |
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [PATTERNS-BACKGROUND-SERVICES.md](docs/manuals/book-of-native/PATTERNS-BACKGROUND-SERVICES.md) | Scoped UI delivery, bounded PCM peers, child ownership and shutdown. Expands Architecture 20. |
 | [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
@@ -408,7 +419,7 @@ instructions.
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |
 | [16-SPLIT-VIEWS-AND-TABS.md](docs/manuals/programming-native/16-SPLIT-VIEWS-AND-TABS.md) | `split_view` and native tab controls. |
-| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | File icons, special directories, choice controls, OS dialogs, non-client chrome. |
+| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | File icons, special directories, settings navigation, civil date/time pickers, choice controls, OS dialogs, non-client chrome. |
 | [18-PANELS-AND-CANVASES.md](docs/manuals/programming-native/18-PANELS-AND-CANVASES.md) | `panel` grouping and child lifecycle, `canvas` painting, scrolling, scrollbar policy, and rulers. |
 | [19-BACKGROUND-WORK-AND-SERVICES.md](docs/manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md) | C++20 workers, scoped UI results, PCM output, child helpers and interactive acceptance. |
 
@@ -429,7 +440,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 | [MOUSE-AND-SHADERS-REVIEW.md](docs/notes/MOUSE-AND-SHADERS-REVIEW.md) | Review of Infinity's proposed pointer and shader contracts against Native naming, ownership, lifecycle, composition, and verification requirements. No implementation claim. |
 | [BACKEND-OPEN-ISSUES.md](docs/notes/BACKEND-OPEN-ISSUES.md) | Backend-level issues that are real today, plus the runtime-tested versus in-progress backend status. |
 | [ELEMENTARY-VM-RUNTIME.md](docs/notes/ELEMENTARY-VM-RUNTIME.md) | Docker binary deployment to `ssh echo`, private runtime dependencies, Pantheon Wayland verification and current GUI timeouts. |
-| [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy, GDB over `ssh`, and what is verified. |
+| [HAIKU-REMOTE-RUNTIME.md](docs/notes/HAIKU-REMOTE-RUNTIME.md) | Haiku workflow: Docker cross-build, `scp` deploy and GDB over `ssh hotel`, and what is verified. |
 | [MACOS-REMOTE-RUNTIME.md](docs/notes/MACOS-REMOTE-RUNTIME.md) | Remote macOS workflow from Linux against VM host `mike`, `MAC_REMOTE_*` settings, driving scripts, AppKit/GLSL regression and sanitizer commands, desktop permissions, and visual-coverage limits. |
 | [WINDOWS-WINE-RUNTIME.md](docs/notes/WINDOWS-WINE-RUNTIME.md) | Which MinGW runtime DLLs must sit next to the `.exe` for `docker-win` binaries to run under Wine. |
 | [WINDOWS-VM-RUNTIME.md](docs/notes/WINDOWS-VM-RUNTIME.md) | Native Windows 11 VM deployment, key-only SSH, interactive desktop GDBserver and the F5 tunnel lifecycle. |
@@ -440,6 +451,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 
 | Document | Contents |
 | --- | --- |
+| [src/assets/navigation/README.md](src/assets/navigation/README.md) | Pinned Font Awesome Free navigation artwork, CC BY 4.0 attribution, tile adaptations and embedded-PNG regeneration. |
 | [src/assets/retro-terminal/README.md](src/assets/retro-terminal/README.md) | Pinned upstream shader/font provenance, GPL/CC-BY-SA notices, selected CPU port differences and executable asset deployment. |
 | [lib/native/third_party/README.md](lib/native/third_party/README.md) | Provenance and pinned upstream commit for the vendored `stb_truetype.h`, and its exemption from local formatting and file-length conventions. |
 

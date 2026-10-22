@@ -26,9 +26,12 @@ If you are looking for a straightforward, understandable UI library, or if you w
 ## Features
 
 - **Backend coverage today**: Linux (X11/Athena, SDL2, OpenMotif,
-  OPEN LOOK/XView, Window Maker/WINGs, GEMix, GTK Wayland, and elementary OS), Windows (WinAPI),
+  OPEN LOOK/XView, Window Maker/WINGs, GEMix, GTK Wayland, and elementary OS), Windows (Win32/WinUI),
   Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
+- **Settings and civil pickers**: Menu-style `settings_sidebar` page builders
+  with optional images and search, plus native date/time pickers with date ranges,
+  holiday/weekday exclusions, availability predicates and minute steps
 - **Classic trees**: Stable-ID hierarchical `tree_view` with native
   disclosure, selection, images, navigation, and scrolling on every backend
 - **Structural panels**: Empty child containers that parent and lay out any
@@ -81,6 +84,8 @@ toolchain with C++20 support. A direct Linux build also needs
   optional Fontconfig resolves stock families directly without a shell.
   Missing either dependency falls back to bitmap stock text. Xlib supplies
   image clipboard formats missing from SDL2.
+- Haiku date/time editors use the SDK's private shared-kit headers and
+  `libshared`/`localestub`; the Docker SDK supplies them.
 - Haiku GLSL optionally loads Mesa OSMesa at runtime. The tested Mesa 22.0.5
   requires GALLIUM_DRIVER=softpipe; its llvmpipe JIT is rejected before drawing.
   No Mesa development package is required by the Docker cross-build. CPU shader
@@ -152,8 +157,15 @@ The Docker-backed targets build:
 - `OpenMotif` into `build/linux-openmotif/`
 - `OPENLOOK` into `build/linux-openlook/`
 - `WMAKER` into `build/linux-wmaker/`
-- Windows MinGW-w64 into `build/windows-mingw-w64/`
+- Windows MinGW-w64/WinUI into `build/windows-mingw-w64/`
 - Haiku into `build/haiku/`
+
+`docker-win` first builds `docker-win-sdk`, the pinned
+`native-windows-winui-sdk:24.04` image containing GCC 13 and generated
+C++/WinRT headers for Windows App SDK 1.8. Windows settings navigation uses
+the actual WinUI 3 NavigationView. Deploy its bootstrap DLL beside the
+executable and install x64 Windows App Runtime 1.8 on the guest; the normal
+VM preparation script stages the DLL and checks that prerequisite.
 
 Each build contains the `native` static library and the single `vision`
 application. Library implementation lives in `lib/native/`; application code
@@ -176,13 +188,14 @@ Current exercised runtime paths are:
   output with inversion off; Native drawing matches AES's white paper and
   black ink. The full-desktop screenshot and live GDB/MI viewer-close test
   pass. Closing Rasta also stops GDB, Vision and gemd. Complete suites pass
-  17/18 direct and 18/19 proxy tests; the final menu-strip restoration
+  19/20 direct and 20/21 proxy tests; the final menu-strip restoration
   assertion remains failing on the pinned SDK.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
   **Windows 11, VM** for F5 through `ssh whiskey`. Changed-file deployment
   and a local VM DLL cache reduce repeat startup work (host Python 3.11+). See the
   [VM setup and debugging note](docs/notes/WINDOWS-VM-RUNTIME.md).
-- Haiku binaries built locally through Docker, then copied to a Haiku machine and run there
+- Haiku binaries built locally through Docker, then deployed and debugged
+  through `ssh hotel`; select **Haiku, VM** for F5.
 - macOS AppKit, built natively with AppleClang and run on VM `mike`.
   Stock controls retain AppKit painting, including native splitters, tabs,
   table grids and row backgrounds. Six CTests pass normally and with
@@ -191,7 +204,7 @@ Current exercised runtime paths are:
   complete. See [macOS remote runtime](docs/notes/MACOS-REMOTE-RUNTIME.md)
   for build, test and desktop-permission details.
 
-The 2026-10-21 Debug build on macOS VM `mike` passes all 17 CTests.
+The 2026-10-21 Debug build on macOS VM `mike` passes all 19 CTests.
 LLDB Developer Tools authorization is enabled. The SSH debug session ends
 automatically when Vision exits and retains interactive breakpoint stops.
 
@@ -221,10 +234,17 @@ For application programming concepts and complete sample programs, read the
 [license.badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [status.badge]: https://img.shields.io/badge/status-unstable-red.svg
 
+The **Settings and date/time pickers** gallery (`vision --settings`, also in
+Window) opens a separate window with searchable General, Dates and Time pages. Try weekend
+and recurring holiday exclusions, exclude individual dates, change minute
+steps and toggle seconds. The public API and a complete preferences-window
+example are in [Chapter 17](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md).
+
 The **Properties and toolbars** gallery (`vision --properties`) demonstrates
 compact text/number/boolean/choice properties, custom dropdown canvases with
 value converters, individual outer-border edges,
-and multiple menu-themed toolbars on all four sides. Toolbar icons support
+and multiple native or themed toolbars on all four sides. Mac uses native flat
+AppKit accessory buttons and preserves native rounded preview buttons. Toolbar icons support
 16x16, 24x24, and 32x32 sizes with live toolbar resizing; tools may be ordinary buttons, independent
 sticky toggles, or exclusive tool groups. See the
 [input and chrome chapter](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
@@ -349,7 +369,8 @@ cmake --build build/cmake --target docker-elementary
 
 The targets build the shared local `native-wayland-sdk:24.04` image from
 `scripts/linux/wayland/Dockerfile`. Dependencies include GCC, GTK 4.14.x,
-Granite 7.4, GtkSourceView 5.12, GLib/GIO, Cairo/Pango/HarfBuzz, Fontconfig,
+Granite 7.4, GtkSourceView 5.12, GLib/GIO, `gsettings-desktop-schemas`
+(required by GraniteTimePicker), Cairo/Pango/HarfBuzz, Fontconfig,
 xkbcommon, PNG/JPEG and EGL/Mesa. The image also contains Weston, elementary
 icons and the pinned elementary OS 8 stylesheet. Outputs are
 `build/linux-wayland/src/vision` and `build/linux-elementary/src/vision`.
@@ -370,3 +391,6 @@ pass; advanced table/custom-paint and pointer limits are listed in the
 The [elementary VM runtime note](docs/notes/ELEMENTARY-VM-RUNTIME.md) records
 Docker binary deployment to `ssh echo`, native-theme pixel comparisons,
 current VM test results, and remaining desktop acceptance limits.
+
+Vision’s settings navigation uses embedded [Font Awesome Free icons](src/assets/navigation/README.md),
+licensed separately under CC BY 4.0. No installed icon font is required.

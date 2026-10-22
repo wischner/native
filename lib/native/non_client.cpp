@@ -14,10 +14,14 @@
 namespace native
 {
     non_client::non_client(wnd &owner, window_edge edge, int extent)
+        : non_client(owner, edge, extent, false) {}
+
+    non_client::non_client(wnd &owner, window_edge edge, int extent, bool footer)
         : _owner(&owner)
         , _edge(edge)
         , _extent(extent)
-        , _visible(true) {
+        , _visible(true)
+        , _footer(footer) {
         if (extent < 0)
             throw std::invalid_argument(
                 "A non-client extent cannot be negative.");
@@ -38,6 +42,8 @@ namespace native
     }
 
     non_client &non_client::set_edge(window_edge edge) {
+        if (_footer && edge != window_edge::bottom)
+            throw std::invalid_argument("A status bar docks at the bottom edge.");
         if (_edge == edge)
             return *this;
         _edge = edge;

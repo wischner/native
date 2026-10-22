@@ -5,6 +5,11 @@ editing share one important boundary: every backend converts its native
 encoding and selection model into owned, validated UTF-8 before application
 code sees it.
 
+Single-line editors share `theme::get_text_edit_height()` with combos and
+civil pickers. Geometry is resolved before native creation and resizing, and
+text/caret placement uses native font metrics. This includes Vision's main
+copy/paste field. Multiline editors retain their full bounds and line flow.
+
 ## Clipboard transactions
 
 Open a read snapshot when data is needed, or an empty write transaction when
@@ -126,3 +131,8 @@ Copy/Cut/Paste observes the same complete selection shown by the native field.
 when editing is disabled, no usable selection/format exists, or the proposed
 replacement is rejected. Clipboard publication completes before a successful
 cut removes text.
+
+GTK reads clipboard streams asynchronously while dispatching its main context,
+including when reading a provider owned by this process. Blocking stream reads
+on the UI thread prevent that provider from writing. Paste checks its editor's
+resource generation again after clipboard event delivery before replacing text.

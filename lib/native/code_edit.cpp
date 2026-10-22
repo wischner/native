@@ -468,8 +468,9 @@ namespace native
     bool code_edit::paste() {
         if (_read_only)
             return false;
+        const detail::window_guard guard(*this);
         clipboard input = clipboard::open_read();
-        if (!input.has(clipboard_format::text))
+        if (!guard.alive() || !input.has(clipboard_format::text))
             return false;
         return replace_selected_text(input.read_text());
     }
@@ -487,7 +488,7 @@ namespace native
                 invalidate();
                 return true;
             }
-            if (key == code_edit_key::enter) {
+            if (key == code_edit_key::enter || key == code_edit_key::tab) {
                 const completion_item item =
                     _completion[static_cast<std::size_t>(
                         _completion_index)];

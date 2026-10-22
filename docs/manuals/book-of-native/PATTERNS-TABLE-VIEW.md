@@ -1,5 +1,10 @@
 # Advanced Table Views
 
+The GTK painted-table adapter handles pointer selection, modifiers and group
+disclosure once, on press. Release completes scrollbar dragging without
+dispatching another unmodified table click. Hit testing and paging use the
+same peer's CSS/font metrics as painting.
+
 GEMix uses the shared virtual-table geometry and scrollbar drag calculations.
 Its root peer captures a thumb drag through release; painting uses GEM-style
 arrow buttons, a flat outlined thumb, and a stippled track. The hard AES visible
@@ -92,6 +97,10 @@ rather than becoming a million-widget allocation.
   Scroll limits count fully visible rows, allowing the final model row to be
   revealed completely. Paging, painting, and native scrollbar placement use
   the same body geometry, including both scrollbar reservations.
+  Grid/stripe-only updates repaint existing native rows, preserving Shift
+  anchors and linked selections. An unchanged selection echoed from a native
+  callback is left intact, so a plain click can replace a multiple selection
+  after toggling grid lines.
 - Athena, XView/OLGX, WINGs, SDL2, and GEM use backend-owned hosts and theme
   resources when their toolkit has no complete table widget. Athena attaches
   genuine Xaw `Scrollbar` children in the reserved strips. Its native stippled
@@ -143,3 +152,9 @@ and clamps its scroll position before querying the replacement model.
 See the application-facing
 [Advanced Table Views](../programming-native/14-ADVANCED-TABLE-VIEWS.md)
 chapter for complete examples.
+
+GTK portable table rows preserve Ctrl toggling and Shift range selection for
+pointer input, and Shift extension for keyboard navigation. Table header
+backgrounds snapshot only the native frame, avoiding a second built-in sort
+glyph under the explicit indicator. GTK palettes and metrics are cached for
+the lifetime of each theme painter, avoiding repeated widget probes per cell.

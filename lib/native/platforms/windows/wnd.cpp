@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../property_grid_peer.h"
 #include <stdexcept>
 #include <typeinfo>
 
@@ -514,7 +515,7 @@ namespace windows
                     break;
                 if (auto *combo = dynamic_cast<native::combo_box *>(child);
                     combo && drawing->CtlType == ODT_COMBOBOX &&
-                    dynamic_cast<native::property_grid *>(combo->get_parent())) {
+                    native::detail::property_grid_owner(*combo)) {
                     const int saved = SaveDC(drawing->hDC);
                     const bool selected = (drawing->itemState & ODS_SELECTED) != 0;
                     const bool field = (drawing->itemState & ODS_COMBOBOXEDIT) != 0;
@@ -892,7 +893,7 @@ namespace windows
             HWND control = reinterpret_cast<HWND>(lparam);
             native::wnd *child =
                 windows::wnd_bindings.object_from_handle(control);
-            if ((child && dynamic_cast<native::property_grid *>(child->get_parent())) ||
+            if ((child && native::detail::property_grid_owner(*child)) ||
                 dynamic_cast<native::check *>(child) ||
                 dynamic_cast<native::radio *>(child)) {
                 HDC hdc = reinterpret_cast<HDC>(wparam);
@@ -942,11 +943,10 @@ namespace native
         const auto sides = get_border_sides();
         if (auto *control = dynamic_cast<button *>(this)) {
             const LONG_PTR style = GetWindowLongPtrW(handle, GWL_STYLE);
-            const LONG_PTR kind = sides == border_sides::all && typeid(*control) == typeid(button)
+            const LONG_PTR kind = typeid(*control) == typeid(button)
                 ? BS_PUSHBUTTON : BS_OWNERDRAW;
             if ((style & BS_TYPEMASK) != kind)
                 SetWindowLongPtrW(handle, GWL_STYLE, (style & ~BS_TYPEMASK) | kind);
-            return;
         }
         HRGN previous = CreateRectRgn(0, 0, 0, 0);
         const bool shaped = GetWindowRgn(handle, previous) != ERROR;

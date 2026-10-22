@@ -133,7 +133,10 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}"
         CACHE STRING
         "Docker image for Window Maker/WINGs builds")
-    set(DOCKER_IMAGE_WINDOWS_MINGW "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}" CACHE STRING "Docker image for Windows MinGW builds")
+    set(DOCKER_IMAGE_WINDOWS_MINGW "native-windows-winui-sdk:24.04" CACHE STRING "Docker image for Windows MinGW/WinUI builds")
+    if(DOCKER_IMAGE_WINDOWS_MINGW STREQUAL "wischner/gcc-x86_64-windows-mingw-w64:${DOCKER_TAG}")
+        set(DOCKER_IMAGE_WINDOWS_MINGW "native-windows-winui-sdk:24.04" CACHE STRING "Docker image for Windows MinGW/WinUI builds" FORCE)
+    endif()
     set(DOCKER_IMAGE_HAIKU "wischner/gcc-x86_64-haiku:${DOCKER_TAG_HAIKU}" CACHE STRING "Docker image for Haiku cross-builds")
 
     set(DOCKER_IMAGE_WAYLAND "native-wayland-sdk:24.04" CACHE STRING
@@ -214,6 +217,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                 -f ${CMAKE_SOURCE_DIR}/scripts/linux/wayland/Dockerfile
                 ${CMAKE_SOURCE_DIR}/scripts/linux/wayland
             USES_TERMINAL)
+        add_custom_target(docker-win-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build -t ${DOCKER_IMAGE_WINDOWS_MINGW}
+                -f ${CMAKE_SOURCE_DIR}/scripts/windows/winui/Dockerfile
+                ${CMAKE_SOURCE_DIR}/scripts/windows/winui
+            USES_TERMINAL)
         add_docker_cmake_build_target(docker-wayland build/linux-wayland
             ${DOCKER_IMAGE_WAYLAND} -DTOOLKIT=WAYLAND)
         add_docker_cmake_build_target(docker-elementary build/linux-elementary
@@ -243,6 +251,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             -DTOOLKIT=WMAKER)
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-mingw.cmake)
+        add_dependencies(docker-win docker-win-sdk)
         add_docker_cmake_build_target(docker-haiku build/haiku ${DOCKER_IMAGE_HAIKU}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-haiku.cmake)
     endif()

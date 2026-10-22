@@ -1,5 +1,10 @@
 # Chapter 17: Input, Dialogs, and Window Chrome
 
+Editable GTK combos preserve the insertion point while typing custom values
+or matching an existing choice. Windows picker text includes a small native
+space at either end. The property grid keeps its right frame outside its
+scrollbar, so the frame remains visible while scrolling.
+
 This chapter combines the standard choice controls, operating-system dialogs,
 and edge-attached window elements used by a typical document window.
 
@@ -9,6 +14,112 @@ remain readable. Rulers use `surface_kind::ruler` for their paper; the
 library paints shared perpendicular corners with `ruler_corner`. Motif's
 menu-colored ruler paper and marks do not change ordinary headers or
 window backgrounds.
+
+Single-line editors, both combo styles and date/time pickers use the same
+active-theme input height with vertically centered content. A taller bounds
+allocation centers that standard-height field; multiline editors still fill
+their bounds. A status bar always occupies the outermost bottom strip, so
+bottom toolbars appear above it regardless of construction order. Setting a
+status bar's edge to another edge throws `invalid_argument`.
+
+## Settings pages and date/time pickers
+
+Build settings pages with stable IDs and `<<`, or pass the same descriptor
+to `add_item()`. Pages are borrowed: declare them before the sidebar so they
+outlive it. A page's native children are recreated when selected again; keep
+their C++ objects alive to preserve values.
+
+```cpp
+#include <native.h>
+
+class preferences : public native::app_wnd {
+public:
+    preferences() : app_wnd("Preferences", 80, 60, 700, 400) {
+        navigation.set_search_visible(true);
+        navigation << native::settings_page(1, "General", general)
+                   << native::settings_page(2, "Appointments", appointments);
+        date.set_disabled_weekdays({native::day_of_week::saturday,
+                                    native::day_of_week::sunday});
+        date.set_validator([](native::date value) {
+            return !(value.month == 12 && value.day == 25);
+        });
+        time.set_range({8, 0, 0}, {18, 0, 0}).set_minute_step(15);
+        appointments.on_wnd_create.connect([this] {
+            date.set_parent(&appointments); date.create(); date.show();
+            time.set_parent(&appointments); time.create(); time.show();
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            navigation.set_parent(this);
+            navigation.set_bounds(get_client_bounds());
+            navigation.create(); navigation.show();
+            return true;
+        });
+        on_wnd_resize.connect([this](native::size) {
+            navigation.set_bounds(get_client_bounds()); return true;
+        });
+    }
+private:
+    native::panel general, appointments;
+    native::date_picker date{{2026, 12, 24}, native::rect(16, 16, 300, 34)};
+    native::time_picker time{{9, 30, 0}, native::rect(16, 66, 240, 34)};
+    native::settings_sidebar navigation;
+};
+
+int program(int, char **) {
+    preferences window;
+    return native::app::run(window);
+}
+```
+
+`settings_page(id, title, content, image, section, enabled)` also accepts a
+`std::shared_ptr<const native::img>` and a section heading. Images use the
+same ownership as tree and icon-view items. Native text-list navigation on
+Athena, XView and WINGs displays labels only; image-capable adapters display
+the supplied images. `set_selected_item(id)` is silent; user navigation
+emits `on_selection_change` with that ID. Zero clears selection.
+`set_item_enabled`, `set_item_text`, `set_item_image`, `remove_item` and
+`clear_items` update a created sidebar too. Remove a borrowed page before
+deleting its C++ object.
+
+Search is optional: `set_search_visible(true)` enables it and
+`set_search_text("appointments")` sets the query silently. Titles and section
+headings match case-insensitive substrings. Search filters navigation rows,
+keeping the current page and its values. No matches leaves the page open.
+`get_search_text()` reads the query; `on_search_change` reports user edits.
+Hiding search suspends filtering and retains the query. Mac uses AppKit's
+search field, source-list styling, group headings and sidebar material.
+
+Mac date fields use a native text-only editor and calendar button; time fields
+retain the native stepper. Both match a standard text field’s preferred height
+and center their text and accessories vertically.
+The calendar button inside the date field opens AppKit's calendar in a popover.
+For explanatory text, a read-only editor with `border_sides::none` uses a
+transparent native AppKit text view, so the page background remains visible.
+
+Dates are simple `{year, month, day}` values, independent of time zones.
+`set_range(first, last)` is inclusive. `set_disabled_dates()` accepts an
+explicit holiday or booking list; `set_disabled_weekdays()` handles recurring
+weekends. `set_validator()` adds application rules such as annual holidays.
+Native does not assume which country's holidays apply. GTK marks unavailable
+dates; calendars without individual disabled-day styling reject those dates,
+and composed date fields omit them from day choices.
+
+Times are `{hour, minute, second}` in 24-hour civil fields. Limits stay within
+one day. A minute step must divide 60; `set_seconds_visible(true)` enables
+seconds editing without changing the stored value. Hidden seconds are
+preserved. A time validator can express lunch breaks or recurring schedules;
+for an overnight schedule, retain the full-day range and use a predicate.
+
+All programmatic setters are silent. Value setters throw
+`std::invalid_argument` for unavailable values. Rule changes preserve the
+current value, so query `get_valid()` after changing restrictions. Accepted
+user changes emit `on_change`; unavailable proposals emit `on_rejected` and
+restore the cached value. Validators must be pure, run on the UI thread and
+are treated as unavailable if they throw.
+
+Run `vision --settings`, or open **Window → Settings and date/time pickers**,
+to exercise the sidebar, optional images and availability rules interactively.
 
 ## Combo box and list box
 
@@ -228,11 +339,13 @@ Windows uses the native common-controls status bar for the exact base
 protected drawing-stage overrides remain effective.
 
 On Haiku, the compact status strip follows the system `StatusView` chrome:
-the menu-bar background, a dark top rule, short cell dividers, panel text, and
+a flat panel background, a dark top rule, short internal cell dividers, panel text, and
 a platform theme height aligned with the titled-window resize marker. This
 height is distinct from the smaller scrollbar extent. Haiku's similarly named
 `BStatusBar` is a progress indicator, so it is not used for this text-only,
 multipart strip.
+The docked strip omits outer left/right dividers to avoid doubling the window
+frame at either side.
 
 Return to the [manual contents](../PROGRAMMING-NATIVE.md).
 
@@ -307,7 +420,10 @@ the transparent background commonly used for toolbar artwork.
 The bar grows or shrinks with the selected image size and retains its padding;
 neighbors and the client area are updated in the same pass. Top and bottom
 bars span the window width, and side bars stop between them;
-its tools use the main-menu palette and selection style. Available strip
+its tools use the main-menu palette and selection style on most backends.
+Mac bars use flexible-height native flat buttons, native checked/pressed feedback
+and native disabled/template-image rendering. They preserve the same commands
+and arbitrary edge placement. Available strip
 length clips excess tools, so use another bar to expose additional tools.
 
 ```cpp
@@ -352,3 +468,44 @@ the source row cancels its popup and invalidates retained callbacks.
 
 Vision's **Custom canvas** property demonstrates the same API with a color
 palette painted on a canvas and an `rgba`-to-hex converter.
+
+Pickers use the standard input height. macOS keeps compact native field
+widths. Haiku also keeps the date field compact; date and editable-combo
+arrows share their editor's paper and single outer frame. Dates use tight
+separator spacing. Dropdown arrows are centered in narrow buttons, highlight
+while pressed or open, and close their popup on a second click. The native calendar opens
+directly below the field and aligns left. It is never narrower than the field
+and grows when needed for readable day columns. Month navigation uses small,
+equal square native buttons. Date and time fields match the standard Haiku
+text-control height, with centered text and equal time arrows.
+On elementary,
+you can type a locale date or `YYYY-MM-DD` and press Enter. Calendar selection
+and typed input both apply the same date exclusions. GTK calendars show
+unavailable days using native insensitive styling.
+
+On macOS, date/time text shares the standard text-field baseline, and the
+calendar symbol accounts for native image-cell padding. The native time
+stepper meets the field's right edge without a separate margin.
+
+The optional settings search field shares the navigation column's width.
+Windows uses the actual WinUI 3 NavigationView and its native AutoSuggestBox;
+page images become native ImageIcon rows. Distribute the App SDK bootstrap
+DLL and install Windows App Runtime 1.8 as described in
+[Building and Distributing](12-BUILDING-AND-DISTRIBUTING.md#windows-with-mingw-w64). Haiku hides an unnecessary navigation scrollbar.
+Its outline list has a native frame with equal margins on every side.
+Property-grid rows fit native editors and use light dotted internal lines
+across names and values. Windows and Haiku stock edge toolbars use native
+toolbar widgets; their buttons and separators follow the native theme.
+Haiku toolbar strips reserve the native buttons' minimum size when icons grow
+or the bar changes orientation. Haiku Open, Save and Select Folder panels
+center their final native frame over the owner after native placement.
+
+Visible-owner macOS message boxes use native NSAlert sheets, preserving the
+synchronous result while AppKit attaches and positions the alert on its owner.
+A hidden owner uses AppKit application-modal presentation.
+
+On macOS each picker renders as one standard-height native field using the
+native control background color. The date field contains its text-only editor
+and calendar trigger; the time field contains its editor and native stepper.
+Text, steppers and calendar buttons are vertically centered. Changing toolbar icon dimensions grows the native button feedback;
+removing every preview button border removes its complete rounded bezel.

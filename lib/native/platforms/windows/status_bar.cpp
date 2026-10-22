@@ -184,7 +184,7 @@ namespace
                 SendMessageW(
                     _window,
                     SB_SETTEXTW,
-                    static_cast<WPARAM>(index),
+                    static_cast<WPARAM>(index) | SBT_NOBORDERS,
                     reinterpret_cast<LPARAM>(text.c_str()));
             }
         }

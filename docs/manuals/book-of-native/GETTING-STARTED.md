@@ -109,7 +109,9 @@ Build the Window Maker target backed by WINGs:
 cmake --build build/cmake --target docker-wmaker
 ```
 
-Build the Windows MinGW-w64 target:
+Build the Windows MinGW-w64/WinUI target. Its `docker-win-sdk` dependency
+builds `native-windows-winui-sdk:24.04`, including the pinned Windows App SDK
+1.8 projections and GCC 13 cross-compiler:
 
 ```bash
 cmake --build build/cmake --target docker-win
@@ -185,16 +187,20 @@ host display, each image supplies a headless Xvfb parent.
 
 The Windows cross-build produces
 `build/windows-mingw-w64/src/vision.exe`. MinGW runtime DLLs must be beside
-the executable in Windows. The **Windows 11, VM** F5 profile
+the executable in Windows, together with
+`Microsoft.WindowsAppRuntime.Bootstrap.dll`. Install x64 Windows App Runtime
+1.8 in the guest for the genuine WinUI NavigationView. The **Windows 11, VM** F5 profile
 deploys the program, matching DLLs and native debug server to the autologon
 desktop through `ssh whiskey`. Preparation transfers only changed files and
 keeps full symbols locally while staging a smaller executable. Loaded VM DLLs
 are cached under `build/windows-vm/` for subsequent debugger launches. The host
-requires Python 3.11+. It does not use Wine. See the
+requires Python 3.11+. Runtime execution and debugging use the native VM;
+Wine in the SDK image runs only the build-time projection generator. See the
 [Windows VM note](../../notes/WINDOWS-VM-RUNTIME.md) for one-time SSH setup.
 
-The Haiku cross-build produces `build/haiku/src/vision`. Copy that binary to
-the Haiku machine before running it.
+The Haiku cross-build produces `build/haiku/src/vision`. The **Haiku, VM**
+F5 profile prepares, deploys and debugs it through `ssh hotel`; the managed
+libvirt domain remains `Haiku`.
 
 The X11 F5 profile, **Linux X11, Xephyr**, builds
 through Docker and starts GDB inside a dedicated monochrome Xephyr/TWM
@@ -337,3 +343,14 @@ user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
 login session at `wayland-0`. See the elementary VM runtime note for observed
 desktop test limits. For deployment without debugging, build the target and
 run `scripts/linux/elementary-vm/deploy.sh` directly.
+
+
+## Settings and date/time gallery
+
+Run the selected Vision binary with `--settings`, or choose **Settings and
+date/time pickers** in its Window menu. The separate window exercises native
+page navigation, optional icons, holiday/weekend restrictions and time steps.
+The GTK/elementary SDK includes `gsettings-desktop-schemas`, required by
+GraniteTimePicker; keep that package installed on a native deployment too.
+Haiku's Docker SDK supplies the shared-kit headers and static libraries for
+its native date/time editors. No new F5 profile is needed.

@@ -18,7 +18,7 @@ The scripts are parameterized through environment variables:
 The VS Code launch profile is **macOS, VM**. Historical
 verification results below refer to the former host `leia`; they do not
 establish test coverage on `mike`. The 2026-10-21 Debug build on `mike`
-succeeds with AppleClang 17 and all 17 CTests pass. Password-free SSH, Clang,
+succeeds with AppleClang 17 and all 19 CTests pass. Password-free SSH, Clang,
 LLDB and rsync were verified on `mike`. Apple Command Line Tools are now
 installed, together with checksum-verified CMake 4.4.4 in
 `~/Applications/CMake.app`. Developer Tools authorization is enabled; interactive breakpoint and
@@ -56,6 +56,38 @@ no `com.apple.quarantine` xattr remains on the bundle.
 - The launch entry builds and starts the remote LLDB session through SSH.
 
 ## Native-control regression checks
+
+The settings/toolbar follow-up uses a dedicated AppKit source-list sidebar,
+sidebar material and optional NSSearchField. Stable IDs, repeated section
+headings, filtering without page teardown and search callbacks are covered by
+`native_settings_runtime_tests`. Date/time editors use native intrinsic sizes;
+the date's explicit calendar button opens a native popover whose selections
+pass the same date/holiday validation as the editor. The test activates that
+button and rejects a holiday through the popover's actual NSDatePicker.
+
+Stock edge toolbars host flexible-height native flat NSButtons and NSBox separators;
+configuration creates their children, never painting. Native actions, disabled
+and exclusive state, visible icon pixels and native workspace file-icon alpha
+have regression checks. AppKit cell measurements prevent truncated labels.
+Retained AppKit content views/delegates check weak resource-generation tokens;
+late callbacks cannot reach a destroyed C++ dialog or a replacement resource.
+The regression explicitly renders a retained view after recreation and deletion.
+Changing preview border sides preserves stock rounded-button drawing. Read-only
+borderless help uses transparent native text on the page background.
+
+Toolbar primitives use an explicit native appearance host to avoid snapshot
+text dimming. Appearance checks compare light/dark and selected/disabled
+states, composing image targets through AppKit before color comparison.
+Accessory probes allow a one-device-pixel baseline phase between native
+hierarchies; color/state tolerances remain strict. Production General, Dates,
+Time and Properties pages are inspected through AppKit view captures because
+system desktop captures remain subject to the permissions noted below.
+
+
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
 
 The 2026-10-21 VM follow-up covers I-beams before text editing, split-divider
 resize cursors before clicking, panel/canvas clipping in the composed
@@ -171,3 +203,115 @@ Run ctest --test-dir build/macos-debug --output-on-failure after the configured
 build script. These are functional regressions; the earlier full-gallery visual
 walkthrough remains incomplete. AppleClang with the installed Apple SDK is the
 explicit platform exception to Docker-backed GCC verification.
+
+
+The 2026-10-21 settings/picker addition passes all 19 CTests on `mike`,
+including real NSDatePicker action delivery, rejection rollback and page
+recreation. The production `vision --settings` also creates its navigation
+and pages. This session's System Events request reports assistive access
+unavailable; desktop captures hide the application windows. Those captures
+are not visual acceptance evidence. Direct offscreen captures from the
+running production gallery were inspected for both Dates and Time; this
+verifies their layout, not a physical-input walkthrough.
+
+
+The final 2026-10-21 control review passes all 19 CTests on `mike`. Visible-owner
+message boxes now use native NSAlert sheets attached to that owner, matching
+the existing file-panel attachment. The presentation regression verifies sheet
+ownership and the synchronous three-button result. A hidden owner retains
+AppKit's application-modal alert behavior.
+
+
+## Integrated controls and navigation (2026-10-22)
+
+Toolbar feedback uses flexible-height native buttons and alignment rectangles
+so its bezel grows with 16–48 pixel icons on horizontal and vertical strips.
+The matching theme primitive uses the same native style. All-edge removal
+switches off the stock rounded button bezel; partial masks retain native
+clipping and restoring an edge restores the bezel.
+
+Each picker has one native surrounding text-field bezel at the standard
+NSTextField intrinsic height and uses the adaptive native control color. Dates
+contain a text-only editor and calendar trigger without a stepper; times retain
+their native stepper. Native baseline and image-cell metrics align the text and
+accessories; the time stepper meets the field's right edge.
+The existing native popover and shared date/time validation remain in use.
+The second implicit calendar overlay is disabled in favor of that one trigger.
+
+Vision embeds Font Awesome Free gear/calendar/clock tiles, documented with
+attribution in `src/assets/navigation/README.md`. AppKit source-list rows use
+24-pixel images and 32-pixel page heights so full-color selected icons remain
+visible in both Aqua appearances.
+
+The source list uses explicit native row metrics: AppKit's system row-size
+styles otherwise overwrite image-view sizes when reusing a selected cell.
+Custom row-size metrics retain the native source-list renderer and its
+selection, with 24-pixel artwork on every page.
+
+
+The expanded native regressions pass on `mike`: every 16–48 pixel toolbar icon
+size on horizontal and vertical bars, whole-bezel removal with no corner
+fragments, native picker accessory containment and hit testing, calendar
+activation/rejection, and all three selected Vision navigation images in light
+and dark appearances. Test-owned AppKit captures show the integrated Dates and
+Time pages and 48-pixel selected toolbar buttons. Desktop capture permissions
+are unnecessary for these captures of the test's own views.
+
+Flexible toolbar theme comparisons paint a real reference NSButton into a
+sibling canvas, using the same destination context as the primitive. AppKit
+changes flexible bezels' fill tone and idle text when caching a button directly;
+matching those contexts preserves the strict color/state tolerances.
+
+The complete 2026-10-22 macOS suite passes all 19 CTests after these changes.
+The GCC/Docker SDL2, elementary, Windows and Haiku builds are warning-free;
+`git diff --check` also passes.
+
+
+The picker sizing follow-up removes the macOS date stepper and keeps its
+calendar trigger. Both fields use standard NSTextField intrinsic height,
+vertically centered in their requested bounds. The date text and calendar
+button, and the time text and compact native stepper, are centered inside that
+field. AppKit's adaptive control color supplies the background in both
+appearances; no fixed RGB palette or custom stepper drawing is introduced.
+
+After this picker-height/date-stepper change, all 19 macOS CTests pass on
+`mike`. The native fixture checks the preferred NSTextField height, centered
+editor/accessory alignment, date text-only mode, compact time stepper, native
+control background and calendar hit testing/holiday rollback. Light and dark
+AppKit captures of the production Dates and Time pages were also inspected.
+
+
+## Picker baseline and symbol alignment (2026-10-22)
+
+A follow-up replaces geometric editor centering with baseline alignment after
+setting the native editor height. NSDatePicker is unflipped inside the flipped
+field, and its native ornament/typography padding is not the visible text
+center. Calendar image-cell padding is handled separately; the time stepper
+meets the right edge without a gutter. NSTextField clips native decoration.
+The widgets and event/availability paths remain AppKit-owned.
+
+The completed AppleClang build passes all 19 CTests on `mike`. The AppKit
+regression compares rendered glyph rows with an NSTextField containing the
+same locale-formatted value, and checks painted calendar/arrow centering in
+both appearances. The existing native settings test still verifies calendar
+hit testing, popup activation and rejection rollback, and now checks the flush
+right edge. The final Dates/Time production captures were inspected in Aqua
+and Dark Aqua. These are test-owned view captures, not a physical-input
+walkthrough. GCC/Docker SDL2 builds and its two settings regressions pass.
+
+The regression writes `picker-date-{light,dark}.png`,
+`picker-time-{light,dark}.png`, and `picker-reference-{light,dark}.png` beside
+its existing `native-mac-settings-*` production-page captures in
+`build/macos-debug/tests/`. Render the full page when inspecting Dark Aqua: a
+cached native field can contain transparent background pixels.
+
+## Shared input and footer geometry (2026-10-22)
+
+After GCC/Docker validation, the documented AppleClang build on `mike` passes
+all 19 CTests. Single-line controls resolve to NSTextField's intrinsic height;
+NSComboBox alignment rectangles account for native outer margins during
+creation, movement and resizing. Picker baselines remain native; the calendar
+button fills the field's height so its image cell centers the symbol without
+relying on a taller host's fractional origin. Light/dark raster checks compare
+picker glyph rows with a stock text field and verify accessory centering.
+Status bars share the bottom-priority reservation tested by window API checks.

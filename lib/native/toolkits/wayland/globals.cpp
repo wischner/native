@@ -17,6 +17,8 @@ namespace linux::wayland
     bool exit_requested = false;
     GtkApplication *application = nullptr;
     widget_state::~widget_state() {
+        if (position_source)
+            g_source_remove(position_source);
         if (widget)
             g_object_unref(widget);
     }
@@ -108,6 +110,7 @@ namespace linux::wayland
                                peer.widget,
                                bounds.x1(),
                                bounds.y1());
+            if (peer.layout_children) peer.layout_children();
         }
     }
     namespace
@@ -224,6 +227,72 @@ namespace linux::wayland
         }
         g_object_unref(widget);
     }
+    namespace
+    {
+        struct button_style
+        {
+            GdkDisplay *display;
+            GtkCssProvider *provider;
+            native::border_sides sides;
+            ~button_style() {
+                gtk_style_context_remove_provider_for_display(
+                    display, GTK_STYLE_PROVIDER(provider));
+                g_object_unref(provider);
+                g_object_unref(display);
+            }
+        };
+    } // namespace
+    void style_button_frame(native::button &owner,
+                            native::border_sides sides) {
+        auto *widget = state(owner).editor;
+        auto *previous = static_cast<button_style *>(
+            g_object_get_data(G_OBJECT(widget), "native-button-style"));
+        if (previous && previous->sides == sides)
+            return;
+        if (sides == native::border_sides::all) {
+            g_object_set_data(
+                G_OBJECT(widget), "native-button-style", nullptr);
+            return;
+        }
+        const auto name =
+            "native-button-" +
+            std::to_string(reinterpret_cast<std::uintptr_t>(widget));
+        gtk_widget_set_name(widget, name.c_str());
+        GdkRGBA color{0.75, 0.75, 0.75, 1};
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+        gtk_style_context_lookup_color(
+            gtk_widget_get_style_context(widget), "borders", &color);
+        G_GNUC_END_IGNORE_DEPRECATIONS
+        char *text = gdk_rgba_to_string(&color);
+        const auto edge = [sides](native::border_sides side) {
+            return native::has_border(sides, side) ? "1px " : "0px ";
+        };
+        const auto css = "#" + name +
+                         " { box-shadow: none; outline-style: none; "
+                         "border-style: solid; border-color: " +
+                         text + "; border-width: " +
+                         edge(native::border_sides::top) +
+                         edge(native::border_sides::right) +
+                         edge(native::border_sides::bottom) +
+                         edge(native::border_sides::left) + "; }";
+        g_free(text);
+        auto *provider = gtk_css_provider_new();
+        gtk_css_provider_load_from_string(provider, css.c_str());
+        auto *display = gtk_widget_get_display(widget);
+        auto *style = new button_style{
+            GDK_DISPLAY(g_object_ref(display)), provider, sides};
+        g_object_set_data_full(
+            G_OBJECT(widget),
+            "native-button-style",
+            style,
+            +[](gpointer data) {
+                delete static_cast<button_style *>(data);
+            });
+        gtk_style_context_add_provider_for_display(
+            display,
+            GTK_STYLE_PROVIDER(provider),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    }
     void destroy(native::wnd &owner) {
         auto *resource =
             native::detail::peer_state<widget_state>(owner);
@@ -301,8 +370,11 @@ namespace linux::wayland
         gtk_widget_set_vexpand(drawing, true);
         gtk_overlay_set_child(GTK_OVERLAY(overlay), drawing);
         gtk_overlay_add_overlay(GTK_OVERLAY(overlay), content);
+        // Absolute child bounds describe the current allocation, not a
+        // growing minimum for the parent. Keep oversized children clipped.
         gtk_overlay_set_measure_overlay(
-            GTK_OVERLAY(overlay), content, true);
+            GTK_OVERLAY(overlay), content, false);
+        gtk_overlay_set_clip_overlay(GTK_OVERLAY(overlay), content, true);
         attach(owner, overlay, content);
         state(owner).drawing = drawing;
         configure_drawing(owner);

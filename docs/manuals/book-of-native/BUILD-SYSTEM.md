@@ -130,7 +130,7 @@ The images are:
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-openlook`
 - `wischner/gcc-x86_64-linux-window-maker`
-- `wischner/gcc-x86_64-windows-mingw-w64`
+- `native-windows-winui-sdk:24.04` (local `docker-win-sdk` dependency)
 - `wischner/gcc-x86_64-haiku`
 
 The source tree is mounted into the container at the same absolute path that it
@@ -164,14 +164,14 @@ executables:
 
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
-| `native_wayland_runtime_tests` | Real GTK/Granite widgets; live-control/theme pixel parity, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
+| `native_wayland_runtime_tests` | Real GTK/Granite widgets; live-control/theme pixel parity, all sixteen native button edge masks, primary press/release and Ctrl/Shift/group table routing, editable-combo caret, repeated native split allocation/destruction, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
-| `native_mac_runtime_tests` | Stock AppKit painting, text/split hover cursors, ruler motion, composed property-dialog toolbars, native button/check/radio theme parity in light/dark and disabled states, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `leia` |
+| `native_mac_runtime_tests` | Stock AppKit painting, all 16 native button bezel masks and borderless corner removal, 16–48 px toolbar highlight bounds on both axes, selected Vision navigation icon contrast, retained-view shutdown guards, text/split hover cursors, ruler motion, composed property-dialog toolbars, native button/check/radio/toolbar theme parity in light/dark and disabled states, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `mike` |
 | `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and CDE VM |
 | `native_openlook_runtime_tests` | Radio exclusion, intrinsic button height, identical partial-expose pixels, keyboard focus/text/completion, pre-show chrome construction, pane/list resizing and repeated modal/modeless teardown | OPEN LOOK display; Docker Xvfb and Tribblix VM |
 | `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
 | `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
-| `native_inspector_runtime_tests` | Modeless inspector creation and post-creation resizing, native checkbox/text/number input, icon/value pixels, Win32 combo paper and selection, live toolbar grow/shrink and sibling hits, all 16 SDL/Haiku border masks, arbitrary dropdown values with native popup content, cancellation/stale callbacks, scrolling and recreation | SDL2, X11, Motif, OPEN LOOK, WINGs, Windows and Haiku; native event loop, XTest on X11 toolkits |
+| `native_inspector_runtime_tests` | Modeless inspector creation and post-creation resizing, native checkbox/text/number input, icon/value pixels, Win32 combo paper and selection, live toolbar grow/shrink and sibling hits, all 16 SDL/Haiku/Motif border masks, arbitrary dropdown values with native popup content, cancellation/stale callbacks, scrolling and recreation | SDL2, X11, Motif, OPEN LOOK, WINGs, Windows and Haiku; native event loop, XTest on X11 toolkits |
 | `native_inspector_tests` | Typed property validation, event silence, all sixteen border masks, multiple edge bars, sticky groups and exact 16x16/24x24/32x32 icon pixels | Every hosted build; gemd session wrapper for proxy GEM |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |
 | `native_code_document_tests` | `code_document` text and marker behavior | Every hosted build |
@@ -360,7 +360,15 @@ The development host needs:
 
 The Windows library propagates a Common Controls v6 manifest resource into
 consuming executables. This enables operating-system visual styles, not a
-library-painted skin. The backend uses Windows 7-or-newer API declarations.
+library-painted skin. The backend uses Windows 10 API declarations. Settings
+navigation hosts the real WinUI NavigationView through Windows App SDK 1.8.
+`docker-win` depends on `docker-win-sdk`, which builds the pinned Ubuntu/GCC 13
+image and generates native C++/WinRT projections. Wine is used only for the
+build-time metadata generator. `scripts/windows/winui/install-sdk.py` records
+SHA-256 checksums and exact NuGet/MSYS2 versions, including Windows SDK
+contracts 10.0.26100.1 and C++/WinRT 3.0.260818.1. Extracted SDK license
+notices remain in `/opt/native-winui/licenses`. F5 deploys the App SDK bootstrap DLL beside
+Vision and checks the guest's installed x64 Windows App Runtime 1.8.
 
 **Windows 11, VM** retains the `docker-win` Debug build and
 deploys its executable, MinGW DLLs and native Win64 GDBserver through SSH.
@@ -454,16 +462,16 @@ host display is unavailable.
 The Haiku configuration expects:
 
 - A libvirt domain named `Haiku`.
-- The SSH alias `haiku`, authenticated without an interactive password prompt.
-  `ssh haiku` must open the guest shell; the SSH configuration owns its user,
+- The SSH alias `hotel`, authenticated without an interactive password prompt.
+  `ssh hotel` must open the guest shell; the SSH configuration owns its user,
   address and identity settings.
 - GDB at `/boot/system/bin/gdb` and the SSH server enabled in the guest.
 - A graphical Haiku session for the same user.
 
 The launch profile is named **Haiku, VM**. Its start, directory preparation,
-SCP deployment and SSH debugger transport all use the `haiku` alias.
-The 2026-10-19 guest connection succeeded, but that guest lacks GDB; see the
-[remote runtime note](../../notes/HAIKU-REMOTE-RUNTIME.md) before using F5.
+SCP deployment and SSH debugger transport all use the `hotel` alias.
+The 2026-10-21 connection verifies hostname `hotel` and GDB at the configured
+path; see the [remote runtime note](../../notes/HAIKU-REMOTE-RUNTIME.md).
 F5 starts the guest if necessary, waits for SSH, cross-builds the Debug binary,
 creates `/boot/home/Projects/native/run`, copies Vision there, and starts GDB
 inside the guest. Source files stay on the development host; the debug symbols
@@ -562,8 +570,13 @@ Vision launch configuration.
 
 | Test | Coverage | Backend |
 | --- | --- | --- |
+| `native_settings_model_tests` | Search filtering and retained page selection, Gregorian values, availability rules, stable IDs and silent setters | All selections |
+| `native_settings_runtime_tests` | Native picker callbacks, rejection rollback, search, visible WinUI island creation and Win32 picker text padding, AppKit source-list sections/calendar popover, standard text-field picker heights, text-only date mode, compact centered time stepper and adaptive control colors, page switching/recreation; GTK navigator texture pixels and compositor grow/shrink allocation | Native display; SDL dummy and GEM framebuffer supported |
 | `native_glsl_context_tests` | EGL/GLX handoff, API and draw/read restoration, repeated activation, creation/activation rollback and destruction with an active image context | Linux; deterministic shared driver fixtures, no display/GPU required |
 | `native_desktop_glsl_context_tests` | Real WGL/CGL caller-context preservation, repeated activation, nesting rejection, idle leave and entered teardown | Windows/macOS; skips with code 77 when desktop OpenGL is unavailable |
+
+The two settings CTests run the `native_settings_tests` executable, with
+`--runtime` selecting the native display/lifecycle fixture.
 
 The private driver fixture is loaded only by this test through its CTest
 `LD_LIBRARY_PATH`; it is never linked into or deployed with Native or Vision.
@@ -667,7 +680,9 @@ Both targets first build `docker-wayland-sdk` from
 `scripts/linux/wayland/Dockerfile`, tagged `native-wayland-sdk:24.04`.
 `DOCKER_IMAGE_WAYLAND` overrides that local image name. The pinned Ubuntu 24.04
 base supplies GCC, GTK 4.14.x, Granite 7.4, GtkSourceView 5.12, GLib/GIO,
-Pango/HarfBuzz, Cairo, Fontconfig, xkbcommon, PNG/JPEG and EGL/Mesa. The SDK
+Pango/HarfBuzz, Cairo, Fontconfig, xkbcommon, PNG/JPEG, EGL/Mesa and
+`gsettings-desktop-schemas`. GraniteTimePicker reads the installed
+`org.gnome.desktop.interface` schema, including under headless Weston. The SDK
 installs elementary's icon theme and stylesheet 8.0.0, pinned to commit
 `9c713d0f4c35f80a783e5fa6845a39d977c7140c`; upstream source and GPL notices
 remain in `/opt/elementary-stylesheet`. GTK API availability is capped at 4.14.
@@ -715,3 +730,14 @@ user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
 login session at `wayland-0`. See the elementary VM runtime note for observed
 desktop test limits. For deployment without debugging, build the target and
 run `scripts/linux/elementary-vm/deploy.sh` directly.
+
+
+Haiku date/time pickers use the SDK's `private/shared/DateTimeEdit.h` and
+`libshared` with `localestub`. Their dependency is private to the platform
+adapter, just like its existing ColumnListView integration; public headers
+remain portable. No additional runtime service or custom calendar is added.
+
+Vision embeds its checked-in navigation PNG bytes from
+`src/assets/navigation/icons.inc`. Regeneration is an optional asset-authoring
+step documented beside those assets; production builds add no font or SVG
+runtime dependency.

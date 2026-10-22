@@ -1267,6 +1267,29 @@ namespace
         expect(window.get_client_bounds().p.x == 0 &&
                    window.get_client_bounds().d.w == 300,
                "hidden non-client elements release their reserved space");
+
+        for (bool footer_first : {false, true}) {
+            native::app_wnd host("Footer order", 0, 0, 300, 200);
+            std::unique_ptr<native::status_bar> footer;
+            std::unique_ptr<native::toolbar> bottom;
+            if (footer_first) footer = std::make_unique<native::status_bar>(host, 22);
+            bottom = std::make_unique<native::toolbar>(host, native::window_edge::bottom, 30);
+            if (!footer_first) footer = std::make_unique<native::status_bar>(host, 22);
+            native::toolbar inner(host, native::window_edge::bottom, 20);
+            expect(footer->get_bounds().y2() == 200 &&
+                bottom->get_bounds().y2() == footer->get_bounds().y1() &&
+                inner.get_bounds().y2() == bottom->get_bounds().y1(),
+                "status stays below bottom toolbars in either construction order");
+            footer->set_visible(false);
+            expect(bottom->get_bounds().y2() == 200, "hiding a footer releases the outer bottom edge");
+            footer->set_extent(17).set_visible(true);
+            expect(bottom->get_bounds().y2() == 183, "resized footers keep their outer priority");
+            bool rejected = false;
+            try { footer->set_edge(native::window_edge::top); }
+            catch (const std::invalid_argument &) { rejected = true; }
+            expect(rejected && footer->get_edge() == native::window_edge::bottom,
+                "system status bars cannot move to another edge");
+        }
     }
 
     // Verify accordion state, borrowed contents, geometry, and

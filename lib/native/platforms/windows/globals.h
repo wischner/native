@@ -20,6 +20,18 @@
 
 namespace windows
 {
+    // Center native modal dialogs activated within one synchronous call.
+    class dialog_center final
+    {
+    public:
+        explicit dialog_center(HWND owner);
+        ~dialog_center();
+        dialog_center(const dialog_center &) = delete;
+        dialog_center &operator=(const dialog_center &) = delete;
+    private:
+        HHOOK _hook = nullptr;
+        HWND _previous = nullptr;
+    };
     // Win32 callbacks carry handles rather than C++ object context, so
     // backend keeps process-wide registries for callback dispatch.
     // Platform handle for a font_t — owns the GDI HFONT.

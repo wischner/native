@@ -28,6 +28,9 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/message_box.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/button.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/settings_sidebar.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolbar.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/pickers.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/check.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/list.mm

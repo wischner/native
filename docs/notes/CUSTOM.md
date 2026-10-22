@@ -5,7 +5,86 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-21.
+Audit date: 2026-10-22.
+
+The Windows/elementary control review retains the existing kind marks.
+Windows accordion headers omit the extra focused-header outline; native
+DATETIMEPICK_CLASS fields include literal text padding. GTK editable combos
+retain their native caret during model synchronization. Painted tables consume
+press/release once and share paint/hit-test metrics. GtkPaned retains native
+handle painting with explicit allocation and deferred portable ratio delivery;
+GtkNotebook retains native themed tabs with padded labels. Property-grid right
+frames use a separate shared canvas outside the scrollbar's painting region.
+Partial GTK button frames use scoped native CSS on the original GtkButton;
+restoring all edges removes the override, and all sixteen masks are checked.
+
+
+## Settings navigation and civil pickers — 2026-10-21
+
+These rows extend the per-backend inventory below. **H** means native
+widgets are composed with shared page lifecycle or availability policy;
+no custom painting replaces those widgets.
+
+| Backend | `settings_sidebar` | `date_picker` | `time_picker` |
+| --- | --- | --- | --- |
+| elementary | **H** GraniteSettingsSidebar/SettingsPage metadata and GtkStack, with borrowed Native pages | **N** GraniteDatePicker | **H** GraniteTimePicker, optional GtkSpinButton seconds |
+| GTK Wayland | **H** existing GtkListBox-backed tree | **H** GtkMenuButton, GtkPopover and GtkCalendar | **H** GtkSpinButton fields |
+| Windows | **H** genuine WinUI NavigationView in DesktopWindowXamlSource, with native search and ImageIcon rows | **N** DATETIMEPICK_CLASS | **N** DATETIMEPICK_CLASS time mode |
+| macOS | **H** AppKit source-list NSOutlineView, sidebar material and optional NSSearchField | **H** NSDatePicker and internal calendar action inside one native text-field bezel | **H** NSDatePicker time elements inside one native text-field bezel |
+| Haiku | **H** framed BOutlineListView with equal panel margins, automatic scrollbar visibility and optional search | **H** DateEdit with an internal calendar button and native BCalendarView popup | **H** BPrivate::TimeEdit with corrected field metrics and native arrows |
+| OpenMotif | **H** existing XmContainer tree | **H** native year entry and month/day choices | **H** native combo fields |
+| X11/Athena | **H** XawList navigation | **H** native year entry and month/day choices | **H** native choice fields |
+| OPEN LOOK | **H** PANEL_LIST navigation | **H** native year entry and month/day choices | **H** native choice fields |
+| Window Maker | **H** WMList navigation | **H** native year entry and month/day choices | **H** native choice fields |
+| SDL2 | **C** existing themed tree | **C** existing themed entry/choices | **C** existing themed choices |
+| GEMix (direct and gemd) | **C** existing themed tree | **C** existing themed entry/choices | **C** existing themed choices |
+
+Granite settings rows use the installed theme's `sidebar` CSS class for
+padding, background, border and selection. A missing icon/title grid gap in
+Granite 7 is restored to six logical pixels; existing native spacing is kept.
+No replacement row painter or application CSS palette is introduced. The
+**H** classification is unchanged.
+
+Windows settings navigation uses the actual WinUI 3 NavigationView hosted
+by DesktopWindowXamlSource, including native AutoSuggestBox search and
+ImageIcon rows. Its private peer owns the island and disconnects callbacks
+before parent teardown. The Docker SDK pins Windows App SDK 1.8 metadata;
+the Windows VM supplies the matching installed runtime.
+
+Mac settings navigation uses a native source list, sidebar material and optional
+NSSearchField. Other backends compose their existing text editor for optional
+search. Stock Mac toolbars use flexible-height native flat buttons and separators; their
+arbitrary edge/multiple-bar contract does not match titlebar-owned NSToolbar.
+Rounded stock buttons retain AppKit painting under partial edge masks, and
+borderless read-only text is transparent on its containing page. Workspace
+icons resolve native CGImages into premultiplied Quartz buffers before
+straight-RGBA publication, with the existing fallback for an empty render.
+Content views/window delegates check weak resource-generation tokens before
+late callbacks; retained-view tests cover resource recreation and C++ deletion.
+These compositions keep native widgets and peer-owned state; no replacement
+control painter or process-wide state map is introduced.
+
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
+
+GTK Wayland's existing **H** tree/settings adapters now include native
+GtkImage children for optional images, with owned texture pixels and the
+configured logical icon size. GTK/elementary structural hosts retain their
+native **H** composition; the fixed child overlay is clipped and non-measured
+to avoid turning the current client height into a new top-level minimum.
+
+Granite's real settings widget is preferred over emulation. Athena, XView
+and WINGs use their native text lists because their existing trees are
+library-painted; optional descriptor images are retained but not shown there.
+Other native trees display images. Haiku uses its SDK's shared-kit editors
+and links `libshared`/`localestub`, following the existing private-kit tree
+adapter pattern. Native date availability is enforced at commit; GTK calendars
+also mark unavailable days and apply native insensitive day-label states. No universal gray-day rendering is claimed.
+The SDL/GEM **C** justification is recorded in the reviewed-proposals table.
+Haiku's existing tree **H** classification is unchanged: rebuilding suppresses
+obsolete native-row paint/latch callbacks until the new model is installed.
 
 Motif tree repaint review: expand/collapse and selection invalidations target
 the retained inner `XmContainer`. The border is a separate native `XmFrame`
@@ -25,6 +104,57 @@ so the requested work area remains available to bottom-aligned controls.
 Shared shader lifecycle review: 2026-10-08. Resource creation and
 source-less installation retain pending status until an output
 succeeds. This state correction preserves the shader-view kind marks.
+
+The Haiku/Windows/elementary control review retains native controls while
+correcting composition: Haiku and Windows stock edge toolbars are **H**,
+with native toolbar controls owning buttons and separators. Explicit derived
+bars retain their existing **C** drawing contract. Haiku list controls and
+primitives share BControlLook scroll-view frames; accordion headers use the
+same surface/disclosure parts as table groups without an extra separator.
+Property grids remain **H** (or **C** on SDL/GEM), with value editors parented
+to their background canvas, native-sized editors,
+matching host backgrounds and a light dotted grid across labels and values.
+Win32 partial button borders clip the native control instead of switching to
+a different renderer. GTK stock buttons likewise clip their native widgets.
+Granite navigation icons use centered native GtkImage widgets at 24 logical
+pixels. Search uses GtkSearchEntry on GTK, and native text editors with a
+small magnifier on Windows/Haiku; its width matches the navigation column.
+
+## Input and footer consistency — 2026-10-22
+
+Control kinds remain unchanged. Shared geometry resolves single-line entries,
+both combo styles and date/time pickers to one active-theme input height.
+SDL2/GEMix retain **C** text renderers because neither supplies a standard
+entry widget; their line metrics now center single-line text. Athena text-sink
+margins, native font/client metrics on Win32, and AppKit alignment rectangles
+preserve native painting and interaction on the other adapters.
+
+OPEN LOOK retains its **N/H** native input items. After a canvas copy, the
+adapter repaints windowless Panel items through XView so their text and controls
+remain visible above their parent's background. Items whose callback binding
+has been removed are skipped during XView's deferred native destruction.
+
+Haiku combos and the date calendar trigger share native BControlLook menu-field
+surfaces and the public native arrow painter. All three dropdown indicators
+share that arrow. The **H** DateEdit keeps its compact preferred width inside
+the allocation. Date separators use measured glyph widths rather than fixed
+spacer cells. Date and editable-combo triggers use narrow hit areas with centered
+native arrows on document paper, leaving one text-field frame. Native pressed
+backgrounds remain visible while a popup is open. A second trigger click
+closes it, and stale close notifications cannot clear a newer popup's state.
+The native calendar
+opens immediately below the field, at least as wide as the field and wider
+when needed for seven readable day columns. Equal square native month buttons
+use the standard text-control height. The existing **H** search editor draws
+the native text-field frame,
+matching the navigator viewport. The **C** status footer remains necessary
+because BStatusBar is a progress indicator; its flat panel fill and single top
+rule avoid a recessed appearance. All backends reserve status bars below
+bottom toolbars independently of attachment order.
+
+Haiku's **H** table keeps native rows and Shift anchors when grid/stripe flags
+change. Native selection echoes no longer clear and rebuild an unchanged
+selection, preserving ordinary click-to-replace after a multiple selection.
 
 ## Legend
 
@@ -58,6 +188,7 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 
 | Backend and control | Decision |
 | --- | --- |
+| SDL2/GEMix `settings_sidebar`, `date_picker`, `time_picker` | Keep **C** through existing themed tree/choice controls. Neither backend supplies native settings, calendar or time widgets; reuse the established renderers and input routes rather than introducing a separate calendar painter. |
 | Wayland/elementary `toolbar`, `ruler`, `status_bar` | Keep **C**. These are arbitrary-edge portable non-client strips with staged application painting. GTK 4 has no ruler or multipart in-client status-bar control, and removed the GTK 3 toolbar widget. Native editors are used inside the property grid. |
 | Wayland/elementary advanced source/table drawing | Keep **H**. Stock content uses GtkSourceView/GtkColumnView; application lexer overlays, markers, diagnostics, derived drawing and grouped/headerless/alternating tables retain the shared semantic painter because GTK widgets do not implement those portable staged hooks. |
 | Wayland/elementary `shader_view` | Keep **C**. GTK drawing areas host application-owned multipass/history image programs; no Granite widget provides that program contract. |
@@ -70,17 +201,18 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | Motif `table_view` | Keep **H**: one buffered Motif-themed table viewport with native `XmScrollBar` peers. `XmContainer` detail view cannot provide virtual rows, grid lines, or matching portable column sizing; using it only for materialized data produced incompatible tables and rebuild flicker. Native tree and icon controls retain `XmContainer`. |
 | Window Maker `main_menu` | Keep **H**. The linked headers expose `WMMenuItem` through `WMPopUpButton`, but no public `WMCreateMenu`/show-at-point API with submenu support. The existing click-persistent popup preserves the menu contract. |
 | Haiku buttons/checks/radios | Keep **H**. Native controls own focus and interaction; owner/custom drawing is an explicit theme policy rather than a missed control. |
-| macOS derived controls | Keep staged rendering for explicitly derived controls and buttons requesting partial outer frames. Default stock buttons, checks, radios, tables, trees, icons and accordions use AppKit painting. |
+| macOS derived controls | Keep staged rendering for explicitly derived controls. Stock rounded buttons retain native painting under partial edge masks. Default stock buttons, checks, radios, tables, trees, icons and accordions use AppKit painting. |
 | macOS `code_edit` and `status_bar` | Keep **C**. `NSTextView` alone does not implement the portable source editor's document, folding, gutter, marker and completion contract. AppKit has no stock window footer matching the in-client multipart status strip. |
 | Windows derived controls | Keep the subclass drawing path to preserve protected overrides. Exact stock controls with default borders retain native painting, as with `status_bar`. Partial button/status frames use the staged path. |
 | Haiku `icon_view` | Keep **C**. Haiku's icon-grid implementation, `BPoseView`, is Tracker-private rather than a reusable public application control; a painted `BView` uses portable scrolling with `BControlLook` scrollbar parts and the system thumb preference. |
 | SDL2 file open/save/directory | Keep **C**. SDL2 has no file-panel or desktop-widget API; one themed library browser can still provide consistent modal ownership, special-folder navigation, native-or-generic file icons, and standard-filesystem behavior without an external process. |
 | X11/Athena `tab_view` | Keep **C**. Athena has no notebook or tab widget, and `Paned` only divides arbitrary children; painted tab chrome around borrowed page windows is the closest faithful implementation. |
-| All accordions | Keep their current implementation. Paned/split widgets do not implement disclosure-stack semantics. |
+| All accordions | Keep their current implementation and shared table-group header parts. Paned/split widgets do not implement disclosure-stack semantics. |
 | Non-Athena `canvas` scrollbars | Keep their existing themed implementation, now drawing the complete classic bar — both arrow buttons, the trough, and the thumb — from the shared `classic_scrollbar` split. The portable signed 32-bit content contract requires exact endpoints and shared ruler/corner geometry. Athena now adapts actual Xaw scrollbar fractions to that contract without changing other backends. |
-| All `toolbar` controls | Keep **C**: a shared menu-themed canvas preserves arbitrary edge attachment, multiple stacked strips, independent toggles and named exclusive groups. Native menu theme primitives provide its appearance. |
+| Toolbars without a native adapter and explicitly derived bars | Keep **C**: a shared menu-themed canvas preserves arbitrary edge attachment, multiple stacked strips, independent toggles and named exclusive groups. Native menu theme primitives provide its appearance. |
 | Custom property dropdown cell | Keep **C** within the inspector: native string-list combos cannot host arbitrary controls or provide application-defined value converters. The popup content itself retains its control’s native or canvas implementation. |
 | GEM/SDL `property_grid` | Keep **C**: these backends have no stock property inspector; the grid reuses their existing text/check/combo controls and canvas scrolling. Other backends are **H**, combining native editors with shared labels and row geometry. |
+| Win32 `property_grid` | Keep **H**: Microsoft’s PropertyGrid implementations belong to MFC or WinForms, which are not dependencies of this Win32/MinGW library. Native EDIT, checkbox and combo controls remain the value editors; the portable grid supplies uniform row geometry and light dotted separators. |
 | All `shader_view` controls | Keep **C**: no stock widget executes Native's bounded programmable image profile. Reusing the existing canvas host retains native hierarchy/input/composition without replacing standard controls. |
 | All `canvas` hosts | Keep **H**. The backend supplies a real child drawing surface and its event routing; application painting owns the client pixels, while backend or portable code supplies chrome. |
 
@@ -138,7 +270,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
 | `split_view` | **N/H** | Xaw `Paned` with private Form pane hosts preserving child borders; captured full-strip dragging through native constraints, without XOR grips. |
 | `panel` | **N/H** | Athena Form subclass; native hosting/background with portable geometry ownership. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Xaw `Form` drawable host with portable client/ruler painting and actual Xaw scrollbar children. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -222,7 +354,7 @@ destruction, not a timeout that could outlive their parent.
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N/H** | `XmPanedWindow` with a centered native sash and resizable panes. Sash and full-divider pointer dragging share the portable ratio transaction. |
 | `panel` | **N** | `XmForm` child with `XmRESIZE_NONE`; Motif fills it and it is a real Xt parent. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -262,7 +394,7 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a keyboard-accepting XView Panel; key events route navigation, Shift selection, text and completion through the portable editor. |
 | `split_view` | **H** | Two private XView `Panel` panes with captured live dragging, scrollbar-aware list resizing and an exposure-painted centered grip; not `OPENWIN_SPLIT`. |
 | `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -287,7 +419,7 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior; native pane-size notifications synchronize the portable ratio and refit both borrowed children to the exact granted pane sizes, preserving every control edge. |
 | `panel` | **N** | `WMFrame` with `WRFlat` relief; WINGs fills it and it is a real parent widget. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -390,8 +522,8 @@ the client inset with a canvas painting to its edges.
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
 | `panel` | **N** | Child window of a Native class whose background brush is `COLOR_BTNFACE`; Win32 fills it and it is a real parent HWND. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
-| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `toolbar` | **H** | Win32 flat toolbar common control, native image list, toggle buttons and orientation-aware separators. |
 | `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler` | **C** | Shared library-painted non-client strip; Win32 has no stock ruler peer. |
@@ -399,6 +531,18 @@ the client inset with a canvas painting to its edges.
 | File open/save/directory | **N** | Common Item Dialog (`IFileOpenDialog`/`IFileSaveDialog`, with folder-pick mode). |
 | `message_box` | **N** | Win32 `MessageBoxW`. |
 ## Haiku
+
+The 2026-10-22 layout review retains native controls and corrects their
+allocation. BToolBar minimum sizes reserve the complete button/icon height
+and width when changing orientation. DateEdit/TimeEdit include their accessory
+area in preferred widths, use BTextControl height and center their native
+locale-formatted segments by font metrics. BControlLook draws the text frame
+and equally sized time arrows; the date field hosts a flat calendar button
+inside that frame. The time picker is **H** because these layout and native
+drawing adaptations supplement the shared-kit control. Native file panels
+center after Show, which otherwise replaces the earlier placement. The
+painted status strip keeps its top rule and internal part separators without
+outer side rules. Single-line BTextView centering uses its actual line height.
 
 Rechecked 2026-09-05 in the Haiku VM: selection/resize repainting, collection
 disclosure, table headings/groups/grid gutters, native four-edge tabs, and
@@ -415,7 +559,7 @@ registration is complete, preventing early custom-draw callbacks.
 | `check` | **H** | `BCheckBox` subclass with Haiku-only drawing stages; indicator and label use the same `BControlLook` primitives as custom themed checks. No SDL2/default checkbox painter is linked into Haiku. |
 | `radio` | **H** | `BRadioButton` subclass with a library theme-drawing override. |
 | `list` | **N/H** | `BListView`/`BStringItem`; selection invalidates one shared paint path, and resizing repaints the entire list to erase old borders. |
-| `combo_box` | **H** | Native buttons and `BTextControl` with `BControlLook` frames; editable arrow is a child inside the shared text border. Both native `BPopUpMenu` lists match the field width and open below it. Child visibility uses local hide counts, independent of hidden ancestors. |
+| `combo_box` | **H** | Native buttons and `BTextControl` with `BControlLook` frames; the editable child paints only the shared native arrow on editor paper inside the single text border. Both native `BPopUpMenu` lists match the field width and open below it. Child visibility uses local hide counts, independent of hidden ancestors. |
 | `text_edit` | **N/H** | `BTextView` and optional `BScrollView`; subclass supplies portable validation. |
 | `accordion` | **C** | Library-painted collection `BView`, with background clearing on every invalid region; native-themed headers omit the generic blue focus frame. |
 | `tab_view` | **N/H** | Native `BTabView`/`BTab` on all four sides, including native rotated text and label-sized side tabs; `B_NO_BORDER` plus one separator in strip-only mode. |
@@ -425,8 +569,8 @@ registration is complete, preventing early custom-draw callbacks.
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
 | `panel` | **N** | Child `BView` with the panel background view color and no `B_WILL_DRAW`; the app_server fills it and it is a real parent view. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
-| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `toolbar` | **H** | Native shared-kit BToolBar, flat BButton actions, native layout and oriented separators. |
 | `canvas` | **H** | Shared collection host `BView`; the client, rulers, and themed scrollbars are painted by portable code. Native `BScrollBar` is not used because the portable scroll range is signed 32-bit content, not view pixels. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
@@ -474,7 +618,7 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | `button`, `check`, `radio` | **N/H** | Stock `NSButton` painting and interaction; only derived controls route to portable drawing hooks. |
 | `list` | **N/H** | One-column `NSTableView` in `NSScrollView`, adapted to the portable list model. |
 | `combo_box` | **N** | `NSComboBox`. |
-| `text_edit` | **N/H** | `NSTextField` or `NSTextView` in `NSScrollView`; delegates enforce portable validation. |
+| `text_edit` | **N/H** | `NSTextField` or `NSTextView` in `NSScrollView`; delegates enforce portable validation. Borderless read-only text draws transparently on the page. |
 | `accordion` | **N/H** | `NSScrollView` and `NSStackView` with native disclosure buttons, labels, images and portable borrowed-page routing. |
 | `tab_view` | **N/H** | Stock `NSTabView`/`NSTabViewItem`, one native page hierarchy per item, native layout and all four placements; no owner-drawn separator or page overlay. |
 | `icon_view` | **N/H** | `NSCollectionView` in `NSScrollView`; stock items compose native image/text views and selection boxes. Native selection delegates reject disabled items. |
@@ -483,8 +627,8 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | `code_edit` | **C** | Portable document/editor painted in a custom `NSView`. |
 | `split_view` | **N** | `NSSplitView` owns divider appearance, tracking and pane allocation; borrowed controls fill the actual panes. |
 | `panel` | **N** | Child `NSView` filling `windowBackgroundColor`; a real AppKit parent for every control. |
-| `property_grid` | **H** | Compact typed rows with separate label/scrollbar canvases and native text/check/combo editors; painting regions do not overlap editor input. |
-| `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `toolbar` | **H** | Flexible-height native flat NSButton tools and NSBox separators in the existing edge surface; AppKit draws states and images. Derived bars retain custom drawing. |
 | `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler` | **C** | Shared library-painted non-client strip; `NSRulerView` is not currently used. |
@@ -611,13 +755,13 @@ The elementary specialization calls Granite 7's C API from C++.
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | **N/H** | GTK application windows and header bars; modeless top levels stack independently, modal windows retain native transience. Portable ownership and close policy remain. |
 | `main_menu` | **N** | **N** | GMenu/GAction and GtkPopoverMenuBar. |
 | `button`, `check`, `radio` | **N** | **N** | GtkButton and GtkCheckButton; portable radio groups and silent setters. |
-| `list`, `combo_box` | **N/H** | **N/H** | GtkListBox/scroller; GtkDropDown plus a native editable entry. |
+| `list`, `combo_box` | **N/H** | **N/H** | GtkListBox/scroller; GtkDropDown for selection and the native GTK 4.14 GtkComboBoxText for editable fields. |
 | `text_edit` | **N** | **N** | GTK entry/text view; elementary single-line fields use GraniteValidatedEntry. |
 | `accordion` | **N/H** | **N/H** | GtkExpander sections with borrowed portable pages. |
 | `tab_view` | **N/H** | **N/H** | GtkNotebook and portable page lifecycle. |
 | `split_view` | **N/H** | **N/H** | GtkPaned and portable ratio/borrowed children. |
 | `icon_view` | **N/H** | **N/H** | Virtual GtkGridView with native selection and RGBA textures. |
-| `tree_view` | **H** | **H** | Native GtkListBox rows and disclosure buttons adapted to the stable-ID hierarchy. |
+| `tree_view` | **H** | **H** | Native GtkListBox rows, texture-backed GtkImage children and disclosure buttons adapted to the stable-ID hierarchy. |
 | `table_view` | **N/H** | **N/H** | Virtual GtkColumnView and lazy GListModel for stock tables; shared Cairo rendering for groups, alternating/headerless layouts and derived drawing. |
 | `code_edit` | **N/H** | **N/H** | GtkSourceView 5 for stock editing; shared Cairo rendering for application overlays and derived drawing, with one canonical portable document. |
 | `panel`, `canvas` | **H** | **H** | GtkOverlay/GtkFixed child hosting and GtkDrawingArea/Cairo application painting. |
@@ -633,8 +777,10 @@ matrix and backend open issues.
 
 The 2026-10-20 GTK interaction repair retains these kinds: native buttons
 remain **N**, menus **N**, and panel/canvas composition **H**. Fixed child
-hosts participate in overlay measurement and pointer targeting; background
-controllers run only at the target phase, preserving native child input.
+hosts participate in pointer targeting; background controllers run only at
+the target phase, preserving native child input. The 2026-10-21 resize
+correction excludes those hosts from overlay measurement and clips them to
+the viewport, so current client-filling bounds do not retain enlarged minimums.
 Top-level default sizes account for GTK header/menu chrome. Menu mnemonics
 translate parsed portable labels to GTK underscore syntax, escaping literal
 underscores and preserving ampersands.
@@ -664,3 +810,33 @@ tested controls, not every CSS animation frame or physical display scale.
 The 2026-10-20 modeless stacking follow-up retains the GTK/elementary **N/H**
 window classification. Modeless windows omit GTK transience; modal dialogs
 retain it. Portable ownership continues to govern lifetime.
+
+Visible-owner macOS message boxes use native NSAlert sheets, preserving the
+synchronous result while AppKit attaches and positions the alert on its owner.
+A hidden owner uses AppKit application-modal presentation.
+
+
+## AppKit sizing and navigator refinement — 2026-10-22
+
+Mac edge toolbars remain **H**: flexible-height NSButtons with native hover and
+selected feedback replace the fixed-height accessory bezel. Their native
+alignment rectangles grow with the configured icon size on either axis. The
+matching toolbar primitive uses the same native style. Stock borderless buttons
+turn off their native bezel entirely; partial masks retain rounded native
+painting and restore the bezel when an edge returns.
+
+Date and time pickers are **H** compositions of native AppKit controls.
+One standard-height NSTextField bezel uses the adaptive native control color.
+Dates contain a borderless text-only NSDatePicker and native calendar button,
+with no stepper. Times retain the native editor and built-in stepper. Native
+baseline metrics align text after sizing the editor, image-cell padding aligns
+the calendar symbol, and the time stepper meets the field's right edge. The
+enclosing native field clips decoration to its bounds. The 2026-10-22 rendered
+alignment follow-up retains both **H** kinds and the native AppKit painters.
+The popover still uses the native graphical NSDatePicker and shared validation.
+The macOS time picker is now **H**, because a native outer field encloses it.
+
+Mac settings rows use 24-pixel images and 32-pixel page heights. Vision supplies
+shared, embedded Font Awesome Free tiles to every backend rather than generic
+filesystem icons; its existing text-only adapters retain native text lists.
+The artwork and license are recorded in `src/assets/navigation/README.md`.

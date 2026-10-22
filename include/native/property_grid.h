@@ -129,8 +129,10 @@ namespace native
         std::vector<std::unique_ptr<row>> _rows;
         std::unique_ptr<canvas> _viewport;
         std::unique_ptr<canvas> _labels;
+        std::unique_ptr<canvas> _values;
         std::unique_ptr<canvas> _top_frame;
         std::unique_ptr<canvas> _bottom_frame;
+        std::unique_ptr<canvas> _right_frame;
         int _row_height = 0;
         int _resolved_height = 20;
         int _label_width = 0;

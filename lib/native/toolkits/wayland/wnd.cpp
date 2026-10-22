@@ -19,6 +19,8 @@ namespace native
         linux::wayland::geometry(*this);
     }
     void wnd::apply_border_sides() {
+        if (auto *peer = detail::peer_state<linux::wayland::widget_state>(*this);
+            peer && peer->layout_children) peer->layout_children();
         invalidate();
     }
     void wnd::apply_parent() {

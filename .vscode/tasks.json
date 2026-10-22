@@ -142,6 +142,7 @@
         },
         {
             "label": "CMake Build Debug (Docker Windows)",
+            "detail": "Build the pinned MinGW/WinUI SDK, then Vision and its Windows App SDK bootstrap.",
             "type": "process",
             "command": "cmake",
             "args": ["--build", "build/cmake", "--target", "docker-win"],
@@ -180,7 +181,7 @@
             "label": "Start Debug Target (Haiku)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/kvm/ensure-running.sh",
-            "args": ["Haiku", "haiku"],
+            "args": ["Haiku", "hotel"],
             "problemMatcher": []
         },
         {
@@ -188,7 +189,7 @@
             "type": "shell",
             "command": "ssh",
             "args": [
-                "haiku",
+                "hotel",
                 "mkdir -p /boot/home/Projects/${workspaceFolderBasename}/run"
             ],
             "problemMatcher": [],
@@ -203,7 +204,7 @@
                 "-r",
                 "${workspaceFolder}/build/haiku/src/vision",
                 "${workspaceFolder}/build/haiku/src/retro-terminal",
-                "haiku:/boot/home/Projects/${workspaceFolderBasename}/run/"
+                "hotel:/boot/home/Projects/${workspaceFolderBasename}/run/"
             ],
             "problemMatcher": [],
             "dependsOrder": "sequence",

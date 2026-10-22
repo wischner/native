@@ -43,7 +43,7 @@ namespace native
                   coord x = 0,
                   coord y = 0,
                   dim width = 180,
-                  dim height = 28);
+                  dim height = 24);
 
         // Construct an editor from text, mode, position, and size.
         text_edit(const std::string &text,
@@ -102,6 +102,9 @@ namespace native
         virtual void select_all();
 
     protected:
+        // Use the active theme's standard single-line field height.
+        rect constrain_bounds(const rect &bounds) const override;
+
         // Create the backend text-edit resource.
         void create_native() override;
 

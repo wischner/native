@@ -102,6 +102,9 @@ namespace native
             initWithFrame:NSMakeRect(_bounds.p.x, _bounds.p.y,
                                      _bounds.d.w, _bounds.d.h)];
         [combo setUsesDataSource:NO];
+        [combo setFont:[NSFont systemFontOfSize:[NSFont systemFontSize]]];
+        [combo setFrame:[combo frameForAlignmentRect:
+            NSMakeRect(_bounds.x1(), _bounds.y1(), _bounds.w(), _bounds.h())]];
         [combo setCompletes:YES];
         [combo setEditable:get_style() == combo_box_style::editable
                               ? YES : NO];

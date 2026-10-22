@@ -4,6 +4,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../property_grid_peer.h"
 #include "globals.h"
 namespace
 {
@@ -30,8 +31,12 @@ namespace native
     void text_edit::create_native() {
         GtkWidget *editor = nullptr;
         GtkWidget *host = nullptr;
-        if (get_mode() == text_edit_mode::single_line)
-            host = editor = linux::wayland::new_entry();
+        if (get_mode() == text_edit_mode::single_line) {
+            host = editor = dynamic_cast<settings_sidebar *>(get_parent())
+                ? gtk_search_entry_new() : linux::wayland::new_entry();
+            if (GTK_IS_SEARCH_ENTRY(editor))
+                gtk_widget_set_tooltip_text(editor, "Search settings");
+        }
         else {
             editor = gtk_text_view_new();
             host = gtk_scrolled_window_new();
@@ -40,6 +45,10 @@ namespace native
         }
         attach(*this, host);
         state(*this).editor = editor;
+        if (native::detail::property_grid_owner(*this)) {
+            gtk_widget_add_css_class(host, "flat");
+            if (GTK_IS_ENTRY(editor)) gtk_entry_set_has_frame(GTK_ENTRY(editor), false);
+        }
         apply_text();
         apply_read_only();
         auto changed = +[](GObject *, gpointer data) {

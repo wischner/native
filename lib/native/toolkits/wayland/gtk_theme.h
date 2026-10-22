@@ -7,6 +7,7 @@
 //
 #pragma once
 #include "theme_snapshot.h"
+#include <optional>
 namespace linux::wayland
 {
     class gtk_theme final : public native::theme
@@ -77,6 +78,8 @@ namespace linux::wayland
                      GtkWidget *target = nullptr,
                      const char *target_css = nullptr);
         std::shared_ptr<theme_snapshot> _snapshot;
+        mutable std::optional<metrics> _metrics;
+        mutable std::optional<palette> _palette;
     };
     // Construct the same GTK list composition used by stock list
     // controls.

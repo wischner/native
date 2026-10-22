@@ -1,11 +1,12 @@
 //
 // Adapts the stable-id tree model to native GTK rows and disclosure
-// buttons.
+// buttons and image-backed native GtkImage children.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
 #include "globals.h"
+#include <algorithm>
 namespace
 {
     using namespace linux::wayland;
@@ -16,6 +17,23 @@ namespace
     };
     void free_action(gpointer data, GClosure *) {
         delete static_cast<tree_action *>(data);
+    }
+    // Copy portable pixels into an owned native texture. GtkImage scales
+    // the paintable with the tree's logical icon size, not its source size.
+    GtkWidget *item_image(const native::img &source,
+                          native::size dimensions) {
+        auto *bytes = g_bytes_new(
+            source.pixels(), source.w() * source.h() * sizeof(native::rgba));
+        auto *texture = gdk_memory_texture_new(source.w(), source.h(),
+            GDK_MEMORY_R8G8B8A8, bytes, source.w() * sizeof(native::rgba));
+        auto *image = gtk_image_new_from_paintable(GDK_PAINTABLE(texture));
+        gtk_image_set_pixel_size(GTK_IMAGE(image),
+                                std::max(dimensions.w, dimensions.h));
+        gtk_widget_set_size_request(image, dimensions.w, dimensions.h);
+        gtk_widget_set_valign(image, GTK_ALIGN_CENTER);
+        g_object_unref(texture);
+        g_bytes_unref(bytes);
+        return image;
     }
 } // namespace
 namespace native
@@ -87,8 +105,13 @@ namespace native
                     free_action,
                     GConnectFlags(0));
             }
+            if (item.image && item.image->w() && item.image->h())
+                gtk_box_append(GTK_BOX(box),
+                               item_image(*item.image, get_icon_size()));
             auto *label = gtk_label_new(item.text.c_str());
             gtk_label_set_xalign(GTK_LABEL(label), 0);
+            gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+            gtk_widget_set_hexpand(label, true);
             gtk_box_append(GTK_BOX(box), label);
             gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), box);
             gtk_widget_set_sensitive(row, item.enabled);

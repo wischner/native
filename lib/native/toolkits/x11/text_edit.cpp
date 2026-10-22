@@ -12,12 +12,13 @@
 #include <stdexcept>
 #include <string>
 
-#include <X11/Intrinsic.h>
+#include <X11/IntrinsicP.h>
 #include <X11/StringDefs.h>
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Text.h>
 #include <X11/Xaw/TextSrc.h>
+#include <X11/Xaw/TextP.h>
 #include <X11/keysym.h>
 
 #include "../../text_util.h"
@@ -26,6 +27,23 @@
 
 namespace
 {
+    // Athena text margins are resources rather than a vertical-alignment
+    // property. Resolve both margins from the actual text-sink font.
+    void center_single_line(Widget widget, native::text_edit *owner) {
+        if (!owner || owner->get_mode() != native::text_edit_mode::single_line) return;
+        XFontStruct *font = nullptr;
+        XtVaGetValues(XawTextGetSink(widget), XtNfont, &font, nullptr);
+        if (!font) return;
+        Dimension height = 0;
+        XtVaGetValues(widget, XtNheight, &height, nullptr);
+        const int extra = std::max(0, int(height) - font->ascent - font->descent);
+        // Xaw's SetValues does not copy topMargin to the effective text
+        // margin; keep it in step as the combo adapter does.
+        reinterpret_cast<TextWidget>(widget)->text.margin.top = extra / 2;
+        XtVaSetValues(widget, XtNtopMargin, extra / 2,
+            XtNbottomMargin, extra / 2, nullptr);
+        if (XtIsRealized(widget)) XawTextDisplay(widget);
+    }
     Widget parent_widget(native::text_edit *editor) {
         native::wnd *parent = editor->get_parent();
         Widget widget = linux::x11::parent_widget(editor);
@@ -263,6 +281,12 @@ namespace native
         binding->source = XawTextGetSource(widget);
         linux::x11::wnd_bindings.register_pair(widget, self);
         linux::x11::text_edit_bindings.register_pair(self, binding);
+        center_single_line(widget, self);
+        XtAddEventHandler(widget, StructureNotifyMask, False,
+            +[](Widget control, XtPointer data, XEvent *event, Boolean *) {
+                if (event->type == ConfigureNotify)
+                    center_single_line(control, static_cast<native::text_edit *>(data));
+            }, self);
         XtAddCallback(binding->source,
                       XtNcallback,
                       source_changed,

@@ -65,6 +65,17 @@ namespace
         explicit windows_theme(native::gpx &g)
             : theme(g) {}
 
+        theme &draw_focus(const native::rect &bounds,
+                           const state &value) override {
+            auto *owner = windows::wnd_bindings.object_from_handle(
+                windows::hwnd_from_gpx(_g));
+            // Accordion headers already communicate their active section
+            // through the title, disclosure and optional image.
+            if (dynamic_cast<native::accordion *>(owner))
+                return *this;
+            return theme::draw_focus(bounds, value);
+        }
+
         metrics defaults() const override {
             metrics m;
             m.menu_bar_height =
@@ -79,6 +90,8 @@ namespace
                 select_control_font(hdc);
                 TEXTMETRICW metric{};
                 if (GetTextMetricsW(hdc, &metric)) {
+                    m.text_edit_height = metric.tmHeight +
+                        2 * GetSystemMetrics(SM_CYEDGE) + 4;
                     m.list_item_height = std::max(
                         1, static_cast<int>(metric.tmHeight));
                     m.header_height = std::max(
@@ -184,6 +197,29 @@ namespace
                           DT_END_ELLIPSIS);
             SelectClipRgn(hdc, nullptr);
             windows::release_gpx_dc(_g, hdc);
+            return *this;
+        }
+
+        theme &draw_toolbar_button(const native::rect &r,
+                                    const std::string &text, const state &s) override {
+            HWND window = windows::hwnd_from_gpx(_g);
+            HDC dc = window ? windows::acquire_gpx_dc(_g) : nullptr;
+            if (!dc) return draw_button_fallback(r, text, s);
+            const int saved = SaveDC(dc);
+            apply_clip(dc, _g);
+            auto bounds = windows::to_rect(r);
+            HTHEME visual = OpenThemeData(window, L"Toolbar");
+            if (visual) {
+                const int state = s.disabled ? TS_DISABLED : s.pressed ? TS_PRESSED
+                    : s.selected ? (s.hot ? TS_HOTCHECKED : TS_CHECKED) : s.hot ? TS_HOT : TS_NORMAL;
+                DrawThemeBackground(visual, dc, TP_BUTTON, state, &bounds, nullptr);
+                CloseThemeData(visual);
+            }
+            select_control_font(dc); SetBkMode(dc, TRANSPARENT);
+            SetTextColor(dc, GetSysColor(s.disabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
+            const auto label = windows::utf8_to_wide(text);
+            DrawTextW(dc, label.c_str(), label.size(), &bounds, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            RestoreDC(dc, saved); windows::release_gpx_dc(_g, dc);
             return *this;
         }
 

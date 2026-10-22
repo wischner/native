@@ -2,6 +2,7 @@
 set(SRC_FILES
     glsl_context.cpp
     theme.cpp
+    toolbar.cpp
     main.cpp
     globals.cpp
     app.cpp
@@ -19,6 +20,9 @@ set(SRC_FILES
     message_box.cpp
     button.cpp
     combo_box.cpp
+    pickers.cpp
+    input_look.cpp
+    settings_sidebar.cpp
     check.cpp
     radio.cpp
     list.cpp
@@ -72,6 +76,11 @@ find_library(HAIKU_LIB_COLUMN_LIST
 target_include_directories(native PRIVATE
     ${HAIKU_COLUMN_LIST_INCLUDE}
 )
+
+find_path(HAIKU_SHARED_INCLUDE NAMES DateTimeEdit.h PATH_SUFFIXES private/shared REQUIRED)
+find_library(HAIKU_LIB_SHARED NAMES shared REQUIRED)
+target_include_directories(native SYSTEM PRIVATE ${HAIKU_SHARED_INCLUDE})
+target_link_libraries(native PRIVATE ${HAIKU_LIB_SHARED} localestub)
 
 # Link against the BeAPI and Tracker libraries.
 target_link_libraries(native

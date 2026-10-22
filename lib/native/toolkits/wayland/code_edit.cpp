@@ -52,6 +52,9 @@ namespace native
                 colors.marker.a;
             gtk_widget_set_visible(peer.drawing, portable);
             gtk_widget_set_visible(peer.box, !portable);
+            if (get_completion_visible() && !peer.completion_visible)
+                gtk_widget_grab_focus(peer.drawing);
+            peer.completion_visible = get_completion_visible();
 
             auto *view = GTK_SOURCE_VIEW(peer.editor);
             auto *buffer =

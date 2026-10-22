@@ -1,11 +1,12 @@
 //
-// Implements edge toolbars using menu theme primitives and a canvas
-// input surface. Sticky groups are scoped to each bar.
+// Implements edge toolbars with a canvas host, optional native tool peers
+// and themed fallback input. Sticky groups are scoped to each bar.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
 #include <native/toolbar.h>
+#include "toolbar_peer.h"
 
 #include <algorithm>
 #include <set>
@@ -146,6 +147,7 @@ namespace native
             _surface->create();
             _surface->show();
         }
+        detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
     }
 
     void toolbar::on_configuration_changed() {
@@ -165,7 +167,10 @@ namespace native
     void toolbar::draw(gpx &, const rect &) {}
 
     void toolbar::repaint() {
-        if (_surface) _surface->invalidate();
+        if (_surface) {
+            if (_surface->get_created()) detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
+            _surface->invalidate();
+        }
         invalidate();
     }
 
@@ -240,6 +245,7 @@ namespace native
         event.g.set_pen(1).set_ink(appearance->native_palette().menu_bar_bg)
             .draw_border(rect(0, 0, dimensions.w, dimensions.h),
                 static_cast<border_sides>(unsigned(border_sides::all) ^ unsigned(get_border_sides())));
+        if (detail::toolbar_peer_active(*this, *_surface)) return;
         const auto bounds = item_bounds();
         for (std::size_t index = 0; index < _items.size(); ++index) {
             if (!bounds[index].w() || !bounds[index].h()) continue;

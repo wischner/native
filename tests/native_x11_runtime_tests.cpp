@@ -348,12 +348,14 @@ namespace
                     border(sections); border(tree); border(table);
                     expect(pixel(sections, 120, sections.get_header_bounds(1).y1()) ==
                         BlackPixel(cached_display, 0), "header below expanded section has a top rule");
-                    expect(dimensions(combo).w == 180 && dimensions(combo).h == 28,
-                        "composite combo keeps its requested size");
+                    expect(dimensions(combo).w == 180 &&
+                        dimensions(combo).h == theme::create(get_gpx())->get_text_edit_height(),
+                        "composite combo keeps its width and standard input height");
                     auto *combo_state = combo_box_bindings.object_from_handle(&combo);
                     Dimension arrow_height = 0;
                     XtVaGetValues(combo_state->button, XtNheight, &arrow_height, nullptr);
-                    expect(arrow_height == 26, "combo arrow fills field height");
+                    expect(arrow_height == combo.get_dimensions().h - 2,
+                        "combo arrow fills the standard field height");
                     const auto tab = tabs.get_tab_bounds(0);
                     int white = 0;
                     for (int y = tab.y1() + 3; y < tab.y2() - 3; ++y)
@@ -387,7 +389,8 @@ namespace
                     Dimension arrow_height = 0;
                     XtVaGetValues(combo_box_bindings.object_from_handle(&combo)->button,
                         XtNheight, &arrow_height, nullptr);
-                    expect(arrow_height == 30, "combo children follow resized host");
+                    expect(arrow_height == combo.get_dimensions().h - 2,
+                        "combo children follow the resolved standard height");
                     expect(pixel(choices, 120, 5) == BlackPixel(cached_display, 0),
                         "full-row selection follows resize");
                     const auto divider = split.get_splitter_bounds();

@@ -104,6 +104,8 @@ namespace
 
         metrics defaults() const override {
             metrics m;
+            auto *entry = [[[NSTextField alloc] initWithFrame:NSZeroRect] autorelease];
+            m.text_edit_height = int(std::ceil([entry intrinsicContentSize].height));
             const CGFloat height = [NSFont menuFontOfSize:0]
                                        .boundingRectForFont.size.height;
             m.menu_bar_height = 22;
@@ -171,6 +173,13 @@ namespace
                            const std::string &text,
                            const state &s) override {
             return draw_native_button(r, text, s, NSButtonTypeMomentaryPushIn);
+        }
+
+        theme &draw_toolbar_button(const native::rect &r,
+                                   const std::string &text,
+                                   const state &s) override {
+            return draw_native_button(r, text, s, NSButtonTypePushOnPushOff,
+                NSBezelStyleFlexiblePush);
         }
 
         theme &draw_menu_bar(const native::rect &r) override {
@@ -347,15 +356,16 @@ namespace
         theme &draw_native_button(const native::rect &r,
                                   const std::string &text,
                                   const state &s,
-                                  NSButtonType type) {
+                                  NSButtonType type,
+                                  NSBezelStyle bezel = NSBezelStyleRounded) {
             if (!r.d.w || !r.d.h) return *this;
             // A real control supplies AppKit's modern indicator rendering,
             // font, spacing and appearance; a detached NSButtonCell does not.
             NSButton *button = [[NSButton alloc] initWithFrame:
                 NSMakeRect(0, 0, r.d.w, r.d.h)];
             [button setButtonType:type];
-            if (type == NSButtonTypeMomentaryPushIn) {
-                [button setBezelStyle:NSBezelStyleRounded];
+            if (type == NSButtonTypeMomentaryPushIn || type == NSButtonTypePushOnPushOff) {
+                [button setBezelStyle:bezel];
                 [button setControlSize:NSControlSizeRegular];
                 [button setFont:[NSFont systemFontOfSize:
                     [NSFont systemFontSizeForControlSize:NSControlSizeRegular]]];
@@ -363,7 +373,11 @@ namespace
             [button setTitle:[NSString stringWithUTF8String:text.c_str()]];
             [button setState:s.selected ? NSControlStateValueOn : NSControlStateValueOff];
             [button setEnabled:!s.disabled];
-            [button highlight:s.pressed];
+            if (bezel == NSBezelStyleFlexiblePush)
+                [button setShowsBorderOnlyWhileMouseInside:!s.selected && !s.pressed];
+            // Set the drawing state without highlight:'s immediate display
+            // of a control that has not yet entered its native host.
+            [[button cell] setHighlighted:s.pressed];
             [[button cell] setShowsFirstResponder:s.focused];
             NSView *view = view_from(_g);
             [button setAppearance:view ? [view effectiveAppearance]
@@ -410,7 +424,7 @@ namespace
             if (!bitmap) {
                 [host release];
                 [button release];
-                return type == NSButtonTypeMomentaryPushIn
+                return (type == NSButtonTypeMomentaryPushIn || type == NSButtonTypePushOnPushOff)
                     ? draw_button_fallback(r, text, s)
                     : draw_selection_fallback(r, text, s, type == NSButtonTypeRadio);
             }

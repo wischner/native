@@ -14,6 +14,15 @@ A button can receive:
 When dimensions are omitted, the button uses its default size. All forms
 initialize the same cached bounds.
 
+## Standard input height
+
+Single-line `text_edit`, both `combo_box` styles, `date_picker` and `time_picker`
+share a 24-pixel construction default. After a created parent supplies the
+active theme, creation and geometry setters use its standard input height.
+A taller rectangle centers the field vertically; `get_bounds()` returns the
+resolved field. `set_dimensions()` changes size without moving its position.
+Use multiline mode when an editor should fill a taller area.
+
 ## Runtime changes
 
 `button::set_text()` updates both the cached label and an existing backend

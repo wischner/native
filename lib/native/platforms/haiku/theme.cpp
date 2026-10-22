@@ -19,6 +19,7 @@
 #include <Looper.h>
 #include <Region.h>
 #include <ScrollBar.h>
+#include <TextControl.h>
 #include <View.h>
 
 #include <native.h>
@@ -137,6 +138,8 @@ namespace
                 m.tab_height = m.header_height;
                 return m;
             }
+            BTextControl entry("measure", nullptr, "", nullptr);
+            m.text_edit_height = int(std::ceil(entry.PreferredSize().height)) + 1;
             font_height height{};
             be_plain_font->GetHeight(&height);
             const int text_height = std::max(
@@ -284,6 +287,21 @@ namespace
             return painted ? *this : draw_menu_bar_fallback(r);
         }
 
+        theme &draw_toolbar_button(const native::rect &r,
+                                    const std::string &text, const state &s) override {
+            const bool painted = with_view(_g, [&](BView *view) {
+                const auto base = ui_color(B_MENU_BACKGROUND_COLOR);
+                const BRect update(r.x1(), r.y1(), r.x2() - 1, r.y2() - 1);
+                BRect content(update);
+                const uint32 flags = flags_from(s) | BPrivate::BControlLook::B_FLAT;
+                be_control_look->DrawButtonFrame(view, content, update, base, base, flags);
+                be_control_look->DrawButtonBackground(view, content, update, base, flags);
+                be_control_look->DrawLabel(view, text.c_str(), content, update, base, flags,
+                    BAlignment(B_ALIGN_CENTER, B_ALIGN_MIDDLE));
+            });
+            return painted ? *this : draw_button_fallback(r, text, s);
+        }
+
         theme &draw_menu_title(const native::rect &r,
                                const std::string &text,
                                const state &s) override {
@@ -339,7 +357,11 @@ namespace
                 const BRect frame(r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
                 view->SetHighColor(ui_color(B_LIST_BACKGROUND_COLOR));
                 view->FillRect(frame);
-                const native::rect content = r;
+                BRect inner(frame);
+                be_control_look->DrawScrollViewFrame(view, inner, frame, BRect(), BRect(),
+                    ui_color(B_PANEL_BACKGROUND_COLOR), B_FANCY_BORDER, flags_from(s));
+                const native::rect content(inner.left, inner.top,
+                    std::max(0, int(inner.Width()) + 1), std::max(0, int(inner.Height()) + 1));
                 const int item_height =
                     std::max(1, defaults().list_item_height);
                 for (std::size_t i = 0; i < items.size(); ++i) {
@@ -400,6 +422,12 @@ namespace
             const native::rect &r,
             native::surface_kind kind,
             const state &s) override {
+            if (kind == native::surface_kind::panel ||
+                kind == native::surface_kind::ruler_corner) {
+                _g.set_ink(from_native(ui_color(B_PANEL_BACKGROUND_COLOR)))
+                    .draw_rect(r, true);
+                return *this;
+            }
             if (kind == native::surface_kind::table_header) {
                 const bool painted = with_view(_g, [&](BView *view) {
                     const rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
@@ -428,9 +456,8 @@ namespace
                 const BRect update(
                     r.p.x, r.p.y, r.x2() - 1, r.y2() - 1);
                 if (kind == native::surface_kind::status) {
-                    BRect content(update);
-                    be_control_look->DrawMenuBarBackground(
-                        view, content, update, base);
+                    view->SetHighColor(base);
+                    view->FillRect(update);
                     view->SetHighColor(tint_color(
                         base, B_DARKEN_2_TINT));
                     view->StrokeLine(update.LeftTop(),
@@ -438,6 +465,7 @@ namespace
                     return;
                 }
 
+                if (r.x1() == view->Bounds().left) return;
                 view->SetHighColor(tint_color(
                     base, B_DARKEN_2_TINT));
                 view->StrokeLine(

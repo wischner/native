@@ -211,9 +211,10 @@ namespace
                    "a laid-out panel fills its host client area");
             expect(bounds_are(_command, 0, 0, 200, 40),
                    "a panel lays out its button child");
-            expect(bounds_are(_editor, 200, 0,
-                              client.d.w - 200, 40),
-                   "a panel lays out its editor child");
+            const int field_height = native::theme::create(get_gpx())->get_text_edit_height();
+            expect(bounds_are(_editor, 200, std::max(0, 40 - field_height) / 2,
+                              client.d.w - 200, field_height),
+                   "a panel centers its standard-height editor inside the layout cell");
             expect(bounds_are(_drawing, 200, 40,
                               client.d.w - 200, client.d.h - 40),
                    "a panel lays out its canvas child");

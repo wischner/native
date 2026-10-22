@@ -1,5 +1,5 @@
 //
-// Declares menu-themed edge toolbars with momentary, toggle, and
+// Declares native or themed edge toolbars with momentary, toggle, and
 // exclusive tools. Each application-owned bar reserves its own strip.
 //
 // MIT License (see: LICENSE)
@@ -91,7 +91,7 @@ namespace native
         // Move or hide the input surface when the strip changes.
         void on_configuration_changed() override;
 
-        // Draw a tool using the same primitive as a main-menu title.
+        // Draw a tool using the backend's toolbar-button primitive.
         virtual void draw_tool(gpx &graphics, theme &appearance,
                                const rect &bounds, const tool_item &item,
                                const theme::state &state);

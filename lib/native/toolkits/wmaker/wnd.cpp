@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../property_grid_peer.h"
 #include <algorithm>
 #include <stdexcept>
 
@@ -86,7 +87,7 @@ namespace native
     void wnd::apply_border_sides() {
         if (auto *editor = dynamic_cast<text_edit *>(this)) {
             auto *binding = linux::wmaker::text_edit_bindings.object_from_handle(editor);
-            if (binding && binding->text && dynamic_cast<property_grid *>(get_parent()))
+            if (binding && binding->text && native::detail::property_grid_owner(*this))
                 return;
         }
         if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||

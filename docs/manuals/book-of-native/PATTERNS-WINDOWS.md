@@ -100,7 +100,8 @@ before a backend is involved.
 
 1. Verifies lifecycle prerequisites.
 2. Marks the object as being in its creation transaction.
-3. Calls the backend's protected `create_native()` hook, which creates the
+3. Resolves cached bounds through `constrain_bounds()`, then calls the
+   backend's protected `create_native()` hook, which creates the
    native resource and registers bindings.
 4. Applies the cached cursor to the new resource.
 5. Leaves the object marked as created.
@@ -165,6 +166,25 @@ Desktop backends route window-manager close requests through this hook.
 Explicit `destroy()` remains unconditional cleanup. A deferred or cancelled
 request leaves the native window and application loop alive; accepting it
 later performs normal teardown.
+
+## Resolving control geometry
+
+The protected `constrain_bounds()` hook preserves geometry by default.
+Creation calls it inside the resource transaction before the backend creates
+its view. `set_bounds()` caches its resolved rectangle; `set_dimensions()`
+uses only its dimensions and preserves the existing position. The latter
+must not move an input farther down on each repeated size request.
+
+Entries, both combo styles and date/time pickers share the active theme's
+standard input height. A created ancestor supplies metrics; before then,
+construction retains portable bounds. A taller bounds allocation centers the
+standard-height input, and the resulting cache matches its interactive field.
+Multiline editors continue filling their allocation. A zero-height layout
+allocation remains zero.
+
+Non-client reservation gives status bars priority at the bottom edge, before
+other bottom strips regardless of attachment order. Bottom toolbars stack
+above the footer. A status bar rejects a non-bottom edge.
 
 ## Parent and child relationships
 
@@ -547,6 +567,14 @@ separators and indicators keep their semantics, and native shell decorations
 remain owned by the window manager. Changes invalidate the control and notify
 its protected `on_border_sides_changed()` hook (which defaults to a geometry
 refresh). Native adapters reapply masks after creation, showing, and resizing.
+Mac stock buttons keep their native rounded bezel for every edge mask;
+borderless read-only Mac text fields/views use transparent native text on
+their containing page's background.
+
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
 
 A toolbar's private canvas is a child for lifetime and input, but does not
 enter the window's ordinary layout manager. Its owning `non_client` controls
@@ -628,8 +656,12 @@ target verification is reported separately in the feature matrix.
 ### GTK Wayland window composition
 
 The GTK and elementary adapters keep a drawing area below a fixed child
-host in a `GtkOverlay`. The child host participates in size measurement and
-pointer picking, including nested panel children. Top-level default geometry
+host in a `GtkOverlay`. The fixed host participates in native pointer
+picking, including nested panel children, but not in overlay measurement.
+Its current child bounds are allocations, not minimum sizes for the containing
+window. Measuring a client-filling sidebar would turn every enlarged height
+into a new minimum and prevent shrinking. Oversized children are clipped to
+the overlay viewport. Top-level default geometry
 adds the measured header/menu height to the requested drawing-client height;
 resize notifications still report the drawing region. Background input
 controllers target the fixed host itself and leave native descendant controls
@@ -643,3 +675,15 @@ before removal, transfers the reference locally across callbacks, then releases
 it after GTK removal. The native parent is also retained across unparenting,
 which can synchronously close its window through unmap/focus callbacks. This
 keeps both sides valid without changing portable destruction ordering.
+
+AppKit content views and delegates retain weak resource-generation tokens.
+Queued drawing/input/window callbacks from a closed or replaced generation
+return before dereferencing their borrowed C++ owner. The native view may
+outlive the C++ window or its resource during AppKit's deferred work.
+
+Starting a modal show session calls the existing owner-centering operation,
+so a newly shown modal centers over its owner's current bounds. Win32 common
+file dialogs and message boxes center on activation within their native modal
+call. Haiku file panels and alerts center after their native geometry is ready.
+GTK Wayland supplies the transient/modal owner to the compositor, which owns
+top-level placement; absolute desktop coordinates cannot be forced there.

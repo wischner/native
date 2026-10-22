@@ -39,6 +39,9 @@ else()
 endif()
 
 target_include_directories(vision PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_sources(vision PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/vision_settings.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/navigation_icons.cpp)
 target_link_libraries(vision PRIVATE native)
 
 # Vision is a GUI application on Windows. CMake selects the appropriate

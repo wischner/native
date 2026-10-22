@@ -73,11 +73,16 @@ namespace native
 
     private:
         friend class wnd;
+        friend class status_bar;
+
+        // System footers reserve the outer bottom edge before user strips.
+        non_client(wnd &owner, window_edge edge, int extent, bool footer);
 
         wnd *_owner;
         window_edge _edge;
         int _extent;
         bool _visible;
+        bool _footer = false;
         border_sides _border_sides = border_sides::all;
     };
 } // namespace native

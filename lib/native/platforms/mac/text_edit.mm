@@ -161,6 +161,7 @@ namespace native
             [binding->text_view setEditable:_read_only ? NO : YES];
         else
             [binding->field setEditable:_read_only ? NO : YES];
+        apply_border_sides();
     }
 
     void text_edit::create_native() {

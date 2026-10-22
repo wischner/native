@@ -94,3 +94,21 @@ programmatic changes. Runtime collection/control suites verify native resource
 lifecycle and backend interaction to their documented extent. The review's
 source and runtime evidence, missing edge cases and platform-specific follow-up
 are in [ADJUST.md](../../ADJUST.md) and the [feature matrix](FEATURE-MATRIX.md).
+
+
+Haiku model replacement guards native row painting and latch geometry while
+rebuilding BOutlineListView. Removing a selected native item synchronously
+paints and queries its latch before the old row is released, even though the
+portable model already contains the replacement. Those transitional calls
+skip portable IDs/geometry until rebuilding completes. The settings runtime
+fixture exercises clear, re-add and resource recreation, including native
+selected-row teardown.
+
+
+GTK rows display optional portable images through native GtkImage children
+backed by owned GdkMemoryTexture pixels. The tree's logical icon size controls
+rendering, while the texture retains the source image resolution. The native
+label follows the image with spacing and ellipsizes within the row. Replacing
+items rebuilds native children and releases their old texture references.
+The settings fixture checks the displayed texture's pixels, not just the
+portable image descriptor.

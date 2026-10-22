@@ -17,6 +17,7 @@ if [[ ${ready} != true ]]; then
     echo 'Windows SSH is unavailable. Complete the guest/key setup first.' >&2
     exit 1
 fi
+vm_powershell 'if (!(Get-AppxPackage -Name Microsoft.WindowsAppRuntime.1.8 | Where-Object { $_.Architecture -eq "X64" })) { throw "Install Windows App Runtime 1.8 (x64) before using the WinUI settings navigator." }' >/dev/null
 mkdir -p "${vm_workspace}/build/windows-vm"
 docker run --rm -u "$(id -u):$(id -g)" \
     -v "${vm_workspace}:${vm_workspace}" -w "${vm_workspace}" "${vm_image}" \
@@ -24,6 +25,7 @@ docker run --rm -u "$(id -u):$(id -g)" \
         for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
             cp "$(x86_64-w64-mingw32-g++ -print-file-name="$dll")" "$output/"
         done
+        cp /opt/native-winui/runtime/Microsoft.WindowsAppRuntime.Bootstrap.dll "$output/"
         cp /usr/share/win64/gdbserver.exe "$output/"
         x86_64-w64-mingw32-objcopy --strip-debug "$output/vision.exe" build/windows-vm/vision.exe'
 sync_options=()

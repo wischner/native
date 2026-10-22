@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../property_grid_peer.h"
 #include <algorithm>
 #include <cstdlib>
 #include <stdexcept>
@@ -217,7 +218,7 @@ namespace native
         auto *self = this;
         auto *binding = new linux::wmaker::native_text_edit;
         WMWidget *parent = linux::wmaker::parent_widget(self);
-        const bool property = dynamic_cast<property_grid *>(get_parent()) != nullptr;
+        const bool property = native::detail::property_grid_owner(*this) != nullptr;
         if (_mode == text_edit_mode::single_line && !property) {
             binding->field = WMCreateTextField(parent);
             binding->widget = binding->field;

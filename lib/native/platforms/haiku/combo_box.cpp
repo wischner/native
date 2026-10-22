@@ -18,6 +18,8 @@
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "input_look.h"
+#include <cmath>
 
 namespace
 {
@@ -36,13 +38,33 @@ namespace
     class combo_menu final : public BPopUpMenu
     {
     public:
-        combo_menu() : BPopUpMenu("native_combo_options", true, false) {}
+        explicit combo_menu(BRect trigger)
+            : BPopUpMenu("native_combo_options", true, false), _trigger(trigger) {
+            SetTrackingHook([](BMenu *menu, void *data) {
+                auto &self = *static_cast<combo_menu *>(data);
+                if (self._dismissed) return true;
+                if (!menu->LockLooper()) return true;
+                BPoint mouse;
+                uint32 buttons;
+                menu->GetMouse(&mouse, &buttons, false);
+                menu->ConvertToScreen(&mouse);
+                menu->UnlockLooper();
+                // BButton invokes after release. Native menu tracking can
+                // wait for the next press before calling this hook again.
+                if (buttons && self._trigger.Contains(mouse))
+                    self._dismissed = true;
+                return self._dismissed;
+            }, this);
+        }
 
         float horizontal_margins() const {
             float left = 0, top = 0, right = 0, bottom = 0;
             GetItemMargins(&left, &top, &right, &bottom);
             return left + right;
         }
+    private:
+        BRect _trigger;
+        bool _dismissed = false;
     };
 
     class combo_item final : public BMenuItem
@@ -74,10 +96,7 @@ namespace
             BRect frame = Bounds();
             const auto base = ui_color(B_PANEL_BACKGROUND_COLOR);
             const uint32 flags = be_control_look->Flags(this);
-            be_control_look->DrawMenuFieldFrame(
-                this, frame, update, base, base, flags);
-            be_control_look->DrawMenuFieldBackground(
-                this, frame, update, base, true, flags);
+            frame = haiku::draw_combo_background(*this, frame, update);
             frame.left += 6;
             frame.right -= 18;
             be_control_look->DrawLabel(this, Label(), frame, update,
@@ -126,17 +145,9 @@ namespace
 
         void Draw(BRect update) override {
             PushState();
-            const auto base = ui_color(B_DOCUMENT_BACKGROUND_COLOR);
-            SetHighColor(Value() == B_CONTROL_ON
-                ? tint_color(base, B_DARKEN_1_TINT) : base);
-            FillRect(update);
-            SetHighColor(ui_color(B_CONTROL_BORDER_COLOR));
-            StrokeLine(Bounds().LeftTop(), Bounds().LeftBottom());
-            BRect arrow = Bounds();
-            arrow.InsetBy(5, 5);
-            be_control_look->DrawArrowShape(this, arrow, update,
-                ui_color(B_CONTROL_TEXT_COLOR),
-                BPrivate::BControlLook::B_DOWN_ARROW, 0, 0.6f);
+            SetLowUIColor(B_DOCUMENT_BACKGROUND_COLOR);
+            FillRect(Bounds(), B_SOLID_LOW);
+            haiku::draw_combo_indicator(*this, Bounds(), update);
             PopState();
         }
     };
@@ -160,15 +171,18 @@ namespace
             const float height = Bounds().Height();
             state->choice->ResizeTo(width, height);
             state->text->ResizeTo(width, height);
-            const float arrow_width = std::max(12.0f, height - 4);
-            state->arrow->MoveTo(std::max(2.0f, width - arrow_width - 2), 2);
-            state->arrow->ResizeTo(arrow_width, std::max(0.0f, height - 4));
+            const auto indicator = haiku::combo_indicator_bounds(Bounds());
+            state->arrow->MoveTo(indicator.LeftTop());
+            state->arrow->ResizeTo(indicator.Width(), indicator.Height());
             BTextView *editor = state->text->TextView();
             editor->ResizeTo(std::max(0.0f,
                 state->arrow->Frame().left - editor->Frame().left - 2),
                 editor->Bounds().Height());
             BRect text_rect = editor->TextRect();
             text_rect.right = text_rect.left + editor->Bounds().Width();
+            const float line = std::ceil(editor->LineHeight(0));
+            text_rect.top = std::max(0.0f, std::floor((editor->Bounds().Height() + 1 - line) / 2));
+            text_rect.bottom = text_rect.top + line;
             editor->SetTextRect(text_rect);
             auto visible = [](BView *view, bool show) {
                 if (show && view->IsHidden(view)) view->Show();
@@ -188,7 +202,10 @@ namespace
                 _owner.on_native_text(state->text->Text());
             } else if (message->what == popup_message) {
                 if (_owner.get_items().empty()) return;
-                combo_menu menu;
+                BButton *trigger = _owner.get_style() == native::combo_box_style::editable
+                    ? state->arrow : state->choice;
+                const auto trigger_bounds = trigger->ConvertToScreen(trigger->Bounds());
+                combo_menu menu(trigger_bounds);
                 for (std::size_t i = 0; i < _owner.get_items().size(); ++i) {
                     auto *item = new combo_item(_owner.get_items()[i],
                                                _owner.get_dimensions().w);
@@ -197,8 +214,12 @@ namespace
                 }
                 _owner.on_native_drop_down(true);
                 if (!guard.alive()) return;
+                trigger->SetValue(B_CONTROL_ON);
+                Window()->UpdateIfNeeded();
                 BMenuItem *item = menu.Go(ConvertToScreen(BPoint(0,
-                    Bounds().bottom + 1)), false, true);
+                    Bounds().bottom + 1)), false, true, trigger_bounds);
+                if (!guard.alive()) return;
+                trigger->SetValue(B_CONTROL_OFF);
                 if (item) {
                     const int32 index = menu.IndexOf(item);
                     state->text->SetText(_owner.get_items()[index].c_str());

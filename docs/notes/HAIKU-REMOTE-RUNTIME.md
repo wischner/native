@@ -13,14 +13,14 @@ This note records the current Haiku workflow that is actually exercised.
 
 The VS Code launch entry is **Haiku, VM**. Its VM readiness check, remote
 directory preparation, `scp -O -r` deployment and SSH/GDB transport all use the
-SSH alias `haiku`. The host SSH configuration supplies the user, address and
-identity; a plain `ssh haiku` must open the guest shell without a password.
+SSH alias `hotel`. The host SSH configuration supplies the user, address and
+identity; a plain `ssh hotel` must open the guest shell without a password.
 The libvirt domain remains `Haiku`.
 
-On 2026-10-19, `ssh haiku` opened the guest shell successfully; the session
-reported `Haiku` as `user`. This guest currently has no `gdb` on `PATH` or
-at the configured `/boot/system/bin/gdb`; SSH access is verified, but F5 remote
-debugging requires GDB to be installed in the guest.
+On 2026-10-21, password-free `ssh hotel` reports the hostname `hotel`, and
+GDB is available at the configured `/boot/system/bin/gdb`. The F5 readiness,
+directory preparation, deployment and debugger connection all use this alias;
+the libvirt domain name remains `Haiku`.
 
 ## VM keyboard input
 
@@ -186,3 +186,120 @@ must release that binding before Native image work. Missing Mesa or OpenGL 3.3
 uses ordinary shader error/fallback handling. Software execution and synchronous
 readback do not imply interactive full-resolution performance or exact upstream
 visual parity.
+
+
+On 2026-10-21 `hotel` reached the current Haiku desktop and ran both settings
+regression modes successfully. The SDK's native shared-kit DateEdit and
+TimeEdit controls deliver their Invoke callbacks through the shared rules.
+Clear/re-add and recreation exposed synchronous old-row paint/latch calls
+inside BOutlineListView removal; guarding the native rebuild fixes them.
+
+The existing collection-runtime and window-API regressions also pass on
+`hotel` after the tree rebuild correction.
+
+
+## Native control review (2026-10-21)
+
+The final Docker build ran 20 checks on `hotel`, all passing: the 19 registered
+CTest commands and the additional collection-runtime executable. This includes
+native settings/picker callbacks, inspector hit testing, toolbar commands,
+all preview border masks, scrolling and recreation, plus existing lifecycle,
+worker, audio and softpipe GLSL checks. The isolated deployment is
+`/boot/home/Projects/native/run/bugs-review`.
+
+A real desktop pointer check opened the native BCalendarView popup, selected
+October 16 and confirmed the compact DateEdit field and status updated before
+the popup closed. Captures also show grouped navigation without an idle
+scrollbar, a full-width search field and matching page/checkbox backgrounds.
+The popup uses native selection and invocation messages; unavailable dates
+retain the shared validation policy and native disabled-day painting.
+Alerts center their final native frame on the owner. File-panel placement
+needed the additional 2026-10-22 correction described below.
+
+
+## Control sizing and file-panel placement (2026-10-22)
+
+The warning-free Docker Haiku build passes all 20 checks again on `hotel`.
+The isolated `bugs-review` deployment's Vision, settings and inspector binaries
+match the local build's SHA-256 hashes. Settings runtime now checks centering
+of Open, Save and Select Folder after BFilePanel::Show, native text-field height,
+complete date/time field widths and containment of the calendar trigger.
+The test allows Tracker's initial asynchronous directory scan to settle before
+destroying each panel. Inspector runtime verifies native button minimum sizes
+at 16-, 24- and 32-pixel icons and captures status pixels to reject outer side
+dividers. Existing lifecycle, worker, collection and softpipe checks still pass.
+
+Desktop captures show an equally inset, framed outline-list navigator, centered
+compact time text and equal arrows, plus the date calendar action inside its
+text border. Real pointer input opens that BCalendarView popup and selects
+October 16; both the field and status update and the popup closes. The toolbar
+gallery shows complete native buttons and the status top rule without extra
+side dividers. The completed Vision binary is also deployed to the regular
+`/boot/home/Projects/native/run/vision` location.
+
+## Footer, input and table consistency (2026-10-22)
+
+The final Docker cross-build passes all 20 commands on `hotel`. The settings
+fixture compares actual cached heights for single-line entries, both combo
+styles and both pickers, checks repeated resizes preserve position, and
+verifies the native calendar popup's left edge, width and bottom anchoring.
+The collection fixture preserves native row identities and multi-selection
+through a grid change, then sends a plain native click and verifies only the
+clicked row remains selected. Inspector pixels check the flat panel footer.
+Shared window tests cover footer priority in both toolbar construction orders.
+
+Visible checks show the framed search field, the shared native dropdown arrow,
+a full-width calendar immediately below the then full-width date field, and
+the flat footer below the bottom toolbar. The compact-date refinement below
+supersedes that field sizing. The tested Vision is copied to the regular run
+location; its SHA-256 matches `build/haiku/src/vision`. Test-owned galleries
+are closed after inspection.
+
+## Compact date and single-frame dropdowns (2026-10-22)
+
+DateEdit now keeps its preferred compact width inside a larger allocation.
+The calendar opens below the actual field, matching its width when there is
+room and growing when needed for seven readable day columns. Month navigation
+uses equal square BButtons at the standard text-control height. Date and
+editable-combo accessories draw only the shared BControlLook arrow on document
+paper; the editor retains the sole outer frame. Selection-only fields retain
+native menu-field surfaces with the same arrow painter.
+
+The Docker cross-build is warning-free and all 20 native commands pass again
+on `hotel`. Settings runtime covers wide/narrow allocations, popup anchoring
+and minimum width, compact month buttons and both native month commands.
+Collection runtime still covers both combo styles and native input callbacks.
+
+Desktop captures confirm the date trigger has one white editor surface with
+one native arrow, the field stays compact, and the calendar is wider only
+when its day columns need room. A real pointer click on the smaller next-month
+button advances October to November. These are native BButton messages, not
+application-side date changes.
+
+The editable-combo gallery also shows a single white field and native arrow,
+with no nested light/dark button strips. Captured corner samples around both
+accessories match the white editor paper. The tested Vision replaces the
+regular run binary with matching local/deployed SHA-256 hashes.
+
+## Dropdown feedback and toggling (2026-10-22)
+
+DateEdit measures its slash separators instead of using fixed spacer cells.
+At the VM's current font this reduces the compact field from 135 to 123
+pixels, about nine percent. Date and editable-combo arrows occupy centered
+14-pixel hit areas within the existing text border. Their idle paper stays
+white; native BControlLook pressed backgrounds remain visible while open.
+
+Calendar arrows toggle their existing popup and clear their pressed state
+when it closes. Native combo tracking cancels on another press over the
+original trigger. The hook accounts for Haiku waiting for the next press
+before calling it again, and retains cancellation across the native menu's
+quick-click tracking restart.
+
+The warning-free Docker build passes all 20 native regression commands on
+`hotel`. Settings runtime checks narrow arrow geometry and calendar toggle
+state; collection runtime checks the editable arrow's width and text clearance.
+Real desktop pointer checks separately open and close the calendar, editable
+combo and selection-only combo with exactly two clicks on each arrow.
+Captures show pressed feedback while held/open and cleared feedback after
+the second click. The tested Vision is deployed to the regular run location
+with matching local and remote SHA-256 hashes.

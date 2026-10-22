@@ -28,7 +28,8 @@ namespace native
         gtk_overlay_set_child(GTK_OVERLAY(overlay), drawing);
         gtk_overlay_add_overlay(GTK_OVERLAY(overlay), content);
         gtk_overlay_set_measure_overlay(
-            GTK_OVERLAY(overlay), content, true);
+            GTK_OVERLAY(overlay), content, false);
+        gtk_overlay_set_clip_overlay(GTK_OVERLAY(overlay), content, true);
         gtk_box_append(GTK_BOX(box), overlay);
         gtk_window_set_child(GTK_WINDOW(window), box);
         gtk_window_set_title(GTK_WINDOW(window), _title.c_str());

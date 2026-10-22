@@ -25,9 +25,15 @@ namespace
 namespace native
 {
     void button::create_native() {
-        attach(*this, gtk_button_new_with_label(_text.c_str()));
+        auto *native_button = gtk_button_new_with_label(_text.c_str());
+        attach(*this, native_button);
+        state(*this).editor = native_button;
+        state(*this).layout_children = [this] {
+            linux::wayland::style_button_frame(*this, get_border_sides());
+        };
+        state(*this).layout_children();
         g_signal_connect(
-            widget(*this),
+            native_button,
             "clicked",
             G_CALLBACK(+[](GtkButton *, gpointer data) {
                 static_cast<button *>(data)->on_native_click();
@@ -35,9 +41,10 @@ namespace native
             this);
     }
     void button::apply_text() {
-        gtk_button_set_label(GTK_BUTTON(widget(*this)), _text.c_str());
+        gtk_button_set_label(GTK_BUTTON(state(*this).editor), _text.c_str());
     }
     void button::show_native() {
+        gtk_widget_set_visible(state(*this).editor, true);
         shown(*this);
     }
     void button::destroy_native() {
@@ -168,68 +175,100 @@ namespace native
         linux::wayland::destroy(*this);
     }
 
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     void combo_box::create_native() {
-        auto *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-        auto *entry = linux::wayland::new_entry();
-        auto *drop = gtk_drop_down_new(nullptr, nullptr);
-        gtk_widget_set_hexpand(entry, true);
-        gtk_box_append(GTK_BOX(box), entry);
-        gtk_box_append(GTK_BOX(box), drop);
-        attach(*this, box);
-        state(*this).editor = entry;
-        state(*this).drawing = drop;
-        apply_items();
+        auto *host = gtk_fixed_new();
+        attach(*this, host);
+        state(*this).layout_children = [this] {
+            auto &peer = state(*this);
+            if (!peer.editor) return;
+            gtk_widget_set_size_request(peer.editor, get_dimensions().w, get_dimensions().h);
+            int height = 0;
+            gtk_widget_measure(peer.editor, GTK_ORIENTATION_VERTICAL,
+                get_dimensions().w, nullptr, &height, nullptr, nullptr);
+            gtk_fixed_move(GTK_FIXED(peer.widget), peer.editor, 0,
+                std::max(0, (int(get_dimensions().h) - height) / 2));
+        };
         apply_style();
-        apply_text();
-        apply_selected_index();
-        g_signal_connect(
-            drop, "notify::selected", G_CALLBACK(combo_changed), this);
-        g_signal_connect(
-            entry,
-            "changed",
-            G_CALLBACK(+[](GtkEditable *w, gpointer data) {
-                auto &owner = *static_cast<combo_box *>(data);
-                if (!state(owner).updating)
-                    owner.on_native_text(gtk_editable_get_text(w));
-            }),
-            this);
     }
     void combo_box::apply_items() {
         auto &peer = state(*this);
         peer.updating = true;
-        auto *model = gtk_string_list_new(nullptr);
-        for (const auto &item : get_items())
-            gtk_string_list_append(model, item.c_str());
-        gtk_drop_down_set_model(GTK_DROP_DOWN(peer.drawing),
-                                G_LIST_MODEL(model));
-        g_object_unref(model);
+        if (GTK_IS_COMBO_BOX_TEXT(peer.editor)) {
+            gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(peer.editor));
+            for (const auto &item : get_items())
+                gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(peer.editor), item.c_str());
+        } else {
+            auto *model = gtk_string_list_new(nullptr);
+            for (const auto &item : get_items()) gtk_string_list_append(model, item.c_str());
+            gtk_drop_down_set_model(GTK_DROP_DOWN(peer.editor), G_LIST_MODEL(model));
+            g_object_unref(model);
+        }
         peer.updating = false;
         apply_selected_index();
     }
     void combo_box::apply_selected_index() {
         auto &peer = state(*this);
         peer.updating = true;
-        gtk_drop_down_set_selected(
-            GTK_DROP_DOWN(peer.drawing),
-            get_selected_index() < 0
-                ? GTK_INVALID_LIST_POSITION
-                : static_cast<guint>(get_selected_index()));
-        gtk_editable_set_text(GTK_EDITABLE(peer.editor),
-                              get_text().c_str());
+        if (GTK_IS_COMBO_BOX(peer.editor)) {
+            gtk_combo_box_set_active(GTK_COMBO_BOX(peer.editor), get_selected_index());
+            gtk_editable_set_text(GTK_EDITABLE(peer.drawing), get_text().c_str());
+        } else gtk_drop_down_set_selected(GTK_DROP_DOWN(peer.editor),
+            get_selected_index() < 0 ? GTK_INVALID_LIST_POSITION : guint(get_selected_index()));
         peer.updating = false;
     }
     void combo_box::apply_text() {
         auto &peer = state(*this);
+        if (!peer.drawing) return;
         peer.updating = true;
-        gtk_editable_set_text(GTK_EDITABLE(peer.editor),
-                              get_text().c_str());
+        gtk_editable_set_text(GTK_EDITABLE(peer.drawing), get_text().c_str());
         peer.updating = false;
     }
     void combo_box::apply_style() {
-        gtk_widget_set_visible(state(*this).editor,
-                               get_style() ==
-                                   combo_box_style::editable);
+        auto &peer = state(*this);
+        if (peer.editor) gtk_fixed_remove(GTK_FIXED(peer.widget), peer.editor);
+        peer.drawing = nullptr;
+        if (get_style() == combo_box_style::editable) {
+            // GTK 4.14 retains this native editable combo. GtkDropDown
+            // does not provide an editable field with a shared popup.
+            peer.editor = gtk_combo_box_text_new_with_entry();
+            peer.drawing = gtk_combo_box_get_child(GTK_COMBO_BOX(peer.editor));
+            g_signal_connect(peer.editor, "changed", G_CALLBACK(+[](GtkComboBox *widget, gpointer data) {
+                auto &owner = *static_cast<combo_box *>(data);
+                if (!state(owner).updating && gtk_combo_box_get_active(widget) >= 0)
+                    owner.on_native_selection(gtk_combo_box_get_active(widget));
+            }), this);
+            g_signal_connect(peer.drawing, "changed", G_CALLBACK(+[](GtkEditable *entry, gpointer data) {
+                auto &owner = *static_cast<combo_box *>(data);
+                auto &peer = state(owner);
+                if (peer.updating) return;
+                const detail::window_guard guard(owner);
+                owner.on_native_text(gtk_editable_get_text(entry));
+                if (!guard.alive()) return;
+                auto &current = state(owner);
+                if (gtk_combo_box_get_active(GTK_COMBO_BOX(current.editor)) == owner.get_selected_index())
+                    return;
+                const int cursor = gtk_editable_get_position(entry);
+                int start = 0;
+                int end = 0;
+                const bool selected = gtk_editable_get_selection_bounds(entry, &start, &end);
+                current.updating = true;
+                gtk_combo_box_set_active(GTK_COMBO_BOX(current.editor), owner.get_selected_index());
+                if (owner.get_text() != gtk_editable_get_text(GTK_EDITABLE(current.drawing)))
+                    gtk_editable_set_text(GTK_EDITABLE(current.drawing), owner.get_text().c_str());
+                if (selected) gtk_editable_select_region(entry, start, end);
+                else gtk_editable_set_position(entry, cursor);
+                current.updating = false;
+            }), this);
+        } else {
+            peer.editor = gtk_drop_down_new(nullptr, nullptr);
+            g_signal_connect(peer.editor, "notify::selected", G_CALLBACK(combo_changed), this);
+        }
+        gtk_fixed_put(GTK_FIXED(peer.widget), peer.editor, 0, 0);
+        apply_items(); apply_text();
+        peer.layout_children();
     }
+    G_GNUC_END_IGNORE_DEPRECATIONS
     void combo_box::show_native() {
         shown(*this);
     }

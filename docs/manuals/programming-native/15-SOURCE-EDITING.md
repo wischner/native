@@ -133,8 +133,12 @@ source.on_complete.connect(
     });
 ```
 
-Up and Down change the active choice, Enter accepts it, and Escape dismisses
+Up and Down change the active choice, Enter or Tab accepts it, and Escape dismisses
 the popup while keyboard focus remains in the editor. Language-server and
 debugger protocols are application responsibilities.
+
+Completion accepts the active choice with Enter or Tab. GTK transfers focus
+to the completion keyboard host when the application opens the overlay.
+The application still inserts the accepted item through `on_complete`.
 
 Previous: [Advanced Table Views](14-ADVANCED-TABLE-VIEWS.md).

@@ -150,6 +150,30 @@ namespace
 
         expect((GetWindowLongPtrW(handle(button), GWL_STYLE) & BS_TYPEMASK)
                    == BS_PUSHBUTTON, "button must use native painting");
+        for (unsigned mask = 0; mask < 16; ++mask) {
+            button.set_border_sides(static_cast<native::border_sides>(mask));
+            expect((GetWindowLongPtrW(handle(button), GWL_STYLE) & BS_TYPEMASK) == BS_PUSHBUTTON,
+                   "partial borders preserve native Windows button painting");
+        }
+        button.set_border_sides(native::border_sides::all);
+        tree.set_lines_visible(false).set_items({native::tree_view_item("Section", {}, 1,
+            {native::tree_view_item("Child", {}, 2)}, true)});
+        TVITEMW item{}; item.mask = TVIF_IMAGE; item.hItem = TreeView_GetRoot(handle(tree));
+        TreeView_GetItem(handle(tree), &item);
+        HDC image_dc = CreateCompatibleDC(nullptr);
+        HBITMAP bitmap = CreateBitmap(32, 32, 1, 32, nullptr);
+        HGDIOBJ previous_bitmap = SelectObject(image_dc, bitmap);
+        RECT image_bounds{0, 0, 32, 32};
+        FillRect(image_dc, &image_bounds, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
+        ImageList_Draw(TreeView_GetImageList(handle(tree), TVSIL_NORMAL), item.iImage,
+                       image_dc, 0, 0, ILD_TRANSPARENT);
+        expect(GetPixel(image_dc, 8, 8) == GetSysColor(COLOR_WINDOW),
+               "an iconless native tree item preserves its background");
+        SelectObject(image_dc, previous_bitmap); DeleteObject(bitmap); DeleteDC(image_dc);
+        RECT parent_text{}, child_text{};
+        TreeView_GetItemRect(handle(tree), item.hItem, &parent_text, TRUE);
+        TreeView_GetItemRect(handle(tree), TreeView_GetChild(handle(tree), item.hItem), &child_text, TRUE);
+        expect(child_text.left > parent_text.left, "native children stay indented when connector lines are hidden");
         expect((GetWindowLongPtrW(handle(check), GWL_STYLE) & BS_TYPEMASK)
                    == BS_CHECKBOX, "check must use native painting");
         expect((GetWindowLongPtrW(handle(radio), GWL_STYLE) & BS_TYPEMASK)
@@ -256,6 +280,11 @@ namespace
         native::modal_wnd modal(root, "Modal", 100, 100, 200, 100);
         modal.create();
         modal.show();
+        expect(modal.get_bounds().x1() == root.get_bounds().x1() +
+                   (int(root.get_dimensions().w) - modal.get_dimensions().w) / 2 &&
+               modal.get_bounds().y1() == root.get_bounds().y1() +
+                   (int(root.get_dimensions().h) - modal.get_dimensions().h) / 2,
+               "modal windows center over their owner by default");
         expect(!IsWindowEnabled(handle(root)), "modal disables owner");
         expect(!IsWindowEnabled(handle(sibling)), "modal disables siblings");
         modal.close(native::dialog_result::cancelled);

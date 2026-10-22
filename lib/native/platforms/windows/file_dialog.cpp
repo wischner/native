@@ -215,6 +215,7 @@ namespace
                                 ? windows::wnd_bindings
                                       .handle_from_object(owner)
                                 : nullptr;
+        windows::dialog_center centered(owner_window);
         const HRESULT result = panel->Show(owner_window);
         if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED))
             return false;

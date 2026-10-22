@@ -31,10 +31,14 @@ namespace linux::wayland
         std::shared_ptr<theme_snapshot> theme_cache;
         bool updating = false;
         bool portable_drawing = false;
+        bool completion_visible = false;
         bool dragging_scrollbar = false;
         bool horizontal_scrollbar = false;
         int scrollbar_grab = 0;
+        guint position_source = 0;
+        float position_ratio = 0;
         std::function<void()> synchronize;
+        std::function<void()> layout_children;
         std::vector<GtkWidget *> pages;
     };
     extern native::bindings<GtkWidget *, native::wnd *> wnd_bindings;
@@ -66,6 +70,8 @@ namespace linux::wayland
     void create_surface(native::wnd &owner);
     // Move a live widget through its native container APIs.
     void reparent(native::wnd &owner);
+    // Apply explicit edge masks through the original native button's CSS.
+    void style_button_frame(native::button &owner, native::border_sides sides);
     // Release a child widget and unregister callback lookup.
     void destroy(native::wnd &owner);
     // Synchronize the canonical document and source-view settings.

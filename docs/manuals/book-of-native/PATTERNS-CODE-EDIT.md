@@ -73,3 +73,7 @@ they do not change the public AES/VDI keyboard interface.
 See the application-facing
 [Source Editing](../programming-native/15-SOURCE-EDITING.md) chapter for
 construction, overlays, lexer integration, completion, and file handling.
+
+Completion accepts the active choice with Enter or Tab. GTK transfers focus
+to the completion keyboard host when the application opens the overlay.
+The application still inserts the accepted item through `on_complete`.

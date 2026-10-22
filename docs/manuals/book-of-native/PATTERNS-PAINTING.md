@@ -32,6 +32,19 @@ pixels and partially transparent text without mirroring or dark fringes.
 For the application-facing operation list and complete window/image examples,
 see [Drawing Primitives](DRAWING-PRIMITIVES.md).
 
+Geometry normalization precedes native resource creation and live native
+resizing. Standard single-line input height is therefore shared by cached
+bounds, hit testing and painting, rather than achieved by clipping a taller
+control. Native text metrics center each line and its caret. SDL2 and GEMix
+use their renderer's line height; Athena uses text-sink margins. Win32 retains
+the native EDIT border while centering its single-line client area.
+
+OPEN LOOK Panel items are windowless. A canvas backbuffer copy is followed
+by native item painting before applying border masks, preserving text, combos
+and checks above the canvas background without a second custom renderer.
+Removed bindings exclude items in XView's deferred destruction phase, when
+the native text buffer is already released but the Panel link remains.
+
 ## The `gpx` interface
 
 `gpx` is the abstract drawing interface visible to application code. It stores
@@ -423,3 +436,15 @@ only portable offset access; no GTK/Cairo types enter the shared header. Image
 targets rasterize the same native nodes. The snapshot host is cached in the
 window's opaque peer and never maps a desktop surface. Controlled 2x frame
 comparisons verify native pixels, including nonzero offsets and clipping.
+
+
+GTK Wayland/elementary overlays clip their fixed child host to the current
+viewport. That host remains native and participates in GTK hit testing, but
+its children's current allocations do not enter overlay size measurement.
+Drawing-area resize notifications continue to report the actual client size,
+so client-filling controls can grow and shrink without retaining old minimums.
+
+AppKit may retain a content view beyond window close while servicing queued
+painting. Its weak resource-generation token rejects that paint before it
+looks up graphics or calls C++; reopening the same C++ window cannot revive
+callbacks from its old native view.

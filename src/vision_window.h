@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <native.h>
+#include "vision_settings.h"
 
 namespace vision
 {
@@ -337,7 +338,8 @@ namespace vision
         // Construct the main demonstration and connect all events.
         explicit vision_window(bool open_splitter_on_start = false,
                                bool open_input_chrome_on_start = false,
-                               bool open_properties_on_start = false);
+                               bool open_properties_on_start = false,
+                               bool open_settings_on_start = false);
 
     private:
         native::button _action;
@@ -360,6 +362,7 @@ namespace vision
         native::button _show_splitter;
         native::button _show_input_chrome;
         native::button _show_properties;
+        native::button _show_settings;
 
         std::unique_ptr<native::img> _image;
         native::font_t _file_font;
@@ -373,6 +376,7 @@ namespace vision
         bool _open_splitter_on_start = false;
         bool _open_input_chrome_on_start = false;
         bool _open_properties_on_start = false;
+        bool _open_settings_on_start = false;
 
         int _open_image_command = 0;
         int _copy_text_command = 0;
@@ -389,6 +393,7 @@ namespace vision
         feature_splitter _splitter;
         feature_input_chrome _input_chrome;
         feature_properties _properties;
+        feature_settings _settings;
         feature_dialog _dialog;
         native::open_file_dialog _open_image;
         native::save_file_dialog _save_image;

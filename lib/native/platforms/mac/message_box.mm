@@ -9,6 +9,7 @@
 #include <native/message_box.h>
 
 #include "../../message_box_common.h"
+#include "globals.h"
 
 #import <AppKit/AppKit.h>
 
@@ -41,7 +42,31 @@ namespace native
         for (int index = 0; index < count; ++index)
             [alert addButtonWithTitle:[NSString stringWithUTF8String:
                 detail::message_box_button_label(buttons, index)]];
-        const NSModalResponse response = [alert runModal];
+        NSWindow *window =
+            [mac::wnd_bindings.handle_from_object(&owner) retain];
+        __block NSModalResponse response = NSModalResponseCancel;
+        if ([window isVisible]) {
+            const detail::window_guard guard(owner);
+            __block bool finished = false;
+            [alert beginSheetModalForWindow:window
+                         completionHandler:^(NSModalResponse result) {
+                response = result;
+                finished = true;
+            }];
+            // Keep the synchronous C++ contract while AppKit owns the
+            // sheet's placement, input and native dismissal animation.
+            while (!finished && guard.alive()) {
+                [[NSRunLoop currentRunLoop]
+                    runMode:NSDefaultRunLoopMode
+                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+            }
+            if (!finished)
+                [window endSheet:[alert window]
+                      returnCode:NSModalResponseCancel];
+        } else {
+            response = [alert runModal];
+        }
+        [window release];
         [alert release];
         const int index = static_cast<int>(response-
             NSAlertFirstButtonReturn);

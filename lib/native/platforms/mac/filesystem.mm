@@ -10,6 +10,7 @@
 
 #include "../../filesystem_backend.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -47,57 +48,36 @@ namespace
             result.push_back({kind, std::move(path)});
     }
 
+    // Resolve lazy workspace representations before rasterizing into a
+    // Quartz-supported premultiplied buffer, then publish straight RGBA.
     bool render_icon(NSImage *icon, native::img &target) {
-        NSBitmapImageRep *representation =
-            [[NSBitmapImageRep alloc]
-                initWithBitmapDataPlanes:nullptr
-                              pixelsWide:target.w()
-                              pixelsHigh:target.h()
-                           bitsPerSample:8
-                         samplesPerPixel:4
-                                hasAlpha:YES
-                                isPlanar:NO
-                          colorSpaceName:NSDeviceRGBColorSpace
-                             bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
-                              bytesPerRow:target.w() * 4
-                             bitsPerPixel:32];
-        if (!representation)
-            return false;
-
-        [NSGraphicsContext saveGraphicsState];
-        NSGraphicsContext *context = [NSGraphicsContext
-            graphicsContextWithBitmapImageRep:representation];
-        [NSGraphicsContext setCurrentContext:context];
-        [context setImageInterpolation:NSImageInterpolationHigh];
-        [[NSColor clearColor] set];
-        NSRectFill(NSMakeRect(0, 0, target.w(), target.h()));
-        [icon drawInRect:NSMakeRect(0, 0, target.w(), target.h())
-                fromRect:NSZeroRect
-               operation:NSCompositingOperationSourceOver
-                fraction:1.0
-          respectFlipped:NO
-                   hints:nil];
-        [context flushGraphics];
-        [NSGraphicsContext restoreGraphicsState];
-
-        const std::uint8_t *source = [representation bitmapData];
-        const bool valid = source != nullptr;
-        if (source) {
-            for (int y = 0; y < target.h(); ++y) {
-                for (int x = 0; x < target.w(); ++x) {
-                    const std::size_t index =
-                        static_cast<std::size_t>(y) * target.w() + x;
-                    target.pixels()[index] = native::rgba(
-                        source[index * 4],
-                        source[index * 4 + 1],
-                        source[index * 4 + 2],
-                        source[index * 4 + 3]);
-                }
-            }
+        NSRect proposed = NSMakeRect(0, 0, target.w(), target.h());
+        CGImageRef image = [icon CGImageForProposedRect:&proposed context:nil hints:nil];
+        if (!image) return false;
+        std::vector<std::uint8_t> pixels(std::size_t(target.w()) * target.h() * 4);
+        CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+        CGContextRef context = CGBitmapContextCreate(pixels.data(), target.w(), target.h(),
+            8, target.w() * 4, space, CGBitmapInfo(kCGImageAlphaPremultipliedLast) | CGBitmapInfo(kCGBitmapByteOrder32Big));
+        CGColorSpaceRelease(space);
+        if (!context) return false;
+        CGContextTranslateCTM(context, 0, target.h());
+        CGContextScaleCTM(context, 1, -1);
+        CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
+        CGContextDrawImage(context, CGRectMake(0, 0, target.w(), target.h()), image);
+        CGContextRelease(context);
+        bool visible = false;
+        for (std::size_t index = 0; index < pixels.size() / 4; ++index) {
+            const unsigned alpha = pixels[index * 4 + 3];
+            auto channel = [&](unsigned offset) {
+                return alpha ? std::uint8_t(std::min(255U,
+                    (unsigned(pixels[index * 4 + offset]) * 255U + alpha / 2U) / alpha)) : std::uint8_t(0);
+            };
+            target.pixels()[index] = native::rgba(channel(0), channel(1), channel(2), alpha);
+            visible = visible || alpha != 0;
         }
-        [representation release];
-        return valid;
+        return visible;
     }
+
 } // namespace
 
 namespace native::detail
@@ -109,7 +89,7 @@ namespace native::detail
             if (path.empty())
                 return false;
             NSImage *icon = [[NSWorkspace sharedWorkspace]
-                iconForFile:native_string(path)];
+                iconForFile:native_string(std::filesystem::absolute(path))];
             return icon && render_icon(icon, target);
         }
     }

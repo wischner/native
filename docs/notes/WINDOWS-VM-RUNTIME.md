@@ -3,7 +3,8 @@
 The **Windows 11, VM** F5 profile targets the Windows 11 desktop reachable
 through the SSH alias `whiskey`. It does not invoke Wine. Builds
 remain Docker-backed through `docker-win`; the guest receives the resulting
-MinGW `vision.exe`, three runtime DLLs and the SDK's native Win64
+MinGW `vision.exe`, three compiler runtime DLLs, the Windows App SDK
+bootstrap DLL and the SDK's native Win64
 `gdbserver.exe`. No source code or Linux executable is run in the guest.
 
 ## Connection and guest preparation
@@ -28,6 +29,14 @@ The scripts require strict host-key checking and non-interactive key
 authentication using normal SSH configuration and known-hosts files. They do
 not accept unknown or changed server keys automatically. The existing
 `whiskey` SSH connection supplies these settings.
+
+Install x64 Windows App Runtime 1.8 for the genuine WinUI 3 NavigationView.
+`prepare.sh` checks the current user's installed
+`Microsoft.WindowsAppRuntime.1.8` package before deployment. The runtime was
+already installed on `whiskey` during the 2026-10-22 review. The build image
+is `native-windows-winui-sdk:24.04`, built by `docker-win-sdk`; it supplies
+matching GCC 13 runtime DLLs and `Microsoft.WindowsAppRuntime.Bootstrap.dll`.
+Do not mix compiler runtime DLLs from the older cross-build image.
 
 ## F5 workflow
 
@@ -282,3 +291,58 @@ clients without that option. This changes warning presentation, not the
 server's negotiated cryptography. Successful deployment/cache summaries are
 silent by default; set `WINDOWS_VM_VERBOSE=1` to display them. Failures still
 report normally and retain their nonzero exit status.
+
+
+On 2026-10-21 the Docker-built settings regression passed model and native
+runtime modes in the logged-in `whiskey` desktop. The temporary limited-user
+task used an isolated `C:\NativeDebug\settings-check` deployment and existing
+MinGW runtime DLLs. It asserts DATETIMEPICK_CLASS widgets, native WM_NOTIFY
+handling, unavailable-date rollback, time changes and page recreation.
+Programmatic DTM_SETSYSTEMTIME need not notify, so the fixture also delivers
+the corresponding user-edit notification explicitly. This is callback
+coverage, not a physical mouse/calendar walkthrough.
+
+
+## Native control review (2026-10-21)
+
+Four focused runs pass in the logged-in `whiskey` desktop: native Windows
+controls, inspector runtime, settings model and settings runtime. The isolated
+`C:\NativeDebug\bugs-review` deployment uses the completed Docker build and
+its MinGW runtime DLLs. The temporary interactive task was removed afterward.
+
+Checks include transparent iconless tree rows and native child indentation,
+all 16 stock-button border masks without changing button class, centered modal
+windows, preferred-size date/time fields, real inspector hit testing, native
+flat toolbar commands/toggles and property editor scrolling/recreation. The
+inspector screenshot confirms the native toolbar, visible values and light
+dotted grid. Native toolbar activation preserves the editor's focus, including
+a combo's ordinary system selection highlight. Common file dialogs and message
+boxes use a thread-scoped activation hook to center on their native owner.
+
+## Standard input and footer checks (2026-10-22)
+
+The final Docker MinGW build passes four isolated interactive checks on
+`whiskey`: native Win32 controls, inspector, settings model and settings
+runtime. Single-line EDIT retains its native border while WM_NCCALCSIZE
+centers the font-height client and caret; native control-color brushes fill
+the resulting inner padding. The settings fixture checks that client geometry
+and repeated size requests, alongside equal entry/combo/picker heights.
+The review task is removed afterward. The tested Vision is deployed through
+`prepare.sh` to the normal F5 location.
+
+## WinUI navigation and control review (2026-10-22)
+
+The pinned GNU/WinUI Docker SDK builds the actual WinUI 3 NavigationView host.
+The existing x64 Windows App Runtime 1.8 in `whiskey` resolves it through the
+adjacent bootstrap DLL. Native sections, ImageIcon rows, selected-row styling
+and AutoSuggestBox search were inspected on the interactive Windows desktop.
+Physical mouse selection switches Dates/Time pages, and typed search filters
+rows while retaining the selected page. Closing the gallery through its title
+bar returns status zero and leaves no Vision process.
+
+The four focused interactive runs all return zero: Windows controls,
+inspector, settings model and settings runtime. The settings fixture checks
+a visible DesktopChildSiteBridge and native date/time text padding in addition
+to page recreation and native callbacks. Screenshots use the
+`build/windows-winui-navigation-*.png` prefix. Runtime execution uses the
+Windows desktop; Wine is only a build-time SDK generator dependency.

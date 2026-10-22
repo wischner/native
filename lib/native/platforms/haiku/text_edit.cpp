@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../property_grid_peer.h"
 #include <native/text_edit.h>
 #include <native/property_grid.h>
 
@@ -15,6 +16,7 @@
 #include <string>
 
 #include <InterfaceDefs.h>
+#include <ControlLook.h>
 #include <ScrollView.h>
 #include <TextView.h>
 #include <Window.h>
@@ -83,12 +85,37 @@ namespace
             BTextView::FrameResized(width, height);
             if (!owner_ || owner_->get_mode() != native::text_edit_mode::single_line)
                 return;
-            font_height metrics;
-            GetFontHeight(&metrics);
-            const float line = std::ceil(metrics.ascent + metrics.descent + metrics.leading);
-            const float padding = owner_->get_border_sides() == native::border_sides::none ? 1 : 4;
+            const float line = std::ceil(LineHeight(0));
+            const float padding = dynamic_cast<native::settings_sidebar *>(owner_->get_parent()) ? 24
+                : owner_->get_border_sides() == native::border_sides::none ? 1 : 4;
             const float top = std::max(0.0f, std::floor((height + 1 - line) / 2));
             SetTextRect(BRect(padding, top, std::max(padding, width - padding), top + line));
+        }
+
+        void Draw(BRect update) override {
+            BTextView::Draw(update);
+            if (owner_ && owner_->get_mode() == native::text_edit_mode::single_line &&
+                owner_->get_border_sides() != native::border_sides::none) {
+                PushState();
+                BRect frame(Bounds());
+                const uint32 flags = IsFocus() && Window()->IsActive()
+                    ? BControlLook::B_FOCUSED : 0;
+                be_control_look->DrawTextControlBorder(this, frame, update,
+                    ui_color(B_PANEL_BACKGROUND_COLOR), flags);
+                PopState();
+            }
+            if (!owner_ || !dynamic_cast<native::settings_sidebar *>(owner_->get_parent())) return;
+            PushState();
+            SetHighColor(tint_color(ui_color(B_CONTROL_TEXT_COLOR), B_DISABLED_LABEL_TINT));
+            const float y = (Bounds().Height() - 10) / 2;
+            StrokeEllipse(BRect(6, y, 14, y + 8));
+            StrokeLine(BPoint(13, y + 7), BPoint(18, y + 12));
+            if (TextLength() == 0) {
+                font_height height; GetFontHeight(&height);
+                DrawString("Search settings", BPoint(24,
+                    (Bounds().Height() + height.ascent - height.descent) / 2));
+            }
+            PopState();
         }
 
         void set_text(const std::string &text) {
@@ -236,7 +263,8 @@ namespace native
                 self);
             view->set_text(_text);
             view->MakeEditable(!_read_only);
-            if (dynamic_cast<property_grid *>(get_parent())) {
+            const bool label = _read_only && get_border_sides() == border_sides::none;
+            if (native::detail::property_grid_owner(*this) || label) {
                 view->SetViewColor(parent->ViewColor());
                 view->SetLowColor(parent->ViewColor());
             }
@@ -248,8 +276,8 @@ namespace native
                                          B_FOLLOW_LEFT | B_FOLLOW_TOP,
                                          0,
                                          false,
-                                         true,
-                                         B_FANCY_BORDER);
+                                         !label,
+                                         label ? B_NO_BORDER : B_FANCY_BORDER);
                 scroll->MoveTo(frame.LeftTop());
                 scroll->ResizeTo(frame.Width(), frame.Height());
                 scroll->Hide();

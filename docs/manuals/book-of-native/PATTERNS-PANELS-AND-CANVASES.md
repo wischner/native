@@ -6,6 +6,13 @@ out other controls. A `canvas` hands its whole client viewport to application
 painting and owns the scrollbars around it. They are deliberately separate
 abstractions, and neither derives from the other.
 
+A layout's input cell can be taller than a native single-line control.
+Entries, combos and date/time pickers resolve to the theme's standard input
+height and center inside bounds allocations; their cache reflects that smaller
+field. Multiline text edits and ordinary panel/canvas children retain the
+requested allocation. Status bars reserve the outermost bottom strip before
+bottom toolbars, including when attached to a panel or canvas.
+
 ## Why two classes and not one
 
 `wnd` is abstract: it defines hierarchy, geometry, layout, painting, and input,
@@ -93,6 +100,7 @@ native resource colors:
 
 | Backend | Host |
 | --- | --- |
+| GTK Wayland / elementary | GtkOverlay drawing area and clipped, non-measured GtkFixed child host; current child bounds do not increase parent minimums |
 | X11/Athena | Private Xaw `Form` subclass; portable layout owns bounds, child preferences cannot resize/unmap the panel |
 | OpenMotif | `XmForm` child with `XmRESIZE_NONE` |
 | OPEN LOOK/XView | Borderless `PANEL` on the frame at the accumulated child offset |

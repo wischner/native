@@ -223,7 +223,7 @@ namespace linux::wayland
             return paint(view,
                          bounds,
                          value,
-                         theme_part::widget,
+                         theme_part::frame,
                          find_theme_widget(view, "header"));
         } else if (kind == surface_kind::header ||
                    kind == surface_kind::ruler) {

@@ -374,9 +374,9 @@ namespace vision
         // whatever the window does. The first row holds no control at
         // all; a track is just space, and this one is painted into.
         (*grid) << native::row(native::pixels(52))
-                << native::row(native::pixels(40))
+                << native::row(native::pixels(52))
                 << native::row(native::star())
-                << native::row(native::pixels(40))
+                << native::row(native::pixels(52))
                 << native::column(native::star(1.0f))
                 << native::column(native::star(2.0f))
                 << native::cell(_toggle, 1, 0, 1, 2, 6)
@@ -392,7 +392,7 @@ namespace vision
             .add(_cell_2, 0, 1, 1, 1, 6)
             .add(_cell_3, 1, 0, 1, 1, 6)
             .add(_cell_4, 1, 1, 1, 1, 6);
-        (*grid) << native::child_grid(std::move(nested), 2, 1, 1, 1, 3);
+        (*grid) << native::child_grid(std::move(nested), 2, 1, 1, 1, 0);
 
         set_layout(std::move(grid));
         _toggle.set_text("Switch to absolute layout");
@@ -408,13 +408,23 @@ namespace vision
                   << _cell_1 << _cell_2 << _cell_3 << _cell_4;
         set_layout(std::move(layout));
 
-        _toggle.set_bounds(native::rect(16, 58, 200, 28));
-        _sidebar.set_bounds(native::rect(16, 98, 150, 180));
-        _cell_1.set_bounds(native::rect(180, 98, 130, 84));
-        _cell_2.set_bounds(native::rect(320, 98, 130, 84));
-        _cell_3.set_bounds(native::rect(180, 194, 130, 84));
-        _cell_4.set_bounds(native::rect(320, 194, 130, 84));
-        _status.set_bounds(native::rect(16, 292, 434, 28));
+        constexpr int margin = 6, gap = 2 * margin;
+        const auto area = get_client_bounds();
+        const int width = std::max(0, int(area.w()) - 2 * margin);
+        const int sidebar_width = std::max(0, int(area.w()) / 3 - 2 * margin);
+        const int top = 110;
+        const int status_top = std::max(top, int(area.h()) - margin - 40);
+        const int height = std::max(0, status_top - gap - top);
+        const int cell_width = std::max(0, (width - sidebar_width - 2 * gap) / 2);
+        const int cell_height = std::max(0, (height - gap) / 2);
+        const int left = margin + sidebar_width + gap;
+        _toggle.set_bounds(native::rect(margin, 58, width, 40));
+        _sidebar.set_bounds(native::rect(margin, top, sidebar_width, height));
+        _cell_1.set_bounds(native::rect(left, top, cell_width, cell_height));
+        _cell_2.set_bounds(native::rect(left + cell_width + gap, top, cell_width, cell_height));
+        _cell_3.set_bounds(native::rect(left, top + cell_height + gap, cell_width, cell_height));
+        _cell_4.set_bounds(native::rect(left + cell_width + gap, top + cell_height + gap, cell_width, cell_height));
+        _status.set_bounds(native::rect(margin, status_top, width, 40));
         _toggle.set_text("Switch to grid layout");
     }
 
@@ -907,7 +917,7 @@ namespace vision
             {"std::cout", "std::cout", "standard output stream"},
             {"std::string", "std::string", "UTF-8 byte string"},
             {"return", "return", "return statement"}});
-        _status = "Use Up/Down, Enter, or Escape in the editor.";
+        _status = "Use Up/Down, Enter or Tab to accept, Escape to dismiss.";
         invalidate();
         return true;
     }
@@ -971,12 +981,12 @@ namespace vision
                                120, 60, 790, 730)
         , _selection_combo({"CDE", "OpenLook", "Window Maker", "Haiku"},
                            native::combo_box_style::drop_down_list,
-                           60, 72, 230, 24)
+                           60, 76, 230, 34)
         , _editable_combo({"10 mm", "25 mm", "50 mm", "100 mm"},
                           native::combo_box_style::editable,
-                          60, 116, 230, 24)
+                          60, 144, 230, 34)
         , _list_box({"One", "Two", "Three", "Four", "Five"},
-                    60, 174, 230, 146)
+                    60, 220, 230, 146)
         , _tab_general({"Native page chrome", "Borrowed page", "Silent API selection"},
                        0, 0, 220, 100)
         , _tab_advanced({"User change signal", "Disabled tab support",
@@ -1085,9 +1095,9 @@ namespace vision
         event.g.draw_text("Selection-only combo box",
                           native::point(60, 52));
         event.g.draw_text("Editable combo box",
-                          native::point(60, 98));
+                          native::point(60, 120));
         event.g.draw_text("Native list_box",
-                          native::point(60, 152));
+                          native::point(60, 196));
         event.g.draw_text("Top native tab_view",
                           native::point(400, 152));
         event.g.draw_text("Bottom tab_view (downward-facing)",

@@ -306,6 +306,8 @@ Next: [Clipboard and text editing](11-CLIPBOARD-AND-TEXT-EDITING.md).
 `theme::draw_toolbar_button(bounds, text, state)` draws a command in the
 main-menu style without a submenu arrow; `draw_menu_title()` retains menu
 marks on toolkits that use them. Both use the active theme palette.
+On macOS, the toolbar primitive uses AppKit accessory-button drawing to match
+live native edge-tool buttons, including selected, pressed and disabled states.
 
 For programmable color, blur, distortion and temporal image effects, chapter
 [20: Portable image shaders](20-IMAGE-SHADERS.md) covers `shader_view`, immutable

@@ -5,19 +5,66 @@ hosted SDK's physical palette and disables inversion across the 32-bit Rasta
 desktop. Full viewer screenshots verify AES menus/chrome and Native content
 together. Closing the viewer terminates the owned GDB/Vision/gemd session
 with MI stdin still open; command status and clean MI stdout are verified.
-The full suites pass 17/18 direct and 18/19 proxy tests. Their final
+The full suites pass 19/20 direct and 20/21 proxy tests. Their final
 menu-strip restoration assertion remains failing: a captured framebuffer
 shows that the pinned SDK removes application commands but retains a blank
 AES menu strip instead of restoring the desktop checker there. This remains
 a runtime qualification limit; the assertion has not been weakened.
 
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
-and all 17 CTests pass. CMake enables libc++ experimental threading support
+and all 19 CTests pass. CMake enables libc++ experimental threading support
 when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
 session shutdown after inferior exit have been verified on the VM.
 
 This note lists backend-level open issues that are real today.
 
+
+## Windows/elementary control review (2026-10-22)
+
+Windows settings now uses the actual WinUI 3 NavigationView with native
+search, hosted through Windows App SDK 1.8. The pinned GCC/WinUI SDK builds,
+four focused Windows desktop runs pass, and physical navigation/search and
+normal zero-status closure are verified on `whiskey`. Both GTK suites pass
+20/20 after table release routing, native combo caret, splitter allocation
+and callback, tab spacing and border fixes. The shared SDL suite passes
+26/26. These checks do not change the unrelated qualification limits below.
+
+## Settings and pickers (2026-10-21)
+
+The new settings/date/time controls pass their focused tests on all Linux
+selections and on native macOS, Windows and Haiku desktops. See the feature
+matrix for adapter kinds and exact suite coverage. Native calendars without
+a per-day disable API reject unavailable selections; GTK marks excluded days
+and applies native insensitive styling to their day labels.
+Athena, XView and WINGs native lists show text rather than optional images.
+These are explicit native-widget limits, not a claim of identical visuals.
+
+The GTK navigator now presents optional images in native GtkImage rows. The
+settings runtime fixture checks texture pixels and a real grow/shrink cycle
+in both dimensions. Re-enabling the former measured-child-host behavior only
+in GDB makes that resize regression fail; no source or compositor setting is
+changed for the negative control. Both corrected Docker suites pass 20/20.
+The production generic GTK gallery was rendered and inspected after growing
+from 760×477 to 900×800 and returning to 760×477. Its images are visible.
+
+The existing Window Maker repaint fixture reports Fontconfig/Pango exit-time
+allocations, including on a rerun with full unwinding and its existing
+WMCreateFont exception. The new settings fixtures pass. No additional leak
+suppression was added. GEM's existing menu-strip restoration failure remains.
+Mac desktop capture/Accessibility permissions currently limit an interactive
+settings walkthrough; native callback assertions pass independently.
+
+## Input/footer verification limits (2026-10-22)
+
+The current input/footer pass builds every maintained selection and passes
+all native Haiku, macOS, GTK/elementary, SDL2, Athena and OPEN LOOK regressions;
+Windows passes the four focused interactive control/inspector/settings runs.
+Motif passes all 24 tests under Xvfb. The separate CDE suite passes 23/24:
+`native_motif_runtime_tests` fails its table grid-edge pixel comparison there,
+while that same executable passes on bare Xvfb. This is a desktop-specific
+qualification limit, not a successful CDE grid acceptance claim. The existing
+Window Maker Fontconfig/Pango exit allocations and GEM menu-strip restoration
+failure remain as recorded above. No assertion or sanitizer rule was disabled.
 
 ## GTK Wayland and elementary OS (2026-10-20)
 
@@ -39,7 +86,7 @@ The production GLSL retro-terminal smoke verifies Cairo image lifetimes and
 posted completion on this path. LeakSanitizer's exit scan is disabled in the
 runtime session because GTK/desktop libraries retain process resources.
 
-The shared GTK adapter measures the fixed child overlay, preserves child
+The shared GTK adapter clips the non-measured fixed child overlay, preserves child
 pointer targeting, and routes background controllers at the target phase.
 Top-level defaults include header/menu height. Native menus translate portable
 mnemonics to GTK underscores while escaping literal underscores. The focused

@@ -176,10 +176,18 @@ namespace native
         gpx &graphics,
         theme &appearance,
         const rect &bounds,
-        const theme::state &) {
-        graphics.set_pen(1)
-            .set_ink(appearance.get_button_border_color())
-            .draw_border(bounds, get_border_sides());
+        const theme::state &state) {
+        const auto saved = graphics.save_state();
+        const auto clip = graphics.get_clip();
+        const auto edge = [&](border_sides side, rect strip) {
+            if (!has_border(get_border_sides(), side)) return;
+            graphics.set_clip(clip.intersect(strip));
+            appearance.draw_list(bounds, {}, -1, state);
+        };
+        edge(border_sides::top, rect(bounds.x1(), bounds.y1(), bounds.w(), 2));
+        edge(border_sides::bottom, rect(bounds.x1(), bounds.y2() - 2, bounds.w(), 2));
+        edge(border_sides::left, rect(bounds.x1(), bounds.y1(), 2, bounds.h()));
+        edge(border_sides::right, rect(bounds.x2() - 2, bounds.y1(), 2, bounds.h()));
     }
 
     void list::draw_focus(

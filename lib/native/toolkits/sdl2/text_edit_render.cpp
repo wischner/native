@@ -48,7 +48,9 @@ namespace
         const std::string &text = owner->get_text();
         std::size_t begin = 0;
         std::size_t line = 0;
-        int y = content.p.y;
+        int y = owner->get_mode() == native::text_edit_mode::single_line
+            ? bounds.y1() + std::max(0, (int(bounds.h()) - linux::sdl2::text_height()) / 2)
+            : content.p.y;
         while (begin <= text.size() && y < content.y2()) {
             const std::size_t newline = text.find('\n', begin);
             const std::size_t end = newline == std::string::npos

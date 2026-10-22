@@ -225,6 +225,9 @@ Window lifecycle must follow these rules:
   dispatch and check it without dereferencing the owner afterward. Paint must
   stop when that generation ends; borrowed graphics-state guards skip restoring
   a destroyed drawer. Signal-owner destruction stops remaining subscribers.
+  Bridges whose native callbacks can outlive a resource retain weak generation
+  tokens and check them before dereferencing their borrowed C++ owner. AppKit
+  content views and window delegates follow this rule for delayed callbacks.
 - After that notification, a still-created window synchronizes internal
   non-client resources independently of whether a public handler consumed
   the signal. Toolbar children must exist before painting begins.
@@ -283,6 +286,20 @@ Parents and children do not own each other; their lifetimes must be managed by
 the application. A window owns its installed layout manager. Geometry changes
 must update cached bounds and relayout children.
 
+`constrain_bounds()` is a protected, pure-C++ geometry hook. The base preserves
+its argument. Creation resolves it before creating the native resource, and
+bounds/dimension setters cache the resolved geometry before native application.
+Dimension-only setters preserve position. Single-line editors, both combo
+styles and date/time pickers resolve nonzero heights to the active theme's
+standard input height once a created ancestor can supply metrics. Bounds
+allocations taller than that height center the control vertically; zero-height
+allocations remain zero. Multiline editors retain their requested dimensions.
+The cached bounds describe the resolved control, not the larger layout cell.
+
+A child's current allocation must not become a persistent top-level minimum.
+A client-filling layout must remain resizable in both directions; backend
+measurement and clipping must preserve that distinction.
+
 The layout region is derived in two documented steps. `get_chrome_bounds()` is
 a protected virtual returning the host-relative area a window leaves for
 non-client elements and the client after its own permanent edge furniture; the
@@ -330,7 +347,8 @@ object must safely detach the non-owning relationship.
   independent native top levels so either window can move behind the other.
   The portable owner relationship still governs lifetime and modal exclusion;
   modal windows retain native ownership/transience.
-- A `modal_wnd` is an owner-modal dialog. Showing it starts a modal session,
+- A `modal_wnd` is an owner-modal dialog. Beginning a show session centers it
+  over its owner by default. Showing it starts a modal session,
   moves focus to the dialog, and prevents input to its owner and the owner's
   other owned branches. The event loop must continue to dispatch paint and
   lifecycle events; modality must not require a second portable event loop.
@@ -542,6 +560,11 @@ existing edges; widget metrics remain native-owned. Tree and accordion
 `set_border_visible()` remain all/none convenience setters. Accordion body
 insets follow the selected left, right, and bottom edges.
 
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
+
 ### Input and asynchronous receiver lifetimes
 
 Every created window has a portable lifetime token alongside its opaque
@@ -721,7 +744,10 @@ draw stages, so an application-painted sample is not a second visual design.
 
 `theme::draw_toolbar_button()` paints a menu-styled command without a submenu
 mark. Its default delegates to menu-title drawing; native adapters omit marks
-where menu titles themselves carry them.
+where menu titles themselves carry them. AppKit overrides it with
+flexible-height native button drawing to match its live edge-toolbar buttons. Windows
+uses native Toolbar theme parts and Haiku uses flat BControlLook buttons;
+stock bars use their respective native toolbar controls.
 
 ## 8. Application
 
@@ -1159,6 +1185,9 @@ contract. Tests must cover stable selection, groups, model notifications,
 search modes and Unicode, signal rules, backend lifecycle, and a million-row
 model that proves cells are requested only for visible rows.
 
+Portable table pointer input preserves Ctrl toggling and Shift display-row
+ranges in multiple-selection mode; native adapters retain the same modifiers.
+
 ## 14. Source editing
 
 `code_edit` is the portable source editor and extends the overlapping
@@ -1191,7 +1220,8 @@ preserve the portable document and overlays; otherwise it provides a
 keyboard-focusable, toolkit-themed painted editor through its normal event
 loop. The shared painted path renders visible source rows, current-line and
 selection surfaces, style runs, diagnostic marks, caret, and a themed
-completion list. Platform input translation must preserve scalar boundaries
+completion list. Enter and Tab accept its active choice; the application
+remains responsible for inserting the accepted item. Platform input translation must preserve scalar boundaries
 and route standard clipboard and undo keys through the public commands.
 An unset `code_theme::current_line` is a native selected-row surface, and all
 text fragments on that row use the corresponding selected-text role. A
@@ -1364,6 +1394,13 @@ state and fallback behavior live in `lib/native/`; native widget creation,
 dialog presentation, and event routing remain in the matching platform or
 toolkit directory.
 
+Single-line text edits, selection-only and editable combos, and date/time
+pickers share a 24-pixel construction default. Creation and live geometry
+updates resolve their actual height through `theme::get_text_edit_height()`.
+Native widget font, alignment and padding metrics center text within that
+height; popup content does not enlarge the closed field. Native controls and
+native dropdown indicators remain authoritative for each backend.
+
 `combo_box` caches its UTF-8 item model, selected index, complete displayed
 text, and editable/selection-only style. Programmatic changes do not emit
 user-action signals. Backends must update the cache before invoking the
@@ -1395,6 +1432,67 @@ under it, returning to the selected-row highlight when the pointer leaves.
 `list_box` is an alias of `list`, not a second list implementation. This keeps
 selection semantics, native widgets, drawing extension points, and event
 hooks identical.
+
+`settings_sidebar` combines native settings navigation with a borrowed page
+host. `settings_page` descriptors carry positive unique command IDs, UTF-8
+titles, optional shared `img` values, section labels and enabled state.
+`operator<<` and `add_item()` accept the same descriptor. Selection is by
+stable ID; zero means no selected page. Setters, removal and automatic
+selection repair are silent; a distinct enabled user selection emits
+`on_selection_change` after updating the cache and selected page.
+Pages must be uncreated when added and outlive the sidebar, or be removed
+before deletion. They are parented to the sidebar but never deleted by it.
+Inactive page resources are destroyed; recreation preserves their C++ state
+and emits the ordinary create event so applications recreate their children.
+Removing a page destroys its resource and detaches its parent. Navigation
+width and page bounds remain portable logical geometry.
+
+Optional search is initially hidden. `set_search_visible(true)` exposes a
+single-line UTF-8 query editor. `set_search_text()` filters page titles and
+section names using the shared case-insensitive substring matcher. Filtering
+never changes selection or destroys the active page, including when no row
+matches. Hiding search suspends filtering and retains the query. Setters stay
+silent; native edits update presentation before `on_search_change`.
+macOS uses `NSSearchField`, an `NSOutlineView` source list and native sidebar
+material. Windows uses WinUI 3 `NavigationView` with optional `AutoSuggestBox`
+inside a private XAML island; other adapters compose their existing text
+editor with navigation. Island state and runtime types stay behind the opaque
+peer. Native events are detached and islands closed before parent resource
+destruction; deferred selection/search callbacks check resource generation.
+
+The elementary backend uses `GraniteSettingsSidebar`; Windows uses the
+actual WinUI navigation control. Other backends prefer
+their native image tree or text list. Athena, XView and WINGs use native text
+lists rather than their library-painted trees. Optional images are retained
+but not displayed by these text-only lists. SDL2/GEM reuse their existing
+themed navigation. Backend adaptation state belongs to the window's peer.
+
+`date` and `time_of_day` are pure C++ civil values, without time zones or
+native date epochs. Dates use the Gregorian calendar and the common
+1601..9999 range; times cover 00:00:00..23:59:59. `date_picker` accepts an
+inclusive range, explicit excluded dates, excluded weekdays and an optional
+application predicate. This permits application-defined holidays without
+assuming a country or calendar service. `time_picker` supports inclusive
+same-day limits, minute steps dividing 60, optional seconds editing and an
+application predicate. Hidden seconds remain part of the cached value.
+
+Programmatic value setters reject unavailable values with `invalid_argument`
+and emit nothing. Rule changes preserve the current value, including when it
+becomes unavailable; `get_valid()` reports this state. Native proposals pass
+the same rules, restore the cached native value on rejection, and emit
+`on_rejected` without changing the cache. Distinct accepted proposals update
+the cache before `on_change`. Predicates run synchronously on the UI thread,
+must be pure, and are treated as unavailable if they throw. Native one-minute
+stepper moves advance by the configured minute step before validation.
+
+Dedicated platform widgets take precedence: Granite date/time pickers,
+AppKit `NSDatePicker` at its intrinsic compact size (with an explicit native
+calendar button and calendar popover for dates), Win32 date/time common controls, and Haiku's installed
+shared-kit `DateEdit`/`TimeEdit`. Generic GTK uses `GtkCalendar` in a popover
+and native spin fields. Toolkits without a dedicated picker compose their
+existing choice controls; they must not add a second painted calendar.
+Availability is enforced even when a native calendar cannot gray individual
+dates. GTK marks unavailable days; composed date fields omit them.
 
 `file_icon` owns one exact-size PNG byte sequence for a
 `std::filesystem::path`. `from_path()` uses standard filesystem metadata to
@@ -1490,6 +1588,9 @@ units-per-pixel, and positive minor/major intervals are finite doubles.
 Optional pointer tracking uses host-relative motion, updates the cached value,
 and emits once per changed ruler pixel. Status bars occupy the full bottom edge,
 including both lower corners, while side non-client strips stop above them.
+Status bars precede all other bottom strips in edge reservation, independent
+of attachment order, so bottom toolbars sit above them. Changing a status bar
+to another edge is invalid; toolbars retain their four-edge docking contract.
 Status bars divide their width into fixed parts and equal shares of remaining
 flexible parts. Painted status strips and their parts use the panel/chrome
 surface rather than the white editable-content surface; part edges remain
@@ -1517,6 +1618,8 @@ valid changed user value emits one `property_change` after updating the model.
 Read-only rows reject user edits. The default row height is the control font
 height plus six pixels. Separate canvas regions supply labels, outer frame edges, and the right-hand
 scrollbar; standard text/check/combo editors occupy the remaining panel area.
+The outer right frame has its own strip outside the scrollbar's client and
+non-client painting, so scrolling cannot erase that edge.
 Painting surfaces never overlap editors, including on toolkits with flattened
 child hosting. Labels and value fields use the control-host background. Only
 fully visible rows allocate native editor resources. Scrolling and recreation preserve committed values.
@@ -1539,7 +1642,12 @@ create notification, independently of a handler consuming that signal. The
 paint pass must not create toolbar children. The surface participates in
 child lifetime and hit testing but is excluded
 from the owner's ordinary layout manager. Toolbar buttons use the active
-main-menu background and `draw_toolbar_button()` primitive, without submenu arrows. Tools may be momentary, independent
+main-menu background and `draw_toolbar_button()` primitive, without submenu arrows.
+Exact stock macOS bars instead host flexible-height native flat `NSButton` tools
+and `NSBox` separators in that peer. Configuration synchronizes these children;
+painting only queries their presence. This preserves arbitrary edge placement
+and multiple bars, which the single titlebar-owned `NSToolbar` cannot represent.
+Derived toolbar painting remains available. Tools may be momentary, independent
 toggles, exclusive members of a named group, or separators. Exclusive groups
 are local to each bar; selecting a member clears its peers before emitting
 one `tool_command`. Programmatic changes are silent. Releasing outside the
@@ -1552,6 +1660,26 @@ the menu background. Text measurement uses the font without opening a child
 graphics context. Tools exceeding the available
 strip length are clipped; applications can place additional tools on another
 bar. These controls extend Section 17 without exposing native widget types.
+
+Control adaptation details: native picker fields retain preferred dimensions
+inside their portable bounds. Settings search occupies the navigation width,
+with a native search field or a text field and magnifier. Property-grid row
+heights accommodate native editors and use a light dotted internal grid.
+GTK clipboard stream reads must remain asynchronous while servicing the main
+context; synchronous reads can deadlock a local content provider. Clipboard
+commands check resource lifetime again after this event delivery.
+
+Visible-owner macOS message boxes use native NSAlert sheets, preserving the
+synchronous result while AppKit attaches and positions the alert on its owner.
+A hidden owner uses AppKit application-modal presentation.
+
+AppKit date/time peers use the standard native text-field height and adaptive
+control background. Their native alignment rectangles center text and
+accessories vertically. Dates compose a text-only editor and calendar action
+without a stepper; times retain the native editor/stepper within that bezel.
+Native toolbar feedback must grow with configured icon sizes.
+A stock button with no border sides disables its complete native bezel rather
+than retaining rounded corner fragments from a partial-edge clip.
 
 ## 18. Structural containers
 

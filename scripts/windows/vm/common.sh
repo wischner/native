@@ -6,7 +6,7 @@ vm_workspace=$(cd "${vm_script_dir}/../../.." && pwd)
 vm_domain=${WINDOWS_VM_DOMAIN:-}
 vm_remote_dir=C:/NativeDebug/native
 vm_tunnel_socket=${vm_workspace}/build/windows-vm-ssh.sock
-vm_image=wischner/gcc-x86_64-windows-mingw-w64:latest
+vm_image=${WINDOWS_VM_IMAGE:-native-windows-winui-sdk:24.04}
 # Suppress only the non-PQ advisory; retain host-key checks and other warnings.
 # Older SSH clients ignore the newer option.
 vm_ssh_options=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes

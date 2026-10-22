@@ -23,6 +23,7 @@
 #include <native/font.h>
 #include <native/text_edit.h>
 #include "property_drop_down.h"
+#include "property_grid_peer.h"
 
 namespace
 {
@@ -115,9 +116,11 @@ namespace native
     property_grid::property_grid(coord x, coord y, dim width, dim height)
         : panel(x, y, width, height), _viewport(std::make_unique<canvas>()),
           _labels(std::make_unique<canvas>()), _top_frame(std::make_unique<canvas>()),
-          _bottom_frame(std::make_unique<canvas>()) {
+          _bottom_frame(std::make_unique<canvas>()),
+          _right_frame(std::make_unique<canvas>()) {
+        _values = std::make_unique<canvas>();
         for (auto *surface : {_viewport.get(), _labels.get(),
-                              _top_frame.get(), _bottom_frame.get()}) {
+                              _values.get(), _top_frame.get(), _bottom_frame.get(), _right_frame.get()}) {
             surface->set_parent(this);
             surface->set_horizontal_scrollbar_policy(scrollbar_policy::never);
             surface->set_vertical_scrollbar_policy(scrollbar_policy::never);
@@ -126,7 +129,24 @@ namespace native
         _labels->on_wnd_paint.connect([this](wnd_paint_event event) {
             paint_rows(event); return true;
         });
+        _values->on_wnd_paint.connect([this](wnd_paint_event event) {
+            auto appearance = theme::create(event.g);
+            const auto area = _values->get_client_bounds();
+            appearance->draw_surface(area, surface_kind::panel, {});
+            const auto colors = appearance->native_palette();
+            const rgba line((unsigned(colors.separator.r) + 3u * colors.button_bg.r) / 4,
+                            (unsigned(colors.separator.g) + 3u * colors.button_bg.g) / 4,
+                            (unsigned(colors.separator.b) + 3u * colors.button_bg.b) / 4, 255);
+            event.g.set_pen(1).set_ink(line);
+            for (int y = _resolved_height - 1; y < area.h(); y += _resolved_height)
+                for (int x = 0; x < area.w(); x += 2)
+                    event.g.draw_rect(rect(x, y, 1, 1), true);
+            return true;
+        });
         _labels->on_mouse_wheel.connect([this](mouse_wheel_event event) {
+            _viewport->on_native_mouse_wheel(event); return true;
+        });
+        _values->on_mouse_wheel.connect([this](mouse_wheel_event event) {
             _viewport->on_native_mouse_wheel(event); return true;
         });
         const auto frame = [this](canvas *surface, border_sides edge) {
@@ -139,7 +159,7 @@ namespace native
                 return true;
             });
         };
-        frame(_viewport.get(), border_sides::right);
+        frame(_right_frame.get(), border_sides::right);
         frame(_top_frame.get(), border_sides::top);
         frame(_bottom_frame.get(), border_sides::bottom);
         _viewport->on_scroll.connect([this](canvas_scroll_position) {
@@ -311,7 +331,7 @@ namespace native
             entry.editor = std::move(control);
         }
         entry.editor->set_border_sides(border_sides::none);
-        entry.editor->set_parent(this);
+        entry.editor->set_parent(_values.get());
         synchronize_editor(entry);
     }
 
@@ -333,7 +353,7 @@ namespace native
     void property_grid::create_native() {
         panel::create_native();
         for (auto *surface : {_viewport.get(), _labels.get(),
-                              _top_frame.get(), _bottom_frame.get()}) {
+                              _values.get(), _top_frame.get(), _bottom_frame.get(), _right_frame.get()}) {
             surface->create();
             surface->show();
         }
@@ -347,13 +367,14 @@ namespace native
 
     void property_grid::show_native() {
         panel::show_native();
+        if (_values->get_created()) _values->show();
         // A dropdown value is itself a canvas. Flattened hosts must raise
         // it after the structural panel, just like the label canvases.
         for (auto &entry : _rows)
-            if (entry->item.kind == property_kind::drop_down && entry->editor &&
+            if (entry->editor &&
                 entry->editor->get_created()) entry->editor->show();
         for (auto *surface : {_viewport.get(), _labels.get(),
-                              _top_frame.get(), _bottom_frame.get()})
+                              _top_frame.get(), _bottom_frame.get(), _right_frame.get()})
             if (surface->get_created()) surface->show();
     }
 
@@ -367,7 +388,11 @@ namespace native
                 const int font_height = font_t::stock(font_role::control).get_metrics().height;
                 // Native value editors need their line descent plus a small
                 // inset above and below; retain compact, font-sized rows.
-                _resolved_height = std::max(font_height + 6, _row_height);
+                wnd *root = this;
+                while (root->get_parent()) root = root->get_parent();
+                const auto metrics = theme::create(root->get_gpx())->defaults();
+                _resolved_height = std::max({font_height + 6, _row_height,
+                    metrics.text_edit_height + 2, metrics.check_height + 2});
             } else _resolved_height = std::max(20, _row_height);
             const auto area = get_client_bounds();
             const int height = std::max(0, int(area.h()) - 2);
@@ -383,7 +408,7 @@ namespace native
                     scroll_width = theme::create(root->get_gpx())->defaults().scrollbar_extent;
             }
             scroll_width = std::clamp(scroll_width, 1, std::max(1, int(area.w())));
-            const int width = std::max(0, int(area.w()) - scroll_width);
+            const int width = std::max(0, int(area.w()) - scroll_width - 1);
             _resolved_label_width = std::clamp(_label_width ? _label_width : width / 2,
                                                 0, width);
             const int label = _resolved_label_width;
@@ -392,8 +417,11 @@ namespace native
             // Neither label painting nor its input window may cover an editor.
             _viewport->set_bounds(rect(area.x1() + width, area.y1() + 1, scroll_width, height));
             _labels->set_bounds(rect(area.x1(), area.y1() + 1, label, height));
-            _top_frame->set_bounds(rect(area.x1(), area.y1(), width, 1));
-            _bottom_frame->set_bounds(rect(area.x1(), area.y1() + std::max(0, int(area.h()) - 1), width, 1));
+            _values->set_bounds(rect(area.x1() + label, area.y1() + 1, width - label, height));
+            _top_frame->set_bounds(rect(area.x1(), area.y1(), area.w(), 1));
+            _bottom_frame->set_bounds(rect(area.x1(), area.y1() + std::max(0, int(area.h()) - 1), area.w(), 1));
+            _right_frame->set_bounds(rect(area.x1() + std::max(0, int(area.w()) - 1),
+                area.y1() + 1, std::min(1, int(area.w())), height));
             _viewport->set_content_bounds({0, 0, 0, static_cast<std::uint32_t>(total)});
             for (std::size_t index = 0; index < _rows.size(); ++index) {
                 auto &entry = *_rows[index];
@@ -409,9 +437,9 @@ namespace native
                 if (dynamic_cast<check *>(entry.editor.get()))
                     editor_width = std::min(editor_width,
                         font_t::stock(font_role::control).measure_text("False").width + 30);
-                entry.editor->set_bounds(rect(area.x1() + label + 1,
-                    area.y1() + static_cast<coord>(y) + 1,
-                    editor_width, _resolved_height));
+                entry.editor->set_bounds(rect(1,
+                    static_cast<coord>(y) + 1,
+                    editor_width, std::max(1, _resolved_height - 2)));
                 if (!entry.editor->get_created()) {
                     synchronize_editor(entry);
                     entry.editor->create();
@@ -419,9 +447,11 @@ namespace native
                 }
             }
             _labels->invalidate();
+            _values->invalidate();
             _viewport->invalidate();
             _top_frame->invalidate();
             _bottom_frame->invalidate();
+            _right_frame->invalidate();
             invalidate();
         } catch (...) { _refreshing = false; throw; }
         _refreshing = false;
@@ -452,8 +482,24 @@ namespace native
             .draw_text(item.label, rect(bounds.x1() + 4, bounds.y1(),
                 std::max(0, label - 8), bounds.h()),
                 {text_align::start, text_valign::center, text_overflow::ellipsis, true});
-        graphics.set_ink(appearance.native_palette().separator)
-            .draw_rect(rect(std::max(0, label - 1), bounds.y1(), 1, bounds.h()), true)
-            .draw_rect(rect(bounds.x1(), bounds.y2() - 1, bounds.w(), 1), true);
+        const auto colors = appearance.native_palette();
+        graphics.set_pen(1).set_ink(rgba(
+            (unsigned(colors.separator.r) + 3u * colors.button_bg.r) / 4,
+            (unsigned(colors.separator.g) + 3u * colors.button_bg.g) / 4,
+            (unsigned(colors.separator.b) + 3u * colors.button_bg.b) / 4, 255));
+        for (int y = bounds.y1(); y < bounds.y2(); y += 2)
+            graphics.draw_rect(rect(std::max(0, label - 1), y, 1, 1), true);
+        for (int x = bounds.x1(); x < bounds.x2(); x += 2)
+            graphics.draw_rect(rect(x, bounds.y2() - 1, 1, 1), true);
+    }
+}
+
+namespace native::detail
+{
+    property_grid *property_grid_owner(const wnd &editor) {
+        auto *parent = editor.get_parent();
+        if (auto *grid = dynamic_cast<property_grid *>(parent)) return grid;
+        return parent && dynamic_cast<canvas *>(parent)
+            ? dynamic_cast<property_grid *>(parent->get_parent()) : nullptr;
     }
 }

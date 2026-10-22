@@ -379,3 +379,56 @@ void test_native_gtk_theme(native::app_wnd &window) {
     std::cout << "GTK theme parity: 96 live-control pixel comparisons "
                  "passed.\n";
 }
+
+// Exercise actual native button masks, including rounded desktop themes.
+void test_native_gtk_borders(native::app_wnd &window) {
+    using namespace native;
+    using linux::wayland::state;
+    test_settings settings;
+    button preview("Preview", 0, 0, 180, 40);
+    preview.set_parent(&window); preview.create(); preview.show();
+    img proof(736, 184);
+    proof.get_gpx().clear(rgba(220, 220, 220, 255));
+    for (unsigned mask = 0; mask < 16; ++mask) {
+        preview.set_border_sides(static_cast<border_sides>(mask));
+        gtk_widget_allocate(state(preview).widget, 180, 40, -1, nullptr);
+        auto *widget = state(preview).widget;
+        GtkAllocation allocation{};
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+        gtk_widget_get_allocation(widget, &allocation);
+        G_GNUC_END_IGNORE_DEPRECATIONS
+        auto *snapshot = gtk_snapshot_new();
+        const graphene_point_t origin{-float(allocation.x), -float(allocation.y)};
+        gtk_snapshot_translate(snapshot, &origin);
+        gtk_widget_snapshot_child(gtk_widget_get_parent(widget), widget, snapshot);
+        auto *node = gtk_snapshot_free_to_node(snapshot);
+        auto *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 180, 40);
+        auto *context = cairo_create(surface);
+        if (node) gsk_render_node_draw(node, context);
+        auto pixels = read_surface(surface, 180, 40);
+        cairo_destroy(context); cairo_surface_destroy(surface);
+        if (node) gsk_render_node_unref(node);
+        proof.get_gpx().draw_img(*pixels, point((mask % 4) * 184, (mask / 4) * 46));
+        const auto near = [&](int x, int y, int other_x, int other_y) {
+            const auto a = pixels->pixels()[y * 180 + x];
+            const auto b = pixels->pixels()[other_y * 180 + other_x];
+            return std::abs(int(a.r) - b.r) < 20 && std::abs(int(a.g) - b.g) < 20 &&
+                   std::abs(int(a.b) - b.b) < 20 && a.a == b.a;
+        };
+        if ((!has_border(preview.get_border_sides(), border_sides::top) && !near(90, 0, 90, 3)) ||
+            (!has_border(preview.get_border_sides(), border_sides::bottom) && !near(90, 39, 90, 36)) ||
+            (!has_border(preview.get_border_sides(), border_sides::left) && !near(0, 20, 3, 20)) ||
+            (!has_border(preview.get_border_sides(), border_sides::right) && !near(179, 20, 176, 20))) {
+            proof.save("native-gtk-border-failure.png");
+            throw std::runtime_error("GTK preview retains a removed border, mask=" + std::to_string(mask));
+        }
+        if ((has_border(preview.get_border_sides(), border_sides::top) && near(90, 0, 90, 3)) ||
+            (has_border(preview.get_border_sides(), border_sides::bottom) && near(90, 39, 90, 36)) ||
+            (has_border(preview.get_border_sides(), border_sides::left) && near(0, 20, 3, 20)) ||
+            (has_border(preview.get_border_sides(), border_sides::right) && near(179, 20, 176, 20))) {
+            proof.save("native-gtk-border-failure.png");
+            throw std::runtime_error("GTK preview loses a retained border, mask=" + std::to_string(mask));
+        }
+    }
+    if (const char *path = std::getenv("NATIVE_GTK_BORDER_SNAPSHOT")) proof.save(path);
+}

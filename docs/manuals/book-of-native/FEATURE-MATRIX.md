@@ -1,7 +1,7 @@
 # Feature Matrix
 
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
-and all 17 CTests pass. CMake enables libc++ experimental threading support
+and all 19 CTests pass. CMake enables libc++ experimental threading support
 when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
 session shutdown after inferior exit have been verified on the VM.
 
@@ -18,6 +18,124 @@ Legend:
 - `No (not run)` = not exercised by the current runtime workflow
 - `WIP` = still under development
 
+
+## Input height and footer ordering (2026-10-22)
+
+All maintained backends compile the shared geometry and footer changes.
+Single-line entries, both combo styles and date/time pickers resolve to the
+same theme height, with centered text. Taller bounds allocations center the
+field; repeated dimension-only changes preserve position. Multiline geometry
+is unchanged. Status bars reserve the outermost bottom strip before bottom
+toolbars regardless of construction order and reject other docking edges.
+
+Haiku uses one BControlLook dropdown indicator for both combo styles and
+calendar triggers, frames its navigation search, and uses a flat panel footer
+with a top rule and internal dividers. The date field keeps its native
+preferred width instead of stretching its segments across a wide allocation.
+Date and editable-combo markers share their editor's paper and single frame,
+without inset menu backgrounds. Date separator spacing follows the glyph
+width. Narrow arrow buttons center their native glyphs, retain native pressed
+feedback while open, and close the popup on a second click. The native
+calendar opens immediately below the field and is never narrower; it grows as needed for readable day columns,
+with small, equal square month buttons. Materialized tables preserve rows,
+Shift anchors and native selection during grid/stripe changes; a plain
+click replaces multi-selection afterward.
+
+| Backend | Final validation for this change |
+| --- | --- |
+| SDL2 | 26/26 dummy/software CTests |
+| GTK Wayland / elementary | 20/20 CTests each under Weston |
+| Haiku | 20/20 native commands on `hotel`; desktop pointer checks verify pressed feedback and second-click dismissal for calendar and both combo styles; visible search/footer inspection; tested Vision deployed to normal run location with matching SHA-256 |
+| macOS | 19/19 native CTests on `mike`, including light/dark picker text and accessory pixels |
+| Windows | Four focused interactive runs pass on `whiskey`; native text client/caret centering and inspector input/pixels; tested Vision deployed to normal F5 location |
+| X11/Athena | 21/21 Xvfb CTests; native text margins leave room for a complete centered line |
+| OpenMotif | 24/24 Xvfb CTests; CDE separately passes 23/24, with a table grid-pixel assertion remaining |
+| OPEN LOOK | 24/24 olwm CTests; windowless native input items remain visible above canvas copies, including deferred teardown under ASan/UBSan |
+| Window Maker | 20/21 CTests; the existing repaint fixture still reports Fontconfig/Pango exit allocations |
+| GEMix direct / gemd | 19/20 and 20/21 CTests; input regressions pass with four-row viewports sized from actual field heights; the SDK menu restoration assertion remains |
+
+The new footer/input assertions run through the existing window, settings,
+inspector and collection executables. No additional application API for
+native handles or platform dimensions is introduced.
+
+## Settings navigation and civil pickers (2026-10-21)
+
+`settings_sidebar`, `date_picker` and `time_picker` are implemented in every
+maintained selection. Sidebar builders support stable IDs, sections,
+enabled pages, optional shared images and optional search over titles/sections.
+Search keeps the active page open and emits only user edits. Date rules combine ranges,
+explicit holiday lists, excluded weekdays and application predicates; time
+rules combine same-day limits, minute steps and predicates, with optional
+seconds. Setters are silent; unavailable user proposals restore the cached
+value. Rules can invalidate a cached value without coercing it.
+
+| Backend | Adapter | Current validation |
+| --- | --- | --- |
+| elementary | GraniteSettingsSidebar, GraniteDatePicker, GraniteTimePicker plus optional GTK seconds | Full headless Weston suite 20/20; native callbacks and page recreation |
+| GTK Wayland | GtkListBox navigation, GtkCalendar popover and spin fields | Full headless Weston suite 20/20 |
+| Windows | Real WinUI 3 NavigationView, AutoSuggestBox and ImageIcon rows; Win32 date/time common controls | Pinned Docker SDK build; four interactive control/inspector/settings runs pass on `whiskey`; physical navigation, search and normal close verified |
+| macOS | Source-list NSOutlineView, sidebar material, optional NSSearchField; compact NSDatePicker and native calendar-button popover | Remote AppleClang Debug build; full suite 19/19 on `mike`; production Dates/Time pages inspected offscreen |
+| Haiku | Framed, inset BOutlineListView; standard-height shared-kit DateEdit/TimeEdit, internal calendar trigger and native calendar popup | Docker cross-build; 20 native checks pass on `hotel`, including all three file-panel centers, picker geometry, toolbar icon sizes and status-edge pixels |
+| X11/Athena | XawList, native year entry and date/time choices | Full Xvfb suite 21/21 |
+| OpenMotif | XmContainer and native entry/choice fields | Full Xvfb suite 24/24 |
+| OPEN LOOK | PANEL_LIST and native entry/choice fields | Full Xvfb suite 24/24 |
+| Window Maker | WMList and native entry/choice fields | New settings tests pass; full suite 20/21, existing repaint fixture reports Fontconfig/Pango allocations at exit |
+| SDL2 | Existing themed tree, entry and choices | Full dummy/software suite 26/26 |
+| GEMix direct / gemd | Existing themed tree, entry and choices | New settings tests pass; full suites 19/20 and 20/21, respectively; recorded SDK menu-strip restoration failure remains |
+
+Optional search is exercised in the current Mac, GTK Wayland, elementary and
+SDL suites and with physical keyboard input in the Windows VM. The other backend rows record their existing picker/page checks;
+native keyboard search interaction was not rerun on those hosts for this change.
+
+`native_settings_model_tests` checks search filtering, retained selection, civil dates, holiday/weekend predicates,
+time constraints, signal semantics and stable page identity.
+`native_settings_runtime_tests` checks native callbacks on GTK, Granite,
+Win32, AppKit and Haiku; it checks the shared acceptance hook on composed
+backends. Windows fixture notifications explicitly deliver the same WM_NOTIFY
+payload as a user edit, since a programmatic setter need not produce it.
+Runtime checks also cover rejected proposals, invalidated cached values,
+seconds, page teardown/recreation, clear/re-add and full-range creation.
+These assertions are separate from a complete physical-input or visual
+walkthrough of every backend. Vision exposes `--settings` for that walkthrough.
+
+Mac stock edge toolbars use flexible-height native flat NSButton controls and NSBox
+separators; toolbar primitives use the same native flexible-button appearance.
+Workspace file icons use Quartz rasterization with straight-RGBA conversion.
+Rounded buttons retain AppKit painting when edge masks change;
+borderless read-only help uses transparent native text views. Mac presentation
+regressions cover native tool actions/disabled state, icon pixels, native calendar-popover activation and rejection, border-mask
+renderer continuity and visible removal of native inset edges for all 16 masks,
+sidebar source-list/search widgets and compact pickers.
+
+Mac retained-window regressions also render old AppKit content views after
+resource recreation and C++ destruction. Weak resource-generation checks
+prevent late paints and delegate/input callbacks from reaching dead owners.
+
+
+The elementary spacing correction enables the native theme's sidebar row
+padding and restores missing icon/title column spacing. The full 20-test
+Docker suite passes with elementary's installed stylesheet; selection and
+resource recreation still use Granite's widgets. GraniteDatePicker and
+GraniteTimePicker remain the standard controls. Optional seconds use an
+additional GtkSpinButton because GraniteTimePicker edits hours and minutes.
+
+The GTK image/resize correction displays supplied navigator images in native
+GtkImage rows. Its runtime regression checks the real texture pixels and
+completes a compositor-backed grow/shrink cycle in both dimensions with a
+client-filling sidebar. Fixed overlay children are clipped and excluded from
+minimum-size measurement on both GTK and elementary. Full suites remain
+20/20 in each selection, including native bottom-row geometry and hit testing.
+Restoring the old measured-host setting inside GDB makes the resize fixture
+fail, confirming the regression detects the original height lock. The actual
+generic GTK Vision gallery was also inspected after 760×477 → 900×800 →
+760×477 resizing; its supplied icons are visible.
+
+Native calendar APIs do not universally offer individually disabled day
+painting. GTK marks unavailable days; every adapter rejects unavailable
+commits, and composed day choices omit them. Native Athena, XView and WINGs
+navigation lists display text only, retaining optional images in the portable
+model. Haiku suppresses obsolete row painting and portable latch lookup while
+BOutlineListView synchronously removes selected rows during model replacement.
 
 ## Windows editor cursors (2026-10-20)
 
@@ -50,7 +168,7 @@ The production GLSL retro-terminal smoke verifies Cairo image lifetimes and
 posted completion on this path. LeakSanitizer's exit scan is disabled in the
 runtime session because GTK/desktop libraries retain process resources.
 
-The shared GTK adapter measures the fixed child overlay, preserves child
+The shared GTK adapter clips the non-measured fixed child overlay, preserves child
 pointer targeting, and routes background controllers at the target phase.
 Top-level defaults include header/menu height. Native menus translate portable
 mnemonics to GTK underscores while escaping literal underscores. The focused
@@ -397,10 +515,10 @@ passed in the preceding review after the shared tab-text contrast correction.
 
 | Feature | Linux X11 | Linux SDL2 | Linux OpenMotif | Linux OPEN LOOK | Linux Window Maker | Linux GEMix | MS Windows | Haiku | Apple | Other WIP ports |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Per-edge outer border flags | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Per-edge outer border flags | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | WIP |
 | Custom property dropdowns and value converters | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
 | Compact typed property grid | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
-| Four-edge toolbars, sticky groups, 16/24/32px icons | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
+| Four-edge toolbars, sticky groups, 16/24/32px icons | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | WIP |
 | Build through the current platform workflow | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | WIP |
 | `app::run` startup path | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | WIP |
 | Screen detection | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | Yes (tested) | Yes (untested) | WIP |
@@ -469,7 +587,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | JPEG file load/save and memory decode/encode | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | libjpeg (tested) | GDI+ (tested) | Translation Kit (build tested) | ImageIO (tested) | WIP |
 | `theme` factory, metrics, palette, and state preservation | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed button drawing | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
-| Themed check/radio drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
+| Themed check/radio drawing | Yes (build tested) | Yes (tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | WIP |
 | Staged control, window, panel, and splitter owner drawing | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Themed menu bar/title/item/popup drawing | Yes (tested) | Yes (tested) | Yes (tested) | OLGX (build tested) | WINGs (tested) | Yes (tested) | Yes (tested) | Yes (untested) | Yes (tested) | WIP |
 | Themed complete-list and list-item drawing | Yes (build tested) | Yes (build tested) | Yes (build tested) | OLGX (tested) | WINGs (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
@@ -969,3 +1087,166 @@ The original eleven-pass CRT/blur terminal smoke exits zero with active shader
 output and completed shell capture. A visible demo was left open and the user
 confirmed it works. This does not establish exact upstream pixel parity or a
 performance release gate. The remote runtime note records reproducible commands.
+
+## Haiku, Windows and elementary control review (2026-10-21)
+
+Stock edge toolbars use native BToolBar on Haiku and the flat toolbar common
+control on Windows; their theme primitives use matching native parts.
+Accordion headers reuse table-group surfaces without a second beveled separator.
+Property editors are native children of a canvas value host, with light dotted
+lines across keys and values and rows sized for the native editor height.
+Windows button masks preserve native painting; iconless tree rows use a real
+transparent image mask; section headings own their page children, so native
+indentation remains visible when connector lines are hidden.
+Windows native status parts omit competing inset top borders.
+
+GTK clipboard reads remain asynchronous while dispatching their producer;
+copy-field/paste now has a native multiline regression. GTK table input keeps
+Ctrl toggling and Shift ranges; completion accepts Tab and focuses its keyboard
+host. Splitters start with a wide native handle and suppress recursive position
+feedback and teardown notifications. GTK theme probes are cached per painter,
+and table header backgrounds do not include a second native sort glyph.
+Editable GTK combos use the combined native GtkComboBoxText; selection-only
+combos retain GtkDropDown. Tabs remain native GtkNotebook controls with the
+desktop stylesheet. Granite uses centered, 24-logical-pixel native sidebar images,
+a full-width native search entry, initialized editable dates, and native
+insensitive styling on unavailable calendar labels.
+
+Native picker fields keep their preferred dimensions and center vertically.
+Haiku uses a native calendar popup with month navigation. Modal show sessions
+center over the owner; Win32 common dialogs center on activation, and Haiku
+alerts center their final native frame. The 2026-10-22 Haiku follow-up below
+corrects file-panel placement after native Show. On Wayland, the
+compositor places owner-modal transient windows.
+
+
+Verification: GTK Wayland and elementary each pass 20/20 Docker CTests; SDL2
+passes 26/26 and macOS passes 19/19. Haiku runs all 19 registered commands plus
+the collection runtime check successfully on `hotel`. Windows passes four
+focused native/control, inspector and settings runs on `whiskey`. The installed
+elementary desktop passes focused GTK/settings/collection checks, including 96
+live-control pixel comparisons. Haiku's native calendar also commits a date
+through real pointer input. The elementary desktop locked during the final
+visible walkthrough; snapshot/callback coverage is recorded separately.
+AppKit message alerts attach as native owner sheets, with a regression for
+sheet ownership and three-button return mapping.
+
+The affected Motif adapters pass four focused CDE checks (window API, settings,
+inspector and collections); Window Maker passes three (window API, settings and
+inspector). CDE startup must finish before physical-input tests. The inspector
+scrolls its border-property rows into view before native hit testing so native
+font/editor heights do not put the tested rows outside its viewport.
+
+
+## AppKit control refinement (2026-10-22)
+
+Mac toolbar buttons and their theme primitives use a flexible-height native flat
+bezel. Native alignment rectangles follow icon dimensions, including vertical
+bars. Removing every stock button border disables the native bezel, avoiding
+rounded corner remnants; restoring edges restores native painting.
+
+Mac pickers each have one native enclosing field at the standard NSTextField
+intrinsic height, using the adaptive native control color. Dates have a text-only
+editor and calendar trigger, with no stepper; time retains its native stepper.
+Native baseline and image-cell metrics align the painted text and accessories. The date
+calendar remains an AppKit popover subject to the same shared availability rules.
+Settings rows show 24-logical-pixel icons in 32-pixel page rows. Vision supplies
+embedded Font Awesome Free gear/calendar/clock tiles consistently across
+backends; source attribution and regeneration live beside the artwork.
+
+
+The expanded focused AppKit and settings regressions pass on `mike`, including
+16/24/32/48-pixel selected toolbar bounds on both axes, borderless corner pixels,
+internal calendar-button hit testing, native holiday rejection and selected
+navigation artwork in both appearances. The shared embedded artwork also
+builds through the SDL2, elementary, Windows and Haiku Docker targets. Its
+regenerator reproduces the checked-in PNG and embedded-byte hashes exactly.
+
+The complete 2026-10-22 macOS suite passes all 19 CTests after these changes.
+The GCC/Docker SDL2, elementary, Windows and Haiku builds are warning-free;
+`git diff --check` also passes.
+
+
+The picker sizing follow-up removes the macOS date stepper and keeps its
+calendar trigger. Both fields use standard NSTextField intrinsic height,
+vertically centered in their requested bounds. The date text and calendar
+button, and the time text and compact native stepper, are centered inside that
+field. AppKit's adaptive control color supplies the background in both
+appearances; no fixed RGB palette or custom stepper drawing is introduced.
+
+After this picker-height/date-stepper change, all 19 macOS CTests pass on
+`mike`. The native fixture checks the preferred NSTextField height, centered
+editor/accessory alignment, date text-only mode, compact time stepper, native
+control background and calendar hit testing/holiday rollback. Light and dark
+AppKit captures of the production Dates and Time pages were also inspected.
+
+
+## Haiku control layout (2026-10-22)
+
+Open, Save and Select Folder panels center after BFilePanel::Show, which
+otherwise replaces the earlier owner placement. Native BToolBar minimum sizes
+reserve complete buttons for changed icon sizes and orientation; native layout
+is applied before input resumes. Docked status chrome retains its top rule
+and internal separators without outer left/right dividers.
+
+Date and time fields include accessory space and complete locale segments in
+their preferred widths, match BTextControl height and center text by font
+metrics. Time arrows have equal geometry and use BControlLook drawing. The
+date field replaces its arrows with a native flat calendar trigger inside the
+text frame; its BCalendarView popup retains the existing availability policy.
+Single-line BTextView controls use their actual line height for centering.
+Settings navigation has equal margins around its native framed outline list.
+
+Verification: the warning-free Docker Haiku build passes all 19 registered
+commands plus the collection-runtime check on `hotel` (20/20). Settings runtime
+assertions cover all three native file-panel centers, picker height/width and
+the internal calendar button. Inspector checks cover native buttons at 16, 24
+and 32 pixels and presented status-edge pixels. A real desktop pointer check
+opens the integrated calendar, selects October 16 and confirms field/status
+updates and popup dismissal. Dates, Time, navigation margins and the toolbar
+window were inspected in desktop captures. Shared GCC/SDL2 checks pass 26/26;
+the inspector check was rerun after clearing old screenshot-file permissions.
+
+
+## AppKit picker text and accessory alignment (2026-10-22)
+
+Date/time editors use their final native control height and AppKit baseline
+metrics to align with a standard NSTextField. The native calendar image cell
+keeps its symbol padding outside the bottom bezel inset, so the painted symbol
+centers with the field. The native time stepper's alignment edge meets the
+field's right edge without the former four-point gutter. The enclosing field
+clips native decoration to its bounds. Both controls retain their **H** kinds,
+NSDatePicker editing and calendar/availability behavior.
+
+The warning-free remote AppleClang build passes all 19 CTests on `mike`.
+Rendered regressions compare actual date/time glyph rows with a standard
+NSTextField containing the same locale-formatted value and check the painted
+calendar symbol/time arrows in Aqua and Dark Aqua. The native fixture checks
+the stepper's right edge, hit testing, calendar activation and holiday rollback.
+Production Dates/Time captures in both appearances were inspected. GCC/Docker
+SDL2 builds and both settings model/runtime tests also pass.
+
+## Windows and elementary control review (2026-10-22)
+
+Windows now hosts the actual WinUI 3 NavigationView, native search and image
+rows through Windows App SDK 1.8. The reproducible GCC/WinUI Docker build
+passes; four focused native desktop runs pass on `whiskey` (Windows controls,
+inspector, settings model and settings runtime). Physical mouse selection,
+keyboard search, page switching and normal application closure are verified;
+closure returns zero and leaves no Vision process. Native date/time values
+include text padding. Accordion headers omit their extra focus outline.
+
+Both GTK suites pass 20/20, including the real elementary stylesheet. Tests
+cover Ctrl/Shift multiselection, group collapse through a complete press and
+release, editable-combo caret preservation, fifty repeated split allocations
+and orientation changes, pending splitter delivery during destruction, and all
+sixteen native-button edge masks. GtkPaned has a real allocated drag strip;
+its portable layout callback runs after native allocation. GtkNotebook uses
+native theme painting with padded labels. Property-grid right frames sit
+outside scrollbar painting. The shared SDL suite passes 26/26.
+
+The deployed elementary desktop also confirms physical Ctrl/Shift selection,
+persistent group collapse and repeated splitter dragging. Live typing preserves `hello` in order; native tab labels,
+individual preview edges, the fully borderless preview and the property
+grid's right frame were also inspected. Test screenshots
+are development artifacts under `build/elementary-control-review-*.png`.

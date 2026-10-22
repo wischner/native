@@ -1,5 +1,7 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GRANITE REQUIRED IMPORTED_TARGET GLOBAL granite-7>=7.4)
 target_link_libraries(native PRIVATE PkgConfig::GRANITE)
-target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/desktop.cpp)
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/desktop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/picker_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/settings_sidebar.cpp)
 add_subdirectory(../wayland ${CMAKE_CURRENT_BINARY_DIR}/wayland)

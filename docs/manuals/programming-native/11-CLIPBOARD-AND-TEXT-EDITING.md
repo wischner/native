@@ -5,6 +5,10 @@ valid, null-free UTF-8 with `\n` line endings. Images are represented by
 `img`, with lossless PNG used for encoded transfer inside the portable
 clipboard interface.
 
+Single-line text edits use the same active-theme height as combos and
+pickers, including Vision's copy/paste field. Taller bounds center the field
+vertically; multiline editors retain the full requested area.
+
 ## Clipboard read snapshots
 
 Open one snapshot and inspect its available representations before reading:

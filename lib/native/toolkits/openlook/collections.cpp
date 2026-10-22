@@ -299,6 +299,18 @@ namespace
                   invalid.d.h,
                   invalid.p.x,
                   invalid.p.y);
+        // Panel editors are windowless. Restore their native drawing after
+        // copying the owner's background, as child windows would naturally
+        // appear above a canvas on the other backends.
+        for (auto item = static_cast<Panel_item>(xv_get(state.panel, PANEL_FIRST_ITEM));
+             item; item = static_cast<Panel_item>(xv_get(item, PANEL_NEXT_ITEM))) {
+            // XView clears an item's area during deferred destruction after
+            // releasing its text buffer but before unlinking it from Panel.
+            auto *child = linux::openlook::wnd_bindings.object_from_handle(item);
+            if (child && child->get_created() && child->get_visible())
+                panel_paint(item, PANEL_NO_CLEAR);
+        }
+        linux::openlook::mask_panel_borders(state.panel);
         XFlush(linux::openlook::cached_display);
     }
 

@@ -95,6 +95,9 @@ namespace native
         virtual void on_native_drop_down(bool open);
 
     protected:
+        // Use the active theme's standard single-line field height.
+        rect constrain_bounds(const rect &bounds) const override;
+
         // Create the backend resource for this control.
         void create_native() override;
 

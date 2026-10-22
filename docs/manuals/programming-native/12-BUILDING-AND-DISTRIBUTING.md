@@ -83,7 +83,7 @@ outputs are:
 | `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
-| `docker-win` | `wischner/gcc-x86_64-windows-mingw-w64:latest` | `build/windows-mingw-w64/src/vision.exe` |
+| `docker-win` | `native-windows-winui-sdk:24.04` (built by `docker-win-sdk`) | `build/windows-mingw-w64/src/vision.exe` |
 | `docker-haiku` | `wischner/gcc-x86_64-haiku:1.1.0` | `build/haiku/src/vision` |
 
 The Docker image supplies build dependencies only. It does not make its shared
@@ -99,7 +99,7 @@ libraries appear on an end user's machine.
 | Linux OPEN LOOK | Executable and assets | XView, OLGX, libtirpc, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux Window Maker | Executable and assets | WINGs, WUtil, wraster, Pango/Xft, Fontconfig/Freetype, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux GEMix | Executable, assets, and matching GEMix/Rasta runtime when it is not installed system-wide | AES, VDI, Rasta resources, PNG/JPEG, and GCC runtime |
-| Windows MinGW | Executable, assets, and three MinGW runtime DLLs | Windows system DLLs and GDI+ |
+| Windows MinGW/WinUI | Executable, assets, three matching MinGW runtime DLLs and App SDK bootstrap DLL | Windows system DLLs, GDI+ and x64 Windows App Runtime 1.8 |
 | Haiku | Executable or Haiku package and assets | Haiku Be, Tracker, Translation, and root system libraries; optional Mesa OSMesa for GLSL |
 | macOS | Complete `.app` bundle and assets | macOS system frameworks |
 
@@ -512,8 +512,12 @@ selector; no desktop chooser process is required.
 
 ### Compile
 
-Use `docker-win`, or install a 64-bit MinGW-w64 C++ toolchain and configure
-with the repository toolchain file:
+Use `docker-win`. Its `docker-win-sdk` dependency builds the pinned
+`native-windows-winui-sdk:24.04` image with GCC 13 and Windows App SDK 1.8
+C++/WinRT projections. Equivalent SDK environments need the generated headers
+and bootstrap DLL under `/opt/native-winui`, or explicit CMake cache values
+for `NATIVE_WINUI_INCLUDE_DIR` and `NATIVE_WINUI_BOOTSTRAP`. Configure
+inside that SDK with the repository toolchain file:
 
 ```bash
 cmake -S . -B build/windows-release \
@@ -525,8 +529,11 @@ cmake --build build/windows-release --parallel
 
 The toolchain selects `x86_64-w64-mingw32-g++` and the
 `/usr/x86_64-w64-mingw32` sysroot. It needs CMake, MinGW-w64 headers and
-import libraries, and a C++20-capable MinGW compiler. No libpng, libjpeg, or
-third-party widget development package is used.
+import libraries, and a C++20-capable MinGW compiler. No libpng or libjpeg
+package is used. Windows App SDK metadata and C++/WinRT
+provide the actual WinUI 3 NavigationView; their pinned versions and checksums
+are recorded in `scripts/windows/winui/install-sdk.py`. Wine runs only its
+build-time projection generator.
 
 ### Link libraries
 
@@ -539,10 +546,12 @@ The `native` target links these Windows import libraries:
 - `shell32`
 - `ole32`
 - `gdiplus`
+- `comctl32` and `uxtheme`
+- `runtimeobject` and `oleaut32`
 
 They supply windowing and controls, graphics and alpha blending, registry font
 enumeration, shell/common dialogs, COM clipboard services, and PNG/JPEG
-codecs.
+codecs, themed common controls and WinRT activation.
 
 ### Distribute
 
@@ -558,6 +567,11 @@ installer:
 - `libstdc++-6.dll`
 - `libgcc_s_seh-1.dll`
 - `libwinpthread-1.dll`
+
+The SDK build also stages `Microsoft.WindowsAppRuntime.Bootstrap.dll` beside
+the application. Ship that DLL and install x64 Windows App Runtime 1.8 in the
+guest; do not copy framework files from the Windows package directory. The
+normal VM preparation script checks the installed runtime.
 
 Locate the exact copies belonging to the compiler that built the executable:
 
@@ -610,6 +624,9 @@ The current cross-built executable reports runtime dependencies on
 
 ### Distribute
 
+The **Haiku, VM** F5 profile uses `ssh hotel` for readiness, deployment and
+GDB transport; its libvirt domain remains `Haiku`.
+
 Copy the executable and application-owned assets to an ABI-compatible Haiku
 installation, or place them in a Haiku package. The four libraries above are
 operating-system components and should be required from Haiku rather than
@@ -657,7 +674,7 @@ The `native` target links these system frameworks:
 - UniformTypeIdentifiers
 
 They provide windows and controls, fonts and drawing, pasteboards and panels,
-and PNG/JPEG codecs.
+and PNG/JPEG codecs, themed common controls and WinRT activation.
 
 ### Distribute
 
@@ -796,3 +813,17 @@ user/path remains `tomaz`. The VM must have GDB, rsync and an active Wayland
 login session at `wayland-0`. See the elementary VM runtime note for observed
 desktop test limits. For deployment without debugging, build the target and
 run `scripts/linux/elementary-vm/deploy.sh` directly.
+
+
+## Picker dependencies
+
+The existing Windows common controls and AppKit frameworks provide the
+native date/time pickers. Haiku's adapter additionally links the SDK's
+`libshared` and `localestub` and uses its private shared-kit DateTimeEdit
+header; these details stay out of application source. The cross SDK contains
+the required libraries.
+
+GraniteTimePicker requires the `org.gnome.desktop.interface` GSettings
+schema from `gsettings-desktop-schemas`. Both the shared Wayland Docker SDK
+and an elementary desktop supply it. A minimal private runtime must preserve
+this installed schema; merely copying the Granite shared object is insufficient.

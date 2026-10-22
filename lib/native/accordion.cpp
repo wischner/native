@@ -562,14 +562,6 @@ namespace native
         const rect &bounds,
         const theme::state &state) {
         appearance.draw_focus(bounds, state);
-        const int extent = std::max(
-            1, appearance.defaults().separator_extent);
-        appearance.draw_separator(
-            rect(bounds.p.x,
-                 static_cast<coord>(bounds.y2() - extent),
-                 bounds.d.w,
-                 static_cast<dim>(extent)),
-            separator_orientation::horizontal);
     }
 
     void accordion::draw_border(

@@ -11,6 +11,26 @@
 #include <native/message_box.h>
 
 #include "../../message_box_common.h"
+#include "globals.h"
+
+namespace
+{
+    class centered_alert final : public BAlert
+    {
+    public:
+        centered_alert(BRect owner, const char *title, const char *message,
+                       const char *first, const char *second, const char *third, alert_type type)
+            : BAlert(title, message, first, second, third, B_WIDTH_AS_USUAL, type), _owner(owner) {}
+        void Show() override {
+            // Go prepares the native layout before calling Show, so center
+            // the final alert dimensions rather than its initial frame.
+            CenterIn(_owner);
+            BAlert::Show();
+        }
+    private:
+        BRect _owner;
+    };
+}
 
 namespace native
 {
@@ -37,12 +57,12 @@ namespace native
         case message_box_icon::error: type = B_STOP_ALERT; break;
         default: break;
         }
-        BAlert *alert = new BAlert(title.c_str(),
+        auto *window = haiku::wnd_bindings.handle_from_object(&owner);
+        BAlert *alert = new centered_alert(window->Frame(), title.c_str(),
                                    message.c_str(),
                                    first,
                                    second,
                                    third,
-                                   B_WIDTH_AS_USUAL,
                                    type);
         const int32 index = alert->Go();
         return index >= 0

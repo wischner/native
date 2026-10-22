@@ -27,6 +27,31 @@
 
 namespace
 {
+    class tree_scroll_view final : public BScrollView
+    {
+    public:
+        using BScrollView::BScrollView;
+        void FrameResized(float width, float height) override {
+            BScrollView::FrameResized(width, height);
+            synchronize_scrollbar();
+        }
+        void synchronize_scrollbar() {
+            auto *view = dynamic_cast<BOutlineListView *>(Target());
+            auto *bar = ScrollBar(B_VERTICAL);
+            if (!view || !bar) return;
+            float content = 0;
+            for (int32 index = 0; index < view->CountItems(); ++index)
+                content += view->ItemAt(index)->Height() + 1;
+            const bool needed = content > view->Bounds().Height() + 1;
+            const float extent = bar->Frame().Width() + 1;
+            if (needed && bar->IsHidden(bar)) bar->Show();
+            if (!needed && !bar->IsHidden(bar)) bar->Hide();
+            const float border = Border() == B_NO_BORDER ? 0 : 2;
+            view->ResizeTo(std::max(0.0f, Bounds().Width() - border * 2 - (needed ? extent : 0)),
+                           view->Bounds().Height());
+            if (!needed) view->ScrollTo(0, 0);
+        }
+    };
     template <typename function_type>
     void locked(BWindow *window, function_type function) {
         if (!window)
@@ -133,6 +158,11 @@ namespace
         void DrawItem(BListItem *raw,
                       BRect frame,
                       bool complete = false) override {
+            // RemoveItem synchronously paints a selected old row after
+            // the portable model has been replaced. It has no current
+            // ID or row geometry until rebuilding finishes.
+            if (_rebuilding)
+                return;
             auto *item = dynamic_cast<tree_string_item *>(raw);
             if (!item || !_owner.get_created()) {
                 BOutlineListView::DrawItem(raw, frame, complete);
@@ -168,7 +198,7 @@ namespace
                 bounds,
                 state,
                 false);
-            if (!portable_item.children.empty()) {
+            if (!portable_item.children.empty() && portable_item.enabled) {
                 DrawLatch(frame,
                           item->OutlineLevel(),
                           !item->IsExpanded(),
@@ -178,6 +208,8 @@ namespace
         }
 
         BRect LatchRect(BRect item_rect, int32 level) const override {
+            if (_rebuilding)
+                return BOutlineListView::LatchRect(item_rect, level);
             const int32 index = IndexOf(BPoint(
                 item_rect.left,
                 item_rect.top + item_rect.Height() / 2.0f));
@@ -203,6 +235,7 @@ namespace
     public:
         void ExpandOrCollapse(BListItem *item,
                               bool expand) override {
+            if (!_suppress && item && !item->IsEnabled()) return;
             const bool changed = item &&
                                  item->IsExpanded() != expand;
             BOutlineListView::ExpandOrCollapse(item, expand);
@@ -216,6 +249,7 @@ namespace
         }
 
         bool _suppress = false;
+        bool _rebuilding = false;
 
     private:
         native::tree_view &_owner;
@@ -248,6 +282,13 @@ namespace
     void rebuild(native::tree_view &tree) {
         auto &binding = binding_for(tree);
         auto &view = *view_for(tree);
+        struct rebuild_scope {
+            native_tree_view &view;
+            explicit rebuild_scope(native_tree_view &value) : view(value) {
+                view._rebuilding = true;
+            }
+            ~rebuild_scope() { view._rebuilding = false; }
+        } rebuilding(view);
         view._suppress = true;
         clear_items(view, binding);
         std::function<void(const std::vector<native::tree_view_item> &,
@@ -287,6 +328,7 @@ namespace
             }
         };
         append(tree.get_items(), nullptr, 0);
+        static_cast<tree_scroll_view *>(binding.scroll)->synchronize_scrollbar();
         view._suppress = false;
     }
 } // namespace
@@ -363,7 +405,7 @@ namespace native
                       std::max<int>(1, _bounds.d.w - 18),
                       std::max<int>(1, _bounds.d.h - 2)),
                 *self);
-            scroll = new BScrollView("native_tree_scroll",
+            scroll = new tree_scroll_view("native_tree_scroll",
                                      view,
                                      B_FOLLOW_NONE,
                                      0,

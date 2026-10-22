@@ -263,6 +263,11 @@ draw the primitive. Every backend must provide a usable result.
 
 The facade exposes every backend-selected control dimension through a named
 getter. Fixed shapes use getters such as `get_button_height()`,
+`get_text_edit_height()` also resolves actual single-line entry, combo and
+picker bounds at creation and during geometry updates. Native text-field
+metrics drive macOS, Haiku and Win32; GTK uses the largest minimum among its
+native entry, dropdown, editable combo and spin controls so every input fits.
+
 `get_text_edit_height()`, `get_tab_height()`, `get_status_bar_height()`, and
 `get_disclosure_size()`. Collection geometry includes row, header, tree,
 icon-view, border, and padding getters. Linear shapes expose both their fixed
@@ -377,3 +382,36 @@ the selected or disabled menu foreground; colored artwork retains its colors.
 `draw_toolbar_button(bounds, text, state)` paints a menu-styled command without
 a submenu arrow. Its default delegates to menu-title painting; OPEN LOOK
 omits the OLGX menu mark while retaining its native button shape and state.
+
+## AppKit toolbar parity
+
+AppKit's `draw_toolbar_button()` uses an actual flexible-height flat `NSButton`,
+including its selected, disabled and pressed states. Window and image graphics
+follow the same existing native-button path. Live edge bars host those native
+controls, so owner-drawn toolbar primitives retain the same flat appearance.
+Stock rounded buttons retain AppKit drawing under partial edge masks; clipping
+removes requested outer edges. With no selected edges, the native bezel is
+disabled entirely so curved corners cannot survive the clipping.
+
+Mac rounded-button edge masks use the intrinsic native control height and
+AppKit alignment rectangle rather than trimming the outer view margin.
+The same clip applies to native painting and layer composition, so disabling
+an edge removes the inset bezel while retaining AppKit's rounded drawing.
+
+AppKit intrinsic sizes describe alignment rectangles. The adapter first uses
+`frameForAlignmentRect()` to recover the full native frame, then centers it
+inside the requested control bounds. This keeps border removal from clipping
+the label by subtracting the native margins twice. The compositor regression
+checks every edge-mask combination against actual native bezel and text pixels.
+
+Haiku list primitives use BControlLook's fancy scroll-view frame. Portable list
+edge painting clips that same primitive to the requested sides. Accordion
+headers share the table-group surface and disclosure without an additional
+beveled separator. Toolbar primitives use native Toolbar theme parts on Windows
+and flat BControlLook button parts on Haiku. GTK table-header backgrounds
+snapshot the frame without its sort-indicator child.
+
+Flexible-toolbar parity checks draw a real native reference control into a
+sibling canvas, preserving the primitive's destination context. Directly caching
+the button changes its native fill tone and idle text; matching drawing contexts
+retains strict state and color comparisons.

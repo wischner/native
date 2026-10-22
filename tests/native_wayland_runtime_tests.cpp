@@ -9,6 +9,7 @@
 #include <native.h>
 #include "native_gtk_theme_tests.h"
 #include "../lib/native/toolkits/wayland/globals.h"
+#include "../lib/native/table_render.h"
 #include <gtksourceview/gtksource.h>
 #ifdef NATIVE_TEST_ELEMENTARY
 #include <granite-7.h>
@@ -39,6 +40,11 @@ namespace
             ++cells;
             return {std::to_string(row), nullptr};
         }
+        std::size_t group_count() const override { return grouped ? 1 : 0; }
+        native::table_group group(std::size_t) const override {
+            return {17, "Rows", 0, row_count(), true, true};
+        }
+        bool grouped = false;
         mutable int ids = 0;
         mutable int cells = 0;
     };
@@ -137,6 +143,40 @@ int program(int, char **) {
                                    "modal windows must retain native ownership");
                         }
                         test_native_gtk_theme(window);
+                        test_native_gtk_borders(window);
+                        {
+                            combo_box combo({"10 mm", "25 mm"}, combo_box_style::editable,
+                                            10, 60, 220, 36);
+                            combo.set_parent(&host); combo.create(); combo.show();
+                            G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+                            expect(GTK_IS_COMBO_BOX_TEXT(state(combo).editor), "editable combo is one native GTK control");
+                            gtk_editable_set_text(GTK_EDITABLE(state(combo).drawing), "25 mm");
+                            expect(combo.get_selected_index() == 1 &&
+                                gtk_combo_box_get_active(GTK_COMBO_BOX(state(combo).editor)) == 1,
+                                "typed exact matches select the native popup item");
+                            gtk_editable_set_text(GTK_EDITABLE(state(combo).drawing), "42 mm");
+                            expect(combo.get_text() == "42 mm" && combo.get_selected_index() == -1,
+                                "native editable combos retain custom text");
+                            auto *entry = GTK_EDITABLE(state(combo).drawing);
+                            gtk_editable_set_text(entry, "");
+                            for (const char character : std::string("123 mm")) {
+                                int cursor = gtk_editable_get_position(entry);
+                                const char text[] = {character, '\0'};
+                                gtk_editable_insert_text(entry, text, 1, &cursor);
+                                gtk_editable_set_position(entry, cursor);
+                            }
+                            expect(combo.get_text() == "123 mm" && gtk_editable_get_position(entry) == 6,
+                                   "individual editable-combo keystrokes retain left-to-right caret order");
+                            gtk_editable_set_position(entry, 1);
+                            int cursor = gtk_editable_get_position(entry);
+                            gtk_editable_insert_text(entry, "X", 1, &cursor);
+                            gtk_editable_set_position(entry, cursor);
+                            expect(combo.get_text() == "1X23 mm" && gtk_editable_get_position(entry) == 2,
+                                   "editable combos preserve insertion inside existing text");
+                            G_GNUC_END_IGNORE_DEPRECATIONS
+                            combo.set_style(combo_box_style::drop_down_list);
+                            expect(GTK_IS_DROP_DOWN(state(combo).editor), "selection-only combo retains GtkDropDown");
+                        }
                         expect(GDK_IS_WAYLAND_DISPLAY(
                                    gdk_display_get_default()),
                                "display must be Wayland");
@@ -161,7 +201,7 @@ int program(int, char **) {
                             GTK_PICK_DEFAULT);
                         while (picked && !GTK_IS_BUTTON(picked))
                             picked = gtk_widget_get_parent(picked);
-                        expect(picked == state(bottom).widget,
+                        expect(picked == state(bottom).editor,
                                "pointer picking must reach nested buttons");
                         g_signal_emit_by_name(picked, "clicked");
                         expect(clicks == 1,
@@ -190,8 +230,15 @@ int program(int, char **) {
                         expect(item == "_Run__ & Go",
                                "GTK menu items must preserve literal "
                                "ampersands and mnemonic markers");
-                        expect(GTK_IS_BUTTON(state(command).widget),
+                        expect(GTK_IS_BUTTON(state(command).editor),
                                "button must be native GTK");
+                        auto *native_button = state(command).editor;
+                        command.set_border_sides(border_sides::left | border_sides::right | border_sides::bottom);
+                        expect(state(command).widget == native_button && state(command).editor == native_button,
+                               "partial borders style the original native GTK button without reparenting it");
+                        command.set_border_sides(border_sides::all);
+                        expect(state(command).widget == native_button,
+                               "restoring all edges restores the original GTK hierarchy");
                         expect(
                             GTK_IS_CHECK_BUTTON(state(checked).widget),
                             "check must be native GTK");
@@ -279,6 +326,54 @@ int program(int, char **) {
                         expect(state(table).portable_drawing,
                                "portable table drawing must retain "
                                "alternating rows");
+                        table.set_selection_mode(table_selection_mode::multiple);
+                        int releases = 0;
+                        auto release_connection = table.on_mouse_click.connect([&](mouse_event event) {
+                            if (event.action == mouse_action::release) ++releases;
+                            return false;
+                        });
+                        const auto metrics = theme::create(table.get_gpx())->defaults();
+                        const auto body = detail::table_body_bounds(table, metrics);
+                        const int pitch = std::max(1, std::min(metrics.table_row_height,
+                            int(body.h() / std::max<std::size_t>(1, table.get_visible_row_range().count))));
+                        detail::handle_table_click(table, {20, native::coord(body.y1() + pitch / 2)});
+                        detail::handle_table_click(table, {20, native::coord(body.y1() + pitch + pitch / 2)}, true);
+                        expect(table.get_selected_rows().size() == 2,
+                               "Ctrl click adds a portable table row");
+                        auto *pointer_controllers = gtk_widget_observe_controllers(state(table).drawing);
+                        for (guint index = 0; index < g_list_model_get_n_items(pointer_controllers); ++index) {
+                            auto *controller = G_OBJECT(g_list_model_get_item(pointer_controllers, index));
+                            if (GTK_IS_GESTURE_CLICK(controller))
+                                g_signal_emit_by_name(controller, "released", 1, 20., double(body.y1() + pitch));
+                            g_object_unref(controller);
+                        }
+                        g_object_unref(pointer_controllers);
+                        expect(releases == 0 && table.get_selected_rows().size() == 2,
+                               "GTK table release must not dispatch a second unmodified click");
+                        table.on_mouse_click.disconnect(release_connection);
+                        detail::handle_table_click(table, {20, native::coord(body.y1() + pitch / 2)}, true);
+                        expect(table.get_selected_rows().size() == 1,
+                               "Ctrl click removes a portable table row");
+                        detail::handle_table_click(table, {20, native::coord(body.y1() + 3 * pitch + pitch / 2)}, false, true);
+                        expect(table.get_selected_rows().size() == 3,
+                               "Shift click selects the contiguous display range");
+                        rows.grouped = true;
+                        rows.on_change.emit({table_model_change_kind::reset, 0, rows.row_count()});
+                        detail::handle_table_click(table, {20, native::coord(body.y1() + pitch / 2)});
+                        expect(!table.get_group_expanded(17) && table.get_display_row_count() == 1,
+                               "a grouped table collapses once on pointer press");
+                        pointer_controllers = gtk_widget_observe_controllers(state(table).drawing);
+                        for (guint index = 0; index < g_list_model_get_n_items(pointer_controllers); ++index) {
+                            auto *controller = G_OBJECT(g_list_model_get_item(pointer_controllers, index));
+                            if (GTK_IS_GESTURE_CLICK(controller))
+                                g_signal_emit_by_name(controller, "released", 1, 20., double(body.y1() + pitch / 2));
+                            g_object_unref(controller);
+                        }
+                        g_object_unref(pointer_controllers);
+                        expect(!table.get_group_expanded(17),
+                               "releasing a disclosure click must not immediately expand the group");
+                        rows.grouped = false;
+                        rows.on_change.emit({table_model_change_kind::reset, 0, rows.row_count()});
                         table.set_alternating_rows(false);
                         expect(!state(table).portable_drawing,
                                "stock table must return to native "
@@ -307,6 +402,18 @@ int program(int, char **) {
                             [](const std::string &text) {
                                 return text.size() < 12;
                             });
+                        {
+                            editor.set_text("copy field");
+                            editor.select_all();
+                            expect(editor.copy(), "copy field reaches the GTK clipboard");
+                            text_edit destination("old", text_edit_mode::multi_line,
+                                                  10, 60, 200, 40);
+                            destination.set_parent(&host);
+                            destination.create();
+                            destination.select_all();
+                            expect(destination.paste() && destination.get_text() == "copy field",
+                                   "paste replaces a multiline GTK selection");
+                        }
                         gtk_editable_set_text(
                             GTK_EDITABLE(state(editor).editor),
                             "valid");
@@ -334,6 +441,53 @@ int program(int, char **) {
                         expect(source.get_text() == "int y;",
                                "source edits must update canonical "
                                "document");
+                        int completed = 0;
+                        source.on_complete.connect([&](completion_item item) {
+                            ++completed; source.insert(source.get_caret_offset(), item.insert); return true;
+                        });
+                        source.show_completion({{"return", "return", "statement"}});
+                        expect(gtk_root_get_focus(gtk_widget_get_root(state(source).widget)) == state(source).drawing,
+                               "showing completion focuses its keyboard host");
+                        auto *controllers = gtk_widget_observe_controllers(state(source).drawing);
+                        for (guint index = 0; index < g_list_model_get_n_items(controllers); ++index) {
+                            auto *controller = G_OBJECT(g_list_model_get_item(controllers, index));
+                            if (GTK_IS_EVENT_CONTROLLER_KEY(controller)) {
+                                gboolean handled = false;
+                                g_signal_emit_by_name(controller, "key-pressed", GDK_KEY_Tab, 0,
+                                                      GdkModifierType(0), &handled);
+                            }
+                            g_object_unref(controller);
+                        }
+                        g_object_unref(controllers);
+                        expect(completed == 1 && !source.get_completion_visible() &&
+                                   source.get_text().find("return") != std::string::npos,
+                               "Tab in GTK completion accepts and inserts through the app callback");
+                        for (int index = 0; index < 50; ++index) {
+                            panes.set_orientation(index % 2 ? split_orientation::horizontal : split_orientation::vertical);
+                            gtk_paned_set_position(GTK_PANED(state(panes).widget), 50 + index);
+                            gtk_widget_allocate(state(panes).widget, 250, 130, -1, nullptr);
+                            for (int dispatch = 0; dispatch < 50 && g_main_context_pending(nullptr); ++dispatch)
+                                g_main_context_iteration(nullptr, false);
+                        }
+                        expect(gtk_paned_get_wide_handle(GTK_PANED(state(panes).widget)),
+                               "splitters start with a native wide handle");
+                        auto *handle = gtk_widget_get_first_child(state(panes).widget);
+                        while (handle && std::string_view(gtk_widget_get_css_name(handle)) != "separator")
+                            handle = gtk_widget_get_next_sibling(handle);
+                        expect(handle && gtk_widget_get_width(handle) >= panes.get_splitter_size(),
+                               "native splitter allocation must retain the requested usable width");
+                        {
+                            panel first, second;
+                            split_view transient(first, second, split_orientation::horizontal, 0, 0, 200, 100);
+                            transient.set_parent(&host); transient.create(); transient.show();
+                            gtk_widget_allocate(state(transient).widget, 200, 100, -1, nullptr);
+                            gtk_paned_set_position(GTK_PANED(state(transient).widget), 60);
+                            transient.destroy();
+                            for (int dispatch = 0; dispatch < 50 && g_main_context_pending(nullptr); ++dispatch)
+                                g_main_context_iteration(nullptr, false);
+                            expect(!first.get_created() && !second.get_created(),
+                                   "pending native splitter delivery must cancel on destruction");
+                        }
                         expect(rows.ids < 10000 && rows.cells < 10000,
                                "virtual rows must remain lazy");
                         if (const char *path = std::getenv(

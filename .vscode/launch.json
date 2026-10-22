@@ -200,6 +200,7 @@
             "additionalSOLibSearchPath": "${workspaceFolder}/build/windows-mingw-w64/src;${workspaceFolder}/build/windows-vm/libraries",
             "miDebuggerServerAddress": "127.0.0.1:31337",
             "setupCommands": [
+                {"text": "-enable-pretty-printing", "ignoreFailures": false},
                 {"text": "-gdb-set mi-async on", "ignoreFailures": false}
             ],
             "targetArchitecture": "x64",
@@ -228,7 +229,7 @@
             },
             "pipeTransport": {
                 "pipeProgram": "ssh",
-                "pipeArgs": ["-T", "haiku"],
+                "pipeArgs": ["-T", "hotel"],
                 "debuggerPath": "/boot/system/bin/gdb"
             },
             "preLaunchTask": "Deploy Vision Debug (Haiku)"

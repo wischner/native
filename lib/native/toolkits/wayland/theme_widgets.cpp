@@ -92,7 +92,7 @@ namespace linux::wayland
     GtkWidget *
     theme_column_header(native::sort_indicator_state direction) {
         auto *view = gtk_column_view_new(nullptr);
-        auto *column = gtk_column_view_column_new("", nullptr);
+        auto *column = gtk_column_view_column_new("M", nullptr);
         auto *sorter = gtk_custom_sorter_new(
             +[](gconstpointer, gconstpointer, gpointer) -> int {
                 return 0;

@@ -41,6 +41,7 @@ namespace native
         case message_box_icon::question: flags |= MB_ICONQUESTION; break;
         }
         HWND window = windows::wnd_bindings.handle_from_object(&owner);
+        windows::dialog_center centered(window);
         const int result = MessageBoxW(
             window,
             windows::utf8_to_wide(message).c_str(),

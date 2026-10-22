@@ -24,6 +24,7 @@
 #include <TextControl.h>
 #include <TextView.h>
 #include <Window.h>
+#include <ColumnListView.h>
 #endif
 
 namespace
@@ -509,10 +510,32 @@ namespace
                 BView *arrow = root->FindView("native_combo_arrow");
                 expect(text && arrow && arrow->Parent() == text &&
                            text->Bounds().Contains(arrow->Frame()) &&
+                           arrow->Bounds().Width() + 1 <= 14 &&
                            text->TextView()->Frame().right < arrow->Frame().left,
                        "editable arrow stays inside the common text frame");
             }
             _choice.set_style(native::combo_box_style::drop_down_list);
+
+            auto *table = dynamic_cast<BColumnListView *>(window->FindView("native_table"));
+            expect(table != nullptr, "materialized tables use the native column list");
+            if (table) {
+                BRow *group = table->RowAt(0);
+                BRow *row = table->RowAt(1, group);
+                _table.set_selected_rows({1, 2, 3});
+                _table.set_grid_lines(native::table_grid_lines::both);
+                expect(table->RowAt(1, group) == row && table->CurrentSelection(),
+                    "grid changes preserve native rows and multi-selection state");
+                BRect frame;
+                expect(table->GetRowRect(row, &frame), "selected native row remains visible");
+                const BPoint position(60, (frame.top + frame.bottom) / 2);
+                table->ScrollView()->MouseDown(position);
+                table->ScrollView()->MouseUp(position);
+                expect(_table.get_selected_rows() == std::vector<native::table_row_id>{2},
+                    "a plain native click replaces multi-selection after changing grid lines");
+                _table.set_selected_rows({2});
+                _table.set_grid_lines(native::table_grid_lines::horizontal);
+                _table_selection_events = 0;
+            }
 
             auto *vertical = dynamic_cast<BScrollBar *>(
                 window->FindView("native_table_vertical"));

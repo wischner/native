@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "property_grid_peer.h"
 #include "wnd_peer.h"
 #include <algorithm>
 #include <stdexcept>
@@ -15,8 +16,14 @@
 #include <native/font.h>
 #include <native/graphics.h>
 
+#include "input_geometry.h"
+
 namespace native
 {
+    rect combo_box::constrain_bounds(const rect &bounds) const {
+        return detail::input_bounds(*this, bounds);
+    }
+
     combo_box::combo_box(std::vector<std::string> items,
                          combo_box_style style,
                          coord x,
@@ -206,7 +213,7 @@ namespace native
         theme &appearance,
         const rect &bounds,
         const theme::state &) {
-        graphics.set_ink(dynamic_cast<property_grid *>(get_parent())
+        graphics.set_ink(native::detail::property_grid_owner(*this)
                 ? appearance.native_palette().button_bg
                 : appearance.get_content_background_color())
             .draw_rect(bounds, true);

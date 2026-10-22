@@ -22,7 +22,10 @@ add_test(NAME native_core_tests COMMAND native_core_tests)
 if(APPLE)
     add_executable(native_mac_runtime_tests native_mac_runtime_tests.mm
         native_mac_presentation_checks.mm
-        ${PROJECT_SOURCE_DIR}/src/vision_properties.cpp)
+        native_mac_navigation_checks.mm
+        ${PROJECT_SOURCE_DIR}/src/vision_properties.cpp
+        ${PROJECT_SOURCE_DIR}/src/vision_settings.cpp
+        ${PROJECT_SOURCE_DIR}/src/navigation_icons.cpp)
     target_include_directories(native_mac_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_mac_runtime_tests PRIVATE
@@ -82,6 +85,26 @@ add_executable(native_inspector_tests native_inspector_tests.cpp)
 target_link_libraries(native_inspector_tests PRIVATE native native_developer_options)
 add_test(NAME native_inspector_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_inspector_tests>)
+
+add_executable(native_settings_tests native_settings_tests.cpp)
+target_link_libraries(native_settings_tests PRIVATE native native_developer_options)
+target_include_directories(native_settings_tests PRIVATE
+    $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+if(APPLE)
+    set_source_files_properties(native_settings_tests.cpp PROPERTIES LANGUAGE OBJCXX)
+    target_link_libraries(native_settings_tests PRIVATE "-framework AppKit")
+elseif(HAIKU)
+    target_include_directories(native_settings_tests SYSTEM PRIVATE ${HAIKU_SHARED_INCLUDE})
+elseif(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
+    target_link_libraries(native_settings_tests PRIVATE PkgConfig::GTK4)
+    target_compile_definitions(native_settings_tests PRIVATE NATIVE_SETTINGS_GTK)
+endif()
+add_test(NAME native_settings_model_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_settings_tests>)
+add_test(NAME native_settings_runtime_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_settings_tests> --runtime)
+set_tests_properties(native_settings_model_tests native_settings_runtime_tests PROPERTIES
+    TIMEOUT 30 ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;ASAN_OPTIONS=detect_leaks=0;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-settings.fb;GEM_RASTA_PORT=5018;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900")
 
 if(NOT APPLE AND NOT TOOLKIT STREQUAL "GEMIX"
    AND NOT TOOLKIT STREQUAL "WAYLAND" AND NOT TOOLKIT STREQUAL "ELEMENTARY")
@@ -170,6 +193,8 @@ target_link_libraries(native_collection_runtime_tests PRIVATE
     native
     native_developer_options
 )
+target_include_directories(native_collection_runtime_tests PRIVATE
+    $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
 
 if(APPLE OR (UNIX AND (TOOLKIT STREQUAL "MOTIF" OR TOOLKIT STREQUAL "OPENLOOK")))
     add_test(NAME native_collection_runtime_tests

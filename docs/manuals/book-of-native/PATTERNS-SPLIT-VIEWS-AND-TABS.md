@@ -1,5 +1,13 @@
 # Patterns: split views and tabs
 
+GTK split views retain native GtkPaned handles. Scoped CSS reserves the
+requested separator width/height without a theme's negative margins shrinking
+it to a single pixel. Position notifications coalesce into one idle delivery;
+portable pane layout runs after GTK allocation. Destroying the peer cancels
+pending delivery. Native GtkNotebook tabs retain the desktop theme and add
+equal label margins for readable horizontal and side navigation. Granite 7
+provides no separate notebook widget in the pinned SDK.
+
 Motif notebook content attaches to all four edges of its native page Form.
 This includes lazily created pages selected for the first time: the Form's
 initial geometry cannot leave a tiny child after the notebook lays it out.

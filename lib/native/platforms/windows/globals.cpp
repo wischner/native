@@ -7,6 +7,8 @@
 
 #include <windows.h>
 #include <string>
+#include <algorithm>
+#include <string_view>
 
 #include <native.h>
 #include <bindings.h>
@@ -17,6 +19,44 @@
 
 namespace windows
 {
+    namespace
+    {
+        thread_local HWND dialog_owner = nullptr;
+        LRESULT CALLBACK center_dialog(int code, WPARAM window, LPARAM data) {
+            if (code == HCBT_ACTIVATE && IsWindow(dialog_owner)) {
+                const HWND dialog = reinterpret_cast<HWND>(window);
+                wchar_t name[32]{};
+                GetClassNameW(dialog, name, 32);
+                if (std::wstring_view(name) == L"#32770") {
+                    const HWND native_owner = GetWindow(dialog, GW_OWNER);
+                    const HWND owner = IsWindow(native_owner) && IsWindowVisible(native_owner)
+                        ? native_owner : dialog_owner;
+                    RECT parent{}, bounds{}, work{};
+                    GetWindowRect(owner, &parent);
+                    GetWindowRect(dialog, &bounds);
+                    MONITORINFO monitor{}; monitor.cbSize = sizeof(monitor);
+                    GetMonitorInfoW(MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST), &monitor);
+                    work = monitor.rcWork;
+                    const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
+                    const int x = std::clamp(int((parent.left + parent.right - width) / 2),
+                        int(work.left), std::max(int(work.left), int(work.right) - width));
+                    const int y = std::clamp(int((parent.top + parent.bottom - height) / 2),
+                        int(work.top), std::max(int(work.top), int(work.bottom) - height));
+                    SetWindowPos(dialog, nullptr, x, y, 0, 0,
+                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+            }
+            return CallNextHookEx(nullptr, code, window, data);
+        }
+    }
+    dialog_center::dialog_center(HWND owner) : _previous(dialog_owner) {
+        dialog_owner = owner;
+        _hook = SetWindowsHookExW(WH_CBT, center_dialog, nullptr, GetCurrentThreadId());
+    }
+    dialog_center::~dialog_center() {
+        if (_hook) UnhookWindowsHookEx(_hook);
+        dialog_owner = _previous;
+    }
     native::bindings<HWND, native::wnd *> wnd_bindings;
     native::bindings<uint32_t, win_font *> font_bindings;
     native::bindings<uint32_t, win_menu *> menu_bindings;

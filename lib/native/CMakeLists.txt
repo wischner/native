@@ -89,6 +89,11 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/panel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/property_grid.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/date_time.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/date_picker.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/time_picker.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/picker_controls.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/settings_sidebar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/property_drop_down.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/toolbar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/canvas.cpp
@@ -134,6 +139,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/table_view_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_render.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/input_geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gpx_wnd.cpp
@@ -154,6 +160,18 @@ if(NOT WIN32)
     )
 endif()
 
+if(NOT WIN32 AND NOT APPLE AND NOT HAIKU AND NOT TOOLKIT STREQUAL "WAYLAND"
+   AND NOT TOOLKIT STREQUAL "ELEMENTARY")
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/picker_peer_default.cpp)
+endif()
+if(NOT WIN32 AND NOT APPLE AND NOT HAIKU AND NOT TOOLKIT STREQUAL "ELEMENTARY")
+    if(NOT WIN32 AND NOT APPLE AND NOT HAIKU AND TOOLKIT MATCHES "^(X11|OPENLOOK|WMAKER)$")
+        target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/settings_peer_list.cpp)
+    else()
+        target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/settings_peer_default.cpp)
+    endif()
+endif()
+
 # Configure Unix toolkit libraries before the shared Linux codec libraries.
 # This matches native XView client link order on Tribblix; its notifier
 # interposes select and depends on that order to reach the libc system call
@@ -166,4 +184,8 @@ add_subdirectory(platforms)
 
 if(NOT HAIKU)
     target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui_startup.cpp)
+endif()
+
+if(NOT APPLE AND NOT HAIKU AND NOT WIN32)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/toolbar_peer_default.cpp)
 endif()

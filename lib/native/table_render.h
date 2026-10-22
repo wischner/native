@@ -45,5 +45,6 @@ namespace native::detail
                               int grab_offset);
 
     // Route one client-relative primary-button release.
-    bool handle_table_click(table_view &control, point position);
+    bool handle_table_click(table_view &control, point position,
+                            bool toggle = false, bool extend = false);
 } // namespace native::detail

@@ -12,6 +12,7 @@
 
 #include "../../post_backend.h"
 #include "globals.h"
+#include "winui.h"
 #include "../../input_state.h"
 
 namespace
@@ -33,6 +34,7 @@ namespace
             native::detail::set_loop_wake(wake_posted_work);
         }
         ~posted_session() {
+            windows::shutdown_winui();
             native::detail::set_loop_wake(nullptr);
             posted_thread.store(0);
         }
@@ -54,10 +56,18 @@ namespace native
                 return -1;
             }
 
+            if (windows::pretranslate_winui(msg)) {
+                detail::drain_posted_work();
+                continue;
+            }
+
             bool translated = false;
             auto *target = windows::wnd_bindings.object_from_handle(msg.hwnd);
+            for (HWND parent = GetParent(msg.hwnd); !target && parent; parent = GetParent(parent))
+                target = windows::wnd_bindings.object_from_handle(parent);
             const bool editor = dynamic_cast<text_edit *>(target) ||
-                dynamic_cast<code_edit *>(target) || dynamic_cast<combo_box *>(target);
+                dynamic_cast<code_edit *>(target) || dynamic_cast<combo_box *>(target) ||
+                dynamic_cast<settings_sidebar *>(target);
             const bool paired_key = target &&
                 (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN) &&
                 detail::key_held(*target, detail::pc_key((msg.lParam >> 16) & 0xff,

@@ -51,6 +51,8 @@ namespace native
                 gtk_widget_set_size_request(picture,
                                             owner.get_icon_size().w,
                                             owner.get_icon_size().h);
+                gtk_widget_set_halign(picture, GTK_ALIGN_CENTER);
+                gtk_widget_set_valign(picture, GTK_ALIGN_CENTER);
                 if (value.image) {
                     auto *bytes = g_bytes_new(value.image->pixels(),
                                               value.image->w() *
@@ -125,6 +127,10 @@ namespace native
     void icon_view::apply_selected_index() {
         auto &peer = linux::wayland::state(*this);
         peer.updating = true;
+        // Selecting an already-visible tile must not reset the scroll
+        // adjustment while an expander is hosting the grid.
+        const double offset = gtk_adjustment_get_value(
+            gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(peer.widget)));
         gtk_single_selection_set_selected(
             GTK_SINGLE_SELECTION(
                 gtk_grid_view_get_model(GTK_GRID_VIEW(peer.editor))),
@@ -132,6 +138,8 @@ namespace native
                 ? GTK_INVALID_LIST_POSITION
                 : static_cast<guint>(get_selected_index()));
         peer.updating = false;
+        gtk_adjustment_set_value(
+            gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(peer.widget)), offset);
     }
     void icon_view::apply_scroll_offset() {
         gtk_adjustment_set_value(

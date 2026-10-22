@@ -223,6 +223,18 @@ namespace
             _suppress = suppress;
         }
 
+        // Grid/stripe changes alter painting, not rows. Keep native focus,
+        // shift anchors and selection links alive when these flags change.
+        bool refresh_paint_flags() {
+            const auto grid = _owner.get_grid_lines();
+            const bool alternating = _owner.get_alternating_rows();
+            const bool changed = _paint_configured &&
+                (grid != _grid || alternating != _alternating);
+            _grid = grid; _alternating = alternating; _paint_configured = true;
+            if (changed) { Invalidate(); ScrollView()->Invalidate(); }
+            return changed;
+        }
+
         // Column widths exclude their one-pixel dividers and the outline
         // margin; neither those nor the native scrollbar is data space.
         void fit_last_column() {
@@ -350,6 +362,8 @@ namespace
 
     private:
         native::table_view &_owner;
+        bool _paint_configured = false, _alternating = false;
+        native::table_grid_lines _grid = native::table_grid_lines::none;
         bool _suppress = false;
     };
 
@@ -545,9 +559,14 @@ namespace native
 {
     void table_view::apply_table() {
         auto &binding = binding_for(*this);
-        if (binding.native_table)
+        if (binding.native_table) {
+            auto &view = *static_cast<native_column_list *>(binding.column_view);
+            bool repaint_only = false;
+            with_locked_view(&view, [&] { repaint_only = view.refresh_paint_flags(); });
+            if (repaint_only) return;
             rebuild_native(*this);
-        else
+            apply_selection();
+        } else
             invalidate();
     }
 
@@ -560,6 +579,13 @@ namespace native
         auto &view = *static_cast<native_column_list *>(
             binding.column_view);
         with_locked_view(&view, [&] {
+            std::vector<table_row_id> selected;
+            for (auto *row = view.CurrentSelection(); row; row = view.CurrentSelection(row))
+                if (auto *data = dynamic_cast<native_data_row *>(row)) selected.push_back(data->id);
+            auto expected = _selection;
+            std::sort(selected.begin(), selected.end());
+            std::sort(expected.begin(), expected.end());
+            if (selected == expected) return;
             view.set_suppress(true);
             view.DeselectAll();
             for (table_row_id id : _selection) {
@@ -630,6 +656,9 @@ namespace native
             });
         }
         if (binding->native_table) {
+            with_locked_view(binding->view, [&] {
+                static_cast<native_column_list *>(binding->column_view)->refresh_paint_flags();
+            });
             rebuild_native(*self);
             self->apply_selection();
             self->apply_scroll();

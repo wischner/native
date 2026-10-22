@@ -1,7 +1,7 @@
 # The Book of Native
 
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
-and all 17 CTests pass. CMake enables libc++ experimental threading support
+and all 19 CTests pass. CMake enables libc++ experimental threading support
 when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
 session shutdown after inferior exit have been verified on the VM.
 
@@ -18,6 +18,17 @@ the same commit.
 
 ## Current scope (October 2026)
 
+Settings navigation and civil date/time pickers are implemented on every
+maintained backend. Granite, AppKit, Win32 and Haiku use dedicated native
+widgets; Windows settings navigation hosts the actual WinUI 3 NavigationView
+with native search, using Windows App SDK 1.8. The other toolkits compose
+existing native controls where available.
+The shared contract covers stable page IDs, optional images, silent setters,
+holiday/weekday restrictions, predicates and minute steps. The input/chrome
+chapter explains peer ownership; the feature matrix distinguishes current
+runtime assertions from cross-build evidence. Vision's `--settings` window
+provides the interactive acceptance view.
+
 The mouse extension adds client-scoped hidden policy, ordered boundary and
 cancellation events, rich motion and capability-checked scoped capture. The
 portable `shader_view` uses a shared programmable CPU image executor with
@@ -29,8 +40,9 @@ runtime evidence are recorded separately in the feature matrix.
 
 
 - GTK 4.14 Wayland and elementary OS adapters are separately buildable and
-  exercised under headless Weston (18/18 tests each) and elementary OS 8.1
-  Pantheon Wayland (latest elementary run 18/18). The generic VM recheck hit
+  exercised under headless Weston (20/20 tests each), including the actual
+  elementary stylesheet. The elementary OS 8.1 Pantheon desktop also passes
+  focused native control checks and the table/combo/splitter/border walkthrough. The generic VM recheck hit
   GTK/compositor initialization timeouts; all three affected fixtures passed
   focused reruns after recovery, as documented in the VM note. They use
   native GTK controls and Granite 7
@@ -50,7 +62,7 @@ runtime evidence are recorded separately in the feature matrix.
     cover nested tab/split/canvas framebuffer composition and secondary
     canvas button identity. On 2026-10-21, full Rasta desktop colors and
     viewer-driven GDB/MI shutdown pass with 32-bit output and inversion off;
-    full suites pass 17/18 direct and 18/19 proxy tests, with a remaining
+    full suites pass 19/20 direct and 20/21 proxy tests, with a remaining
     final menu-strip restoration assertion failure
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)

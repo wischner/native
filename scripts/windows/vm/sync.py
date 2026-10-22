@@ -42,7 +42,8 @@ def main():
         subprocess.run(['scp', *options, str(source), str(destination)], check=True)
 
     files = {'vision.exe': staging / 'vision.exe'}
-    for name in ('libgcc_s_seh-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll', 'gdbserver.exe'):
+    for name in ('libgcc_s_seh-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll',
+                 'Microsoft.WindowsAppRuntime.Bootstrap.dll', 'gdbserver.exe'):
         files[name] = root / 'build/windows-mingw-w64/src' / name
     for name in ('session.ps1', 'session.vbs'):
         files[name] = Path(__file__).parent / name

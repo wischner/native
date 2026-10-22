@@ -132,12 +132,14 @@ namespace
         const native::size icon_size = tree.get_icon_size();
         binding.images = ImageList_Create(icon_size.w,
                                           icon_size.h,
-                                          ILC_COLOR32,
+                                          ILC_COLOR32 | ILC_MASK,
                                           1,
                                           4);
+        // Tree-View indices do not support the toolbar's I_IMAGENONE
+        // convention. A real transparent mask keeps iconless rows blank.
         HBITMAP blank = item_bitmap(nullptr, icon_size);
         if (binding.images && blank) {
-            ImageList_Add(binding.images, blank, nullptr);
+            ImageList_AddMasked(binding.images, blank, RGB(0, 0, 0));
             DeleteObject(blank);
         }
         TreeView_SetImageList(
@@ -146,9 +148,10 @@ namespace
         LONG_PTR style = GetWindowLongPtrW(
             binding.hwnd, GWL_STYLE);
         if (tree.get_lines_visible())
-            style |= TVS_HASLINES | TVS_LINESATROOT;
+            style |= TVS_HASLINES;
         else
-            style &= ~(TVS_HASLINES | TVS_LINESATROOT);
+            style &= ~TVS_HASLINES;
+        style |= TVS_LINESATROOT;
         SetWindowLongPtrW(binding.hwnd, GWL_STYLE, style);
 
         std::function<void(const std::vector<native::tree_view_item> &,
@@ -177,6 +180,11 @@ namespace
                 insert.item.pszText = text.data();
                 insert.item.iImage = image_index;
                 insert.item.iSelectedImage = image_index;
+                if (dynamic_cast<native::settings_sidebar *>(tree.get_parent()) && !value.children.empty()) {
+                    insert.item.mask |= TVIF_STATE;
+                    insert.item.stateMask = TVIS_BOLD;
+                    insert.item.state = TVIS_BOLD;
+                }
                 HTREEITEM native_item = reinterpret_cast<HTREEITEM>(
                     SendMessageW(binding.hwnd,
                                  TVM_INSERTITEMW,

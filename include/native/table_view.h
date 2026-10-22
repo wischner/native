@@ -37,7 +37,8 @@ namespace native
                                   point position,
                                   bool horizontal,
                                   int grab_offset);
-        bool handle_table_click(table_view &control, point position);
+        bool handle_table_click(table_view &control, point position,
+                                bool toggle, bool extend);
     }
 
     // Selects automatic, materialized, or virtual native adaptation.
@@ -501,7 +502,7 @@ namespace native
             bool horizontal,
             int grab_offset);
         friend bool detail::handle_table_click(
-            table_view &control, point position);
+            table_view &control, point position, bool toggle, bool extend);
 
         table_model *_model = nullptr;
         int _model_connection = 0;
