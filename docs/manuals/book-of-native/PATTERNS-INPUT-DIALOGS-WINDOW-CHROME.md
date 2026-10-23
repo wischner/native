@@ -640,3 +640,14 @@ are inactive. Its time field accepts `HH:MM[:SS]` and uses two native image
 buttons in the combo button column, stepping by the configured minute step.
 Typed values pass through the same shared availability policy as calendar
 and arrow input.
+
+
+## Application lessons
+
+The public construction sequence is taught separately from adapter details:
+[choices and dialogs](../programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md),
+[settings and civil pickers](../programming-native/21-SETTINGS-AND-PICKERS.md),
+and [toolbars and property inspectors](../programming-native/22-TOOLBARS-AND-PROPERTIES.md).
+Each has a complete small program. The
+[control index](../PROGRAMMING-NATIVE.md#find-every-control) identifies concrete
+controls, aliases, and extension bases for application authors and generators.

@@ -22,7 +22,114 @@ activating the main window
 can bring it in front of a modeless window. This does not change `get_owner()`,
 owned-window cleanup, or exclusion while an owner-modal dialog is open.
 
+## Build owned windows step by step
+
+1. Keep a modeless palette and a modal dialog as members of their owner.
+2. Give the custom dialog its own button objects and repeatable create handler.
+3. Create, center, and show an owned window from an owner command.
+4. Try Palette: both windows remain interactive. Try Confirm: the owner is
+   blocked until Accept, Cancel, or the dialog's close button finishes it.
+5. Open the dialog again to check that its native children are recreated.
+
+This is a separate complete program from the file-chooser example below:
+
+```cpp
+//
+// Opens a reusable modeless palette and an owner-modal custom dialog.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+
+class confirmation_window : public native::modal_wnd {
+public:
+    // The dialog owns its buttons while borrowing its top-level owner.
+    explicit confirmation_window(native::app_wnd &owner)
+        : modal_wnd(owner, "Confirm", native::rect(100, 100, 400, 180)) {
+        _accept.on_click.connect([this] {
+            close(native::dialog_result::accepted);
+            return true;
+        });
+        _cancel.on_click.connect([this] {
+            close(native::dialog_result::cancelled);
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            attach(_accept);
+            attach(_cancel);
+            return true;
+        });
+    }
+private:
+    native::button _accept{"Accept", 20, 50, 150, 32};
+    native::button _cancel{"Cancel", 190, 50, 150, 32};
+
+    // This runs on every new native session for the retained dialog object.
+    void attach(native::wnd &child) {
+        child.set_parent(this);
+        child.create();
+        child.show();
+    }
+};
+
+class owner_window : public native::app_wnd {
+public:
+    // Owned windows outlive their native sessions and can be reopened.
+    owner_window()
+        : app_wnd("Owned windows", 80, 80, 520, 260),
+          _palette(*this, "Palette", native::rect(100, 100, 280, 180)),
+          _confirmation(*this) {
+        _show_palette.on_click.connect([this] {
+            _palette.create();
+            _palette.center_to_parent();
+            _palette.show();
+            return true;
+        });
+        _show_confirmation.on_click.connect([this] {
+            _confirmation.create();
+            _confirmation.center_to_parent();
+            _confirmation.show();
+            return true;
+        });
+        _confirmation.on_modal_close.connect([this](native::dialog_result result) {
+            set_title(result == native::dialog_result::accepted
+                ? "Accepted" : "Cancelled");
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            attach(_show_palette);
+            attach(_show_confirmation);
+            return true;
+        });
+    }
+private:
+    native::button _show_palette{"Palette", 20, 20, 180, 32};
+    native::button _show_confirmation{"Confirm", 220, 20, 180, 32};
+    native::modeless_wnd _palette;
+    confirmation_window _confirmation;
+
+    // Create only owner controls here; owned windows open from commands.
+    void attach(native::wnd &child) {
+        child.set_parent(this);
+        child.create();
+        child.show();
+    }
+};
+
+// Keep owner and both owned C++ windows alive until the event loop exits.
+int program(int, char **) {
+    owner_window window;
+    return native::app::run(window);
+}
+```
+
 ## A modeless owned window
+
+1. Keep owned windows and dialog objects alive in the owning application.
+2. Create the owner before creating an owned top-level window.
+3. Call `create()` and `show()` to begin a session.
+4. Read a modal result in `on_modal_close`; recreate its native resource before reuse.
 
 Derive a reusable window in the same way as an application window:
 

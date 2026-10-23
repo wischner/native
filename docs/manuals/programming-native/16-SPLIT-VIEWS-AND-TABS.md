@@ -1,5 +1,63 @@
 # Split views and tabs
 
+## Build a tabbed workspace step by step
+
+1. Declare both panes before their split view, and all pages before their tabs.
+2. Give the split view two uncreated panes. Give the tabs two uncreated pages;
+   one page can be the split view itself.
+3. Create only the outer tabs. Each container manages its borrowed content.
+4. Drag the divider, switch to Notes, type text, and return to Workspace.
+   Resize the window and check that the selected page follows it.
+
+```cpp
+//
+// Combines borrowed split panes and tab pages without duplicating creation.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+
+class workspace_window : public native::app_wnd {
+public:
+    // Reverse member destruction releases the tabs before their pages.
+    workspace_window()
+        : app_wnd("Workspace", 100, 100, 720, 460),
+          _split(_files, _editor, native::split_orientation::horizontal) {
+        _split.set_ratio(0.3f).set_minimums(100, 180);
+        _tabs << native::tab_page("Workspace", _split)
+              << native::tab_page("Notes", _notes);
+        on_wnd_create.connect([this] {
+            _tabs.set_parent(this);
+            _tabs.set_bounds(get_client_bounds());
+            _tabs.create();
+            _tabs.show();
+            return true;
+        });
+        on_wnd_resize.connect([this](native::size) {
+            _tabs.set_bounds(get_client_bounds());
+            return true;
+        });
+    }
+private:
+    native::list _files{{"main.cpp", "notes.txt"}};
+    native::text_edit _editor{"Source text", native::text_edit_mode::multi_line};
+    native::text_edit _notes{"Notes", native::text_edit_mode::multi_line};
+    native::split_view _split;
+    native::tab_view _tabs;
+};
+
+// Containers borrow the member controls for the entire application session.
+int program(int, char **) {
+    workspace_window window;
+    return native::app::run(window);
+}
+```
+
+Change `set_tab_placement()` or `set_page_frame_visible()` before creation to
+try the other presentations. A panel page is the next step when a tab needs
+several controls: see [Panels and canvases](18-PANELS-AND-CANVASES.md).
+
 `split_view` places two borrowed child windows on opposite sides of a native
 separator. Construct it with both uncreated panes, choose an orientation, and
 then parent the split view like any other control:

@@ -339,7 +339,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 | Document | Contents |
 | --- | --- |
-| [README.md](README.md) | Project pitch, feature summary, backend list, dependency list per backend, direct and Docker-backed build commands, build output layout, and links into the two manuals. The public front door. |
+| [scripts/docs/check.py](scripts/docs/check.py) | Local Markdown link/heading validation and complete-book-program extraction/GCC syntax checks inside the SDK. |
+| [docs/README.md](docs/README.md) | Documentation entry point for the books, standards, notes, skills, agents, and AI generation guide. |
+| [README.md](README.md) | Project pitch, feature summary, backend list, dependency list per backend, Docker-backed and remote macOS build commands, build output layout, and links into the two manuals. The public front door. |
 | [AGENTS.md](AGENTS.md) | This file: project rules, documentation map, and refresh obligations. |
 | [docs/ADJUST.md](docs/ADJUST.md) | Dated standards review, completed non-Amiga repairs and verification, SDK exceptions, and excluded Amiga runtime blockers. A review record, not a new standard. |
 
@@ -398,8 +400,8 @@ Teaches *how to write applications against the library*. Complete runnable
 programs and focused snippets; this is where educational example code lives
 instead of a separate examples source tree. Index:
 [docs/manuals/PROGRAMMING-NATIVE.md](docs/manuals/PROGRAMMING-NATIVE.md) — how
-a native program is organized, the 20-chapter table of contents, and build
-instructions.
+a native program is organized, the 22-chapter table of contents, the complete
+control index, and build instructions.
 
 | Chapter | Contents |
 | --- | --- |
@@ -419,11 +421,31 @@ instructions.
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |
 | [16-SPLIT-VIEWS-AND-TABS.md](docs/manuals/programming-native/16-SPLIT-VIEWS-AND-TABS.md) | `split_view` and native tab controls. |
-| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | File icons, special directories, settings navigation, civil date/time pickers, choice controls, OS dialogs, non-client chrome. |
+| [17-INPUT-DIALOGS-AND-WINDOW-CHROME.md](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) | File icons, special directories, choice controls, OS dialogs, rulers/status, and a complete choice/dialog program; links to Chapters 21–22. |
 | [18-PANELS-AND-CANVASES.md](docs/manuals/programming-native/18-PANELS-AND-CANVASES.md) | `panel` grouping and child lifecycle, `canvas` painting, scrolling, scrollbar policy, and rulers. |
 | [19-BACKGROUND-WORK-AND-SERVICES.md](docs/manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md) | C++20 workers, scoped UI results, PCM output, child helpers and interactive acceptance. |
-
 | [20-IMAGE-SHADERS.md](docs/manuals/programming-native/20-IMAGE-SHADERS.md) | Shader-view lifecycle, source ownership, typed parameters, portable expression authoring/package format, fitting, animation, fallback and mouse acceptance. |
+| [21-SETTINGS-AND-PICKERS.md](docs/manuals/programming-native/21-SETTINGS-AND-PICKERS.md) | Searchable settings pages, shared icons, date/time ranges, excluded holidays/weekdays, validators, and a complete booking program. |
+| [22-TOOLBARS-AND-PROPERTIES.md](docs/manuals/programming-native/22-TOOLBARS-AND-PROPERTIES.md) | Edge toolbars, status, typed properties, custom dropdown ownership, and a complete inspector program. |
+
+## AI application generation
+
+These resources teach consumption of the public library; they do not install
+agents or change runner permissions. Skills link to maintained examples and
+headers rather than duplicating an API reference.
+
+| Document | Contents |
+| --- | --- |
+| [docs/skills/README.md](docs/skills/README.md) | Skill catalog and checkout-relative loading guidance. |
+| [native-app/SKILL.md](docs/skills/native-app/SKILL.md) | Application entry, ownership, creation, public API and SDK build workflow. |
+| [native-controls/SKILL.md](docs/skills/native-controls/SKILL.md) | Control selection, composition, signals and native presentation rules. |
+| [native-verify/SKILL.md](docs/skills/native-verify/SKILL.md) | Scoped compile/runtime/visual acceptance and truthful result reporting. |
+| [docs/agents/README.md](docs/agents/README.md) | Provider-neutral role catalog and invocation boundaries. |
+| [APPLICATION-BUILDER.md](docs/agents/APPLICATION-BUILDER.md) | Application implementation role and deliverables. |
+| [UI-REVIEWER.md](docs/agents/UI-REVIEWER.md) | Evidence-based ownership, control and interaction review role. |
+| [BACKEND-VERIFIER.md](docs/agents/BACKEND-VERIFIER.md) | SDK build and target-desktop verification role. |
+| [docs/ai/README.md](docs/ai/README.md) | Minimal context-loading route and vertical-slice workflow for generators. |
+| [REQUEST-TEMPLATE.md](docs/ai/REQUEST-TEMPLATE.md) | Application request fields and reproducible implementation handoff. |
 
 ## Notes — `docs/notes/`
 
@@ -474,6 +496,7 @@ invalidates it. Use this table to find what a change touches.
 | The `wnd` base contract — geometry derivation, paint sequence, hierarchy, or a new protected hook | [ARCHITECTURE.md](docs/standards/ARCHITECTURE.md) Section 5, [PATTERNS-WINDOWS.md](docs/manuals/book-of-native/PATTERNS-WINDOWS.md), [PATTERNS-PAINTING.md](docs/manuals/book-of-native/PATTERNS-PAINTING.md), and any chapter describing a control that overrides the hook. Every window type inherits the change, so the sweep is wider than the control that motivated it. |
 | Add or move a test executable | [BUILD-SYSTEM.md](docs/manuals/book-of-native/BUILD-SYSTEM.md) test table, and `tests/CMakeLists.txt`. |
 | Add or remove a TODO in production source | [PRODUCTION-SOURCE-TODOS.md](docs/notes/PRODUCTION-SOURCE-TODOS.md). |
+| Application tutorials or AI guidance | The relevant manual chapter and control index, linked skills/agent instructions, and the documentation map above. Keep examples aligned with current public headers. |
 | A remote or unusual host workflow | The matching note in [docs/notes/](docs/notes/), and its entry in [docs/notes/README.md](docs/notes/README.md). |
 | A vendored third-party file | [lib/native/third_party/README.md](lib/native/third_party/README.md). |
 

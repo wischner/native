@@ -8,6 +8,92 @@ several controls, and for a canvas when your program draws the content itself.
 They are separate classes on purpose. A panel is not a drawing surface, and a
 canvas is not a container.
 
+## Build a drawing panel step by step
+
+1. Create a `panel` to host a button and a `canvas`.
+2. Create the panel's children in its own create handler, not before it exists.
+3. Give the canvas content bounds larger than its viewport. Subtract its scroll
+   position when painting; content coordinates remain yours.
+4. Keep a ruler attached to the canvas and a status bar attached to the window.
+5. Press Draw again and use the scrollbars. The canvas repaints retained state;
+   the button and chrome stay outside the scrolled drawing.
+
+```cpp
+//
+// Hosts a scrollable drawing and a command in a structural panel.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+#include <string>
+
+class drawing_window : public native::app_wnd {
+public:
+    // Keep containers before their children and strips after their owners.
+    drawing_window()
+        : app_wnd("Drawing", 100, 100, 660, 440),
+          _ruler(_drawing, native::window_edge::top, 28), _status(*this, 24) {
+        _drawing.set_content_bounds({0, 0, 1000, 700});
+        _ruler.set_minor_tick(10).set_major_tick(100);
+        _status.set_parts({{"Scroll to explore the drawing", 0}});
+        _again.on_click.connect([this] {
+            ++_count;
+            _drawing.invalidate();
+            return true;
+        });
+        _drawing.on_wnd_paint.connect([this](native::wnd_paint_event event) {
+            const auto scroll = _drawing.get_scroll_position();
+            event.g.clear(native::rgba(255, 255, 255, 255));
+            event.g.set_ink(native::rgba(30, 60, 100, 255));
+            event.g.draw_rect(native::rect(
+                static_cast<native::coord>(20 - scroll.x),
+                static_cast<native::coord>(20 - scroll.y), 800, 500), false);
+            event.g.draw_text("Draw count: " + std::to_string(_count),
+                native::point(static_cast<native::coord>(40 - scroll.x),
+                              static_cast<native::coord>(60 - scroll.y)));
+            return true;
+        });
+        _page.on_wnd_create.connect([this] {
+            attach(_again, _page);
+            attach(_drawing, _page);
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            attach(_page, *this);
+            return true;
+        });
+    }
+private:
+    native::panel _page{12, 12, 620, 370};
+    native::button _again{"Draw again", 0, 0, 160, 32};
+    native::canvas _drawing{0, 48, 620, 320};
+    native::ruler _ruler;
+    native::status_bar _status;
+    int _count = 0;
+
+    // Explicitly create each ordinary child after its host.
+    static void attach(native::wnd &child, native::wnd &parent) {
+        child.set_parent(&parent);
+        child.create();
+        child.show();
+    }
+};
+
+// Fixed introductory bounds can later be replaced by a grid layout.
+int program(int, char **) {
+    drawing_window window;
+    return native::app::run(window);
+}
+```
+
+The ruler in this example shows viewport ticks. To make it follow document
+coordinates, synchronize its origin when handling `on_scroll`, as described
+above. `scrollbar_policy` is an enum, not a standalone scrollbar widget.
+`custom_control` and `collection_view` are extension bases used by the library;
+start application drawing from the concrete `canvas` unless you need to
+implement a new control's semantic input behavior.
+
 ## Grouping controls with a panel
 
 A panel is an empty child window. It adds no border, caption, focus ring, or

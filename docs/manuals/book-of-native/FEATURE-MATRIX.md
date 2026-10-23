@@ -1400,3 +1400,31 @@ mapped after relayout/raising, and up/down clicks cover selected hours,
 minutes and seconds plus caret-only stepping. Calendar and field snapshots
 were inspected under both generic Motif and CDE. Shared callback setup also
 builds for WINGs, GEM and SDL; their focused picker/property checks pass.
+
+
+## Application book and generation resources (2026-10-23)
+
+The application book now has 22 chapters and an index covering every concrete
+visual control, with aliases and extension bases identified separately.
+New complete programs cover owned/modeless/modal windows, collections/accordion,
+tables, source completion, split/tab workspaces, choices/standard panels, panel/canvas/ruler/status,
+image-effect views, settings/pickers, and toolbar/property inspection.
+Chapters 21 and 22 separate settings/availability and toolbar/property lessons
+from the general input/chrome chapter.
+
+All 20 complete tutorial programs pass GCC C++20 syntax checks with
+`-Wall -Wextra -pedantic -Werror` in the SDL Docker SDK, and all 20 link against
+that SDK's existing Native static target and its backend dependency closure.
+Five new programs (split/tabs, drawing panel, image effect, settings, inspector)
+also pass create/close smoke checks with the SDL dummy driver and
+ASan/UBSan; the settings check switches pages repeatedly. The identity shader
+package is generated with the maintained packager before its smoke check.
+These are startup/lifetime checks, not desktop screenshots or a manual
+interaction walkthrough of every example on every backend.
+
+The [documentation checker](../../../scripts/docs/check.py) validates 459 local
+links across 79 maintained Markdown files, extracts complete book programs,
+and can syntax-check them inside an SDK. Three application-consumption skills
+pass the skill frontmatter validator. Provider-neutral agent roles and an AI
+request/handoff guide route generators to these same examples and headers;
+they do not introduce a second API catalog or install a runner.

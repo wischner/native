@@ -24,103 +24,128 @@ status bar's edge to another edge throws `invalid_argument`.
 
 ## Settings pages and date/time pickers
 
-Build settings pages with stable IDs and `<<`, or pass the same descriptor
-to `add_item()`. Pages are borrowed: declare them before the sidebar so they
-outlive it. A page's native children are recreated when selected again; keep
-their C++ objects alive to preserve values.
+The step-by-step settings window, optional search/images, holiday exclusions,
+and date/time validation are in [Chapter 21](21-SETTINGS-AND-PICKERS.md).
+
+## Build choices and standard dialogs step by step
+
+1. Use `drop_down_list` for fixed choices and `editable` for choices plus text.
+2. Keep choosers as members borrowing their application window.
+3. Read chooser results in `on_modal_close`, not immediately after `show()`.
+4. Create ordinary controls after their parent. Edge chrome attaches itself.
+5. Type `125%`, choose a listed scale, and try Open, Save, Folder, and Message.
+   Cancel a chooser and verify that the application is interactive again.
+
+This complete example selects paths; saving actual file contents is the
+application's responsibility.
 
 ```cpp
+//
+// Combines fixed and editable choices with owner-modal standard panels.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
 #include <native.h>
+#include <string>
 
-class preferences : public native::app_wnd {
+class choices_window : public native::app_wnd {
 public:
-    preferences() : app_wnd("Preferences", 80, 60, 700, 400) {
-        navigation.set_search_visible(true);
-        navigation << native::settings_page(1, "General", general)
-                   << native::settings_page(2, "Appointments", appointments);
-        date.set_disabled_weekdays({native::day_of_week::saturday,
-                                    native::day_of_week::sunday});
-        date.set_validator([](native::date value) {
-            return !(value.month == 12 && value.day == 25);
+    // Keep logical chooser objects alive until their completion signals run.
+    choices_window()
+        : app_wnd("Choices and dialogs", 100, 100, 620, 360),
+          _open(*this), _save(*this), _folder(*this),
+          _tools(*this), _status(*this, 24) {
+        _mode.set_selected_index(0);
+        _scale.set_text("125%");
+        _tools << native::tool_item{"open", "Open",
+                      native::tool_kind::button, {}, false, true, {}}
+               << native::tool_item{"save", "Save",
+                      native::tool_kind::button, {}, false, true, {}}
+               << native::tool_item{"folder", "Folder",
+                      native::tool_kind::button, {}, false, true, {}}
+               << native::tool_item{"message", "Message",
+                      native::tool_kind::button, {}, false, true, {}};
+        _save.set_suggested_name("notes.txt").set_default_extension("txt");
+        _open.set_filters({{"Text files", {"*.txt"}}, {"All files", {"*"}}});
+        _mode.on_selection_change.connect([this](int index) {
+            _status.set_parts({{"Mode index: " + std::to_string(index), 0}});
+            return true;
         });
-        time.set_range({8, 0, 0}, {18, 0, 0}).set_minute_step(15);
-        appointments.on_wnd_create.connect([this] {
-            date.set_parent(&appointments); date.create(); date.show();
-            time.set_parent(&appointments); time.create(); time.show();
+        _scale.on_text_change.connect([this](std::string text) {
+            _status.set_parts({{"Scale: " + text, 0}});
+            return true;
+        });
+        _list.on_selection_change.connect([this](int index) {
+            _status.set_parts({{"List index: " + std::to_string(index), 0}});
+            return true;
+        });
+        _open.on_modal_close.connect([this](native::dialog_result result) {
+            report(_open, result);
+            return true;
+        });
+        _save.on_modal_close.connect([this](native::dialog_result result) {
+            report(_save, result);
+            return true;
+        });
+        _folder.on_modal_close.connect([this](native::dialog_result result) {
+            report(_folder, result);
+            return true;
+        });
+        _tools.on_command.connect([this](native::tool_command command) {
+            if (command.id == "open") present(_open);
+            else if (command.id == "save") present(_save);
+            else if (command.id == "folder") present(_folder);
+            else native::message_box::show(*this, "Choose a file or folder.",
+                "Choices", native::message_box_buttons::ok,
+                native::message_box_icon::information);
             return true;
         });
         on_wnd_create.connect([this] {
-            navigation.set_parent(this);
-            navigation.set_bounds(get_client_bounds());
-            navigation.create(); navigation.show();
+            attach(_mode);
+            attach(_scale);
+            attach(_list);
             return true;
-        });
-        on_wnd_resize.connect([this](native::size) {
-            navigation.set_bounds(get_client_bounds()); return true;
         });
     }
 private:
-    native::panel general, appointments;
-    native::date_picker date{{2026, 12, 24}, native::rect(16, 16, 300, 34)};
-    native::time_picker time{{9, 30, 0}, native::rect(16, 66, 240, 34)};
-    native::settings_sidebar navigation;
+    native::combo_box _mode{{"Compact", "Detailed"},
+        native::combo_box_style::drop_down_list, 20, 70, 240, 24};
+    native::combo_box _scale{{"50%", "100%", "200%"},
+        native::combo_box_style::editable, 20, 118, 240, 24};
+    native::list_box _list{{"First", "Second", "Third"}, 300, 70, 240, 150};
+    native::open_file_dialog _open;
+    native::save_file_dialog _save;
+    native::directory_dialog _folder;
+    native::toolbar _tools;
+    native::status_bar _status;
+
+    // Create ordinary client controls once the window resource exists.
+    void attach(native::wnd &child) {
+        child.set_parent(this);
+        child.create();
+        child.show();
+    }
+
+    // Chooser completion destroys native resources; recreate for each session.
+    static void present(native::file_dialog &dialog) {
+        dialog.create();
+        dialog.show();
+    }
+
+    // Read accepted results only after the panel has completed.
+    void report(native::file_dialog &dialog, native::dialog_result result) {
+        _status.set_parts({{result == native::dialog_result::accepted
+            ? dialog.get_path().string() : "Cancelled", 0}});
+    }
 };
 
+// Enter the event loop with every chooser and control still alive.
 int program(int, char **) {
-    preferences window;
+    choices_window window;
     return native::app::run(window);
 }
 ```
-
-`settings_page(id, title, content, image, section, enabled)` also accepts a
-`std::shared_ptr<const native::img>` and a section heading. Images use the
-same ownership as tree and icon-view items. Native text-list navigation on
-Athena, XView and WINGs displays labels only; Athena uses native full-width
-Toggle rows and insensitive section headings. Image-capable adapters display
-the supplied images. `set_selected_item(id)` is silent; user navigation
-emits `on_selection_change` with that ID. Zero clears selection.
-`set_item_enabled`, `set_item_text`, `set_item_image`, `remove_item` and
-`clear_items` update a created sidebar too. Remove a borrowed page before
-deleting its C++ object.
-
-Search is optional: `set_search_visible(true)` enables it and
-`set_search_text("appointments")` sets the query silently. Titles and section
-headings match case-insensitive substrings. Search filters navigation rows,
-keeping the current page and its values. No matches leaves the page open.
-`get_search_text()` reads the query; `on_search_change` reports user edits.
-Hiding search suspends filtering and retains the query. Mac uses AppKit's
-search field, source-list styling, group headings and sidebar material.
-
-Mac date fields use a native text-only editor and calendar button; time fields
-retain the native stepper. Both match a standard text field’s preferred height
-and center their text and accessories vertically.
-The calendar button inside the date field opens AppKit's calendar in a popover.
-For explanatory text, a read-only editor with `border_sides::none` uses a
-transparent native AppKit text view, so the page background remains visible.
-
-Dates are simple `{year, month, day}` values, independent of time zones.
-`set_range(first, last)` is inclusive. `set_disabled_dates()` accepts an
-explicit holiday or booking list; `set_disabled_weekdays()` handles recurring
-weekends. `set_validator()` adds application rules such as annual holidays.
-Native does not assume which country's holidays apply. GTK marks unavailable
-dates; calendars without individual disabled-day styling reject those dates,
-and composed date fields omit them from day choices.
-
-Times are `{hour, minute, second}` in 24-hour civil fields. Limits stay within
-one day. A minute step must divide 60; `set_seconds_visible(true)` enables
-seconds editing without changing the stored value. Hidden seconds are
-preserved. A time validator can express lunch breaks or recurring schedules;
-for an overnight schedule, retain the full-day range and use a predicate.
-
-All programmatic setters are silent. Value setters throw
-`std::invalid_argument` for unavailable values. Rule changes preserve the
-current value, so query `get_valid()` after changing restrictions. Accepted
-user changes emit `on_change`; unavailable proposals emit `on_rejected` and
-restore the cached value. Validators must be pure, run on the UI thread and
-are treated as unavailable if they throw.
-
-Run `vision --settings`, or open **Window → Settings and date/time pickers**,
-to exercise the sidebar, optional images and availability rules interactively.
 
 ## Combo box and list box
 
@@ -358,187 +383,7 @@ the ticks (Maestro uses 32 pixels for one-pixel minor/eight-pixel major ticks).
 
 ## Properties and tools
 
-A compact inspector uses standard editors for each value kind. Create it
-only after its parent, as with other controls:
-
-```cpp
-native::property_grid properties(12, 40, 300, 220);
-properties.set_parent(&window);
-properties.set_items({
-    {"name", "Name", native::property_kind::text, std::string("Shape"), {}, false},
-    {"width", "Width", native::property_kind::number, 120.0, {}, false},
-    {"visible", "Visible", native::property_kind::boolean, true, {}, false},
-    {"mode", "Mode", native::property_kind::choice, std::string("Fill"),
-        {"Fill", "Outline"}, false}
-});
-properties.on_change.connect([](native::property_change change) {
-    // change.id identifies the row; change.value has its declared type.
-    return true;
-});
-properties.create();
-properties.show();
-```
-
-Rows default to the control font height plus six pixels. `set_row_height(0)`
-restores that compact default, and `set_label_width()` sets the first column's
-width. Labels and value fields share the control background. The scrollbar
-sits at the right edge and only complete rows expose editors. `set_value()`
-updates silently. Read-only properties still accept
-programmatic updates. Invalid values and duplicate IDs throw; user changes
-are emitted only after validation.
-
-Declare bars after the window they borrow, and keep them alive while displayed:
-
-```cpp
-native::toolbar commands(window, native::window_edge::top);
-native::toolbar drawing(window, native::window_edge::left);
-commands.add_item({"save", "Save", native::tool_kind::button, {}, false, true, {}});
-drawing.set_items({
-    {"select", "Select", native::tool_kind::exclusive, "tools", true, true, {}},
-    {"draw", "Draw", native::tool_kind::exclusive, "tools", false, true, {}}
-});
-drawing.set_extent(80); // room for vertical tool labels
-commands.on_command.connect([](native::tool_command command) {
-    // Execute command.id; command.checked is the resulting sticky state.
-    return true;
-});
-```
-
-Use `tool_kind::toggle` for independent sticky buttons. Exclusive groups are
-scoped to their bar. Add more toolbar objects to stack multiple bars at an
-edge; there is no fixed bar-count limit. Use `set_edge()` to relocate one.
-Toolbars reserve space through `window.get_client_bounds()` and do not enter
-its ordinary child layout. Place client controls inside those bounds.
-
-The last `tool_item` field is a `std::shared_ptr<const native::img>`. Assign an
-image and use `set_icon_size({16, 16})`, `{24, 24}`, or `{32, 32}`. Images can be
-used without a text label. Use transparent image pixels around the artwork
-to preserve the toolbar background. Images and labels are centered together.
-The default icon size is 16 by 16 pixels; any supported positive dimensions
-can be passed to `set_icon_size(native::size(24, 24))`. The toolbar scales the
-source image to that size. `native::img` loads PNG or JPEG data; PNG supports
-the transparent background commonly used for toolbar artwork.
-The bar grows or shrinks with the selected image size and retains its padding;
-neighbors and the client area are updated in the same pass. Top and bottom
-bars span the window width, and side bars stop between them;
-its tools use the main-menu palette and selection style on most backends.
-Mac bars use flexible-height native flat buttons, native checked/pressed feedback
-and native disabled/template-image rendering. They preserve the same commands
-and arbitrary edge placement. Available strip
-length clips excess tools, so use another bar to expose additional tools.
-
-```cpp
-properties.set_border_sides(native::border_sides::left |
-                             native::border_sides::bottom);
-commands.set_border_sides(native::border_sides::bottom);
-```
-
-Every window/control and non-client strip starts with `border_sides::all`.
-The mask hides existing outer edges; it does not create a border on a bare
-panel, hide checkbox indicators, or change window-manager decorations.
-
-A custom dropdown accepts any C++ value and any control, including a canvas
-or a derived panel that owns several child controls:
-
-```cpp
-auto editor = std::make_shared<native::property_drop_down>();
-editor->content_size = {160, 32};
-editor->to_text = [](const native::property_value &value) {
-    return std::to_string(std::any_cast<int>(std::get<std::any>(value))) + " px";
-};
-editor->create_content = [](const native::property_value &,
-                            native::property_drop_down::commit commit) {
-    auto choice = std::make_unique<native::button>("Use 24 px");
-    choice->on_click.connect([commit] {
-        commit(std::any(24));
-        return true;
-    });
-    return choice;
-};
-properties.add_item({"custom", "Custom size", native::property_kind::drop_down,
-    std::any(16), {}, false, editor});
-```
-
-Return an uncreated control. The grid takes ownership and handles its parent,
-bounds, creation, and display. A derived container can create its own children
-in `on_wnd_create`. Call the supplied callback to commit and close; Cancel
-closes without changing the property. The converter paints the closed value.
-Programmatic changes remain silent. Each accepted `std::any` commit emits a
-change, since arbitrary values have no generic equality comparison. Removing
-the source row cancels its popup and invalidates retained callbacks.
-
-Vision's **Custom canvas** property demonstrates the same API with a color
-palette painted on a canvas and an `rgba`-to-hex converter.
-
-Pickers use the standard input height. macOS keeps compact native field
-widths. Haiku also keeps the date field compact; date and editable-combo
-arrows share their editor's paper and single outer frame. Dates use tight
-separator spacing. Dropdown arrows are centered in narrow buttons, highlight
-while pressed or open, and close their popup on a second click. The native calendar opens
-directly below the field and aligns left. It is never narrower than the field
-and grows when needed for readable day columns. Month navigation uses small,
-equal square native buttons. Date and time fields match the standard Haiku
-text-control height, with centered text and equal time arrows.
-Generic GTK date and time pickers use linked native entry and down-arrow
-controls at the standard input height. Their popovers contain a calendar or
-time spin controls. Enter commits `YYYY-MM-DD` or `HH:MM[:SS]`; unavailable
-values roll back. Athena dates use the existing editable-combo field with a
-native calendar popup, insensitive excluded days and native month buttons.
-Athena time uses the same field with two equal step buttons in its arrow
-column. Both typed values and calendar/step changes use the shared rules.
-On elementary,
-you can type a locale date or `YYYY-MM-DD` and press Enter. Calendar selection
-and typed input both apply the same date exclusions. GTK calendars show
-unavailable days using native insensitive styling.
-
-On macOS, date/time text shares the standard text-field baseline, and the
-calendar symbol accounts for native image-cell padding. The native time
-stepper meets the field's right edge without a separate margin.
-
-The optional settings search field shares the navigation column's width.
-Windows uses the actual WinUI 3 NavigationView and its native AutoSuggestBox;
-page images become native ImageIcon rows. Distribute the App SDK bootstrap
-DLL and install Windows App Runtime 1.8 as described in
-[Building and Distributing](12-BUILDING-AND-DISTRIBUTING.md#windows-with-mingw-w64). Haiku hides an unnecessary navigation scrollbar.
-Its outline list has a native frame with equal margins on every side.
-Property-grid rows fit native editors and use light dotted internal lines
-across names and values. Windows and Haiku stock edge toolbars use native
-toolbar widgets; their buttons and separators follow the native theme.
-Haiku toolbar strips reserve the native buttons' minimum size when icons grow
-or the bar changes orientation. Haiku Open, Save and Select Folder panels
-center their final native frame over the owner after native placement.
-
-Visible-owner macOS message boxes use native NSAlert sheets, preserving the
-synchronous result while AppKit attaches and positions the alert on its owner.
-A hidden owner uses AppKit application-modal presentation.
-
-On macOS each picker renders as one standard-height native field using the
-native control background color. The date field contains its text-only editor
-and calendar trigger; the time field contains its editor and native stepper.
-Text, steppers and calendar buttons are vertically centered. Changing toolbar icon dimensions grows the native button feedback;
-removing every preview button border removes its complete rounded bezel.
-
-On SDL2, click an editable combo's text to edit or select it, and click its
-arrow to show the choices. Date pickers use the same field with a calendar
-popup and accept `YYYY-MM-DD` on Enter. Time pickers accept `HH:MM` (or
-`HH:MM:SS` with seconds enabled); the caret chooses which part the paired
-arrows change. Availability rules apply equally to typing and popup input.
-
-OPEN LOOK date fields accept `DD.MM.YYYY` on Enter and open a native calendar
-from the abbreviated menu button. Time fields use `HH:MM`, optional seconds,
-and paired step buttons. Search has a native `Search:` prompt; native list
-headings are bold/inactive and page labels are indented.
-
-Window Maker, Motif and GEM date fields accept `DD.MM.YYYY` and open a
-calendar from the joined combo arrow. A second arrow click closes it.
-Time fields accept `HH:MM` or `HH:MM:SS`; their paired arrows apply the
-configured minute step. Disabled dates are unavailable in the calendar and
-rejected on Return. These backends show a `Search:` prompt beside optional
-navigation search. GEM file/folder/message forms center over the owner,
-constrained to the desktop, and preserve native AES field/button styling.
-
-On Motif/CDE the date arrow opens the populated native-button calendar.
-Time arrows change the highlighted hour, minute or second; without a
-selection they follow the caret. Repeated clicks keep that component active.
-Minute changes honor `set_minute_step()` and every proposal still passes the
-configured time range and validator.
+For a complete toolbar/property inspector, typed changes, optional images,
+and arbitrary popup editors, see [Chapter 22](22-TOOLBARS-AND-PROPERTIES.md).
+The [implementation chapter](../book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
+explains native adapter details.

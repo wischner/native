@@ -743,3 +743,29 @@ Vision embeds its checked-in navigation PNG bytes from
 `src/assets/navigation/icons.inc`. Regeneration is an optional asset-authoring
 step documented beside those assets; production builds add no font or SVG
 runtime dependency.
+
+
+## Check book examples and documentation links
+
+The application book keeps complete programs in Markdown rather than a second
+examples source tree. Check local links and heading targets using Python 3:
+
+```bash
+python3 scripts/docs/check.py
+```
+
+Extract complete C++ programs and a chapter/line manifest under `build/`, or
+syntax-check them with the documented GCC SDK. The checker uses warnings as
+errors and never includes private backend headers:
+
+```bash
+docker run --rm -v "$PWD:/workspace" -w /workspace \
+  wischner/gcc-x86_64-linux-sdl:latest \
+  python3 scripts/docs/check.py --syntax-check
+```
+
+`--extract build/doc-check/current` extracts without compiling. Generated
+sources are not new executable targets. Syntax checks establish public API
+compatibility, not interactive behavior; use the chapter's interaction steps
+and the relevant runtime fixture for that evidence. These checks also cover
+links from AI skills and agent-role instructions to their maintained lessons.

@@ -27,6 +27,11 @@ model without pretending that the user changed it.
 
 ## A complete selection example
 
+1. Declare a checkbox, two sibling radios, and a list as window members.
+2. Set the initial state and connect their user-action signals.
+3. Parent, create, and show them from the window create handler.
+4. Change each choice and observe the status; selecting one radio clears its sibling.
+
 ```cpp
 //
 // Demonstrates check, sibling-exclusive radio, and list controls.

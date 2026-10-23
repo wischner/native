@@ -9,6 +9,77 @@ each item has an image, a label, spatial arrow-key navigation, activation,
 wrapping, or scrolling. Use `tree_view` when parent/child structure and
 independent branch expansion are part of the data.
 
+## Build a collection browser step by step
+
+1. Keep the tree and icon view as members before the borrowing accordion.
+2. Populate stable tree IDs and shared image items before creating controls.
+3. Add each control as an accordion section. The accordion creates its bodies;
+   do not create the tree or icon view separately.
+4. Create the accordion after the main window and resize it with the client area.
+5. Expand Project and click Notes; open Shapes and select Circle. The title
+   reports selection. Try keyboard arrows and changing sections.
+
+This is a complete program with an image made in memory:
+
+```cpp
+//
+// Browses a tree and an image collection through borrowed accordion bodies.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+#include <memory>
+#include <string>
+
+class browser_window : public native::app_wnd {
+public:
+    // Describe the models before the accordion creates either body.
+    browser_window() : app_wnd("Collections", 100, 100, 520, 440) {
+        _tree << native::tree_node("Project", 1, {
+            native::tree_node("Notes", 2),
+            native::tree_node("Assets", 3)}, true);
+        auto image = std::make_shared<native::img>(32, 32);
+        image->get_gpx().clear(native::rgba(0, 0, 0, 0))
+            .set_ink(native::rgba(40, 100, 180, 255))
+            .draw_ellipse(native::rect(3, 3, 26, 26), true);
+        _icons << native::icon_view_item{"Circle", image, 10, true};
+        _sections << native::accordion_section("Project", _tree)
+                  << native::accordion_section("Shapes", _icons);
+        _sections.set_expanded_index(0);
+        _tree.on_selection_change.connect([this](native::tree_item_id id) {
+            set_title("Tree item " + std::to_string(id));
+            return true;
+        });
+        _icons.on_selection_change.connect([this](int index) {
+            set_title("Icon index " + std::to_string(index));
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            _sections.set_parent(this);
+            _sections.set_bounds(get_client_bounds());
+            _sections.create();
+            _sections.show();
+            return true;
+        });
+        on_wnd_resize.connect([this](native::size) {
+            _sections.set_bounds(get_client_bounds());
+            return true;
+        });
+    }
+private:
+    native::tree_view _tree;
+    native::icon_view _icons;
+    native::accordion _sections;
+};
+
+// Retain borrowed bodies until the accordion is destroyed.
+int program(int, char **) {
+    browser_window window;
+    return native::app::run(window);
+}
+```
+
 All three advanced item controls follow the same append spelling as menus and
 layouts. An icon descriptor appends directly, `tree_node()` names a branch,
 and `accordion_section` makes its borrowed window explicit:

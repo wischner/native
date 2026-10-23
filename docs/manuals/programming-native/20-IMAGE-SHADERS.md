@@ -6,6 +6,68 @@ assign a created parent, create it, show it, and use the existing layout and
 pointer signals. Every backend uses the same instruction profile; GPU
 acceleration is not implemented.
 
+## Build an image-effect window step by step
+
+1. Save the identity JSON from **Author one portable effect** as `effect.json`.
+2. Run the packaging command there to produce `build/effect.nshader`.
+3. Use the complete program below. It creates its image in memory, installs
+   the package, and creates the view only after the window exists.
+4. Launch from the repository root so the relative package path resolves.
+   The identity effect displays the blue circle unchanged. Modify the package
+   expression to experiment; an unchanged image alone is not proof of an
+   active effect, so inspect `get_shader_status()` when diagnosing execution.
+
+```cpp
+//
+// Displays an in-memory image through a packaged portable image effect.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+#include <stdexcept>
+#include <string>
+
+class effect_window : public native::app_wnd {
+public:
+    // Package parsing and source copying do not require a created view.
+    effect_window() : app_wnd("Image effect", 100, 100, 520, 360) {
+        native::img frame(160, 100);
+        frame.get_gpx().clear(native::rgba(245, 245, 245, 255))
+            .set_ink(native::rgba(30, 90, 180, 255))
+            .draw_ellipse(native::rect(40, 10, 80, 80), true);
+        _display.set_source(frame).set_fit(native::shader_fit::fit);
+        std::string error;
+        if (!_display.set_effect(
+                native::shader_package::load("build/effect.nshader"), error))
+            throw std::runtime_error(error);
+        on_wnd_create.connect([this] {
+            _display.set_parent(this);
+            _display.set_bounds(get_client_bounds());
+            _display.create();
+            _display.show();
+            return true;
+        });
+        on_wnd_resize.connect([this](native::size) {
+            _display.set_bounds(get_client_bounds());
+            return true;
+        });
+    }
+private:
+    native::shader_view _display;
+};
+
+// The frame was copied; the view retains its own source pixels.
+int program(int, char **) {
+    effect_window window;
+    return native::app::run(window);
+}
+```
+
+The portable CPU path needs no GPU SDK. The separate optional GLSL profile and
+its capability/fallback rules are described in the
+[implementation chapter](../book-of-native/PATTERNS-IMAGE-SHADERS.md).
+
 ```cpp
 native::shader_view display(native::rect(0, 0, 512, 384));
 display.set_parent(&window);

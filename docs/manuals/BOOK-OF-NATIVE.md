@@ -1,14 +1,14 @@
 # The Book of Native
 
-The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
-and all 19 CTests pass. CMake enables libc++ experimental threading support
-when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic
-session shutdown after inferior exit have been verified on the VM.
-
 This book explains the Native architecture, the implementation patterns used
 to preserve it, and the current build and backend status. It is the detailed
 companion to the concise, normative
 [Architectural Standards](../standards/ARCHITECTURE.md).
+
+For writing applications, use [Programming Native](PROGRAMMING-NATIVE.md),
+which has a control index and step-by-step programs. For AI-assisted application
+work, use the [generation guide](../ai/README.md). This book is for understanding
+or changing the library implementation.
 
 The standards define what the code must do. These chapters explain why the
 rules exist, how shared and backend code divide the work, and what an
@@ -75,17 +75,15 @@ runtime evidence are recorded separately in the feature matrix.
     cover nested tab/split/canvas framebuffer composition and secondary
     canvas button identity. On 2026-10-21, full Rasta desktop colors and
     viewer-driven GDB/MI shutdown pass with 32-bit output and inversion off;
-    full suites pass 19/20 direct and 20/21 proxy tests, with a remaining
-    final menu-strip restoration assertion failure
+    the 2026-10-22 full suites pass 20/21 direct and 21/22 proxy tests,
+    with the remaining final menu-strip restoration assertion failure
   - Windows backend (Docker MinGW build, run natively in the Windows 11 VM)
   - Haiku backend (Docker cross-build, deploy and run over SSH)
-  - macOS AppKit backend (native AppleClang build on remote `leia`, all 17
-    current CTests passing, plus earlier targeted desktop checks; the older
-    six-test suite also passed with ASan/UBSan)
-- Work in progress:
-  - other toolkit targets and ports not listed above
+  - macOS AppKit backend (AppleClang 17 on VM `mike`, 19/19 CTests in the
+    2026-10-21 Debug run; interactive LLDB stops and session shutdown verified)
 
-Runtime-tested does not imply an exhaustive interactive walkthrough. The
+The suite counts above describe dated runs, not an automatically updated
+qualification of every later revision. Runtime-tested does not imply an exhaustive interactive walkthrough. The
 [feature matrix](book-of-native/FEATURE-MATRIX.md) records per-feature
 coverage; the [macOS runtime note](../notes/MACOS-REMOTE-RUNTIME.md) separates
 automated regressions and targeted visual checks from the still-incomplete
@@ -193,20 +191,22 @@ For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).
 
 
+## Earlier verification records
+
 Linux GLSL context coexistence is fixed in the EGL adapter: it preserves and
 restores the surrounding EGL/GLX toolkit context, including accelerated SDL
 renderers. Context failures now include the operation and EGL error code.
 The original GLSL pipeline was verified on an Intel Iris Xe desktop. The
 2026-10-14 macOS Debug audit on `leia` passes four focused tests, including
 real CGL context preservation, and the original GLSL terminal smoke. It does
-not establish visual acceptance or frame-rate guarantees. The final Windows
-VM suite passes 16 tests with two desktop-OpenGL skips. Haiku passes all 18
+not establish visual acceptance or frame-rate guarantees. The earlier Windows
+VM suite passed 16 tests with two desktop-OpenGL skips. That Haiku run passed 18
 regression executables with Mesa softpipe, including real GLSL rendering and
 context ownership, as well as the portable CPU profile. The feature matrix
 records the exact scope of these target runs.
 
 
-The 2026-10-15 review, completed non-Amiga adjustments, current verification
+The 2026-10-15 review, completed non-Amiga adjustments, dated verification
 and narrow SDK sanitizer exceptions are in [ADJUST.md](../ADJUST.md).
 Passing regressions do not establish exhaustive standards conformance.
 `docker-amiga-check` qualifies runtime prerequisites only and currently fails;

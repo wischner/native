@@ -78,7 +78,7 @@ is implied. POSIX stop attempts SIGTERM before timeout escalation; Windows
 requires an application-specific cooperative protocol and then terminates the
 owned child after the timeout. The destructor also cancels and joins.
 
-## Manual acceptance tomorrow
+## Manual acceptance
 
 Build the usual backend target and run its Vision binary with
 `--infinity-test`. On macOS pass that argument to the executable inside the

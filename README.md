@@ -74,9 +74,9 @@ int program(int, char **) {
 
 ## Building
 
-The common build requirements are CMake 3.20 or newer and a GCC
-toolchain with C++20 support. A direct Linux build also needs
-`pkg-config` and the development packages for the chosen backend:
+The host needs CMake 3.20 or newer and Docker. Backend compilers and
+development packages come from the selected SDK image; macOS uses the
+remote Apple SDK workflow. The SDK dependency overview is:
 
 - X11 uses Xlib, Xrandr, pixman, Xt, and
   [Athena Widgets (Xaw)](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html).
@@ -110,21 +110,14 @@ toolchain with C++20 support. A direct Linux build also needs
   rasterizer, so file- and memory-backed fonts have the same metrics
   and pixels on every backend.
 
-Configure a direct debug build under the root `build/` directory. GCC
-debug builds enable `-Wall -Wextra -pedantic` and the address and
-undefined-behavior sanitizers by default.
-
-```bash
-cmake -S . -B build/linux-x11 -DCMAKE_BUILD_TYPE=Debug -DTOOLKIT=X11
-cmake --build build/linux-x11
-./build/linux-x11/src/vision
-```
-
-Linux, Windows, and Haiku builds can also be driven through Docker so
-their backend headers and tools come from known images:
+Build through the host control tree so each backend uses its documented
+SDK. Debug builds enable `-Wall -Wextra -pedantic` and address/undefined
+behavior sanitizers by default:
 
 ```bash
 cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
 cmake --build build/cmake --target docker-gemix
 cmake --build build/cmake --target docker-gemix-gemd
 cmake --build build/cmake --target docker-x11
@@ -144,14 +137,21 @@ libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
 no local SDK image build and no sibling GEM checkout is needed.
 
-Run backend-independent tests from any hosted debug build:
+Run tests in the same SDK that built them; see the
+[build book](docs/manuals/book-of-native/BUILD-SYSTEM.md) for desktop fixtures
+and headless launchers. For example, portable SDL tests run with:
 
 ```bash
-ctest --test-dir build/linux-x11 --output-on-failure
+docker run --rm -v "$PWD:/workspace" -w /workspace \
+  wischner/gcc-x86_64-linux-sdl:latest \
+  ctest --test-dir build/linux-sdl2 --output-on-failure \
+    -R 'native_(core|settings_model)_tests'
 ```
 
 The Docker-backed targets build:
 
+- `WAYLAND` into `build/linux-wayland/`
+- `ELEMENTARY` into `build/linux-elementary/`
 - `X11` into `build/linux-x11/`
 - `GEMix` into `build/linux-gemix/`
 - `GEMix` with `libgem -> gemd -> AES/VDI` into `build/linux-gemix-gemd/`
@@ -197,7 +197,7 @@ Current exercised runtime paths are:
   output with inversion off; Native drawing matches AES's white paper and
   black ink. The full-desktop screenshot and live GDB/MI viewer-close test
   pass. Closing Rasta also stops GDB, Vision and gemd. Complete suites pass
-  19/20 direct and 20/21 proxy tests; the final menu-strip restoration
+  20/21 direct and 21/22 proxy tests in the 2026-10-22 run; the final menu-strip restoration
   assertion remains failing on the pinned SDK.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
   **Windows 11, VM** for F5 through `ssh whiskey`. Changed-file deployment
@@ -207,9 +207,9 @@ Current exercised runtime paths are:
   through `ssh hotel`; select **Haiku, VM** for F5.
 - macOS AppKit, built natively with AppleClang and run on VM `mike`.
   Stock controls retain AppKit painting, including native splitters, tabs,
-  table grids and row backgrounds. Six CTests pass normally and with
-  ASan/UBSan; targeted desktop checks cover image text, accordion scrolling
-  and table contrast. The full-gallery interactive walkthrough is not yet
+  table grids and row backgrounds. The 2026-10-21 VM Debug run passes 19/19
+  CTests. Earlier six-test ASan/UBSan and targeted desktop checks cover image
+  text, accordion scrolling and table contrast. The full-gallery interactive walkthrough is not yet
   complete. See [macOS remote runtime](docs/notes/MACOS-REMOTE-RUNTIME.md)
   for build, test and desktop-permission details.
 
@@ -233,7 +233,15 @@ Explore the full, chapter-by-chapter explanation of how the **native** UI librar
 [Read the book »](docs/manuals/BOOK-OF-NATIVE.md)
 
 For application programming concepts and complete sample programs, read the
-[Programming Native manual](docs/manuals/PROGRAMMING-NATIVE.md).
+[Programming Native manual](docs/manuals/PROGRAMMING-NATIVE.md). Its
+[control index](docs/manuals/PROGRAMMING-NATIVE.md#find-every-control) links
+every concrete control to a step-by-step example. The
+[documentation entry point](docs/README.md) also links the implementation book.
+
+For AI-assisted application generation, start with the
+[AI guide](docs/ai/README.md), reusable [skills](docs/skills/README.md),
+and [agent roles](docs/agents/README.md). These use the public API and the
+same maintained book examples; they require no particular model or runner.
 
 [language.url]: https://isocpp.org/
 [language.badge]: https://img.shields.io/badge/language-C++-blue.svg
@@ -247,7 +255,7 @@ The **Settings and date/time pickers** gallery (`vision --settings`, also in
 Window) opens a separate window with searchable General, Dates and Time pages. Try weekend
 and recurring holiday exclusions, exclude individual dates, change minute
 steps and toggle seconds. The public API and a complete preferences-window
-example are in [Chapter 17](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md).
+example are in [Chapter 21](docs/manuals/programming-native/21-SETTINGS-AND-PICKERS.md).
 
 The **Properties and toolbars** gallery (`vision --properties`) demonstrates
 compact text/number/boolean/choice properties, custom dropdown canvases with
@@ -256,7 +264,7 @@ and multiple native or themed toolbars on all four sides. Mac uses native flat
 AppKit accessory buttons and preserves native rounded preview buttons. Toolbar icons support
 16x16, 24x24, and 32x32 sizes with live toolbar resizing; tools may be ordinary buttons, independent
 sticky toggles, or exclusive tool groups. See the
-[input and chrome chapter](docs/manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md)
+[toolbar and inspector chapter](docs/manuals/programming-native/22-TOOLBARS-AND-PROPERTIES.md)
 for construction and event examples. Native X11/Motif/WINGs border masks use
 Xext's Shape extension; the macOS adapter uses QuartzCore.
 
@@ -336,7 +344,8 @@ check; [ADJUST.md](docs/ADJUST.md) records required toolchain repairs, the
 all-platform standards review, reproduced defects and adjustment acceptance.
 Existing backend build selections remain unchanged. The 2026-10-15 repair
 pass adds lifetime, rollback, geometry, real GLSL history, native-close and
-worker-shutdown regressions. Linux passes 141/141 tests and macOS 17/17.
+worker-shutdown regressions. That dated run passed 141/141 Linux tests and 17/17 macOS tests; current
+per-backend evidence is recorded in the feature matrix.
 The native Windows VM passes 16 tests and skips two desktop-OpenGL tests.
 Haiku passes all 18 regression executables with Mesa softpipe, including real
 GLSL rendering and context ownership, without skips. Per-backend results and independently

@@ -3,26 +3,24 @@
 This chapter explains the build and run workflow that is currently used and
 verified.
 
-## Verified runtime scope
+## Choose a backend
 
-- Verified runtime in this workflow:
-  - Linux X11
-  - Linux SDL2
-  - Linux OpenMotif under Xvfb in its Docker image
-  - Linux OPEN LOOK/XView in Docker with Xephyr and olwm
-  - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
-  - Windows build through MinGW, run natively in the Windows 11 VM
-  - Haiku cross-build, copied to a Haiku machine and run over SSH
-  - Apple on the configured remote macOS host
-- Other toolkits/ports:
-  - still work in progress
+The maintained selections are GTK Wayland, elementary/Granite, X11/Athena,
+SDL2, Motif/CDE, OPEN LOOK, Window Maker, GEMix, Windows, Haiku, and macOS.
+GEMix also has a separate serialized gemd build. The
+[feature matrix](FEATURE-MATRIX.md) distinguishes compilation, automated runtime
+checks, desktop interaction, and unresolved issues. A successful build does
+not imply an exhaustive visual walkthrough.
+
+For writing application code rather than building the library, start with the
+[Programming Native control index](../PROGRAMMING-NATIVE.md#find-every-control).
+AI runners can use the [generation guide](../../ai/README.md).
 
 ## Prerequisites
 
 You need:
 
 - CMake 3.20 or newer
-- a compiler with C++20 support
 - Docker
 
 Backend builds are performed inside Docker so that the required compilers and
@@ -54,6 +52,15 @@ cmake -S . -B build/cmake
 This produces the host-side targets that launch backend builds.
 
 ## Build the backend targets
+
+GTK Wayland and elementary use separate build trees and share the SDK-image
+dependency. They do not start X11:
+
+```bash
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
+```
+
 
 Build the Linux toolkit target backed by the native window-system image:
 
@@ -143,6 +150,10 @@ Note:
 
 The generated outputs are placed in separate backend build trees:
 
+- `build/linux-wayland/`
+- `build/linux-elementary/`
+- `build/linux-gemix/`
+- `build/linux-gemix-gemd/`
 - `build/linux-x11/`
 - `build/linux-sdl2/`
 - `build/linux-openmotif/`
@@ -158,7 +169,8 @@ the top-level CMake project.
 
 Every backend builds the same `vision` application from `src/`.
 
-Run a native window-system or SDL2 build directly:
+Run using its matching F5 profile or Docker runtime. A direct launch requires
+the same runtime libraries as the SDK and a compatible desktop:
 
 ```bash
 ./build/linux-x11/src/vision
@@ -238,6 +250,9 @@ lib/native/           native library implementation
 src/                  Vision application
 docs/manuals/         programming and implementation manuals
 docs/notes/           exceptional notes only
+docs/skills/          reusable application-generation skills
+docs/agents/          runner-neutral agent role instructions
+docs/ai/              AI context routing and request/handoff template
 build/cmake/          host CMake control tree
 build/linux-x11/      Linux toolkit build tree
 build/linux-sdl2/     Linux toolkit build tree

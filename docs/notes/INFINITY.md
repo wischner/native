@@ -158,10 +158,11 @@ The existing host serial bridge has private Windows socket adaptation and BSD
 SIGPIPE handling so the GUI dependency closure also cross-compiles. Other Infinity
 tools remain outside this GUI port.
 
-See [Infinity's README](../../../infinity/README.md) for its consumer build and
-GUI arguments; normal Native build instructions remain in the manuals.
+See the README in your Infinity checkout for its consumer build and GUI
+arguments. That separate checkout is not required to read or validate Native's
+documentation; normal Native build instructions remain in the manuals.
 
-## Verification and tomorrow's acceptance
+## Verification and manual acceptance
 
 The same public-API diagnostic UI is available as **`vision --infinity-test`**.
 It displays physical presses/releases/repeats/reset counts and held positions,
@@ -178,7 +179,7 @@ the required MinGW DLLs. They are ready to copy to the target systems; no
 remote deployment was performed. Linux binaries remain in their ordinary
 backend build trees.
 
-The [manual acceptance checklist](../manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md#manual-acceptance-tomorrow)
+The [manual acceptance checklist](../manuals/programming-native/19-BACKGROUND-WORK-AND-SERVICES.md#manual-acceptance)
 covers layout changes, sided modifiers, focus/menus/modality, real sound,
 unavailable devices, cancellation and shutdown. Run the binary from each normal
 backend build tree; on macOS pass the argument to the executable inside the

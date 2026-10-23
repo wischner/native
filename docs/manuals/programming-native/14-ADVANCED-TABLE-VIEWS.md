@@ -4,6 +4,73 @@ Use `list` for a small, owned sequence of text strings. Use `table_view` when
 rows need multiple columns, headings, images, groups, sorting, multiple
 selection, search, or virtual data.
 
+## Build a small table step by step
+
+1. Store rows in a `table_store` declared before the view that borrows it.
+2. Define columns with the same IDs used by stored cells.
+3. Select multiple-selection mode and connect the selection signal.
+4. Create the table in the parent's create handler; resize it to client bounds.
+5. Click one row, Shift-click another, then use the platform's toggle modifier
+   to change individual selections. The title reports the selected count.
+
+```cpp
+//
+// Displays stable rows with multiple selection and resizable client bounds.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+#include <string>
+#include <vector>
+
+class table_window : public native::app_wnd {
+public:
+    // Cell IDs refer to semantic columns, independently of their position.
+    table_window() : app_wnd("Files", 100, 100, 560, 340) {
+        _rows.set_rows({
+            {101, {{1, {"Notes"}}, {2, {"4 KB"}}}},
+            {102, {{1, {"Drawing"}}, {2, {"18 KB"}}}},
+            {103, {{1, {"Photo"}}, {2, {"96 KB"}}}}
+        });
+        _table.set_columns({{1, "Name", 260}, {2, "Size", 120}})
+              .set_model(&_rows)
+              .set_selection_mode(native::table_selection_mode::multiple);
+        _table.on_selection_change.connect(
+            [this](const std::vector<native::table_row_id> &ids) {
+                set_title(std::to_string(ids.size()) + " selected");
+                return true;
+            });
+        on_wnd_create.connect([this] {
+            _table.set_parent(this);
+            _table.set_bounds(get_client_bounds());
+            _table.create();
+            _table.show();
+            return true;
+        });
+        on_wnd_resize.connect([this](native::size) {
+            _table.set_bounds(get_client_bounds());
+            return true;
+        });
+    }
+private:
+    native::table_store _rows;
+    native::table_view _table;
+};
+
+// The model outlives the view, including throughout the event loop.
+int program(int, char **) {
+    table_window window;
+    return native::app::run(window);
+}
+```
+
+To try grouping, add `_rows.set_groups({{1, "Files", 0, 3, true, true}});`
+after populating rows. Collapsing a group hides rows without deleting their
+stable selection. To try sorting, enable the column's `sortable` flag and
+handle `on_sort_request` by reordering the model; the view does not sort data
+for the application.
+
 Columns can be appended with either `add_column()` or builder syntax:
 
 ```cpp

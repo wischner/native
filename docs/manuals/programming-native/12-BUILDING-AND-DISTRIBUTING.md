@@ -60,6 +60,8 @@ cmake -S . -B build/cmake \
 Then select a target:
 
 ```bash
+cmake --build build/cmake --target docker-wayland
+cmake --build build/cmake --target docker-elementary
 cmake --build build/cmake --target docker-x11
 cmake --build build/cmake --target docker-sdl2
 cmake --build build/cmake --target docker-openmotif
@@ -76,6 +78,8 @@ outputs are:
 
 | Target | Docker image | Output |
 | --- | --- | --- |
+| `docker-wayland` | `native-wayland-sdk:24.04` | `build/linux-wayland/src/vision` |
+| `docker-elementary` | `native-wayland-sdk:24.04` | `build/linux-elementary/src/vision` |
 | `docker-x11` | `wischner/gcc-x86_64-linux-x11:latest` | `build/linux-x11/src/vision` |
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
@@ -154,15 +158,11 @@ RPATH rules, and verify the result on a clean target system.
 
 ### Compile
 
-Use the Docker target above, or configure a host that has all development
-packages installed:
+Use the reproducible Docker SDK target:
 
 ```bash
-cmake -S . -B build/linux-x11-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=X11
-cmake --build build/linux-x11-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-x11
 ```
 
 The build requires the CMake X11 package plus these `pkg-config` modules:
@@ -217,12 +217,11 @@ them through the chosen self-contained Linux packaging format.
 
 ### Compile
 
+Use the reproducible Docker SDK target:
+
 ```bash
-cmake -S . -B build/linux-sdl2-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=SDL2
-cmake --build build/linux-sdl2-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-sdl2
 ```
 
 The build requires SDL2 development files and X11 development files.
@@ -275,12 +274,11 @@ driver, the PNG fallback remains available only inside the current process.
 
 ### Compile
 
+Use the reproducible Docker SDK target:
+
 ```bash
-cmake -S . -B build/linux-openmotif-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=MOTIF
-cmake --build build/linux-openmotif-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-openmotif
 ```
 
 The build requires X11, Xt, and Motif development files. Xt is located through
@@ -313,15 +311,11 @@ the oldest supported target rather than assuming `libXm.so.4` everywhere.
 
 ### Compile
 
-The reproducible build uses the OPEN LOOK image shown above. A host with
-matching XView and OLGX development files can configure the same backend:
+Use the reproducible Docker SDK target:
 
 ```bash
-cmake -S . -B build/linux-openlook-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=OPENLOOK
-cmake --build build/linux-openlook-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-openlook
 ```
 
 CMake uses the `xview` and `olgx` `pkg-config` modules when available, and
@@ -383,15 +377,11 @@ XView controls.
 
 ### Compile
 
-Use `docker-wmaker`, or configure a host with the Window Maker development
-files installed:
+Use the reproducible Docker SDK target:
 
 ```bash
-cmake -S . -B build/linux-wmaker-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=WMAKER
-cmake --build build/linux-wmaker-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-wmaker
 ```
 
 CMake requires the `WINGs` and `xrandr` `pkg-config` modules and the CMake X11
@@ -458,15 +448,11 @@ no local SDK image build and no sibling GEM checkout is needed.
 
 ### Compile
 
-The Docker target is the normal build path because its image contains the
-GEMix headers, libraries, and Rasta environment. A host build uses:
+Use the reproducible Docker SDK target:
 
 ```bash
-cmake -S . -B build/linux-gemix-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DTOOLKIT=GEMIX
-cmake --build build/linux-gemix-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-gemix
 ```
 
 In addition to the common Linux dependencies, `pkg-config` must resolve:
@@ -596,20 +582,16 @@ setup and debugger lifecycle.
 
 ### Compile
 
-Use `docker-haiku`, or install the 64-bit Haiku cross compiler used by the
-toolchain file:
+Use the reproducible Docker SDK target:
 
 ```bash
-cmake -S . -B build/haiku-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF \
-  -DCMAKE_TOOLCHAIN_FILE="$PWD/scripts/cmake/toolchain-haiku.cmake"
-cmake --build build/haiku-release --parallel
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake --target docker-haiku
 ```
 
 The toolchain locates `x86_64-unknown-haiku-g++` and asks it for the matching
-sysroot. A native build on Haiku can omit the toolchain file and use Haiku's
-system compiler.
+sysroot. The documented workflow cross-builds in Docker and deploys to Haiku for
+runtime checks.
 
 ### Link libraries
 
@@ -646,21 +628,17 @@ path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
 
 ### Compile
 
-Build on macOS with CMake, Xcode Command Line Tools, and a C++20-capable Apple
-Clang. Objective-C++ is enabled automatically:
+Build shared C++ with GCC/Docker first, then use the configured remote Mac
+with CMake, Apple Command Line Tools, and the Apple SDK:
 
 ```bash
-cmake -S . -B build/macos-release \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_TESTING=OFF
-cmake --build build/macos-release --parallel
+./scripts/macos/remote/build.sh
 ```
 
-The output is the application bundle
-`build/macos-release/src/vision.app`. The repository also provides
-`scripts/macos/remote/build.sh` for its configured remote-Mac development
-workflow on VM `mike` (password-free `ssh mike`); that script creates a
-Debug build. VS Code exposes **macOS, VM** with LLDB.
+The helper syncs sources and creates the Debug application bundle at
+`build/macos-debug/src/vision.app` on VM `mike` (password-free `ssh mike`).
+VS Code exposes **macOS, VM** with LLDB. Remote overrides and desktop/debugger setup
+are described in the [macOS runtime note](../../notes/MACOS-REMOTE-RUNTIME.md).
 
 ### Link libraries
 
@@ -674,7 +652,7 @@ The `native` target links these system frameworks:
 - UniformTypeIdentifiers
 
 They provide windows and controls, fonts and drawing, pasteboards and panels,
-and PNG/JPEG codecs, themed common controls and WinRT activation.
+and PNG/JPEG codecs.
 
 ### Distribute
 

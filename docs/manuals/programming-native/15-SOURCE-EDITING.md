@@ -4,6 +4,66 @@ Use `code_edit` for UTF-8 source that needs line numbers, syntax styles,
 diagnostics, debugger marks, and completion. Use `text_edit` for ordinary
 fields and unstyled multiline text.
 
+## Build a source editor step by step
+
+1. Keep a `code_edit` and a button as window members.
+2. Configure a language and connect completion acceptance before creation.
+3. Create both controls after the window; the button opens candidate choices.
+4. Click Complete, use Up/Down and accept with Enter or Tab. Reopen and dismiss
+   with Escape, or choose an item with the mouse.
+
+The application supplies the inserted text. This example inserts at the caret;
+replacing a partially typed prefix is the application's completion policy.
+
+```cpp
+//
+// Opens source completion choices and inserts the accepted candidate.
+//
+// MIT License (see: LICENSE)
+// Copyright (C) 2026 Tomaz Stih
+//
+#include <native.h>
+
+class source_window : public native::app_wnd {
+public:
+    // Wire completion without introducing a language-server dependency.
+    source_window() : app_wnd("Source", 100, 100, 680, 440) {
+        _source.set_language("cpp").set_show_line_numbers(true);
+        _complete.on_click.connect([this] {
+            _source.show_completion({
+                {"std::string", "std::string", "UTF-8 byte string"},
+                {"std::vector", "std::vector", "Dynamic array"}});
+            return true;
+        });
+        _source.on_complete.connect([this](native::completion_item item) {
+            _source.insert(_source.get_caret_offset(), item.insert);
+            return true;
+        });
+        on_wnd_create.connect([this] {
+            attach(_source);
+            attach(_complete);
+            return true;
+        });
+    }
+private:
+    native::code_edit _source{"// Write here\n", {12, 60, 640, 350}};
+    native::button _complete{"Complete", 12, 12, 160, 32};
+
+    // The fixed bounds keep this introductory example independent of layouts.
+    void attach(native::wnd &child) {
+        child.set_parent(this);
+        child.create();
+        child.show();
+    }
+};
+
+// Run the same source buffer on the selected backend.
+int program(int, char **) {
+    source_window window;
+    return native::app::run(window);
+}
+```
+
 ## Create the editor
 
 `code_edit` is a child window and follows the usual lifecycle:

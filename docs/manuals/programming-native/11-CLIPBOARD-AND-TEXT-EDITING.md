@@ -122,6 +122,11 @@ update the cached complete value and emit `on_change(std::string)` once.
 
 ## A complete editing example
 
+1. Keep single-line and multiline editors as members.
+2. Configure validation and connect changes before creating them.
+3. Create them after their window, then use the copy/paste commands below.
+4. Select text and try editing, copying, and pasting between the two fields.
+
 ```cpp
 //
 // Demonstrates live validation and direct clipboard commands.
