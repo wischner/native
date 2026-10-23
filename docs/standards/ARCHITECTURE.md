@@ -390,8 +390,8 @@ panel has drawable window geometry.
 Backends must use the operating system or toolkit file selector when one
 exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
 Motif `FileSelectionBox`, XView `File_chooser`, WINGs `WMOpenPanel` and
-`WMSavePanel` are the standard paths. GEM uses positioned native AES form
-objects because its SDK selectors cannot honor owner-relative placement.
+`WMSavePanel` are the standard paths. GEM uses the SDK extended file/save/
+directory selectors and `form_alert`, including their SDK-owned placement.
 Toolkits without a chooser may delegate to an installed desktop chooser. Athena
 composes its own native-widget browser so modal ownership and monochrome
 presentation remain in the Xt application. A backend fallback must be composed from that toolkit's
@@ -750,6 +750,10 @@ where menu titles themselves carry them. AppKit overrides it with
 flexible-height native button drawing to match its live edge-toolbar buttons. Windows
 uses native Toolbar theme parts and Haiku uses flat BControlLook buttons;
 stock bars use their respective native toolbar controls.
+`theme::get_toolbar_text_color(state)` supplies the foreground for separately
+painted tool labels and monochrome images. Its default follows menu states;
+GTK overrides it with native button foregrounds for normal, hot, pressed,
+selected and disabled tools, matching its button-based background.
 
 ## 8. Application
 
@@ -1467,8 +1471,9 @@ The elementary backend uses `GraniteSettingsSidebar`; Windows uses the
 actual WinUI navigation control. Other backends prefer
 their native image tree or text list. Athena uses native Label headings and
 Toggle item rows; XView and WINGs use native text lists rather than their
-library-painted trees. Optional images are retained
-but not displayed by these text-only lists. SDL2/GEM reuse their existing
+library-painted trees. XView retains optional images without displaying them;
+WINGs uses the native list's row callback for optional icons and fixed bold
+category labels, with compact indentation and no collapse affordance. SDL2/GEM reuse their existing
 themed navigation. Backend adaptation state belongs to the window's peer.
 
 `date` and `time_of_day` are pure C++ civil values, without time zones or

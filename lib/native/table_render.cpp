@@ -405,9 +405,15 @@ namespace native::detail
                     column, value, cell_bounds, row_state);
                 column_x += width;
             }
-            control.draw_row_focus(
-                graphics, *painter, row_id, display.model_row,
-                row_bounds, row_state);
+            theme::state focus_state = row_state;
+            focus_state.focused =
+                row_id == control._focused_row && control.get_focused();
+            control.draw_row_focus(graphics,
+                                   *painter,
+                                   row_id,
+                                   display.model_row,
+                                   row_bounds,
+                                   focus_state);
         }
         graphics.set_clip(old_clip);
 

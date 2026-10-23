@@ -9,6 +9,7 @@
 #include <native.h>
 #include "../lib/native/classic_scrollbar.h"
 #include "../lib/native/toolkits/gemix/globals.h"
+#include "native_gemix_control_checks.h"
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -143,7 +144,13 @@ namespace
                 std::this_thread::sleep_for(25ms);
                 auto result = std::make_shared<std::promise<bool>>();
                 auto future = result->get_future();
-                native::app::post([condition, result] { result->set_value(condition()); });
+                native::app::post([condition, result] {
+                    try {
+                        result->set_value(condition());
+                    } catch (...) {
+                        result->set_exception(std::current_exception());
+                    }
+                });
                 expect(future.wait_for(2s) == std::future_status::ready,
                        "application loop stopped responding");
                 if (future.get()) return;
@@ -556,6 +563,14 @@ namespace
                 wait_for([this] { return multi.get_text() == "g"; },
                          "clipboard buttons failed after dialogs");
                 check_dialogs();
+                check_gemix_controls(
+                    *this,
+                    {[this](unsigned type, native::point position) {
+                         packet(type, position.x, position.y);
+                     },
+                     [this](auto condition, const char *message) {
+                         wait_for(condition, message);
+                     }});
                 check_collections();
                 check_inspector();
                 click(40, 30); shortcut(4); key(11);

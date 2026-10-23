@@ -147,3 +147,23 @@ text. Combo complete-value synchronization runs after the native edit and
 does not rewrite an unchanged entry or disturb its caret. Combo and settings
 search notify callbacks retain `panel_text_notify`'s insertion/traversal result;
 returning `PANEL_NONE` would suppress XView's normal text insertion.
+
+OPEN LOOK explicitly shares the Panel control font with both PANEL_TEXT and
+the PANEL_MULTILINE_TEXT TextSW view. WINGs native text views keep a configured
+I-beam in their view cursor resources; initializing it does not depend on the
+pointer already being inside that field. Editable combos retain the native
+text cursor only over their text child.
+
+Motif text widgets also keep an I-beam on their complete native view.
+Cursor tracking is installed before realization and applies the pending
+shape on MapNotify, covering editors created before their top-level window
+is shown. Checkbox and radio labels retain Motif's ToggleButton font
+resources rather than substituting the font used for push buttons.
+
+
+Motif's native text geometry must remain the portable allocation. Text fields
+and multiline editors disable content-based resizing, and initial font/margin
+setup is followed by the allocated width/height. Otherwise native preferred
+size changes can shrink the editor while the portable bounds stay wide, leaving
+part of the visible input region with its parent's arrow cursor. Runtime
+checks compare the server's widget geometry and I-beam at the right edge.

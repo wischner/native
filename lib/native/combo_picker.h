@@ -27,6 +27,19 @@ namespace native
             // Optional native caret/selection position for component
             // stepping.
             std::function<std::size_t()> caret;
+            // Painted adapters may use a narrow column of square
+            // halves.
+            bool square_stepper = false;
+            // Classic native fields can fit their date text and frame
+            // the calendar independently of the enclosing page width.
+            bool compact_date = false;
+            bool compact_time = false;
+            // Horizontal editor padding in pixels, excluding its frame.
+            int text_margin = 0;
+            // Native arrow column width when it differs from the
+            // default full-height date / half-height time indicator.
+            int indicator_width = 0;
+            bool framed_calendar = false;
             bool read_only = false;
         };
         // Prepare composition callbacks before the backend creates

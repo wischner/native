@@ -1,5 +1,5 @@
 //
-// Declares private helpers for owner-centered GEM forms used by
+// Declares private helpers for GEM SDK selectors used by
 // portable open and save dialogs.
 //
 // MIT License (see: LICENSE)
@@ -21,8 +21,7 @@ namespace linux::gemix
         std::string path;
     };
 
-    // Show a positioned AES form with native path, list and command
-    // controls.
+    // Use the SDK open/save/folder selector with its native modal loop.
     file_dialog_response
     show_file_dialog(native::file_dialog &dialog,
                      const std::string &suggested_name,

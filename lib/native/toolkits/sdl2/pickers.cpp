@@ -15,13 +15,64 @@ namespace
     using namespace native;
     using namespace linux::sdl2;
 
+    // Keep standard combo drawing while replacing its date arrow only
+    // for clocks. Both time buttons use the same square and glyph mask.
+    class picker_field final : public combo_box
+    {
+    public:
+        explicit picker_field(bool clock)
+            : combo_box({}, combo_box_style::editable)
+            , _clock(clock) {}
+
+    protected:
+        void draw_indicator(gpx &graphics,
+                            theme &appearance,
+                            const rect &bounds,
+                            const theme::state &state) override {
+            if (!_clock) {
+                combo_box::draw_indicator(
+                    graphics, appearance, bounds, state);
+                return;
+            }
+            const auto colors = appearance.native_palette();
+            for (const bool upper : {true, false}) {
+                const auto button =
+                    combo_step_button_bounds(bounds, upper);
+                if (!button.w())
+                    continue;
+                appearance.draw_button(button, "", state);
+                const int radius =
+                    std::clamp(int(button.w()) / 4, 1, 3);
+                const int center =
+                    button.x1() + (int(button.w()) - 1) / 2;
+                const int offset = (int(button.h()) - radius - 1) / 2;
+                const int top =
+                    button.y1() +
+                    (upper ? offset
+                           : int(button.h()) - offset - radius - 1);
+                graphics.set_pen(1).set_ink(
+                    state.disabled ? colors.button_disabled_text
+                                   : colors.button_text);
+                for (int row = 0; row <= radius; ++row) {
+                    const int half = upper ? row : radius - row;
+                    graphics.draw_line(point(center - half, top + row),
+                                       point(center + half, top + row));
+                }
+            }
+        }
+
+    private:
+        bool _clock;
+    };
+
     struct picker_state
     {
         panel &owner;
-        combo_box field{{}, combo_box_style::editable};
+        picker_field field;
         date shown;
         explicit picker_state(panel &value)
-            : owner(value) {
+            : owner(value)
+            , field(dynamic_cast<time_picker *>(&value)) {
             field.set_parent(&owner);
             field.create();
             field.show();
@@ -236,7 +287,22 @@ namespace
     }
 
     void refresh(picker_state &state, const std::string &text) {
-        const auto bounds = state.owner.get_client_bounds();
+        auto bounds = state.owner.get_client_bounds();
+        const auto *clock = dynamic_cast<time_picker *>(&state.owner);
+        const auto sample =
+            clock
+                ? (clock->get_seconds_visible() ? "88:88:88" : "88:88")
+                : "8888-88-88";
+        const int text_width = font_t::stock(font_role::control)
+                                   .measure_text(sample)
+                                   .advance;
+        const auto *peer =
+            combo_box_bindings.object_from_handle(&state.field);
+        // Four pixels on either side of the editable text, plus the
+        // standard combo arrow or narrow square-pair stepper column.
+        bounds.d.w = std::min<int>(
+            bounds.w(),
+            text_width + 8 + combo_button_width(*peer, bounds));
         const auto current = state.field.get_bounds();
         if (current.x1() != bounds.x1() ||
             current.y1() != bounds.y1() || current.w() != bounds.w() ||

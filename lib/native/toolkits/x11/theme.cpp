@@ -199,9 +199,15 @@ namespace
             if ((kind == native::surface_kind::header ||
                  kind == native::surface_kind::table_header) &&
                 bounds.d.h)
-                _g.set_pen(1).set_ink(native_palette().separator)
-                    .draw_line(bounds.p,
-                        native::point(bounds.x2() - 1, bounds.y1()));
+                _g.set_pen(1)
+                    .set_ink(native_palette().separator)
+                    .draw_line(
+                        bounds.p,
+                        native::point(bounds.x2() - 1, bounds.y1()))
+                    .draw_line(
+                        native::point(bounds.x1(), bounds.y2() - 1),
+                        native::point(bounds.x2() - 1,
+                                      bounds.y2() - 1));
             const auto *window_graphics = dynamic_cast<native::gpx_wnd *>(&_g);
             const auto *tabs = window_graphics
                 ? dynamic_cast<native::tab_view *>(window_graphics->window()) : nullptr;

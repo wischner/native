@@ -12,7 +12,7 @@ namespace native
     class property_grid;
     namespace detail
     {
-        // Return the inspector for a direct editor or its value-host child.
+        // Return the inspector through its nested canvas value hosts.
         property_grid *property_grid_owner(const wnd &editor);
     }
 }

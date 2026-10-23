@@ -96,3 +96,8 @@ updates its internal focused view; XSetInputFocus alone leaves its key
 redirector on the previous widget. Motif stops further translation dispatch
 for handled editor keys. Both adapters share the painted popup's pointer
 geometry and apply Ctrl/Shift table input separately.
+
+The WINGs code-editor host takes keyboard focus after its first mapping,
+with a generation guard on the deferred callback. Completion is not needed
+to establish focus. Mouse clicks and completion posting still use the same
+native focus routing.

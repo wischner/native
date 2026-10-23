@@ -286,6 +286,14 @@ namespace linux::sdl2
 
     // Keep editable combos on the existing text editor input path.
     void update_combo_editor(native::combo_box &);
+
+    // Share trailing-button geometry between painting, editing and
+    // hits.
+    int combo_button_width(const sdl2_combo_box &state,
+                           const native::rect &bounds);
+    // Time arrows occupy two equal squares inside the field border.
+    native::rect combo_step_button_bounds(const native::rect &bounds,
+                                          bool upper);
     bool handle_combo_mouse(native::wnd *, int, int, bool, bool);
     bool handle_combo_motion(native::wnd *, int, int);
     bool handle_combo_key(native::wnd *, const SDL_KeyboardEvent &);

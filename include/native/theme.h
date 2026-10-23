@@ -318,6 +318,11 @@ namespace native
                                            const std::string &text,
                                            const state &element_state);
 
+        // Match labels and monochrome icons to the toolbar button
+        // style.
+        virtual rgba
+        get_toolbar_text_color(const state &element_state) const;
+
         theme &draw_menu_title(const rect &bounds,
                                const std::string &text);
 

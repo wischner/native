@@ -192,7 +192,10 @@ if(NOT APPLE AND NOT HAIKU AND NOT WIN32)
 endif()
 
 if(TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$")
-    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/combo_picker.cpp ${CMAKE_CURRENT_SOURCE_DIR}/settings_peer_classic.cpp)
+    target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/combo_picker.cpp)
+    if(NOT TOOLKIT STREQUAL "WMAKER")
+        target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/settings_peer_classic.cpp)
+    endif()
 endif()
 
 if(NOT TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$" OR WIN32 OR APPLE OR HAIKU)

@@ -100,8 +100,8 @@ remote Apple SDK workflow. The SDK dependency overview is:
   its windows, menus, controls, text editors, standard file panels, clipboard
   selection service, stock fonts, and native-look drawing resources.
 - File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
-  OpenMotif, OPEN LOOK, and Window Maker. GEMix composes parent-centered AES
-  forms because its standard selectors have no owner-position option.
+  OpenMotif, OPEN LOOK, and Window Maker. GEMix uses its SDK extended open/save/folder selectors and standard AES
+  alerts, including their native placement and modal behavior.
   X11/Athena composes its file and folder browser from native Xaw controls,
   with parent-centered placement and modal input grabs. SDL2 consistently uses its
   library-owned themed C++ filesystem browser for file open, file save, and folder
@@ -179,6 +179,9 @@ Current exercised runtime paths are:
   the Docker build. The session runs entirely from the X11 image and follows
   the desktop scale. The current suite passes 21/21 under Xvfb and TWM,
   including modal panels, selection, editable fields and calendar popups.
+  The Athena follow-up also checks visible field glyphs and real copy/paste,
+  labeled search spacing, typed-match popup checkmarks, joined date/time
+  fields, and nested-layout shrink allocation.
   Window images are dithered; their source pixels remain unchanged. Details are in
   [Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session).
 - Linux SDL2, with 27 CTests covering nested canvas composition, pointer

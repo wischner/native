@@ -354,9 +354,15 @@ their native safeguard.
 | OpenMotif | `XmFileSelectionBox` |
 | OPEN LOOK | XView `File_chooser` |
 | Window Maker | WINGs `WMOpenPanel` and `WMSavePanel` |
-| GEMix | Parent-centered native AES forms with filesystem browsing |
+| GEMix | GEM SDK extended file/save/folder selectors; SDK-owned placement |
 | X11/Athena | Parent-centered Athena-widget browser |
 | SDL2 | Themed Native C++ filesystem browser |
+
+GEM selectors and alerts use the SDK's own placement and mandatory save
+overwrite confirmation. Native retains its portable owner-modal lifecycle.
+For a custom painted dialog, measure the stock control font when choosing its
+size. Vision's modal example fits all message lines before centering the
+window, keeping monospaced GEM text inside the client area.
 
 Athena and SDL2 have no standard file chooser of their own. X11 can always use
 its fallback browser because that browser is composed entirely from Athena

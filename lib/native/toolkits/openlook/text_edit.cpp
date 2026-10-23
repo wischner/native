@@ -380,40 +380,46 @@ namespace native
         Panel panel = linux::openlook::parent_panel(self);
         const bool multiline =
             _mode == text_edit_mode::multi_line;
-        Panel_item item = static_cast<Panel_item>(xv_create(
-            panel,
-            multiline ? PANEL_MULTILINE_TEXT : PANEL_TEXT,
-            PANEL_LABEL_STRING,
-            "",
-            PANEL_VALUE,
-            _text.c_str(),
-            PANEL_READ_ONLY,
-            _read_only ? TRUE : FALSE,
-            PANEL_NOTIFY_LEVEL,
-            PANEL_ALL,
-            PANEL_NOTIFY_PROC,
-            edited,
-            PANEL_CLIENT_DATA,
-            self,
-            PANEL_VALUE_STORED_LENGTH,
-            65535,
-            PANEL_VALUE_DISPLAY_WIDTH,
-            _bounds.d.w,
-            XV_X,
-            _bounds.p.x,
-            XV_Y,
-            _bounds.p.y,
-            XV_WIDTH,
-            _bounds.d.w,
-            XV_HEIGHT,
-            _bounds.d.h,
-            XV_SHOW,
-            FALSE,
-            nullptr));
+        Panel_item item = static_cast<Panel_item>(
+            xv_create(panel,
+                      multiline ? PANEL_MULTILINE_TEXT : PANEL_TEXT,
+                      PANEL_LABEL_STRING,
+                      "",
+                      PANEL_VALUE_FONT,
+                      xv_get(panel, WIN_FONT),
+                      PANEL_VALUE,
+                      _text.c_str(),
+                      PANEL_READ_ONLY,
+                      _read_only ? TRUE : FALSE,
+                      PANEL_NOTIFY_LEVEL,
+                      PANEL_ALL,
+                      PANEL_NOTIFY_PROC,
+                      edited,
+                      PANEL_CLIENT_DATA,
+                      self,
+                      PANEL_VALUE_STORED_LENGTH,
+                      65535,
+                      PANEL_VALUE_DISPLAY_WIDTH,
+                      _bounds.d.w,
+                      XV_X,
+                      _bounds.p.x,
+                      XV_Y,
+                      _bounds.p.y,
+                      XV_WIDTH,
+                      _bounds.d.w,
+                      XV_HEIGHT,
+                      _bounds.d.h,
+                      XV_SHOW,
+                      FALSE,
+                      nullptr));
         if (!item) {
             throw std::runtime_error(
                 "OpenLook/XView: failed to create text_edit.");
         }
+        if (multiline)
+            if (auto text = multiline_textsw(item))
+                xv_set(
+                    text, WIN_FONT, xv_get(panel, WIN_FONT), nullptr);
         try {
             install_event_handler(
                 panel, item, multiline, self);

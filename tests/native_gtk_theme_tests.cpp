@@ -134,6 +134,29 @@ namespace
     }
     // Compare all channels, including transparent rounded corners and
     // shadows.
+    std::unique_ptr<native::img>
+    capture_button_frame(GtkWidget *button, int w, int h) {
+        auto *snapshot = gtk_snapshot_new();
+        G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+        auto *style = gtk_widget_get_style_context(button);
+        gtk_snapshot_render_background(snapshot, style, 0, 0, w, h);
+        gtk_snapshot_render_frame(snapshot, style, 0, 0, w, h);
+        G_GNUC_END_IGNORE_DEPRECATIONS
+        auto *node = gtk_snapshot_free_to_node(snapshot);
+        auto *surface =
+            cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+        auto *context = cairo_create(surface);
+        if (node)
+            gsk_render_node_draw(node, context);
+        auto result = read_surface(surface, w, h);
+        cairo_destroy(context);
+        cairo_surface_destroy(surface);
+        if (node)
+            gsk_render_node_unref(node);
+        return result;
+    }
+
+    // Compare native control rendering including alpha and shadows.
     void compare(const native::img &expected,
                  const native::img &actual,
                  const char *name,
@@ -281,6 +304,52 @@ void test_native_gtk_theme(native::app_wnd &window) {
                         interaction,
                         dark);
                 if (control == &push) {
+                    for (const int width : {20, 28, 36}) {
+                        auto expected_frame = capture_button_frame(
+                            state(push).widget, width, 28);
+                        img narrow(width, 28);
+                        auto narrow_theme =
+                            native::theme::create(narrow.get_gpx());
+                        narrow_theme->draw_toolbar_button(
+                            rect(0, 0, width, 28), "", value);
+                        compare(*expected_frame,
+                                narrow,
+                                "narrow vertical toolbar frame",
+                                interaction,
+                                dark);
+                    }
+                    struct toolbar_probe : native::toolbar
+                    {
+                        using native::toolbar::draw_tool;
+                        using native::toolbar::toolbar;
+                    };
+                    toolbar_probe bar(window);
+                    const auto colors = theme->native_palette();
+                    const auto expected_ink =
+                        value.disabled ? colors.button_disabled_text
+                        : value.pressed || value.selected
+                            ? colors.button_pressed_text
+                        : value.hot ? colors.button_hot_text
+                                    : colors.button_text;
+                    img actual_label(180, height);
+                    auto label_theme =
+                        native::theme::create(actual_label.get_gpx());
+                    bar.draw_tool(actual_label.get_gpx(),
+                                  *label_theme,
+                                  {0, 0, 180, 40},
+                                  {"test",
+                                   "Native parity",
+                                   tool_kind::button,
+                                   {},
+                                   false,
+                                   true,
+                                   {}},
+                                  value);
+                    if (actual_label.get_gpx().get_ink() !=
+                        expected_ink)
+                        throw std::runtime_error(
+                            "actual toolbar labels use the native "
+                            "button foreground");
                     img toolbar(180, height);
                     auto toolbar_theme =
                         native::theme::create(toolbar.get_gpx());

@@ -112,7 +112,7 @@ namespace linux::sdl2
             const auto bounds = root_bounds(*combo);
             if (!bounds.contains(point))
                 continue;
-            const int button = std::min<int>(bounds.w(), bounds.h());
+            const int button = combo_button_width(*state, bounds);
             const bool arrow = x >= bounds.x2() - button;
             if (!arrow && state->editor)
                 return false;
@@ -239,38 +239,6 @@ namespace linux::sdl2
             native::detail::control_render_access::draw(
                 *combo, graphics, *appearance,
                 bounds, control_state);
-            if (state->step) {
-                const int side = std::min<int>(bounds.w(), bounds.h());
-                const int half = int(bounds.h()) / 2;
-                const auto colors = appearance->native_palette();
-                const int x = bounds.x2() - side;
-                graphics.set_pen(1)
-                    .set_ink(colors.content_bg)
-                    .draw_rect(native::rect(x,
-                                            bounds.y1() + 1,
-                                            side - 1,
-                                            bounds.h() - 2),
-                               true)
-                    .set_ink(colors.button_border)
-                    .draw_line(native::point(x, bounds.y1()),
-                               native::point(x, bounds.y2() - 1))
-                    .draw_line(native::point(x, bounds.y1() + half),
-                               native::point(bounds.x2() - 1,
-                                             bounds.y1() + half));
-                const int center = x + side / 2;
-                for (int part = 0; part < 2; ++part) {
-                    const int y = bounds.y1() + part * half + half / 2;
-                    graphics.set_ink(colors.button_text)
-                        .draw_polygon(
-                            {{native::coord(center - 3),
-                              native::coord(y + (part ? -2 : 2))},
-                             {native::coord(center + 3),
-                              native::coord(y + (part ? -2 : 2))},
-                             {native::coord(center),
-                              native::coord(y + (part ? 2 : -2))}},
-                            true);
-                }
-            }
         }
     }
 

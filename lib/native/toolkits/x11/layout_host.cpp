@@ -59,6 +59,15 @@ namespace
     // Resize notifications drive Native layout; Form must not do another
     // proportional resize, or temporarily unmap all of the child windows.
     void resized(Widget host) {
+        if (auto *combo = dynamic_cast<native::combo_box *>(
+                linux::x11::wnd_bindings.object_from_handle(host))) {
+            auto *binding =
+                linux::x11::combo_box_bindings.object_from_handle(
+                    combo);
+            if (binding && binding->resize)
+                binding->resize();
+            return;
+        }
         auto *owner =
             linux::x11::main_wnd_bindings.object_from_handle(host);
         if (!owner)
@@ -126,6 +135,21 @@ namespace
         return False;
     }
 
+    // Native owns these hosts' allocation. Form's preferred-size query
+    // otherwise proposes its previous allocation when asked to shrink.
+    XtGeometryResult query(Widget host,
+                           XtWidgetGeometry *wanted,
+                           XtWidgetGeometry *answer) {
+        answer->request_mode = CWWidth | CWHeight;
+        answer->width = wanted->request_mode & CWWidth
+                            ? std::max<Dimension>(1, wanted->width)
+                            : host->core.width;
+        answer->height = wanted->request_mode & CWHeight
+                             ? std::max<Dimension>(1, wanted->height)
+                             : host->core.height;
+        return XtGeometryYes;
+    }
+
     FormClassRec make_class() {
         FormClassRec result{};
         auto &core = result.core_class;
@@ -141,7 +165,7 @@ namespace
         core.set_values_almost = XtInheritSetValuesAlmost;
         core.version = XtVersion;
         core.tm_table = XtInheritTranslations;
-        core.query_geometry = XtInheritQueryGeometry;
+        core.query_geometry = query;
         core.display_accelerator = XtInheritDisplayAccelerator;
         result.composite_class.geometry_manager = geometry;
         result.composite_class.change_managed = managed;

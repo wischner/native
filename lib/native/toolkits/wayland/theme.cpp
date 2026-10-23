@@ -91,7 +91,14 @@ namespace linux::wayland
         auto control = value;
         control.selected = false;
         control.pressed = value.pressed || value.selected;
-        return paint(button, bounds, control);
+        // The toolbar owns its label/icon layout. Paint CSS parts at
+        // the requested size instead of cropping a wider minimum-size
+        // GtkButton snapshot on a vertical strip.
+        return paint(button,
+                     bounds,
+                     control,
+                     text.empty() ? theme_part::frame
+                                  : theme_part::widget);
     }
     native::theme &gtk_theme::draw_check(const native::rect &bounds,
                                          const std::string &text,

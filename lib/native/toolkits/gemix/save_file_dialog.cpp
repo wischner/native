@@ -1,5 +1,5 @@
 //
-// Presents the owner-centered GEM form for saving one file.
+// Presents the GEM SDK extended selector for saving one file.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

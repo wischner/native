@@ -79,6 +79,10 @@ rather than becoming a million-widget allocation.
 - OpenMotif uses one buffered Motif-themed viewport for both data modes,
   retaining real `XmScrollBar` peers. Headers, column widths, grouping,
   selection, grid lines and row colors therefore follow the same path.
+  Active selection fill applies to every selected row, while the shared
+  painter sends the focus decoration only to the lead row. Motif draws its
+  native highlight inset from the row edges, keeping adjacent selected rows
+  continuous when grids are disabled, before and after grid toggles.
   This replaces the incompatible materialized `XmContainer` detail path,
   which could not supply virtual rows or grid lines. Only visible rows are
   requested, and invalidation does not clear the window before presentation.

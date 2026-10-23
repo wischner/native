@@ -124,6 +124,56 @@ namespace
         }
     }
 
+    // Activation clicks and ordinary AES button packets share dispatch.
+    void press_at(native::app_wnd *pointer_window,
+                  native::point local) {
+        linux::gemix::runtime.pressed_button =
+            button_at(pointer_window, local);
+        if (auto *pressed = linux::gemix::runtime.pressed_button)
+            pressed->invalidate();
+        linux::gemix::active_window = pointer_window;
+        linux::gemix::focus_text_edit(pointer_window, local);
+        if (!linux::gemix::dispatch_drag_click(
+                pointer_window, local, true) &&
+            !linux::gemix::dispatch_surface_click(
+                pointer_window, local, true)) {
+            pointer_window->on_native_mouse_click(
+                native::mouse_event(native::mouse_button::left,
+                                    native::mouse_action::press,
+                                    local));
+        }
+    }
+
+    void release_at(native::app_wnd *pointer_window,
+                    native::point local,
+                    WORD ks) {
+        auto *pressed = linux::gemix::runtime.pressed_button;
+        linux::gemix::runtime.pressed_button = nullptr;
+        if (pressed) {
+            pressed->invalidate();
+            linux::gemix::flush_repaints();
+        }
+        if (linux::gemix::dispatch_drag_click(
+                pointer_window, local, false) ||
+            linux::gemix::dispatch_surface_click(
+                pointer_window, local, false)) {
+            // A canvas or panel region owns this
+            // position, so no control activation follows.
+        } else {
+            pointer_window->on_native_mouse_click(
+                native::mouse_event(native::mouse_button::left,
+                                    native::mouse_action::release,
+                                    local));
+            if (auto *button = button_at(pointer_window, local)) {
+                if (button == pressed)
+                    button->on_native_click();
+            } else if (!pressed && !linux::gemix::activate_collection(
+                                       pointer_window, local, ks)) {
+                activate_selection_control(pointer_window, local);
+            }
+        }
+    }
+
     native::modal_wnd *active_modal_for(native::app_wnd *window) {
         for (native::app_wnd *current = window; current;
              current = current->get_owner()) {
@@ -281,50 +331,11 @@ namespace native
                 }
 
                 if ((prev_mb & 1) == 0 && (mb & 1) != 0) {
-                    linux::gemix::runtime.pressed_button = button_at(pointer_window, local);
-                    if (auto *pressed = linux::gemix::runtime.pressed_button)
-                        pressed->invalidate();
-                    linux::gemix::active_window = pointer_window;
-                    linux::gemix::focus_text_edit(pointer_window,
-                                                  local);
-                    if (!linux::gemix::dispatch_drag_click(pointer_window, local, true) &&
-                        !linux::gemix::dispatch_surface_click(
-                            pointer_window, local, true)) {
-                        pointer_window->on_native_mouse_click(
-                            mouse_event(mouse_button::left,
-                                        mouse_action::press,
-                                        local));
-                    }
+                    press_at(pointer_window, local);
                 }
 
                 if ((prev_mb & 1) != 0 && (mb & 1) == 0) {
-                    auto *pressed = linux::gemix::runtime.pressed_button;
-                    linux::gemix::runtime.pressed_button = nullptr;
-                    if (pressed) {
-                        pressed->invalidate();
-                        linux::gemix::flush_repaints();
-                    }
-                    if (linux::gemix::dispatch_drag_click(pointer_window, local, false) ||
-                        linux::gemix::dispatch_surface_click(
-                            pointer_window, local, false)) {
-                        // A canvas or panel region owns this
-                        // position, so no control activation follows.
-                    } else {
-                        pointer_window->on_native_mouse_click(
-                            mouse_event(mouse_button::left,
-                                        mouse_action::release,
-                                        local));
-                        if (auto *button =
-                                button_at(pointer_window, local)) {
-                            if (button == pressed)
-                                button->on_native_click();
-                        } else if (!pressed &&
-                                   !linux::gemix::activate_collection(
-                                       pointer_window, local, ks)) {
-                            activate_selection_control(pointer_window,
-                                                       local);
-                        }
-                    }
+                    release_at(pointer_window, local, ks);
                 }
             } else if (pointer_window &&
                        ((prev_mb & 1) == 0 && (mb & 1) != 0)) {
@@ -412,8 +423,28 @@ namespace native
 
                 case WM_TOPPED:
                     if (target && target->get_input_enabled()) {
+                        // Hosted AES consumes a whole activation click
+                        // and sends WM_TOPPED with buttons already
+                        // released. Replay it once inside the newly
+                        // active client.
+                        const bool replay =
+                            target != linux::gemix::active_window &&
+                            pointer_window == target && (mb & 1) == 0;
                         wind_set(msg[3], WF_TOP, 0, 0, 0, 0);
                         linux::gemix::active_window = target;
+                        const auto work =
+                            linux::gemix::work_rect(msg[3]);
+                        const point local(mx - work.x1(),
+                                          my - work.y1());
+                        if (replay &&
+                            target->get_client_bounds().contains(
+                                local)) {
+                            const native::detail::window_guard guard(
+                                *target);
+                            press_at(target, local);
+                            if (guard.alive())
+                                release_at(target, local, ks);
+                        }
                     } else if (target) {
                         raise_active_modal(target);
                     }

@@ -16,6 +16,8 @@ namespace linux::wayland
         explicit gtk_theme(native::gpx &graphics);
         metrics defaults() const override;
         palette native_palette() const override;
+        native::rgba
+        get_toolbar_text_color(const state &) const override;
         theme &draw_button(const native::rect &,
                            const std::string &,
                            const state &) override;

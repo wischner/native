@@ -248,3 +248,8 @@ direct Copy Field followed by Paste Text sees the same selected value that its
 native `WMTextField` displays.
 
 Next: [Building, linking, and distributing](12-BUILDING-AND-DISTRIBUTING.md).
+
+OPEN LOOK uses the same native control font in single-line PANEL_TEXT and
+multiline PANEL_MULTILINE_TEXT/TextSW editors. Window Maker retains the
+I-beam in its native WINGs view state, including editable combo fields, so
+native pointer handling does not replace it with the window arrow.

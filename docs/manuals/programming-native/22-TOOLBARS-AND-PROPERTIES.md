@@ -5,6 +5,9 @@ inspector. The grid composes the library's standard editors. Toolbars and
 status bars attach to a window automatically; they are not child controls
 that you create manually.
 
+Property grid rules end with the last visible property. Increasing the grid's
+height leaves an empty area below the rows, without extra value-side lines.
+
 ## Step 1: Describe commands and values
 
 A tool has a string ID, text, kind, exclusive group, checked state, enabled
@@ -157,3 +160,24 @@ rejected. `set_row_height(0)` restores the theme/font default;
 For ruler and border configuration, continue with
 [Chapter 17](17-INPUT-DIALOGS-AND-WINDOW-CHROME.md#rulers-and-status-bar).
 For the larger demonstration, open Vision's **Properties and toolbars** window.
+
+On Motif, plain property values use black text while dark native choice fields
+keep their theme colors. A custom-content dropdown uses the same native
+selection-only combo enclosure and arrow as a choice property; only its popup
+contents differ. Embedded custom fields inherit the row's border policy.
+
+Toolbar labels and tinted monochrome icons use
+`theme::get_toolbar_text_color(state)`. GTK resolves this from the native
+button style for idle, hover, held, selected and disabled states, matching
+the tool's button background in light and dark themes. The default theme
+implementation retains menu-style toolbar foregrounds.
+
+GTK paints the empty tool bezel from its native CSS background and frame at
+the actual item size, so left and right strips keep the complete button frame
+at narrow widths. The toolbar draws its images and labels within that bezel.
+
+
+Motif property values use the same control font across text, number, boolean,
+choice and custom-dropdown rows. Normal values have black ink and matching
+light entry backgrounds; their labels also use black ink. Ordinary controls
+outside the inspector retain the desktop's native resources.

@@ -11,6 +11,7 @@
 
 #include <X11/Xlib.h>
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 
 #include <native/app.h>
 #include <native/app_wnd.h>
@@ -164,9 +165,30 @@ namespace
             }
             break;
         }
-        case FocusIn:
+        case FocusIn: {
+            const native::detail::window_guard guard(*owner);
+            owner->on_native_focus(true);
+            if (!guard.alive())
+                break;
+            // Preserve WINGs' focused child when activating its top
+            // level.
+            if (auto *view = W_FocusedViewOfToplevel(
+                    WMWidgetView(state->window));
+                view && view->self)
+                if (auto *child =
+                        linux::wmaker::wnd_bindings.object_from_handle(
+                            view->self);
+                    child && child != owner)
+                    child->on_native_focus(true);
+            if (!guard.alive())
+                break;
             linux::wmaker::activate_menu_owner(owner);
             linux::wmaker::permit_input(owner);
+            break;
+        }
+        case FocusOut:
+            if (event->xfocus.detail != NotifyInferior)
+                owner->on_native_focus(false);
             break;
         case ButtonPress:
         case ButtonRelease: {

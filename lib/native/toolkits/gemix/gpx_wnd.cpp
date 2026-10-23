@@ -157,6 +157,29 @@ namespace native
     gpx &gpx_wnd::draw_native_text(const std::string &text, point p) {
         if (_font && !_font->valid())
             return *this;
+        const auto ink = get_ink();
+        if (ink.r == ink.g && ink.g == ink.b && ink.r > 0 &&
+            ink.r < 255 && !text.empty()) {
+            // A gray foreground must retain ink on a one-bit screen.
+            // Use the same stock glyphs with a checkerboard disabled
+            // mask.
+            const auto metrics = measure_text(text);
+            img glyphs(std::max(1, metrics.width),
+                       std::max(1, metrics.height));
+            glyphs.get_gpx().clear(rgba(0, 0, 0, 0));
+            if (linux::gemix::draw_stock_text(
+                    glyphs,
+                    rect(0, 0, glyphs.w(), glyphs.h()),
+                    text,
+                    point(),
+                    rgba(0, 0, 0, 255))) {
+                for (int y = 0; y < glyphs.h(); ++y)
+                    for (int x = 0; x < glyphs.w(); ++x)
+                        if ((x + y) % 2)
+                            glyphs.pixels()[y * glyphs.w() + x].a = 0;
+                return draw_img(glyphs, p);
+            }
+        }
         rect r(_clip.p.x + _offset.x,
                _clip.p.y + _offset.y,
                _clip.d.w,

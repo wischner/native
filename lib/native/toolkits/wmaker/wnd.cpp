@@ -12,6 +12,7 @@
 
 #include <X11/cursorfont.h>
 #include <WINGs/WINGs.h>
+#include <WINGs/WINGsP.h>
 
 #include <native/app_wnd.h>
 #include <native/combo_box.h>
@@ -33,7 +34,16 @@
 
 namespace
 {
-    struct pointer_tracking { bool installed = false; };
+    struct pointer_tracking
+    {
+        Display *display = nullptr;
+        Cursor cursor = None;
+        native::mouse_cursor shape = native::mouse_cursor::arrow;
+        ~pointer_tracking() {
+            if (display && cursor)
+                XFreeCursor(display, cursor);
+        }
+    };
     native::point pointer_local(native::wnd &owner, native::point point) {
         if (auto *state = native::detail::peer_state<linux::wmaker::window_state>(owner))
             point.y = static_cast<native::coord>(point.y - state->menu_height);
@@ -191,25 +201,52 @@ namespace native
     }
 
     void wnd::apply_cursor() {
-        const Window target = linux::wmaker::drawable(this);
         Display *display = linux::wmaker::display;
-        if (!display || target == None)
+        auto *widget =
+            linux::wmaker::wnd_bindings.handle_from_object(this);
+        if (!display || !widget)
             return;
 
         auto *tracking = detail::peer_state<pointer_tracking>(*this);
-        auto *widget = linux::wmaker::wnd_bindings.handle_from_object(this);
-        if (!tracking && widget) {
+        if (!tracking) {
             tracking = new pointer_tracking;
+            tracking->display = display;
             detail::assign_peer_state(*this, tracking);
             WMCreateEventHandler(WMWidgetView(widget),
                 EnterWindowMask | LeaveWindowMask | PointerMotionMask, track_pointer, this);
         }
-        Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
-            pointer_local(*this, detail::x_pointer_position(display, target))));
-        if (cursor != None) {
-            XDefineCursor(display, target, cursor);
-            XFreeCursor(display, cursor);
-        }
+        const auto target = WMWidgetXID(widget);
+        // Native editors consume their own crossing events. Their
+        // normal I-beam belongs to the whole view, including when the
+        // pointer was elsewhere at creation; do not initialize that
+        // view with an arrow.
+        const bool native_text = dynamic_cast<text_edit *>(this) &&
+                                 get_cursor() == mouse_cursor::ibeam;
+        const auto shape =
+            native_text ? mouse_cursor::ibeam
+            : target    ? detail::pointer_cursor(
+                              *this,
+                              pointer_local(*this,
+                                            detail::x_pointer_position(
+                                                display, target)))
+                        : get_cursor();
+        const bool changed =
+            !tracking->cursor || tracking->shape != shape;
+        const Cursor cursor =
+            changed ? cursor_for(display, shape) : tracking->cursor;
+        if (cursor == None)
+            return;
+        const auto previous = changed ? tracking->cursor : None;
+        tracking->cursor = cursor;
+        tracking->shape = shape;
+        W_SetViewCursor(WMWidgetView(widget), cursor);
+        if (auto *text = dynamic_cast<text_edit *>(this))
+            if (auto *state = linux::wmaker::text_edit_bindings
+                                  .object_from_handle(text);
+                state && state->text)
+                W_SetViewCursor(WMWidgetView(state->text), cursor);
+        if (previous)
+            XFreeCursor(display, previous);
     }
 
     wnd &wnd::invalidate_native() {

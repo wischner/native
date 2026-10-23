@@ -19,6 +19,9 @@
 #include <iostream>
 #include <stdexcept>
 
+// Check the native input compositions after the fixture is mapped.
+void run_x11_control_checks(native::app_wnd &owner);
+
 namespace
 {
     using namespace native;
@@ -475,6 +478,7 @@ namespace
         void check() {
             try {
                 if (phase == 0) {
+                    run_x11_control_checks(*this);
                     int black_image = 0, white_image = 0;
                     for (int y = 0; y < 16; ++y)
                         for (int x = 0; x < 16; ++x) {

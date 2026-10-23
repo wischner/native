@@ -203,10 +203,14 @@ namespace native
             multiline ? XmMULTI_LINE_EDIT : XmSINGLE_LINE_EDIT,
             XmNwordWrap,
             multiline,
+            XmNresizeWidth,
+            False,
             nullptr);
         if (!widget)
             throw std::runtime_error(
                 "Motif: Failed to create text_edit.");
+        if (multiline)
+            XtVaSetValues(widget, XmNresizeHeight, False, nullptr);
         linux::openmotif::apply_control_font(widget);
         if (!multiline)
             XtVaSetValues(widget,
@@ -222,10 +226,28 @@ namespace native
         if (native::detail::property_grid_owner(*this)) {
             Pixel paper = 0;
             XtVaGetValues(XtParent(widget), XmNbackground, &paper, nullptr);
-            XtVaSetValues(widget, XmNbackground, paper,
-                XmNshadowThickness, 0, XmNhighlightThickness, 0,
-                XmNmarginHeight, 1, nullptr);
+            XtVaSetValues(widget,
+                          XmNbackground,
+                          paper,
+                          XmNforeground,
+                          BlackPixelOfScreen(XtScreen(widget)),
+                          XmNshadowThickness,
+                          0,
+                          XmNhighlightThickness,
+                          0,
+                          XmNmarginHeight,
+                          1,
+                          nullptr);
         }
+        // Font/margin resources can negotiate a new preferred size.
+        // The portable allocation remains authoritative for this
+        // editor.
+        XtVaSetValues(widget,
+                      XmNwidth,
+                      _bounds.d.w,
+                      XmNheight,
+                      _bounds.d.h,
+                      nullptr);
         auto *binding = new linux::openmotif::motif_text_edit;
         binding->widget = widget;
         binding->multiline = multiline;

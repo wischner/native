@@ -67,6 +67,23 @@ and exits normally. This is automated desktop coverage, not a physical mouse
 walkthrough.
 
 
+## Athena input/allocation follow-up (2026-10-23)
+
+The reported blank single-line and search fields are corrected: their Xaw sink
+line height and final border-adjusted size now leave a displayed line. Real
+copy/paste and glyph-pixel checks pass. Editable popup checkmarks follow exact
+typed matches. Native `Search:` labeling, stable typing, six-pixel margins,
+table group bottom rules, synchronous pre-map combo sizing, and joined picker
+buttons have focused regressions. Date typing and calendar selection share
+holiday rejection; time arrows retain the selected component.
+
+Native-owned Form allocation queries no longer propose an enlarged cached size
+when asked to shrink. The seven-control nested-layout test reverses resizing
+and checks its child geometry. The Docker X11 build succeeds and all 21 CTests pass under both Xvfb and
+the maintained monochrome Xephyr/TWM session, whose controls snapshot was
+inspected. These checks extend the older
+X11 review below without changing other backends.
+
 ## GTK4 and X11 control review (2026-10-22)
 
 Generic GTK Wayland passes 20/20 CTests under headless Weston. Its native
@@ -131,6 +148,27 @@ while that same executable passes on bare Xvfb. This is a desktop-specific
 qualification limit, not a successful CDE grid acceptance claim. The existing
 Window Maker Fontconfig/Pango exit allocations and GEM menu-strip restoration
 failure remain as recorded above. No assertion or sanitizer rule was disabled.
+
+## Motif/CDE control follow-up (2026-10-23)
+
+All 25 Motif CTests pass on Xvfb; the shared table-focus and embedded-dropdown
+changes also pass all 27 SDL2 tests. CDE native/custom property-combo pixels,
+checkbox indicator pixels, plain-value foregrounds, settings spacing and
+indentation, checkbox alignment and continuous table selection pass. The
+classic fixture passes real date typing/Enter, calendar toggling/outside-click
+closing/day selection and square selected-component time stepping. Native
+inspector editing and custom-popup interactions pass on the CDE desktop.
+The older grid-edge comparison sampled nominal row heights even when rows
+were fitted to the viewport; it now checks the complete painted body.
+
+The complete CDE suite passes 23/25 tests. Its Motif-runtime and
+classic-control fixtures nevertheless fail
+LeakSanitizer at shutdown: graphics contexts allocated by native IconGadget
+font updates remain retained. The same suites are clean on Xvfb. This is an
+open CDE qualification issue; no suppression was added and a successful
+functional assertion run does not imply a clean sanitizer exit. CDE display
+blanking initially produced an all-black inspector capture; disabling
+blanking and waking the isolated display makes that fixture pass.
 
 ## GTK Wayland and elementary OS (2026-10-20)
 
@@ -535,4 +573,65 @@ suppression. Motif passes 25/25 headless CTests and the CDE desktop fixture
 passes after startup completes. Its native font alignment is fixed in the
 adapter; the Docker image does not need a font change. GEM direct/gemd pass
 20/21 and 21/22, retaining the previously recorded menu-strip restoration
-failure. Their new composed forms and packet-driven input checks pass.
+failure. Their SDK extended selectors and standard alerts own panel placement.
+Packet-driven checks exercise Native controls alongside these native dialogs.
+
+The 2026-10-23 GEM follow-up retains the same 20/21 direct and 21/22 gemd
+results: the remaining failure is `native_gemix_runtime_tests`' menu-strip
+restoration assertion. Both builds pass the extended real-input fixture for
+SDK panels/alerts, first-use combo/tab-list input, calendar activation,
+caret-based square time buttons, shared borders, navigator spacing, final
+property rules, normal modal-owner text with blocked input and actual splitter cursor-bitmap
+restoration. Vision's modal message text also fits the measured stock font.
+
+### GTK / OPEN LOOK / WINGs follow-up — 2026-10-23
+
+GTK Wayland and elementary each pass 20/20 tests with actual editable-popup row focus and native-button
+foreground checks. The headless popup test uses the real GTK popup without an
+autohide grab because Weston has no input-grab serial; normal application
+posting retains GTK's native autohide behavior. OPEN LOOK passes 25/25 tests,
+including native multiline font parity and pickers created before their page
+maps. A toolkit-only PANEL_MULTILINE_TEXT creation/destruction probe reproduces
+its 1025-byte TextSW input record and 35-byte extras-menu filename retention.
+The corresponding allocation symbols join the existing narrow XView exception;
+no blanket leak suppression was added. Window Maker's separate Pango/Fontconfig
+shutdown allocation limitation remains; its native list/navigation, first-open
+editor, cursor-image and calendar checks are covered by the classic fixture.
+The full Window Maker suite passes 20/22: its repaint and classic-control
+executables complete their functional checks before reporting those shutdown
+allocations. No new WINGs leak exception was added.
+
+
+### Picker geometry / native style follow-up — 2026-10-23
+
+X11 passes 21/21 tests with text-fitting picker widths, half-character text
+margins, square time arrows and a real arrow-cursor image over its calendar.
+GTK Wayland and elementary each pass 20/20, including native CSS pixel parity
+for narrow vertical-toolbar frames in light/dark interaction states.
+Motif passes 25/25 under Xvfb. CDE functional checks verify pre-map native
+text I-beams, matching native checkbox/radio fonts, a native calendar border
+and unchanged native property dropdown styling. Its existing IconGadget
+font-update shutdown allocations remain visible under LeakSanitizer.
+GEM direct/gemd pass 20/21 and 21/22; the real-input fixture verifies compact
+fields and normal parent button ink with modal input blocked. The existing
+SDK menu-strip restoration assertion remains the only failure. No new leak
+suppression was added.
+
+
+### OPEN LOOK / WINGs / CDE picker verification — 2026-10-23
+
+OPEN LOOK passes 25/25 with symmetric native search/list frame geometry,
+compact date/time values with character margins, and repeated selected-component
+stepping. Its private SDK text/list-state use is confined to the adapter; native
+painting and scrolling remain in use. WINGs compact-time checks pass, while its
+full suite remains 20/22 due to the existing Fontconfig/Pango exit allocations.
+
+Generic Motif passes 25/25. On CDE, the date calendar's own native shell border,
+compact fields, equal visible up/down glyph bounds and black uniform property
+values all pass. CDE's two remaining failures are existing IconGadget font-update
+shutdown allocations: the runtime fixture reports 1120 bytes and the classic
+fixture 640 bytes after completing their functional assertions (23/25 total).
+The actual rebuilt Vision gallery preserves allocated 330-pixel editor widths
+and real I-beams at their right edges. Shared nested inspector-host recognition
+also passes GTK's 20/20 and three focused GEM checks. No new leak exception was
+added.

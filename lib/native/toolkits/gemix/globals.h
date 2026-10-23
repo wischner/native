@@ -61,6 +61,8 @@ namespace linux::gemix
     extern std::vector<native::radio *> radios;
     extern std::vector<native::list *> lists;
     extern std::vector<native::combo_box *> combo_boxes;
+    // Keep embedded entries inside the shared frame and button column.
+    native::rect combo_editor_bounds(const native::combo_box &owner);
     extern std::vector<native::text_edit *> text_edits;
     extern std::vector<native::accordion *> accordions;
     extern std::vector<native::tab_view *> tab_views;

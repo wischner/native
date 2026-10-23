@@ -19,6 +19,7 @@ namespace linux::openmotif
 {
     XtAppContext app_instance = nullptr;
     bool exit_requested = false;
+    picker_popup_dispatch picker_popup;
 
     native::bindings<Widget, native::wnd *> wnd_bindings;
     native::bindings<Widget, native::wnd *> shell_bindings;

@@ -26,6 +26,8 @@
 #include <memory>
 #include <stdexcept>
 
+void check_motif_control_styles(native::app_wnd &root);
+
 namespace
 {
     namespace motif = linux::openmotif;
@@ -627,7 +629,6 @@ namespace
                    "alternating table rows have a visible tint");
             expect(distance(colors.content_bg, colors.separator) >= 120,
                    "table grids contrast with the native data background");
-            const int y = metrics.header_height + metrics.table_row_height - 1;
             table->set_grid_lines(native::table_grid_lines::none);
             table->set_alternating_rows(true);
             pump();
@@ -639,16 +640,20 @@ namespace
                    "alternating-row toggle changes actual table pixels");
             table->set_alternating_rows(true);
             pump();
-            std::array<unsigned long, 4> plain{};
-            for (int offset = 0; offset < 4; ++offset)
-                plain[offset] = pixel(*table, 100, y + offset - 1);
+            // Visible rows can be fitted to the viewport; sample the
+            // full body rather than assuming the nominal font height.
+            std::vector<unsigned long> plain;
+            for (int row = metrics.header_height; row < 150; ++row)
+                plain.push_back(pixel(*table, 100, row));
             table->set_grid_lines(native::table_grid_lines::both);
             pump();
-            // Grid rows may include a one-pixel viewport inset.
             bool changed = false;
-            for (int offset = 0; offset < 4; ++offset)
-                changed = changed || pixel(*table, 100, y + offset - 1)
-                    != plain[offset];
+            for (std::size_t offset = 0; offset < plain.size();
+                 ++offset)
+                changed = changed || pixel(*table,
+                                           100,
+                                           metrics.header_height +
+                                               offset) != plain[offset];
             expect(changed, "grid checkbox changes painted row edges");
             XmScrollBarCallbackStruct scroll{};
             scroll.reason = XmCR_DRAG;
@@ -710,14 +715,20 @@ namespace
 
 int program(int argc, char **argv) {
     const bool tree_only = argc > 1 && std::string(argv[1]) == "--tree-repaint";
+    const bool styles_only =
+        argc > 1 && std::string(argv[1]) == "--control-styles";
     native::app_wnd root("Motif peer regressions", 20, 20, 660, 400);
-    root.on_wnd_create.connect([&root, tree_only] {
-        native::app::post([&root, tree_only] {
+    root.on_wnd_create.connect([&root, tree_only, styles_only] {
+        native::app::post([&root, tree_only, styles_only] {
             try {
-                if (tree_only)
+                if (styles_only)
+                    check_motif_control_styles(root);
+                else if (tree_only)
                     check_tree_content_repaint(root);
-                else
+                else {
                     checks(root);
+                    check_motif_control_styles(root);
+                }
                 std::cout << "Motif peer regressions passed\n";
             } catch (const std::exception &error) {
                 ++failures;

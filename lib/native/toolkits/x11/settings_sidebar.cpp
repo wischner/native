@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "scale.h"
 #include "../../picker_peer.h"
+#include <native/text_edit.h>
 #include <X11/StringDefs.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Label.h>
@@ -27,9 +28,15 @@ namespace
             Widget widget;
         };
         Widget host = nullptr;
+        Widget prompt = nullptr;
+        std::unique_ptr<native::text_edit> search;
         std::vector<std::unique_ptr<row>> rows;
         std::vector<native::settings_page> items;
         void close() noexcept override {
+            search.reset();
+            if (prompt)
+                XtDestroyWidget(prompt);
+            prompt = nullptr;
             if (host)
                 XtDestroyWidget(host);
             host = nullptr;
@@ -50,13 +57,37 @@ namespace native::detail
             XtNdefaultDistance,
             0,
             nullptr);
+        state->prompt = XtVaCreateWidget(
+            "searchPrompt",
+            labelWidgetClass,
+            linux::x11::wnd_bindings.handle_from_object(&owner),
+            XtNlabel,
+            "Search:",
+            XtNborderWidth,
+            0,
+            XtNinternalWidth,
+            0,
+            XtNinternalHeight,
+            0,
+            XtNjustify,
+            XtJustifyLeft,
+            XtNresize,
+            False,
+            nullptr);
+        state->search = std::make_unique<text_edit>();
+        state->search->set_parent(&owner);
+        state->search->on_change.connect(
+            [&owner](const std::string &text) {
+                owner.on_native_search(text);
+                return true;
+            });
         std::unique_ptr<settings_sidebar_resources> resources =
             std::move(state);
         assign_peer_state(owner, resources.release());
         return true;
     }
     bool settings_sidebar_uses_native_search() {
-        return false;
+        return true;
     }
     bool settings_sidebar_uses_list() {
         return false;
@@ -133,8 +164,63 @@ namespace native::detail
             }
             state->items = visible;
         }
-        const auto bounds = linux::x11::rect_to_device(
-            settings_navigation_bounds(owner));
+        const auto area = owner.get_client_bounds();
+        const int column =
+            std::min(owner.get_sidebar_width(), int(area.w()));
+        const int padding =
+            std::min({6, column / 2, int(area.h()) / 2});
+        const int input_height =
+            theme::create(owner.get_gpx())->get_text_edit_height();
+        const int search_height =
+            owner.get_search_visible() ? input_height + padding : 0;
+        const int width = std::max(0, column - 2 * padding);
+        if (owner.get_search_visible()) {
+            const int prompt_width = font_t::stock(font_role::control)
+                                         .measure_text("Search:")
+                                         .width +
+                                     padding;
+            const auto row = linux::x11::rect_to_device(
+                rect(area.x1() + padding,
+                     area.y1() + padding,
+                     std::min(prompt_width, width),
+                     input_height));
+            XtVaSetValues(state->prompt,
+                          XtNhorizDistance,
+                          row.x1(),
+                          XtNvertDistance,
+                          row.y1(),
+                          XtNwidth,
+                          std::max(1, int(row.w())),
+                          XtNheight,
+                          std::max(1, int(row.h())),
+                          nullptr);
+            const rect desired(area.x1() + padding +
+                                   std::min(prompt_width, width),
+                               area.y1() + padding,
+                               std::max(0, width - prompt_width),
+                               input_height);
+            const auto current = state->search->get_bounds();
+            if (current.x1() != desired.x1() ||
+                current.y1() != desired.y1() ||
+                current.w() != desired.w() ||
+                current.h() != desired.h())
+                state->search->set_bounds(desired);
+            if (state->search->get_text() != owner.get_search_text())
+                state->search->set_text(owner.get_search_text());
+            if (!state->search->get_created())
+                state->search->create();
+            if (!state->search->get_visible())
+                state->search->show();
+            XtManageChild(state->prompt);
+        } else {
+            state->search->destroy();
+            XtUnmanageChild(state->prompt);
+        }
+        const auto bounds = linux::x11::rect_to_device(rect(
+            area.x1() + padding,
+            area.y1() + padding + search_height,
+            width,
+            std::max(0, int(area.h()) - 2 * padding - search_height)));
         XtVaSetValues(state->host,
                       XtNhorizDistance,
                       bounds.x1(),

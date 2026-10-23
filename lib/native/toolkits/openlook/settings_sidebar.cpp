@@ -8,6 +8,10 @@
 #include "globals.h"
 #include "../../picker_peer.h"
 #include <xview/font.h>
+#define delete xview_delete_handler
+#include <xview_private/panel_impl.h>
+#include <xview_private/p_lst_impl.h>
+#undef delete
 namespace
 {
     using namespace native;
@@ -18,6 +22,7 @@ namespace
         std::vector<int> ids;
         std::vector<settings_page> items;
         bool updating = false;
+        int chrome_height = -1;
         explicit navigation(settings_sidebar &value)
             : owner(value) {}
         void close() noexcept override {
@@ -76,6 +81,8 @@ namespace native::detail
                                   PANEL_TEXT,
                                   PANEL_LABEL_STRING,
                                   "Search:",
+                                  PANEL_LABEL_FONT,
+                                  xv_get(panel, WIN_FONT),
                                   PANEL_NOTIFY_LEVEL,
                                   PANEL_ALL,
                                   PANEL_NOTIFY_PROC,
@@ -118,7 +125,29 @@ namespace native::detail
         if (!state)
             return;
         state->updating = true;
-        const auto bounds = settings_navigation_bounds(owner);
+        auto bounds = settings_navigation_bounds(owner);
+        // Native text items do not necessarily have the theme's input
+        // height. Measure their visible rectangle before placing the
+        // list.
+        xv_set(state->search,
+               XV_X,
+               bounds.x1(),
+               XV_Y,
+               6,
+               XV_SHOW,
+               owner.get_search_visible(),
+               nullptr);
+        if (owner.get_search_visible()) {
+            const auto *search = reinterpret_cast<Rect *>(
+                xv_get(state->search, XV_RECT));
+            const int top = search->r_top + search->r_height + 6;
+            bounds = rect(
+                bounds.x1(),
+                top,
+                bounds.w(),
+                std::max(1,
+                         int(owner.get_client_bounds().h()) - top - 6));
+        }
         const auto visible = settings_visible_items(owner);
         bool rebuild = visible.size() != state->items.size();
         for (std::size_t i = 0; !rebuild && i < visible.size(); ++i)
@@ -188,8 +217,12 @@ namespace native::detail
         const int row_height = std::max(
             1, int(xv_get(state->list, PANEL_LIST_ROW_HEIGHT)));
         const int rows = xv_get(state->list, PANEL_LIST_DISPLAY_ROWS);
-        const int chrome = std::max(
-            0, int(xv_get(state->list, XV_HEIGHT)) - rows * row_height);
+        if (state->chrome_height < 0)
+            state->chrome_height =
+                std::max(0,
+                         int(xv_get(state->list, XV_HEIGHT)) -
+                             rows * row_height);
+        const int chrome = state->chrome_height;
         xv_set(state->list,
                XV_X,
                bounds.x1(),
@@ -222,10 +255,27 @@ namespace native::detail
                XV_Y,
                6,
                PANEL_VALUE_DISPLAY_WIDTH,
-               std::max(1, int(bounds.w()) - 60),
+               std::max(1,
+                        int(bounds.w()) -
+                            font_t::stock(font_role::control)
+                                .measure_text("Search:")
+                                .width -
+                            6),
                XV_SHOW,
                owner.get_search_visible(),
                nullptr);
+        // PANEL_LIST_DISPLAY_ROWS rounds its frame down to whole rows.
+        // Extend the native viewport/frame while keeping whole-row
+        // scrolling. XView exposes only a row count in its public API.
+        auto *list =
+            XV_PRIVATE(Panel_list_info, Xv_panel_list, state->list);
+        auto *item = ITEM_PRIVATE(state->list);
+        list->list_box.r_height = bounds.h();
+        list->sb_rect.r_height = bounds.h();
+        item->value_rect.r_height = bounds.h();
+        item->rect.r_height = bounds.h();
+        xv_set(scrollbar, XV_HEIGHT, bounds.h(), nullptr);
+        panel_paint(state->list, PANEL_CLEAR);
         state->updating = false;
     }
 } // namespace native::detail

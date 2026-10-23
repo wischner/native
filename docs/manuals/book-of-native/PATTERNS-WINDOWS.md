@@ -393,8 +393,8 @@ their native event dispatch. Both forms produce the same signal and result.
 The backend selection follows native facilities: Windows Common Item Dialogs,
 AppKit `NSOpenPanel`/`NSSavePanel`, Haiku `BFilePanel`, Motif
 `XmFileSelectionBox`, XView `File_chooser`, WINGs
-`WMOpenPanel`/`WMSavePanel`. GEM composes native AES forms to support
-parent-centered placement without changing its pinned SDK. Athena presents
+`WMOpenPanel`/`WMSavePanel`. GEM uses the SDK extended open/save/directory selectors, with SDK-owned
+placement and modal interaction. Athena presents
 a browser made entirely from Athena widgets, with modal input grabs.
 SDL2 consistently presents Native's themed C++ filesystem browser for open, save, and
 folder modes, then restores its owner after either result.
@@ -687,3 +687,22 @@ file dialogs and message boxes center on activation within their native modal
 call. Haiku file panels and alerts center after their native geometry is ready.
 GTK Wayland supplies the transient/modal owner to the compositor, which owns
 top-level placement; absolute desktop coordinates cannot be forced there.
+
+
+### Athena allocation queries
+
+Native's Athena Form subclass positions children according to portable layout.
+Its geometry query accepts an intended nonzero allocation, including smaller
+sizes, instead of inheriting Form's cached preferred size. This keeps a
+previously enlarged nested-grid window from negotiating its old allocation
+back into a shrink request. Native still owns the actual child layout and
+split-pane minimum policies; the Xt host does not add a second size policy.
+
+OPEN LOOK structural Panels are native Frame siblings. Showing a parent page
+restacks its visible semantic descendants above it, in depth order, so a
+picker created during the page's create callback stays visible after the page
+maps. This is toolkit-local stacking adaptation; public parent/child ownership
+and geometry are unchanged. WINGs forwards top-level native focus changes and
+restores its already-focused native child, preserving editor caret/input state.
+Its text views retain the configured I-beam even when created away from the
+pointer; pointer-dependent custom cursor resources remain peer-owned.

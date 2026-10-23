@@ -1211,6 +1211,26 @@ namespace vision
     }
 
     bool feature_dialog::on_create() {
+        const auto &font =
+            native::font_t::stock(native::font_role::control);
+        const int width = std::max(
+            {int(get_dimensions().w),
+             font.measure_text(
+                     "This dialog owns focus and blocks its owner.")
+                     .width +
+                 48,
+             font.measure_text(
+                     "Closing it produces a portable dialog_result.")
+                     .width +
+                 48,
+             font.measure_text(
+                     "Paint and lifecycle dispatch continue normally.")
+                     .width +
+                 48});
+        set_dimensions(native::size(width, get_dimensions().h));
+        _accept.set_position(native::point((width - 192) / 2, 148));
+        _cancel.set_position(
+            native::point((width - 192) / 2 + 104, 148));
         _accept.set_parent(this);
         _accept.create();
         _accept.show();

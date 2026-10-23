@@ -60,6 +60,7 @@ namespace native::detail
                 auto &actions = field->configured_actions();
                 _field = std::move(field);
                 _field->set_parent(this);
+                _field->set_border_sides(get_border_sides());
                 _field->set_bounds(get_client_bounds());
                 actions.read_only = true;
                 actions.open = [this] {

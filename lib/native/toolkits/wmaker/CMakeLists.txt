@@ -35,6 +35,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/save_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/settings_sidebar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/text_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp

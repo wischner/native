@@ -435,7 +435,9 @@ namespace
                 ? static_cast<unsigned char>(XmSINGLE)
                 : static_cast<unsigned char>(XmNO_LINE),
             XmNoutlineIndentation,
-            17,
+            dynamic_cast<native::settings_sidebar *>(tree.get_parent())
+                ? 8
+                : 17,
             XmNselectionPolicy,
             XmSINGLE_SELECT,
             XmNnavigationType,

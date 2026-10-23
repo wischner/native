@@ -44,12 +44,40 @@ namespace
             auto saved = graphics.save_state();
             for (int part = 0; part < 2; ++part) {
                 const int top = bounds.y1() + part * bounds.h() / 2;
-                const rect button(bounds.x2() - bounds.h(),
-                                  top,
-                                  bounds.h(),
-                                  (part + 1) * bounds.h() / 2 -
-                                      part * bounds.h() / 2);
+                const int side = std::max(0, (int(bounds.h()) - 2) / 2);
+                const rect button =
+                    actions->square_stepper
+                        ? rect(bounds.x2() - side - 1,
+                               bounds.y1() + 1 + part * side,
+                               side,
+                               side)
+                        : rect(bounds.x2() - bounds.h(),
+                               top,
+                               bounds.h(),
+                               (part + 1) * bounds.h() / 2 -
+                                   part * bounds.h() / 2);
                 appearance.draw_button(button, "", state);
+                if (actions->square_stepper) {
+                    const int radius =
+                        std::clamp(int(button.w()) / 4, 1, 3);
+                    const int center =
+                        button.x1() + (int(button.w()) - 1) / 2;
+                    const int inset =
+                        (int(button.h()) - radius - 1) / 2;
+                    const int y =
+                        button.y1() +
+                        (part ? int(button.h()) - inset - radius - 1
+                              : inset);
+                    graphics.set_pen(1).set_ink(
+                        appearance.native_palette().button_text);
+                    for (int row = 0; row <= radius; ++row) {
+                        const int half = part ? radius - row : row;
+                        graphics.draw_line(
+                            point(center - half, y + row),
+                            point(center + half, y + row));
+                    }
+                    continue;
+                }
                 const int x = button.x1() + button.w() / 2,
                           y = button.y1() + button.h() / 2;
                 graphics
@@ -174,6 +202,11 @@ namespace
                         .set_ink(
                             appearance->native_palette().button_text)
                         .set_font(font_t::stock(font_role::control));
+                    const auto *actions = detail::peer_state<
+                        detail::combo_picker_actions>(state.field);
+                    if (actions && actions->framed_calendar)
+                        appearance->draw_popup_frame(
+                            state.popup->get_client_bounds());
                     event.g.draw_text(
                         std::to_string(state.shown.year) + "." +
                             two(state.shown.month),
@@ -311,7 +344,22 @@ namespace native::detail
     }
     void refresh_date_picker_peer(date_picker &owner) {
         if (auto *state = peer_state<picker>(owner)) {
-            state->field.set_bounds(owner.get_client_bounds());
+            auto bounds = owner.get_client_bounds();
+            const auto *actions =
+                peer_state<combo_picker_actions>(state->field);
+            if (actions && actions->compact_date)
+                bounds.d.w = std::min<int>(
+                    bounds.w(),
+                    font_t::stock(font_role::control)
+                            .measure_text("00.00.0000")
+                            .width +
+                        (actions->indicator_width
+                             ? actions->indicator_width
+                             : bounds.h()) +
+                        (actions->text_margin
+                             ? 2 * actions->text_margin + 2
+                             : 12));
+            state->field.set_bounds(bounds);
             state->field.set_text(date_text(owner.get_date()));
             if (state->popup && state->popup->get_created())
                 refresh_calendar(*state);
@@ -319,9 +367,23 @@ namespace native::detail
     }
     void refresh_time_picker_peer(time_picker &owner) {
         if (auto *state = peer_state<picker>(owner)) {
-            state->field.set_bounds(owner.get_client_bounds());
-            state->field.set_text(owner.get_time().to_string(
-                owner.get_seconds_visible()));
+            auto bounds = owner.get_client_bounds();
+            const auto text =
+                owner.get_time().to_string(owner.get_seconds_visible());
+            const auto *actions =
+                peer_state<combo_picker_actions>(state->field);
+            if (actions && actions->compact_time)
+                bounds.d.w =
+                    std::min<int>(bounds.w(),
+                                  font_t::stock(font_role::control)
+                                          .measure_text(text)
+                                          .width +
+                                      (actions->indicator_width
+                                           ? actions->indicator_width
+                                           : bounds.h() / 2) +
+                                      2 * actions->text_margin + 2);
+            state->field.set_bounds(bounds);
+            state->field.set_text(text);
         }
     }
 } // namespace native::detail

@@ -33,6 +33,16 @@ namespace native
                 "Window Maker/WINGs: code_edit is not created.");
         WMRealizeWidget(state->frame);
         WMMapWidget(state->frame);
+        const detail::window_guard guard(*this);
+        linux::wmaker::defer([this, guard] {
+            if (!guard.alive() || !get_visible())
+                return;
+            auto *state =
+                linux::wmaker::code_edit_bindings.object_from_handle(
+                    this);
+            WMSetFocusToWidget(state->frame);
+            on_native_focus(true);
+        });
     }
 
     void code_edit::destroy_native() {

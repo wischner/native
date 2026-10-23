@@ -17,6 +17,7 @@
 #include <optional>
 #include "picker_peer.h"
 #include "wnd_peer.h"
+#include "input_geometry.h"
 
 namespace native
 {
@@ -179,7 +180,18 @@ namespace native
                         });
                     }
                     _search->set_text(_search_text);
-                    _search->set_bounds(rect(area.x1(), 6, area.w(), 28));
+                    const int padding =
+                        detail::settings_sidebar_navigation_padding();
+                    _search->set_bounds(
+                        padding > 0
+                            ? detail::input_bounds(
+                                  *this,
+                                  rect(area.x1(),
+                                       get_client_bounds().y1() +
+                                           padding,
+                                       area.w(),
+                                       1))
+                            : rect(area.x1(), 6, area.w(), 28));
                     if (!_search->get_created()) _search->create();
                     _search->show();
                 } else if (_search) _search->destroy();
@@ -263,7 +275,14 @@ namespace native::detail
     }
     rect settings_navigation_bounds(const settings_sidebar &owner) {
         const auto area = owner.get_client_bounds();
-        const int inset = owner.get_search_visible() ? std::min(40, int(area.h())) : 0;
+        const int search_height =
+            settings_sidebar_navigation_padding() == 0
+                ? 40
+                : int(input_bounds(owner, rect(0, 0, 1, 1)).h()) +
+                      settings_sidebar_navigation_padding();
+        const int inset = owner.get_search_visible()
+                              ? std::min(search_height, int(area.h()))
+                              : 0;
         const int width = std::min(owner.get_sidebar_width(), int(area.w()));
         const int padding = std::min({settings_sidebar_navigation_padding(),
             width / 2, (int(area.h()) - inset) / 2});

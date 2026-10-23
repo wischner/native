@@ -288,7 +288,7 @@ namespace native
     void wnd::apply_cursor() {
         Widget widget =
             linux::openmotif::wnd_bindings.handle_from_object(this);
-        if (!widget || !XtIsRealized(widget))
+        if (!widget)
             return;
 
         Display *display = XtDisplay(widget);
@@ -298,12 +298,30 @@ namespace native
             detail::assign_peer_state(*this, tracking);
         }
         if (!tracking->installed) {
-            XtAddEventHandler(widget, EnterWindowMask | LeaveWindowMask | PointerMotionMask,
-                False, track_pointer, this);
+            XtAddEventHandler(widget,
+                              EnterWindowMask | LeaveWindowMask |
+                                  PointerMotionMask |
+                                  StructureNotifyMask,
+                              False,
+                              track_pointer,
+                              this);
             tracking->installed = true;
         }
-        Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,
-            detail::x_pointer_position(display, XtWindow(widget))));
+        // Children created by on_wnd_create are not realized until
+        // their top-level maps. MapNotify applies the pending cursor.
+        if (!XtIsRealized(widget))
+            return;
+        // Native text widgets own crossing input. Keep their configured
+        // I-beam on the whole view even when initially mapped
+        // elsewhere.
+        const auto shape = dynamic_cast<text_edit *>(this) &&
+                                   get_cursor() == mouse_cursor::ibeam
+                               ? mouse_cursor::ibeam
+                               : detail::pointer_cursor(
+                                     *this,
+                                     detail::x_pointer_position(
+                                         display, XtWindow(widget)));
+        Cursor cursor = cursor_for(display, shape);
         if (cursor != None) {
             XDefineCursor(display, XtWindow(widget), cursor);
             XFreeCursor(display, cursor);

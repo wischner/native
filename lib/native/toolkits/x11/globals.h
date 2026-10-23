@@ -113,7 +113,11 @@ namespace linux::x11
         Widget menu = nullptr;
         Pixmap arrow = None;
         Pixmap reverse_arrow = None;
+        Pixmap selection_mark = None;
         bool opening_press = false;
+        // Fit native children synchronously, including before
+        // realization.
+        std::function<void()> resize;
         std::function<void()> layout;
         std::vector<xaw_combo_callback *> callbacks;
         bool suppress = false;

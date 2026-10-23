@@ -45,7 +45,8 @@ if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
 endif()
 
 if(UNIX AND TOOLKIT STREQUAL "MOTIF")
-    add_executable(native_motif_runtime_tests native_motif_runtime_tests.cpp)
+    add_executable(native_motif_runtime_tests native_motif_runtime_tests.cpp
+        native_motif_control_checks.cpp)
     target_include_directories(native_motif_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_motif_runtime_tests PRIVATE
@@ -165,13 +166,14 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
                 ${CMAKE_CURRENT_BINARY_DIR}/rasta-desktop.png)
         set_tests_properties(native_gemix_session_tests PROPERTIES TIMEOUT 40)
     endif()
-    add_executable(native_gemix_input_tests native_gemix_input_tests.cpp)
+    add_executable(native_gemix_input_tests native_gemix_input_tests.cpp
+        native_gemix_control_checks.cpp)
     target_include_directories(native_gemix_input_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_gemix_input_tests PRIVATE native native_developer_options)
     add_test(NAME native_gemix_input_tests
         COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_input_tests>)
-    set_tests_properties(native_gemix_input_tests PROPERTIES TIMEOUT 30 ENVIRONMENT
+    set_tests_properties(native_gemix_input_tests PROPERTIES TIMEOUT 60 ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-input-tests.fb;GEM_RASTA_PORT=5012;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     add_executable(native_gemix_runtime_tests native_gemix_runtime_tests.cpp)
     target_include_directories(native_gemix_runtime_tests PRIVATE
@@ -206,7 +208,8 @@ if(APPLE OR (UNIX AND (TOOLKIT STREQUAL "MOTIF" OR TOOLKIT STREQUAL "OPENLOOK"))
 endif()
 
 if(UNIX AND TOOLKIT STREQUAL "X11")
-    add_executable(native_x11_runtime_tests native_x11_runtime_tests.cpp)
+    add_executable(native_x11_runtime_tests native_x11_runtime_tests.cpp
+        native_x11_control_checks.cpp)
     target_include_directories(native_x11_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_x11_runtime_tests PRIVATE native native_developer_options
@@ -424,7 +427,12 @@ if(TOOLKIT STREQUAL "MOTIF" OR TOOLKIT STREQUAL "OPENLOOK")
     endif()
     target_link_libraries(${allocation_probe} PRIVATE
         native_developer_options ${allocation_libraries})
-    foreach(scenario RANGE 0 2)
+    if(TOOLKIT STREQUAL "OPENLOOK")
+        set(allocation_last_scenario 3)
+    else()
+        set(allocation_last_scenario 2)
+    endif()
+    foreach(scenario RANGE 0 ${allocation_last_scenario})
         add_test(NAME ${allocation_probe}_${scenario}
             COMMAND ${allocation_probe} ${scenario})
         set_tests_properties(${allocation_probe}_${scenario} PROPERTIES
@@ -549,6 +557,7 @@ if(UNIX AND NOT APPLE AND TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$")
         set_tests_properties(native_classic_control_tests PROPERTIES ENVIRONMENT
             "GEM_RASTA_FRAMEBUFFER=/tmp/native-classic-gem-tests.fb;GEM_RASTA_PORT=5022;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     elseif(TOOLKIT STREQUAL "WMAKER")
+        target_sources(native_classic_control_tests PRIVATE native_wmaker_control_checks.cpp)
         set_tests_properties(native_classic_control_tests PROPERTIES ENVIRONMENT
             "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-wmaker-suppressions.txt")
     else()

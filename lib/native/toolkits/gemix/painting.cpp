@@ -60,7 +60,10 @@ namespace
 
             auto painter = native::theme::create(graphics);
             native::theme::state button_state;
-            button_state.disabled = !button->get_input_enabled();
+            // Modal ownership blocks dispatch without changing the
+            // appearance of every command in the covered window.
+            button_state.disabled = !button->get_input_enabled() &&
+                                    !owner->get_active_modal();
             button_state.pressed = linux::gemix::runtime.pressed_button == button;
             native::detail::control_render_access::draw(
                 *button,

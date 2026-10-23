@@ -85,8 +85,7 @@ namespace native
         self->on_native_move(linux::gemix::outer_rect(handle).p);
         self->on_native_resize(linux::gemix::work_rect(handle).d);
         linux::gemix::active_window = self;
-        if (get_modal())
-            wind_set(handle, WF_TOP, 0, 0, 0, 0);
+        wind_set(handle, WF_TOP, 0, 0, 0, 0);
         invalidate();
     }
 

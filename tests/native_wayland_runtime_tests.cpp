@@ -21,6 +21,38 @@
 #include <stdexcept>
 namespace
 {
+    // Inspect the actual mapped native popup row, not just the combo
+    // index.
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    GtkWidget *combo_popover(GtkWidget *widget) {
+        if (GTK_IS_POPOVER(widget))
+            return widget;
+        for (auto *child = gtk_widget_get_first_child(widget); child;
+             child = gtk_widget_get_next_sibling(child))
+            if (auto *popup = combo_popover(child))
+                return popup;
+        return nullptr;
+    }
+    GtkWidget *popup_row(GtkWidget *widget, int index) {
+        if (GTK_IS_CELL_VIEW(widget)) {
+            auto *path =
+                gtk_cell_view_get_displayed_row(GTK_CELL_VIEW(widget));
+            const bool matches =
+                path && gtk_tree_path_get_depth(path) == 1 &&
+                gtk_tree_path_get_indices(path)[0] == index;
+            if (path)
+                gtk_tree_path_free(path);
+            if (matches &&
+                gtk_widget_get_focusable(gtk_widget_get_parent(widget)))
+                return gtk_widget_get_parent(widget);
+        }
+        for (auto *child = gtk_widget_get_first_child(widget); child;
+             child = gtk_widget_get_next_sibling(child))
+            if (auto *row = popup_row(child, index))
+                return row;
+        return nullptr;
+    }
+    G_GNUC_END_IGNORE_DEPRECATIONS
     void expect(bool condition, const char *message) {
         if (!condition)
             throw std::runtime_error(message);
@@ -194,8 +226,12 @@ int program(int, char **) {
                         test_native_gtk_theme(window);
                         test_native_gtk_borders(window);
                         {
-                            combo_box combo({"10 mm", "25 mm"}, combo_box_style::editable,
-                                            10, 60, 220, 36);
+                            combo_box combo({"10 mm", "25 mm", "50 mm"},
+                                            combo_box_style::editable,
+                                            10,
+                                            60,
+                                            220,
+                                            36);
                             combo.set_parent(&host); combo.create(); combo.show();
                             G_GNUC_BEGIN_IGNORE_DEPRECATIONS
                             expect(GTK_IS_COMBO_BOX_TEXT(state(combo).editor), "editable combo is one native GTK control");
@@ -229,6 +265,57 @@ int program(int, char **) {
                             gtk_editable_set_position(entry, cursor);
                             expect(combo.get_text() == "1X23 mm" && gtk_editable_get_position(entry) == 2,
                                    "editable combos preserve insertion inside existing text");
+                            combo.set_text("10 mm");
+                            gtk_editable_set_text(entry, "50 mm");
+                            auto *popup =
+                                combo_popover(state(combo).editor);
+                            expect(
+                                popup,
+                                "editable combo owns a native popup");
+                            // Headless Weston has no input-grab serial.
+                            // Map the same native rows without a modal
+                            // grab.
+                            gtk_popover_set_autohide(GTK_POPOVER(popup),
+                                                     false);
+                            for (int frame = 0;
+                                 frame < 10 && !gtk_widget_get_mapped(
+                                                   state(combo).editor);
+                                 ++frame) {
+                                while (g_main_context_iteration(
+                                    nullptr, false)) {
+                                }
+                                g_usleep(10000);
+                            }
+                            gtk_combo_box_popup(
+                                GTK_COMBO_BOX(state(combo).editor));
+                            GtkWidget *selected_row = nullptr;
+                            for (int frame = 0; frame < 50; ++frame) {
+                                while (g_main_context_iteration(
+                                    nullptr, false)) {
+                                }
+                                selected_row =
+                                    popup_row(state(combo).editor, 2);
+                                if (selected_row &&
+                                    gtk_widget_get_mapped(selected_row))
+                                    break;
+                                g_usleep(10000);
+                            }
+                            expect(
+                                selected_row &&
+                                    gtk_widget_get_mapped(
+                                        selected_row) &&
+                                    gtk_widget_is_focus(selected_row) &&
+                                    (gtk_widget_get_state_flags(
+                                         selected_row) &
+                                     GTK_STATE_FLAG_SELECTED),
+                                "opening the native combo highlights "
+                                "the typed 50 mm row");
+                            expect(combo.get_text() == "50 mm" &&
+                                       combo.get_selected_index() == 2,
+                                   "native popup focus preserves typed "
+                                   "text and logical selection");
+                            gtk_combo_box_popdown(
+                                GTK_COMBO_BOX(state(combo).editor));
                             G_GNUC_END_IGNORE_DEPRECATIONS
                             combo.set_style(combo_box_style::drop_down_list);
                             expect(GTK_IS_DROP_DOWN(state(combo).editor), "selection-only combo retains GtkDropDown");

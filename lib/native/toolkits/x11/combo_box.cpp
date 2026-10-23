@@ -18,6 +18,7 @@
 #include <X11/Xaw/SmeBSB.h>
 #include <X11/Xaw/TextP.h>
 #include <X11/Xaw/TextSrc.h>
+#include <X11/Xaw/TextSink.h>
 #include <X11/keysym.h>
 
 #include <native/combo_box.h>
@@ -36,6 +37,8 @@ namespace
         0x38, 0x00,
         0x10, 0x00
     };
+    constexpr char selection_bits[] = {
+        0x00, 0x40, 0x60, 0x31, 0x1b, 0x0e, 0x04};
 
     linux::x11::xaw_combo_box *state(native::combo_box *owner) {
         return linux::x11::combo_box_bindings.object_from_handle(owner);
@@ -48,9 +51,8 @@ namespace
         const int pixel = 1;
         const int button_width = std::min<int>(width, height);
         const int child_height = std::max(1, int(height) - 2 * pixel);
-        XFontStruct *font = nullptr;
-        XtVaGetValues(XawTextGetSink(binding->text), XtNfont, &font, nullptr);
-        const int text_height = font ? font->ascent + font->descent : 13;
+        const int text_height =
+            XawTextSinkMaxHeight(XawTextGetSink(binding->text), 1);
         const int margin = std::max(0, (child_height - text_height) / 2);
         // libXaw's SetValues copies a new bottomMargin into the
         // effective margin but not a new topMargin: it clears the new
@@ -95,8 +97,18 @@ namespace
                 XtNleftMargin, &left, nullptr);
             const int text_width = font && label
                 ? XTextWidth(font, label, static_cast<int>(std::char_traits<char>::length(label))) : 0;
-            XtVaSetValues(entries[index], XtNrightMargin,
-                std::max(0, int(width) - 2 - left - text_width), nullptr);
+            // SmeBSB owns the current-value checkmark; its hover
+            // highlight remains independent and follows the pointer
+            // normally.
+            XtVaSetValues(
+                entries[index],
+                XtNleftBitmap,
+                static_cast<int>(index) == owner->get_selected_index()
+                    ? binding->selection_mark
+                    : None,
+                XtNrightMargin,
+                std::max(0, int(width) - 2 - left - text_width),
+                nullptr);
         }
         Position x = 0, y = 0;
         XtTranslateCoords(binding->root, 0, 0, &x, &y);
@@ -252,6 +264,8 @@ namespace
                 binding->menu,
                 XtNlabel,
                 owner->get_items()[index].c_str(),
+                XtNleftMargin,
+                linux::x11::to_device(14),
                 nullptr);
             auto *callback = new linux::x11::xaw_combo_callback;
             callback->owner = owner;
@@ -302,6 +316,9 @@ namespace native
                 "X11: combo box requires a created parent.");
         auto *self = this;
         auto *binding = new linux::x11::xaw_combo_box;
+        binding->resize = [binding] {
+            fit_children(binding);
+        };
         binding->root = XtVaCreateWidget(
             "comboBox", linux::x11::layout_host_class(), parent,
             XtNhorizDistance, linux::x11::to_device(_bounds.p.x),
@@ -386,6 +403,12 @@ namespace native
                               XtNbitmap,
                               binding->arrow,
                               nullptr);
+            binding->selection_mark = linux::x11::create_device_bitmap(
+                linux::x11::cached_display,
+                RootWindowOfScreen(XtScreen(binding->root)),
+                selection_bits,
+                7,
+                7);
         }
         create_menu(self, binding);
         if (!binding->root || !binding->text || !binding->button ||
@@ -434,6 +457,10 @@ namespace native
                 linux::x11::cached_display)
                 XFreePixmap(linux::x11::cached_display,
                             binding->reverse_arrow);
+            if (binding->selection_mark != None &&
+                linux::x11::cached_display)
+                XFreePixmap(linux::x11::cached_display,
+                            binding->selection_mark);
             clear_callbacks(binding); delete binding;
         }
     }

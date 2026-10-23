@@ -395,8 +395,11 @@ namespace vision
         appearance->draw_button(native::rect(390, 286, 150,
                                              appearance->get_button_height()),
                                 "Theme primitive");
+        native::theme::state check_state;
+        check_state.selected = _editing_enabled.get_checked();
         appearance->draw_check(native::rect(390, 326, 160, 24),
-                               "Custom check", selected);
+                               "Custom check",
+                               check_state);
         appearance->draw_radio(native::rect(390, 356, 160, 24),
                                "Custom radio", selected);
         appearance->draw_list(

@@ -164,8 +164,15 @@ namespace linux::gemix
             next_form == vertical_resize) {
             auto form = resize_form(next_form == horizontal_resize);
             graf_mouse(USER_DEF, &form);
-        } else
+        } else {
+            // USER_DEF leaves the pinned AES system-form cache intact.
+            // A distinct system form makes ARROW restore its bitmap.
+            if (next_form == ARROW &&
+                (current_mouse_form == horizontal_resize ||
+                 current_mouse_form == vertical_resize))
+                graf_mouse(TEXT_CRSR, nullptr);
             graf_mouse(next_form, nullptr);
+        }
         current_mouse_form = next_form;
     }
 

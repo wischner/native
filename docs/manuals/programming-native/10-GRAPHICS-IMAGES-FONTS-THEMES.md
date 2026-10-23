@@ -318,3 +318,8 @@ same image operations; it does not expose a GPU device or replace native control
 The implementation companion is [Stock and portable fonts](../book-of-native/PATTERNS-FONTS.md),
 covering private byte ownership, registrations, shared layout/rasterization and
 native stock resources. Current discovery-layer adjustments are in ADJUST.md.
+
+When drawing a toolbar label or tinting a monochrome tool icon separately
+from its background, use `appearance->get_toolbar_text_color(state)`. The
+query matches `draw_toolbar_button()`; GTK button backgrounds require button
+foregrounds rather than the menu-selection text color.

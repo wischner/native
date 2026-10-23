@@ -24,6 +24,21 @@
 
 namespace
 {
+    // Joined picker editors use half a character on each horizontal
+    // side; vertical text alignment retains the ordinary editor inset.
+    int horizontal_padding(native::text_edit &owner) {
+        auto *state =
+            linux::gemix::text_edit_bindings.object_from_handle(&owner);
+        if (state && state->combo_owner)
+            if (const auto *actions = native::detail::peer_state<
+                    native::detail::combo_picker_actions>(
+                    *state->combo_owner);
+                actions && actions->text_margin)
+                return actions->text_margin;
+        return owner.get_border_sides() == native::border_sides::none
+                   ? 1
+                   : 3;
+    }
     constexpr WORD control_modifier = 0x0004;
     constexpr WORD shift_modifiers = 0x0003;
     constexpr WORD scan_a = 4;
@@ -81,8 +96,12 @@ namespace
         const int char_height = std::max<int>(
             1, linux::gemix::runtime.char_h);
         const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 3;
-        const std::size_t target_line = static_cast<std::size_t>(
-            std::max(0, y - bounds.p.y - padding) / char_height);
+        const std::size_t target_line =
+            owner->get_mode() == native::text_edit_mode::single_line
+                ? 0
+                : static_cast<std::size_t>(
+                      std::max(0, y - bounds.p.y - padding) /
+                      char_height);
         const std::string &text = owner->get_text();
         std::size_t begin = 0;
         for (std::size_t line = 0; line < target_line; ++line) {
@@ -95,8 +114,9 @@ namespace
         const std::size_t end = newline == std::string::npos
                                     ? text.size()
                                     : newline;
-        const int column = std::max(0, x - bounds.p.x - padding) /
-                           char_width;
+        const int column =
+            std::max(0, x - bounds.p.x - horizontal_padding(*owner)) /
+            char_width;
         std::size_t offset = begin;
         for (int index = 0; index < column && offset < end; ++index) {
             offset = native::detail::next_utf8(text, offset);
@@ -159,14 +179,25 @@ namespace
         native::theme::state frame_state;
         frame_state.selected = binding->focused;
         frame_state.disabled = owner->get_read_only();
-        native::detail::control_render_access::draw(
-            *owner, g, *painter, bounds, frame_state);
+        // The embedded entry shares its combo's outer enclosure.
+        if (binding->combo_owner)
+            g.set_ink(colors.content_bg)
+                .draw_rect(
+                    native::rect(bounds.x1(),
+                                 bounds.y1() + 1,
+                                 bounds.w(),
+                                 std::max(0, int(bounds.h()) - 2)),
+                    true);
+        else
+            native::detail::control_render_access::draw(
+                *owner, g, *painter, bounds, frame_state);
         const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 3;
-        if (bounds.d.w <= 2 * padding || bounds.d.h <= 2 * padding)
+        const int horizontal = horizontal_padding(*owner);
+        if (bounds.d.w <= 2 * horizontal || bounds.d.h <= 2 * padding)
             return;
-        const native::rect content(bounds.p.x + padding,
+        const native::rect content(bounds.p.x + horizontal,
                                    bounds.p.y + padding,
-                                   bounds.d.w - 2 * padding,
+                                   bounds.d.w - 2 * horizontal,
                                    bounds.d.h - 2 * padding);
         g.set_clip(g.get_clip().intersect(content));
         g.set_font(native::font_t::stock(native::font_role::control));

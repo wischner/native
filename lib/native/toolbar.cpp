@@ -287,23 +287,29 @@ namespace native
             const auto count = std::size_t(item.icon->w()) * item.icon->h();
             const bool mask = std::all_of(pixels, pixels + count,
                 [](rgba pixel) { return !pixel.a || (!pixel.r && !pixel.g && !pixel.b); });
-            if (mask && (state.disabled || state.hot || state.pressed || state.selected)) {
+            if (mask) {
                 img tinted(item.icon->w(), item.icon->h());
-                const rgba ink = state.disabled ? appearance.native_palette().menu_disabled_text
-                                               : appearance.native_palette().menu_hot_text;
+                const rgba ink =
+                    appearance.get_toolbar_text_color(state);
                 for (std::size_t index = 0; index < count; ++index)
                     tinted.pixels()[index] = rgba(ink.r, ink.g, ink.b, pixels[index].a);
                 graphics.draw_img(tinted, destination);
-            } else graphics.draw_img(*item.icon, destination);
+            } else
+                graphics.draw_img(*item.icon, destination);
         }
         if (!item.text.empty()) {
-            graphics.set_ink(state.disabled ? appearance.native_palette().menu_disabled_text
-                    : (state.hot || state.pressed || state.selected)
-                        ? appearance.native_palette().menu_hot_text
-                        : appearance.native_palette().menu_text)
-                .draw_text(item.text, rect(left + icon_width + gap, bounds.y1(),
-                    std::max(0, bounds.x2() - left - icon_width - gap - 2), bounds.h()),
-                    {text_align::start, text_valign::center, text_overflow::ellipsis, true});
+            graphics.set_ink(appearance.get_toolbar_text_color(state))
+                .draw_text(item.text,
+                           rect(left + icon_width + gap,
+                                bounds.y1(),
+                                std::max(0,
+                                         bounds.x2() - left -
+                                             icon_width - gap - 2),
+                                bounds.h()),
+                           {text_align::start,
+                            text_valign::center,
+                            text_overflow::ellipsis,
+                            true});
         }
     }
 }

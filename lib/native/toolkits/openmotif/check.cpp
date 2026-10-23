@@ -10,6 +10,8 @@
 #include <native.h>
 #include <native/check.h>
 #include "globals.h"
+#include "control_font.h"
+#include "../../property_grid_peer.h"
 namespace
 {
     Widget parent_of(native::check *c) {
@@ -52,30 +54,38 @@ namespace native
     void check::create_native() {
         XmString s =
             XmStringCreateLocalized(const_cast<char *>(_text.c_str()));
-        Widget w =
-            XtVaCreateWidget("check",
-                             xmToggleButtonWidgetClass,
-                             parent_of(this),
-                             XmNx,
-                             _bounds.p.x,
-                             XmNy,
-                             _bounds.p.y,
-                             XmNwidth,
-                             _bounds.d.w,
-                             XmNheight,
-                             _bounds.d.h,
-                             XmNlabelString,
-                             s,
-                             XmNrecomputeSize,
-                             False,
-                             XmNindicatorType,
-                             XmN_OF_MANY,
-                             XmNset,
-                             _checked ? True : False,
-                             nullptr);
+        Widget w = XtVaCreateWidget("check",
+                                    xmToggleButtonWidgetClass,
+                                    parent_of(this),
+                                    XmNx,
+                                    _bounds.p.x,
+                                    XmNy,
+                                    _bounds.p.y,
+                                    XmNwidth,
+                                    _bounds.d.w,
+                                    XmNheight,
+                                    _bounds.d.h,
+                                    XmNlabelString,
+                                    s,
+                                    XmNrecomputeSize,
+                                    False,
+                                    XmNalignment,
+                                    XmALIGNMENT_BEGINNING,
+                                    XmNindicatorType,
+                                    XmN_OF_MANY,
+                                    XmNset,
+                                    _checked ? True : False,
+                                    nullptr);
         XmStringFree(s);
         if (!w)
             throw std::runtime_error("Motif: Failed to create check.");
+        if (detail::property_grid_owner(*this)) {
+            linux::openmotif::apply_control_font(w);
+            XtVaSetValues(w,
+                          XmNforeground,
+                          BlackPixelOfScreen(XtScreen(w)),
+                          nullptr);
+        }
         auto *self = this;
         XtAddCallback(w, XmNvalueChangedCallback, changed, self);
         linux::openmotif::wnd_bindings.register_pair(w, self);

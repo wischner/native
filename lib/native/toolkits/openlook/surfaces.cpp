@@ -18,6 +18,9 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../../emulated_tree.h"
+#include <algorithm>
+#include <vector>
 
 namespace
 {
@@ -42,6 +45,45 @@ namespace
         }
         window = dynamic_cast<native::app_wnd *>(root);
         return position;
+    }
+    // XView keeps these panels as Frame siblings. Restore semantic
+    // parent-before-child stacking when a page maps after its pickers.
+    void raise_descendants(native::panel &owner, Panel host) {
+        auto *root = dynamic_cast<native::app_wnd *>(
+            native::detail::root_of(&owner));
+        auto *state = linux::openlook::window_state(root);
+        if (!state)
+            return;
+        std::vector<std::pair<int, Window>> windows;
+        windows.emplace_back(0, Window(xv_get(host, XV_XID)));
+        for (int index = 1;; ++index) {
+            auto panel =
+                xv_get(state->frame, FRAME_NTH_SUBWINDOW, index);
+            if (!panel)
+                break;
+            auto *child =
+                linux::openlook::wnd_bindings.object_from_handle(panel);
+            if (!child || !child->get_created() ||
+                !child->get_visible())
+                continue;
+            int depth = 1;
+            auto *parent = child->get_parent();
+            while (parent && parent != &owner &&
+                   parent->get_visible()) {
+                ++depth;
+                parent = parent->get_parent();
+            }
+            if (parent == &owner)
+                windows.emplace_back(depth,
+                                     Window(xv_get(panel, XV_XID)));
+        }
+        std::stable_sort(windows.begin(),
+                         windows.end(),
+                         [](const auto &a, const auto &b) {
+                             return a.first < b.first;
+                         });
+        for (const auto &[depth, window] : windows)
+            XRaiseWindow(linux::openlook::cached_display, window);
     }
 } // namespace
 
@@ -96,6 +138,7 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: panel is not created.");
         xv_set(host, XV_SHOW, TRUE, nullptr);
+        raise_descendants(*this, host);
     }
 
     void panel::destroy_native() {

@@ -126,6 +126,20 @@ namespace linux::openmotif
     extern XtAppContext app_instance;
     extern bool exit_requested;
 
+    // Native handles for the one pointer-grabbed calendar dispatcher.
+    // Existing widget bindings recover its field owner during
+    // callbacks.
+    struct picker_popup_dispatch
+    {
+        Widget field = nullptr;
+        Widget shell = nullptr;
+        XtEventDispatchProc previous = nullptr;
+    };
+    extern picker_popup_dispatch picker_popup;
+    // Attach outside-click dismissal to an opened calendar, or toggle
+    // off.
+    void track_picker_popup(native::combo_box &field);
+
     extern native::bindings<Widget, native::wnd *> wnd_bindings;
     extern native::bindings<Widget, native::wnd *> shell_bindings;
     extern native::bindings<Widget, native::wnd *> main_wnd_bindings;

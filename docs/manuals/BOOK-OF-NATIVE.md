@@ -70,7 +70,7 @@ runtime evidence are recorded separately in the feature matrix.
     reports 20/22 due to Fontconfig/Pango exit allocations
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
     and serialized libgem/gemd builds (20/21 and 21/22; existing SDK menu
-    restoration failure). Positioned AES forms and packet-driven input pass;
+    restoration failure). SDK extended selectors, standard alerts and packet-driven input are used;
     direct-backend regressions also
     cover nested tab/split/canvas framebuffer composition and secondary
     canvas button identity. On 2026-10-21, full Rasta desktop colors and

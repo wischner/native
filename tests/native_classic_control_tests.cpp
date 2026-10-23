@@ -22,11 +22,13 @@
 #include <functional>
 #if defined(NATIVE_TEST_WMAKER)
 #include "../lib/native/toolkits/wmaker/globals.h"
+void check_wmaker_controls(native::app_wnd &root);
 #elif defined(NATIVE_TEST_MOTIF)
 #include "../lib/native/toolkits/openmotif/globals.h"
 #include <Xm/TextF.h>
 #include <Xm/Form.h>
 #include <Xm/ArrowB.h>
+#include <Xm/ComboBox.h>
 #else
 #include "../lib/native/toolkits/gemix/globals.h"
 #endif
@@ -355,7 +357,8 @@ namespace
             XWindowAttributes bounds{};
             XGetWindowAttributes(display(), XtWindow(button), &bounds);
             expect(bounds.map_state == IsViewable && bounds.width > 0 &&
-                       bounds.height > 0,
+                       bounds.height > 0 &&
+                       bounds.width == bounds.height,
                    "both time buttons stay visible after raising and "
                    "resizing the field");
         }
@@ -566,10 +569,10 @@ namespace
         XRaiseWindow(display(), drawable(date_field));
         pump();
         expect(
-            XmIsForm(linux::openmotif::wnd_bindings.handle_from_object(
-                &date_field)),
-            "Motif date trigger cannot open an empty native combo "
-            "list");
+            XmIsComboBox(
+                linux::openmotif::wnd_bindings.handle_from_object(
+                    &date_field)),
+            "Motif date trigger retains the genuine combo enclosure");
 #endif
         auto *date_actions =
             detail::peer_state<detail::combo_picker_actions>(
@@ -583,6 +586,32 @@ namespace
         date_actions->commit();
         expect(dates.get_date() == date{2026, 12, 26},
                "dot-date entry commits a valid date");
+#if defined(NATIVE_TEST_MOTIF)
+        Widget date_text = nullptr;
+        XtVaGetValues(linux::openmotif::wnd_bindings.handle_from_object(
+                          &date_field),
+                      XmNtextField,
+                      &date_text,
+                      nullptr);
+        XmProcessTraversal(date_text, XmTRAVERSE_CURRENT);
+        XmTextFieldSetSelection(date_text, 0, 10, CurrentTime);
+        pump();
+        for (auto symbol : {XK_2,
+                            XK_6,
+                            XK_period,
+                            XK_1,
+                            XK_2,
+                            XK_period,
+                            XK_2,
+                            XK_0,
+                            XK_2,
+                            XK_6})
+            key(symbol);
+        key(XK_Return);
+        expect(dates.get_date() == date{2026, 12, 26} &&
+                   date_field.get_text() == "26.12.2026",
+               "native date typing and Enter preserve the field value");
+#endif
 #if defined(NATIVE_TEST_GEMIX)
         date_actions->open();
 #else
@@ -607,6 +636,16 @@ namespace
         pump();
         expect(!calendar->get_created(),
                "second date-arrow click closes its calendar");
+#if defined(NATIVE_TEST_MOTIF)
+        click(date_field,
+              date_field.get_dimensions().w - 10,
+              date_field.get_dimensions().h / 2);
+        expect(calendar->get_created(),
+               "calendar reopens after a typed date");
+        click(window, 740, 180);
+        expect(!calendar->get_created(),
+               "clicking outside a Motif calendar dismisses it");
+#endif
         date_actions->open();
         pump();
         expect(calendar->get_created(),
@@ -680,6 +719,9 @@ int program(int, char **) {
         native::app::post([&] {
             try {
                 checks(root);
+#if defined(NATIVE_TEST_WMAKER)
+                check_wmaker_controls(root);
+#endif
                 std::cout << "Classic control checks passed\n";
             } catch (const std::exception &error) {
                 std::cerr << error.what() << '\n';

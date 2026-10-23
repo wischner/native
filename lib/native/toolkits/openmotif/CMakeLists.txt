@@ -33,6 +33,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/message_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/picker_popup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp

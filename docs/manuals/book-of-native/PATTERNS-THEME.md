@@ -25,6 +25,12 @@ native checked/selected, hover, press, insensitive, focus-visible and backdrop
 CSS. Labels and indicators therefore retain the widget's native fonts, CSS
 padding, gradients, rounded borders, icons and shadows.
 
+Toolbar items draw their labels and images separately. Their empty bezels
+use GTK's native background/frame renderer at the supplied dimensions,
+including narrow vertical strips, instead of clipping a button widget whose
+minimum width is larger. Calls that include a label retain full widget
+rendering.
+
 A private `GtkWindow` subclass roots the probes. Its widget map/unmap methods
 use the base `GtkWidget` implementation, so children can be snapshotted while
 the native desktop surface is never mapped. No visible probe window or popup
@@ -377,7 +383,11 @@ colors. Momentary tools return to their normal appearance after release. Immutab
 configured icon box (16x16 by default; 24x24 and 32x32 are supported) and the
 bar grows to accommodate them. Icon and text share a centered content group,
 with image alpha preserved over the menu paper. Black monochrome icons adopt
-the selected or disabled menu foreground; colored artwork retains its colors.
+the foreground from `get_toolbar_text_color(state)` in every state;
+colored artwork retains its colors. Separately painted labels use that same
+query. Its default follows menu colors; GTK resolves normal, hover, pressed,
+selected and disabled states from native button CSS, keeping text and button
+paper in the same control family.
 
 `draw_toolbar_button(bounds, text, state)` paints a menu-styled command without
 a submenu arrow. Its default delegates to menu-title painting; OPEN LOOK

@@ -130,9 +130,13 @@ namespace
         if (auto *actions = native::detail::peer_state<
                 native::detail::combo_picker_actions>(owner);
             actions && actions->step) {
+            const int extent = height / 2;
+            const int glyph_height =
+                std::max(0, std::min({4, (width - 3) / 2, extent - 4}));
             for (int part = 0; part < 2; ++part) {
-                const int top = part * height / 2;
-                const int extent = (part + 1) * height / 2 - top;
+                // Leave an odd spare pixel between equal-height
+                // buttons.
+                const int top = part ? height - extent : 0;
                 W_DrawRelief(screen,
                              target,
                              0,
@@ -143,32 +147,33 @@ namespace
                                      state.arrow_part == part
                                  ? WRSunken
                                  : WRRaised);
-                const int center = top + extent / 2;
-                XPoint points[] = {{short(width / 2 - 3),
-                                    short(center + (part ? -1 : 1))},
-                                   {short(width / 2 + 3),
-                                    short(center + (part ? -1 : 1))},
-                                   {short(width / 2),
-                                    short(center + (part ? 2 : -2))}};
-                XFillPolygon(linux::wmaker::display,
-                             target,
-                             WMColorGC(screen->black),
-                             points,
-                             3,
-                             Convex,
-                             CoordModeOrigin);
+                const int inset = (extent - glyph_height) / 2;
+                const int glyph_top =
+                    part ? height - inset - glyph_height : inset;
+                // XFillPolygon's edge rules make inverted triangles
+                // unequal. Mirror identical pixel rows instead.
+                for (int row = 0; row < glyph_height; ++row) {
+                    const int span =
+                        2 * (part ? glyph_height - row : row + 1) - 1;
+                    XFillRectangle(linux::wmaker::display,
+                                   target,
+                                   WMColorGC(screen->black),
+                                   (width - span) / 2,
+                                   glyph_top + row,
+                                   span,
+                                   1);
+                }
             }
             return;
         }
         const int center_x = width / 2;
         const int center_y = height / 2;
-        XPoint arrow[] = {
-            {static_cast<short>(center_x - 3),
-             static_cast<short>(center_y - 2)},
-            {static_cast<short>(center_x + 3),
-             static_cast<short>(center_y - 2)},
-            {static_cast<short>(center_x),
-             static_cast<short>(center_y + 2)}};
+        XPoint arrow[] = {{static_cast<short>(center_x - 3),
+                           static_cast<short>(center_y - 2)},
+                          {static_cast<short>(center_x + 3),
+                           static_cast<short>(center_y - 2)},
+                          {static_cast<short>(center_x),
+                           static_cast<short>(center_y + 2)}};
         XFillPolygon(linux::wmaker::display,
                      target,
                      WMColorGC(screen->black),
@@ -463,6 +468,26 @@ namespace native
     }
 
     void combo_box::create_native() {
+        if (auto *actions =
+                detail::peer_state<detail::combo_picker_actions>(*this);
+            actions && actions->step) {
+            actions->compact_time = true;
+            actions->text_margin =
+                std::max(3,
+                         int(font_t::stock(font_role::control)
+                                 .measure_text("0")
+                                 .width) /
+                             2);
+            actions->indicator_width =
+                theme::create(get_parent()->get_gpx())
+                    ->get_text_edit_height();
+        }
+        if (auto *actions =
+                detail::peer_state<detail::combo_picker_actions>(*this);
+            actions && actions->open && !actions->read_only) {
+            actions->compact_date = true;
+            actions->framed_calendar = true;
+        }
         auto *self = this;
         auto *state = new linux::wmaker::native_combo_box;
         state->frame = WMCreateFrame(linux::wmaker::parent_widget(self));
@@ -529,6 +554,16 @@ namespace native
                 WMRaiseWidget(state->arrow);
         }
         WMMapWidget(state->frame);
+        if (state->field) {
+            const auto *actions =
+                detail::peer_state<detail::combo_picker_actions>(*this);
+            auto *screen = reinterpret_cast<W_Screen *>(
+                WMWidgetScreen(state->field));
+            W_SetViewCursor(WMWidgetView(state->field),
+                            actions && actions->read_only
+                                ? screen->defaultCursor
+                                : screen->textCursor);
+        }
     }
 
     void combo_box::destroy_native() {

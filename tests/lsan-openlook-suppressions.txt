@@ -2,3 +2,8 @@
 # PANEL_TEXT and xv_destroy(frame), without Native linkage: XView retains
 # one 16-byte drop-interest node. Native-owned menu items must still be freed.
 leak:win_add_drop_interest
+# Scenario 3 adds PANEL_MULTILINE_TEXT with initial text and destroys its
+# Frame, without Native linkage. XView retains a 1025-byte TextSW input
+# record and a 35-byte extras-menu filename in this SDK.
+leak:textsw_string_min_free
+leak:textsw_get_extras_filename

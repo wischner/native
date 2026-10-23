@@ -12,6 +12,11 @@
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
 #include <xview/svrimage.h>
+#include <xview/font.h>
+#include <xview/textsw.h>
+#define delete xview_delete_handler
+#include <xview_private/panel_impl.h>
+#undef delete
 #include <dlfcn.h>
 #include <chrono>
 #include <thread>
@@ -196,6 +201,26 @@ void check_openlook_controls(native::app_wnd &owner) {
                       native::rect(370, 70, 240, 24));
     time_picker times(time_of_day{9, 30, 0},
                       native::rect(370, 120, 240, 24));
+    panel picker_host(360, 60, 360, 120);
+    text_edit single("Font sample 0123",
+                     text_edit_mode::single_line,
+                     10,
+                     390,
+                     330,
+                     24);
+    text_edit multi("Font sample 0123",
+                    text_edit_mode::multi_line,
+                    10,
+                    430,
+                    330,
+                    70);
+    dates.set_bounds(native::rect(10, 10, 240, 24));
+    times.set_bounds(native::rect(10, 60, 240, 24));
+    picker_host.on_wnd_create.connect([&] {
+        attach(dates, picker_host);
+        attach(times, picker_host);
+        return true;
+    });
     panel page;
     settings_sidebar sidebar(370, 200, 390, 390);
     sidebar.set_sidebar_width(200).set_search_visible(true);
@@ -208,10 +233,33 @@ void check_openlook_controls(native::app_wnd &owner) {
     dates.set_disabled_dates({date{2026, 12, 25}});
     window.create();
     window.show();
-    for (wnd *child : std::array<wnd *, 6>{
-             &table, &code, &combo, &dates, &times, &sidebar})
+    for (wnd *child : std::array<wnd *, 7>{&table,
+                                           &code,
+                                           &combo,
+                                           &picker_host,
+                                           &sidebar,
+                                           &single,
+                                           &multi})
         attach(*child, window);
     pump();
+    const auto single_item =
+        ol::text_edit_bindings.object_from_handle(&single)->item;
+    const auto multi_item =
+        ol::text_edit_bindings.object_from_handle(&multi)->item;
+    const auto single_font = xv_get(single_item, PANEL_VALUE_FONT);
+    const auto multi_view =
+        xv_get(multi_item, PANEL_ITEM_NTH_WINDOW, 0);
+    expect(multi_view, "native multiline editor has a text view");
+    const auto multi_font =
+        xv_get(xv_get(multi_view, WIN_PARENT), WIN_FONT);
+    const auto *single_metrics =
+        reinterpret_cast<XFontStruct *>(xv_get(single_font, FONT_INFO));
+    const auto *multi_metrics =
+        reinterpret_cast<XFontStruct *>(xv_get(multi_font, FONT_INFO));
+    expect(
+        single_metrics && multi_metrics &&
+            single_metrics->fid == multi_metrics->fid,
+        "single and multiline editors use the same actual native font");
     input server;
     auto *table_peer =
         ol::table_view_bindings.object_from_handle(&table);
@@ -298,6 +346,60 @@ void check_openlook_controls(native::app_wnd &owner) {
     edit(text(times), "12:45");
     expect(times.get_time() == time_of_day{12, 45, 0},
            "OPEN LOOK joined colon time commits");
+    auto *time_field = field(times);
+    const auto time_text = text(times);
+    auto *time_native = TEXT_PRIVATE(time_text);
+    auto time_panel = xv_get(time_text, XV_OWNER);
+    Panel_item hour_up = XV_NULL, minute_down = XV_NULL;
+    for (auto item = xv_get(time_panel, PANEL_FIRST_ITEM); item;
+         item = xv_get(item, PANEL_NEXT_ITEM)) {
+        if (!xv_get(item, XV_IS_SUBTYPE_OF, PANEL_BUTTON))
+            continue;
+        if (!hour_up)
+            hour_up = item;
+        else
+            minute_down = item;
+    }
+    expect(hour_up && minute_down,
+           "native time field has both step buttons");
+    time_native->caret_position = 0;
+    time_native->caret_offset = 0;
+    time_native->delete_pending = False;
+    server.click(hour_up);
+    server.click(hour_up);
+    expect(times.get_time() == time_of_day{14, 45, 0} &&
+               time_native->caret_position == 0,
+           "repeated hour_up clicks retain and increment the selected "
+           "hour");
+    time_native->caret_position = 3;
+    server.click(minute_down);
+    expect(times.get_time() == time_of_day{14, 44, 0} &&
+               time_native->caret_position == 3,
+           ("time minute stepping preserves its native caret: " +
+            times.get_time().to_string(true) + " caret " +
+            std::to_string(time_native->caret_position))
+               .c_str());
+    for (auto *picker : {field(dates), time_field}) {
+        const auto *peer =
+            ol::combo_box_bindings.object_from_handle(picker);
+        const auto native_font = xv_get(peer->text, PANEL_VALUE_FONT);
+        auto *metrics = reinterpret_cast<XFontStruct *>(
+            xv_get(native_font, FONT_INFO));
+        const int padding = 2 * XTextWidth(metrics, "0", 1);
+        const auto *area =
+            reinterpret_cast<Rect *>(xv_get(peer->text, XV_RECT));
+        expect(
+            area->r_width <= XTextWidth(metrics,
+                                        picker->get_text().c_str(),
+                                        picker->get_text().size()) +
+                                 padding + 2,
+            "native picker text area fits text and character margins");
+        expect(area->r_left == padding / 2,
+               "native picker layout reserves a left character margin");
+        expect(picker->get_dimensions().w < 180,
+               "Open Look pickers no longer fill the page allocation");
+    }
+    times.set_time({12, 45, 0});
     auto *date_field = field(dates);
     auto *date_peer =
         ol::combo_box_bindings.object_from_handle(date_field);
@@ -428,7 +530,33 @@ void check_openlook_controls(native::app_wnd &owner) {
     server.key(XK_BackSpace);
     expect(sidebar.get_search_text().empty(),
            "OPEN LOOK native search deletion restores navigation");
-    const auto navigation_list = xv_get(search, PANEL_NEXT_ITEM);
+    Panel_item navigation_list = XV_NULL;
+    for (auto item = xv_get(navigation, PANEL_FIRST_ITEM); item;
+         item = xv_get(item, PANEL_NEXT_ITEM))
+        if (xv_get(item, XV_IS_SUBTYPE_OF, PANEL_LIST)) {
+            navigation_list = item;
+            break;
+        }
+    expect(navigation_list,
+           "settings contains a native list after search filtering");
+    const auto *search_bounds =
+        reinterpret_cast<Rect *>(xv_get(search, XV_RECT));
+    const auto *list_bounds =
+        reinterpret_cast<Rect *>(xv_get(navigation_list, XV_RECT));
+    expect(search_bounds->r_top == 6 && list_bounds->r_left == 6 &&
+               list_bounds->r_top - search_bounds->r_top -
+                       search_bounds->r_height ==
+                   6 &&
+               sidebar.get_dimensions().h - list_bounds->r_top -
+                       list_bounds->r_height ==
+                   6,
+           ("native search/list margins: search y/h " +
+            std::to_string(search_bounds->r_top) + "/" +
+            std::to_string(search_bounds->r_height) + " list x/y/h " +
+            std::to_string(list_bounds->r_left) + "/" +
+            std::to_string(list_bounds->r_top) + "/" +
+            std::to_string(list_bounds->r_height))
+               .c_str());
     const auto navigation_scrollbar =
         xv_get(navigation_list, PANEL_LIST_SCROLLBAR);
     const int list_width = xv_get(navigation_list, PANEL_LIST_WIDTH);
@@ -437,6 +565,15 @@ void check_openlook_controls(native::app_wnd &owner) {
                sidebar.get_sidebar_width() - 12,
            "OPEN LOOK navigation reserves its native scrollbar within "
            "both margins");
+    sidebar.set_dimensions({390, 427});
+    pump();
+    const auto *larger_list =
+        reinterpret_cast<Rect *>(xv_get(navigation_list, XV_RECT));
+    expect(427 - larger_list->r_top - larger_list->r_height == 6,
+           "native list keeps its bottom margin after a non-row-sized "
+           "resize");
+    sidebar.set_dimensions({390, 390});
+    pump();
     const auto page_host = ol::wnd_bindings.handle_from_object(&page);
     expect(int(xv_get(page_host, XV_X)) ==
                    sidebar.get_position().x +
@@ -448,6 +585,16 @@ void check_openlook_controls(native::app_wnd &owner) {
            "coordinates");
     snapshot(ol::drawable(&window),
              std::getenv("NATIVE_OPENLOOK_CONTROL_SNAPSHOT"));
+    bool closed_from_commit = false;
+    times.on_change.connect([&](time_of_day value) {
+        closed_from_commit = value == time_of_day{7, 15, 0};
+        window.destroy();
+        return true;
+    });
+    field(times)->set_text("07:15");
+    server.click(up);
+    expect(closed_from_commit && !window.get_created(),
+           "a typed-time commit may destroy its window before stepping continues");
     window.destroy();
     pump();
 }

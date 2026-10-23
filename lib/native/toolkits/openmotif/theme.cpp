@@ -23,7 +23,9 @@
 
 #include "../emulated_theme.h"
 #include "globals.h"
+#include "../../property_grid_peer.h"
 #include "theme_support.h"
+#include "control_font.h"
 #include "../../platforms/linux/x_image.h"
 
 namespace
@@ -61,6 +63,8 @@ namespace
         Pixel top = 0;
         Pixel bottom = 0;
         Pixel select = 0;
+        Pixel unselect = 0;
+        Boolean fill = True;
         Dimension size = 16;
         Dimension shadow = 1;
         XtEnum indicator = XmINDICATOR_FILL;
@@ -172,6 +176,9 @@ namespace
                 result.selection_inactive_bg = result.selection_bg;
                 result.selection_inactive_text = result.selection_text;
             }
+            if (target.owner &&
+                native::detail::property_grid_owner(*target.owner))
+                result.content_text = native::rgba(0, 0, 0, 255);
             return result;
         }
 
@@ -435,6 +442,32 @@ namespace
                           const state &s) override {
             if (native_infolib_tree())
                 return *this;
+            const auto target = linux::openmotif::theme_target_from(_g);
+            if (dynamic_cast<native::table_view *>(target.owner)) {
+                if (!s.focused || !target.cache ||
+                    !target.cache->backbuffer || r.w() < 6 || r.h() < 6)
+                    return *this;
+                Pixel color = 0;
+                Dimension thickness = 1;
+                XtVaGetValues(list_probe(target.widget),
+                              XmNhighlightColor,
+                              &color,
+                              XmNhighlightThickness,
+                              &thickness,
+                              nullptr);
+                GC gc = linux::openmotif::theme_gc(
+                    target, color, _g.get_clip());
+                XmeDrawHighlight(linux::openmotif::cached_display,
+                                 target.cache->backbuffer,
+                                 gc,
+                                 r.x1() + 2,
+                                 r.y1() + 2,
+                                 r.w() - 4,
+                                 r.h() - 4,
+                                 std::max(1, int(thickness)));
+                XFreeGC(linux::openmotif::cached_display, gc);
+                return *this;
+            }
             return emulated_theme::draw_focus(r, s);
         }
 
@@ -598,6 +631,10 @@ namespace
                           &target.bottom,
                           XmNselectColor,
                           &target.select,
+                          XmNunselectColor,
+                          &target.unselect,
+                          XmNfillOnSelect,
+                          &target.fill,
                           XmNindicatorSize,
                           &target.size,
                           XmNdetailShadowThickness,
@@ -605,12 +642,22 @@ namespace
                           XmNindicatorOn,
                           &target.indicator,
                           nullptr);
-            if (radio) {
+            Boolean modern = False;
+            XtVaGetValues(XmGetXmDisplay(XtDisplay(probe)),
+                          XmNenableToggleVisual,
+                          &modern,
+                          nullptr);
+            if (!radio) {
+                // Match ToggleB.c's NormalizeIndOn, including CDE's
+                // classic box and modern check-glyph preferences.
+                if (target.indicator == XmINDICATOR_BOX)
+                    target.indicator = XmINDICATOR_3D_BOX;
+                else if (target.indicator == XmINDICATOR_FILL)
+                    target.indicator = modern ? XmINDICATOR_CHECK_BOX
+                                              : XmINDICATOR_3D_BOX;
+            } else {
                 unsigned char type = XmONE_OF_MANY;
-                Boolean modern = False;
                 XtVaGetValues(probe, XmNindicatorType, &type, nullptr);
-                XtVaGetValues(XmGetXmDisplay(XtDisplay(probe)),
-                              XmNenableToggleVisual, &modern, nullptr);
                 target.round = type == XmONE_OF_MANY_ROUND ||
                     (type == XmONE_OF_MANY && modern);
             }
@@ -660,8 +707,10 @@ namespace
             const Pixel top = s.selected ? target.bottom : target.top;
             const Pixel bottom =
                 s.selected ? target.top : target.bottom;
-            const Pixel fill = s.selected ? target.select
-                                          : target.background;
+            const Pixel fill =
+                target.fill
+                    ? (s.selected ? target.select : target.unselect)
+                    : target.background;
             const unsigned int shadow = std::max(
                 1U, static_cast<unsigned int>(target.shadow));
             GC top_gc = linux::openmotif::theme_gc(

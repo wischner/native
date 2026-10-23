@@ -21,6 +21,49 @@ namespace
             owner.on_native_selection(static_cast<int>(
                 gtk_drop_down_get_selected(GTK_DROP_DOWN(object))));
     }
+    // GTK 4.14 initially focuses the first popup row even when the
+    // combo's active index is correct. Focus the corresponding native
+    // cell instead.
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    GtkWidget *combo_row(GtkWidget *widget, int index) {
+        if (GTK_IS_CELL_VIEW(widget)) {
+            auto *path =
+                gtk_cell_view_get_displayed_row(GTK_CELL_VIEW(widget));
+            const bool match =
+                path && gtk_tree_path_get_depth(path) == 1 &&
+                gtk_tree_path_get_indices(path)[0] == index;
+            if (path)
+                gtk_tree_path_free(path);
+            if (match)
+                return gtk_widget_get_parent(widget);
+        }
+        for (auto *child = gtk_widget_get_first_child(widget); child;
+             child = gtk_widget_get_next_sibling(child))
+            if (auto *row = combo_row(child, index))
+                return row;
+        return nullptr;
+    }
+    void follow_combo_selection(GtkWidget *widget,
+                                native::combo_box &owner) {
+        if (GTK_IS_POPOVER(widget)) {
+            g_signal_connect_after(
+                widget,
+                "map",
+                G_CALLBACK(+[](GtkWidget *popup, gpointer data) {
+                    auto &owner =
+                        *static_cast<native::combo_box *>(data);
+                    if (auto *row = combo_row(
+                            popup, owner.get_selected_index()))
+                        gtk_widget_grab_focus(row);
+                }),
+                &owner);
+            return;
+        }
+        for (auto *child = gtk_widget_get_first_child(widget); child;
+             child = gtk_widget_get_next_sibling(child))
+            follow_combo_selection(child, owner);
+    }
+    G_GNUC_END_IGNORE_DEPRECATIONS
 } // namespace
 namespace native
 {
@@ -233,6 +276,7 @@ namespace native
             // GTK 4.14 retains this native editable combo. GtkDropDown
             // does not provide an editable field with a shared popup.
             peer.editor = gtk_combo_box_text_new_with_entry();
+            follow_combo_selection(peer.editor, *this);
             peer.drawing = gtk_combo_box_get_child(GTK_COMBO_BOX(peer.editor));
             g_signal_connect(peer.editor, "changed", G_CALLBACK(+[](GtkComboBox *widget, gpointer data) {
                 auto &owner = *static_cast<combo_box *>(data);

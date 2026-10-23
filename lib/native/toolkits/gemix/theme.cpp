@@ -40,6 +40,8 @@ namespace
             m.tab_height = m.header_height;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
             m.tree_indent_width = 9;
+            m.tree_horizontal_padding = 3;
+            m.tree_item_gap = 2;
             m.icon_view_padding_x = std::max(2, character_width);
             m.icon_view_padding_y = 4;
             return m;

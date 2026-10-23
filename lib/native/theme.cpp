@@ -398,6 +398,16 @@ namespace native
         return draw_menu_title(bounds, text, element_state);
     }
 
+    rgba
+    theme::get_toolbar_text_color(const state &element_state) const {
+        const auto colors = native_palette();
+        return element_state.disabled ? colors.menu_disabled_text
+               : (element_state.hot || element_state.pressed ||
+                  element_state.selected)
+                   ? colors.menu_hot_text
+                   : colors.menu_text;
+    }
+
     theme &theme::draw_menu_title(const rect &bounds,
                                   const std::string &text) {
         return draw_menu_title(bounds, text, state{});

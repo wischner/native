@@ -18,6 +18,7 @@
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Text.h>
 #include <X11/Xaw/TextSrc.h>
+#include <X11/Xaw/TextSink.h>
 #include <X11/Xaw/TextP.h>
 #include <X11/keysym.h>
 
@@ -31,17 +32,40 @@ namespace
     // property. Resolve both margins from the actual text-sink font.
     void center_single_line(Widget widget, native::text_edit *owner) {
         if (!owner || owner->get_mode() != native::text_edit_mode::single_line) return;
-        XFontStruct *font = nullptr;
-        XtVaGetValues(XawTextGetSink(widget), XtNfont, &font, nullptr);
-        if (!font) return;
-        Dimension height = 0;
-        XtVaGetValues(widget, XtNheight, &height, nullptr);
-        const int extra = std::max(0, int(height) - font->ascent - font->descent);
+        Dimension height = 0, border = 0;
+        XtVaGetValues(widget,
+                      XtNheight,
+                      &height,
+                      XtNborderWidth,
+                      &border,
+                      nullptr);
+        // Initial child management can run before the parent's final
+        // layout. Its portable bounds include the border; use the final
+        // interior even while Xt still reports the initial larger size.
+        const int interior = std::min(
+            int(height),
+            std::max(1,
+                     linux::x11::to_device(owner->get_dimensions().h) -
+                         2 * int(border)));
+        const int line =
+            XawTextSinkMaxHeight(XawTextGetSink(widget), 1);
+        const int extra = std::max(0, interior - line);
+        auto *text = reinterpret_cast<TextWidget>(widget);
+        const int margin = extra / 2;
+        if (text->text.margin.top == margin &&
+            text->text.margin.bottom == margin &&
+            text->text.r_margin.top == margin &&
+            text->text.r_margin.bottom == margin)
+            return;
         // Xaw's SetValues does not copy topMargin to the effective text
         // margin; keep it in step as the combo adapter does.
-        reinterpret_cast<TextWidget>(widget)->text.margin.top = extra / 2;
-        XtVaSetValues(widget, XtNtopMargin, extra / 2,
-            XtNbottomMargin, extra / 2, nullptr);
+        text->text.margin.top = margin;
+        XtVaSetValues(widget,
+                      XtNtopMargin,
+                      margin,
+                      XtNbottomMargin,
+                      margin,
+                      nullptr);
         if (XtIsRealized(widget)) XawTextDisplay(widget);
     }
     Widget parent_widget(native::text_edit *editor) {
@@ -305,6 +329,11 @@ namespace native
             throw std::runtime_error(
                 "X11/Athena: text_edit is not created.");
         XtManageChild(widget);
+        // Management applies the portable outer bounds, subtracting the
+        // native border. Center against that final interior, not the
+        // larger pre-management height (which can leave zero text
+        // lines).
+        center_single_line(widget, this);
     }
 
     void text_edit::destroy_native() {

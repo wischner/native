@@ -50,12 +50,8 @@ namespace native
                 linux::gemix::combo_box_bindings.object_from_handle(
                     combo);
             if (state && state->editor)
-                state->editor->set_bounds(rect(
-                    2,
-                    0,
-                    std::max(1,
-                             int(_bounds.w()) - int(_bounds.h()) - 2),
-                    _bounds.h()));
+                state->editor->set_bounds(
+                    linux::gemix::combo_editor_bounds(*combo));
         }
         if (_parent)
             _parent->invalidate();
@@ -68,12 +64,8 @@ namespace native
                 linux::gemix::combo_box_bindings.object_from_handle(
                     combo);
             if (state && state->editor)
-                state->editor->set_bounds(rect(
-                    2,
-                    0,
-                    std::max(1,
-                             int(_bounds.w()) - int(_bounds.h()) - 2),
-                    _bounds.h()));
+                state->editor->set_bounds(
+                    linux::gemix::combo_editor_bounds(*combo));
         }
         if (_parent)
             _parent->invalidate();
@@ -86,12 +78,8 @@ namespace native
                 linux::gemix::combo_box_bindings.object_from_handle(
                     combo);
             if (state && state->editor)
-                state->editor->set_bounds(rect(
-                    2,
-                    0,
-                    std::max(1,
-                             int(_bounds.w()) - int(_bounds.h()) - 2),
-                    _bounds.h()));
+                state->editor->set_bounds(
+                    linux::gemix::combo_editor_bounds(*combo));
         }
         if (_parent)
             _parent->invalidate();

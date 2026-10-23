@@ -106,6 +106,15 @@ namespace linux::wayland
         _metrics = result;
         return result;
     }
+    native::rgba
+    gtk_theme::get_toolbar_text_color(const state &value) const {
+        const auto colors = native_palette();
+        return value.disabled ? colors.button_disabled_text
+               : (value.pressed || value.selected)
+                   ? colors.button_pressed_text
+               : value.hot ? colors.button_hot_text
+                           : colors.button_text;
+    }
     native::theme::palette gtk_theme::native_palette() const {
         if (_palette) return *_palette;
         using native::rgba;

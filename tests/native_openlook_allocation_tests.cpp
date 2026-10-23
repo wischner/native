@@ -1,6 +1,6 @@
 //
 // Reproduces SDK-only allocation behavior without linking Native.
-// Controls isolate text selection, notebook and drop-interest teardown.
+// Controls isolate native fields, menus and TextSW teardown.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -17,6 +17,14 @@ int main(int argc, char **argv) {
     Panel panel = static_cast<Panel>(xv_create(frame, PANEL, nullptr));
     if (scenario == 1)
         xv_create(panel, PANEL_TEXT, PANEL_VALUE, "text", nullptr);
+    if (scenario == 3)
+        xv_create(panel,
+                  PANEL_MULTILINE_TEXT,
+                  PANEL_VALUE,
+                  "multiline text",
+                  PANEL_VALUE_FONT,
+                  xv_get(panel, WIN_FONT),
+                  nullptr);
     if (scenario == 2) {
         Menu menu =
             static_cast<Menu>(xv_create(XV_NULL, MENU_COMMAND_MENU, nullptr));

@@ -1,5 +1,5 @@
 //
-// Adapts the positioned AES chooser to directory selection.
+// Uses the GEM SDK directory selector.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

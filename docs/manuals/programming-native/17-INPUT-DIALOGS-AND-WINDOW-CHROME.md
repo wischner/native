@@ -184,6 +184,11 @@ On SDL2, clicking either part of an editable combo opens it while preserving
 keyboard editing. Moving through the open popup highlights the row under the
 pointer without committing it until clicked.
 
+On X11/Athena, the native popup marks the current exact text match with a
+checkmark. Typing `50 mm` into a list containing that item and pressing Enter
+updates the mark when the popup opens; arbitrary unmatched text leaves no
+item marked. Hovering another row does not commit it until activation.
+
 ## File icons and special directories
 
 Filesystem-facing APIs use `std::filesystem::path`. Refresh the system

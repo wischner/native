@@ -138,7 +138,15 @@ namespace native
                             (unsigned(colors.separator.g) + 3u * colors.button_bg.g) / 4,
                             (unsigned(colors.separator.b) + 3u * colors.button_bg.b) / 4, 255);
             event.g.set_pen(1).set_ink(line);
-            for (int y = _resolved_height - 1; y < area.h(); y += _resolved_height)
+            const auto content = std::min<std::uint64_t>(
+                area.h(),
+                std::uint64_t(
+                    _rows.size() -
+                    std::min(get_first_visible_row(), _rows.size())) *
+                    _resolved_height);
+            for (int y = _resolved_height - 1;
+                 std::uint64_t(y) < content;
+                 y += _resolved_height)
                 for (int x = 0; x < area.w(); x += 2)
                     event.g.draw_rect(rect(x, y, 1, 1), true);
             return true;
@@ -497,9 +505,15 @@ namespace native
 namespace native::detail
 {
     property_grid *property_grid_owner(const wnd &editor) {
-        auto *parent = editor.get_parent();
-        if (auto *grid = dynamic_cast<property_grid *>(parent)) return grid;
-        return parent && dynamic_cast<canvas *>(parent)
-            ? dynamic_cast<property_grid *>(parent->get_parent()) : nullptr;
+        // Composed dropdowns add another canvas between their native
+        // field and the value host. Walk that canvas chain as well.
+        for (auto *parent = editor.get_parent(); parent;
+             parent = parent->get_parent()) {
+            if (auto *grid = dynamic_cast<property_grid *>(parent))
+                return grid;
+            if (!dynamic_cast<canvas *>(parent))
+                break;
+        }
+        return nullptr;
     }
 }

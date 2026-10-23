@@ -12,6 +12,12 @@
 #include "../../emulated_tree.h"
 #include <xview/svrimage.h>
 #include <xview/win_input.h>
+#include <xview/font.h>
+// XView's C-only private Panel header names an operation `delete`.
+// Keep that spelling out of C++ while reading its native text state.
+#define delete xview_delete_handler
+#include <xview_private/panel_impl.h>
+#undef delete
 #include <X11/keysym.h>
 #include <charconv>
 #include <array>
@@ -295,14 +301,28 @@ namespace
         auto *state = reinterpret_cast<picker_state *>(
             xv_get(item, PANEL_CLIENT_DATA));
         auto &owner = static_cast<time_picker &>(state->owner);
+        const auto *binding =
+            combo_box_bindings.object_from_handle(&state->field);
+        const auto *native_text = TEXT_PRIVATE(binding->text);
+        const int caret = native_text->delete_pending
+                              ? native_text->seln_first[0]
+                              : native_text->caret_position;
+        const int amount = caret < 3 ? 3600
+                           : caret < 6
+                               ? int(owner.get_minute_step()) * 60
+                               : 1;
+        const detail::window_guard guard(owner);
+        commit(*state);
+        if (!guard.alive())
+            return;
         const auto before = owner.get_time();
         const int direction = item == state->up ? 1 : -1;
-        const int seconds = std::clamp(
-            int(before.hour * 3600 + before.minute * 60 +
-                before.second) +
-                direction * int(owner.get_minute_step()) * 60,
-            0,
-            86399);
+        const int seconds =
+            std::clamp(int(before.hour * 3600 + before.minute * 60 +
+                           before.second) +
+                           direction * amount,
+                       0,
+                       86399);
         owner.on_native_time({unsigned(seconds / 3600),
                               unsigned(seconds / 60 % 60),
                               unsigned(seconds % 60)});
@@ -318,17 +338,52 @@ namespace
         return result;
     }
     void refresh(picker_state &state, const std::string &text) {
-        state.field.set_bounds(state.owner.get_client_bounds());
-        state.field.set_text(text);
         auto *binding =
             combo_box_bindings.object_from_handle(&state.field);
+        auto *native_text = TEXT_PRIVATE(binding->text);
+        // XView has no public insertion-position attribute for
+        // PANEL_TEXT. Preserve its native caret/selection across
+        // value-only refreshes.
+        const int caret = native_text->caret_position;
+        const int first = native_text->seln_first[0],
+                  last = native_text->seln_last[0];
+        const auto pending = native_text->delete_pending;
+        const auto font = xv_get(binding->text, PANEL_VALUE_FONT);
+        const auto *metrics =
+            reinterpret_cast<XFontStruct *>(xv_get(font, FONT_INFO));
+        const int margin = std::max(
+            1, XTextWidth(const_cast<XFontStruct *>(metrics), "0", 1));
+        const int text_width =
+            XTextWidth(const_cast<XFontStruct *>(metrics),
+                       text.c_str(),
+                       text.size()) +
+            2 * margin;
+        const int arrow_width =
+            state.up ? std::max(int(xv_get(state.up, XV_WIDTH)),
+                                int(xv_get(state.down, XV_WIDTH)))
+                     : int(xv_get(binding->choice, XV_WIDTH));
+        auto bounds = state.owner.get_client_bounds();
+        bounds.d.w =
+            std::min<int>(bounds.w(), text_width + arrow_width);
+        state.field.set_bounds(bounds);
+        state.field.set_text(text);
+        xv_set(binding->text,
+               XV_X,
+               bounds.x1() + margin,
+               PANEL_VALUE_DISPLAY_WIDTH,
+               std::max(1, int(bounds.w()) - arrow_width - margin),
+               nullptr);
         const Rect text_bounds =
             *reinterpret_cast<Rect *>(xv_get(binding->text, XV_RECT));
-        const int height = state.owner.get_client_bounds().h();
+        const int height = bounds.h();
         const int text_y =
             std::max(0, (height - text_bounds.r_height) / 2);
         xv_set(binding->text, XV_Y, text_y, nullptr);
         xv_set(binding->choice, XV_Y, text_y, nullptr);
+        xv_set(binding->choice,
+               XV_X,
+               text_bounds.r_left + text_bounds.r_width,
+               nullptr);
         if (state.up) {
             xv_set(binding->choice, XV_SHOW, FALSE, nullptr);
             const int x = text_bounds.r_left + text_bounds.r_width;
@@ -339,6 +394,22 @@ namespace
             xv_set(state.up, XV_X, x, XV_Y, top, nullptr);
             xv_set(state.down, XV_X, x, XV_Y, top + up_height, nullptr);
         }
+        native_text->caret_position =
+            std::clamp(caret, 0, int(text.size()));
+        const int begin = std::clamp(
+            native_text->first_char, 0, native_text->caret_position);
+        native_text->caret_offset =
+            XTextWidth(const_cast<XFontStruct *>(metrics),
+                       text.c_str() + begin,
+                       native_text->caret_position - begin);
+        native_text->seln_first[0] =
+            std::clamp(first, 0, int(text.size()));
+        native_text->seln_last[0] =
+            std::min(last, int(text.size()) - 1);
+        native_text->delete_pending =
+            pending &&
+            native_text->seln_first[0] <= native_text->seln_last[0];
+        panel_paint(binding->text, PANEL_CLEAR);
         if (state.open)
             calendar(state);
     }

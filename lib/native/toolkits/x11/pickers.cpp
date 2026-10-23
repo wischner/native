@@ -18,6 +18,7 @@
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/AsciiText.h>
 #include <X11/keysym.h>
+#include <X11/cursorfont.h>
 #include <charconv>
 #include <chrono>
 
@@ -346,6 +347,11 @@ namespace
                       XtNy,
                       std::max(0, top),
                       nullptr);
+        XtRealizeWidget(state.popup);
+        const auto arrow =
+            XCreateFontCursor(cached_display, XC_left_ptr);
+        XDefineCursor(cached_display, XtWindow(state.popup), arrow);
+        XFreeCursor(cached_display, arrow);
         XtPopupSpringLoaded(state.popup);
         XGrabPointer(cached_display,
                      XtWindow(state.popup),
@@ -372,10 +378,15 @@ namespace
         return *result;
     }
     void step(picker_state &state, int direction) {
+        commit(state);
         auto &owner = static_cast<time_picker &>(state.owner);
         auto *binding =
             combo_box_bindings.object_from_handle(&state.field);
-        const auto cursor = XawTextGetInsertionPoint(binding->text);
+        XawTextPosition begin = 0, end = 0;
+        XawTextGetSelectionPos(binding->text, &begin, &end);
+        const auto cursor =
+            begin < end ? begin
+                        : XawTextGetInsertionPoint(binding->text);
         auto value = owner.get_time();
         const int amount = cursor < 3 ? 3600
                            : cursor < 6
@@ -395,11 +406,41 @@ namespace
         auto *binding =
             combo_box_bindings.object_from_handle(&state.field);
         const auto cursor = XawTextGetInsertionPoint(binding->text);
-        state.field.set_text(text).set_bounds(
-            state.owner.get_client_bounds());
+        XawTextPosition begin = 0, end = 0;
+        XawTextGetSelectionPos(binding->text, &begin, &end);
+        XFontStruct *font = nullptr;
+        XtVaGetValues(binding->text, XtNfont, &font, nullptr);
+        const int margin =
+            font ? std::max(1, XTextWidth(font, "0", 1) / 2)
+                 : to_device(3);
+        XtVaSetValues(binding->text,
+                      XtNleftMargin,
+                      margin,
+                      XtNrightMargin,
+                      margin,
+                      nullptr);
+        auto bounds = state.owner.get_client_bounds();
+        const int height = to_device(bounds.h());
+        const int column = state.down ? height / 2 : height;
+        if (font) {
+            const int width =
+                XTextWidth(font, text.c_str(), text.size()) +
+                2 * margin + column + 2;
+            // Round outward at fractional desktop scales.
+            int logical = to_logical(width);
+            if (to_device(logical) < width)
+                ++logical;
+            bounds.d.w = std::min<int>(bounds.w(), logical);
+        }
+        state.field.set_text(text).set_bounds(bounds);
         XawTextSetInsertionPoint(
             binding->text,
             std::min<XawTextPosition>(cursor, text.size()));
+        if (begin < end)
+            XawTextSetSelection(
+                binding->text,
+                std::min<XawTextPosition>(begin, text.size()),
+                std::min<XawTextPosition>(end, text.size()));
         if (binding->layout)
             binding->layout();
         state.updating = false;
@@ -510,23 +551,31 @@ namespace native::detail
                           XtNheight,
                           &height,
                           nullptr);
-            const int half = int(height) / 2;
-            const int button = std::min(int(width), int(height));
+            const int half = std::max(1, int(height) / 2);
+            const int button = std::min(int(width), half);
+            XtVaSetValues(binding->text,
+                          XtNwidth,
+                          std::max(1, int(width) - button - 1),
+                          nullptr);
             XtVaSetValues(binding->button,
+                          XtNfromHoriz,
+                          nullptr,
+                          XtNhorizDistance,
+                          int(width) - button,
                           XtNwidth,
                           std::max(1, button - 2),
                           XtNheight,
-                          std::max(1, half - 2),
+                          std::max(1, button - 2),
                           nullptr);
             XtVaSetValues(state.down,
                           XtNhorizDistance,
                           int(width) - button,
                           XtNvertDistance,
-                          half - 1,
+                          half,
                           XtNwidth,
                           std::max(1, button - 2),
                           XtNheight,
-                          std::max(1, int(height) - half - 1),
+                          std::max(1, button - 2),
                           nullptr);
         };
         XtAddCallback(

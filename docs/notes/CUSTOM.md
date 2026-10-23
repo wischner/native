@@ -7,11 +7,42 @@ implementations easy to find.
 
 Audit date: 2026-10-23.
 
-Motif picker review (2026-10-23): date/time fields remain **H**, composed
-from a native XmForm, XmTextField and owned XmArrowButton children. They do
-not instantiate an empty XmComboBox popup or overlay sibling buttons. The
-date trigger opens the native-button calendar; time arrows use the selected
-text component (or caret), preserving it across repeated increments.
+GEM follow-up (2026-10-23): SDK file/folder selectors and standard alerts
+are restored as **N** controls. Existing painted controls remain **C** for
+the reasons in the reviewed-proposals table. Disabled gray stock text uses
+checkerboard ink on the monochrome display. Embedded combo/date/time editors
+preserve the shared enclosure; time uses square buttons and the editor's
+actual caret/selection. AES activation clicks follow normal client dispatch
+once, and returning from a custom splitter cursor invalidates the SDK's
+stale system-form cache. Navigation retains a small inner inset and equal
+six-pixel outer margins/search separation. Property rules stop at the last row.
+
+Athena input review (2026-10-23): existing **N/H** kinds are retained.
+Single-line AsciiText fields use the sink's actual line height and final
+border-adjusted interior, keeping glyphs visible. Combo menus use SmeBSB's
+native left-bitmap checkmark for the current exact match, independently of
+pointer hover. Settings search is an AsciiText editor with a native Label
+prompt; search and framed navigation have equal six-pixel outside spacing.
+Date fields retain the standard editable-combo/calendar composition; time
+uses equal Command halves and preserves the selected component while stepping.
+Native-owned Form hosts accept smaller geometry proposals rather than
+reporting the previous allocation as their preferred size. Header surfaces
+include a bottom rule separating a group band from its first data row.
+
+Motif control review (2026-10-23): date fields remain **H**, using the genuine
+XmComboBox enclosure, text field and arrow with calendar posting substituted
+for list posting. Custom property dropdowns use the same native selection-only
+combo and inherit the containing editor's border policy. Time fields remain
+**H**: an XmForm encloses the native text field and two equal square
+XmArrowButtons, with colors and relief taken from a standard combo. Selected
+text components and caret position survive repeated increments. Calendar
+pointer capture dismisses on an outside click and releases when the popup
+closes. Property text, boolean and dropdown values share black ink and the control
+font, with matching light entry backgrounds.
+Native check labels align left, and theme check probes use the same control
+font, indicator preference, unselected fill and relief as real toggles.
+Settings trees retain native scrolling with eight-pixel indentation; labeled
+search and navigation share six-pixel outer margins and a six-pixel gap.
 
 Motif disclosure review (2026-10-23): accordion headers and table grouping
 bands share the native tree's flat triangle geometry and Xlib fill routine.
@@ -22,14 +53,16 @@ The Window Maker/Motif/GEM review uses joined editable-combo fields for
 dates (`DD.MM.YYYY`) and times (`HH:MM[:SS]`). Window Maker and Motif are
 **H** compositions of native text/buttons and shared civil-date policy;
 GEM remains **C** using its existing themed editor and calendar buttons.
-Window Maker navigation now reuses its image-capable tree with native
-scrollbars instead of a plain WMList: WINGs has no image-capable hierarchical list.
+Window Maker navigation uses a native WMList and WMTextField. Its row-drawing
+hook adds optional icons and bold black section labels while WINGs owns
+selection, scrolling and the enclosing border. Fixed sections have no
+collapse buttons; page rows use compact indentation. Search and navigation
+have matching six-pixel outer margins and gap.
 Search uses a native text editor and
-`Search:` prompt on these three backends. GEM standard panels are **H**
-compositions of native AES form objects, explicitly positioned over the
-owner and constrained to the desktop. Its SDK selectors expose no owner
-geometry, so the adapter supplies browsing/filtering with `std::filesystem`
-and modal command dispatch while AES edits fields and tracks buttons.
+`Search:` prompt on these three backends. GEM standard panels and messages are **N**: SDK `fsel_exinput`, `fsel_save`,
+`fsel_directory` and `form_alert` own their controls, layout, editing and
+synchronous interaction. Their placement follows the SDK; these entry
+points have no owner-position argument.
 The pinned SDK and published runtime image remain unchanged.
 
 The OPEN LOOK control review retains native **H** navigation, choices and
@@ -55,6 +88,14 @@ indentation, with a drawn search magnifier. Theme lists retain the same inner
 selection margin as real lists. Table modifier routing, tab-child hit testing,
 completion mouse/keyboard handling and renderer-owned bounded text caching
 are covered by the SDL control fixture.
+
+SDL2 spacing review (2026-10-23): the **C** kinds remain unchanged. The
+fallback search row reserves its resolved input height, keeping its gap to
+the framed navigator equal to the six-pixel outside margins. Picker fields
+fit their formatted text within the supplied allocation, growing for visible
+seconds. Time replaces the combo indicator through its drawing override;
+its two square buttons use matching mirrored arrow masks. Editing, drawing
+and mouse hits share the narrow button-column geometry.
 
 
 The GTK4/X11 control review retains native composition (**H**) for GTK
@@ -91,10 +132,10 @@ no custom painting replaces those widgets.
 | Windows | **H** genuine WinUI NavigationView in DesktopWindowXamlSource, with native search and ImageIcon rows | **N** DATETIMEPICK_CLASS | **N** DATETIMEPICK_CLASS time mode |
 | macOS | **H** AppKit source-list NSOutlineView, sidebar material and optional NSSearchField | **H** NSDatePicker and internal calendar action inside one native text-field bezel | **H** NSDatePicker time elements inside one native text-field bezel |
 | Haiku | **H** framed BOutlineListView with equal panel margins, automatic scrollbar visibility and optional search | **H** DateEdit with an internal calendar button and native BCalendarView popup | **H** BPrivate::TimeEdit with corrected field metrics and native arrows |
-| OpenMotif | **H** XmContainer tree and labeled XmTextField search | **H** joined XmTextField/calendar button in XmForm and XmPushButton calendar | **H** joined XmTextField with paired owned XmArrowButtons |
-| X11/Athena | **H** framed native Label/Toggle rows, disabled stipple and full-width selection | **H** existing AsciiText/MenuButton field with native Toggle day grid and Command month buttons | **H** existing editable field with two native Command arrow buttons |
+| OpenMotif | **H** XmContainer tree and labeled XmTextField search | **H** genuine XmComboBox field/arrow with XmPushButton calendar | **H** joined XmTextField with paired owned XmArrowButtons |
+| X11/Athena | **H** labeled AsciiText search and framed native Label/Toggle rows, equal outer spacing, disabled stipple and full-width selection | **H** existing AsciiText/MenuButton field with native Toggle day grid and Command month buttons | **H** existing editable field with two native Command arrow buttons |
 | OPEN LOOK | **H** native PANEL_LIST with indented items, bold inactive sections and labeled search | **H** native editable-combo field with Panel-button calendar | **H** native editable-combo field with paired native image buttons |
-| Window Maker | **H** image-capable themed tree, native scrollbars and labeled WMTextField search | **H** joined WMTextField/combo arrow and WMButton calendar | **H** joined WMTextField with paired WINGs-relief arrows |
+| Window Maker | **H** native WMList with icon/section row drawing, fixed groups, compact indentation and labeled WMTextField search | **H** joined WMTextField/combo arrow and WMButton calendar | **H** joined WMTextField with paired WINGs-relief arrows |
 | SDL2 | **C** framed themed tree and search editor | **C** existing editable combo with a themed calendar popup | **C** existing editable combo with paired step arrows |
 | GEMix (direct and gemd) | **C** compact themed tree and labeled search | **C** editable combo with calendar popup | **C** joined colon editor and paired arrows |
 
@@ -137,7 +178,8 @@ to avoid turning the current client height into a new top-level minimum.
 Granite's real settings widget is preferred over emulation. Athena uses native
 Label/Toggle rows with insensitive headings and full-row selection. XView
 and WINGs use their native text lists because their existing trees are
-library-painted; optional descriptor images are retained but not shown there.
+library-painted; XView retains optional descriptor images without displaying them; WINGs
+paints optional page icons through WMList's supported row callback.
 Other native trees display images. Haiku uses its SDK's shared-kit editors
 and links `libshared`/`localestub`, following the existing private-kit tree
 adapter pattern. Native date availability is enforced at commit; GTK calendars
@@ -322,7 +364,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `check` | **N** | Xaw `Toggle`. |
 | `radio` | **N** | Xaw `Toggle` with radio grouping. |
 | `list` | **N** | Xaw `List`; column width follows the viewport for full-row selection. |
-| `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. Text is centred with symmetric Xaw margins; the backend also sets Text's effective top margin, which libXaw 1.0.16 `SetValues` leaves stale (2026-10-18). |
+| `combo_box` | **H** | Xaw `AsciiText` plus `MenuButton`/`SimpleMenu`; Athena has no single combo widget. The current exact match carries a native SmeBSB checkmark. Children fit synchronously before/after mapping; text is centred from the real sink line height and symmetric Xaw margins; the backend also sets Text's effective top margin, which libXaw 1.0.16 `SetValues` leaves stale (2026-10-18). |
 | `text_edit` | **N/H** | Xaw `AsciiText`; portable validation and clipboard policy wrap the native editor. |
 | `accordion` | **C** | Library-painted collection in an Xaw host. |
 | `tab_view` | **C** | Library-painted tabs, framed/strip-only page chrome, and borrowed-page routing in an Xaw host. |
@@ -332,7 +374,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `code_edit` | **C** | Portable document/editor painted in an Xaw host. |
 | `split_view` | **N/H** | Xaw `Paned` with private Form pane hosts preserving child borders; captured full-strip dragging through native constraints, without XOR grips. |
 | `panel` | **N/H** | Athena Form subclass; native hosting/background with portable geometry ownership. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Xaw `Form` drawable host with portable client/ruler painting and actual Xaw scrollbar children. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -416,7 +458,7 @@ destruction, not a timeout that could outlive their parent.
 | `code_edit` | **C** | Portable editor painted in `XmDrawingArea`, with native scrollbars. |
 | `split_view` | **N/H** | `XmPanedWindow` with a centered native sash and resizable panes. Sash and full-divider pointer dragging share the portable ratio transaction. |
 | `panel` | **N** | `XmForm` child with `XmRESIZE_NONE`; Motif fills it and it is a real Xt parent. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared Motif `XmDrawingArea` collection host; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -456,7 +498,7 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a keyboard-accepting XView Panel; key events route navigation, Shift selection, text and completion through the portable editor. |
 | `split_view` | **H** | Two private XView `Panel` panes with captured live dragging, scrollbar-aware list resizing and an exposure-painted centered grip; not `OPENWIN_SPLIT`. |
 | `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -481,7 +523,7 @@ retired native list pages hide before their deferred destruction.
 | `code_edit` | **C/H** | Portable editor painted in a WINGs host with native scrollers. |
 | `split_view` | **N** | `WMSplitView` with WINGs subviews and divider behavior; native pane-size notifications synchronize the portable ratio and refit both borrowed children to the exact granted pane sizes, preserving every control edge. |
 | `panel` | **N** | `WMFrame` with `WRFlat` relief; WINGs fills it and it is a real parent widget. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -562,8 +604,8 @@ the client inset with a canvas painting to its edges.
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips through VDI. |
-| File open/save/directory | **H** | Positioned native AES form objects; shared filesystem browsing, filters, typed paths, extension handling and centered overwrite confirmation. |
-| `message_box` | **H** | Positioned native AES form with wrapped message text, semantic prompt, paging for long messages and one to three native buttons. |
+| File open/save/directory | **N** | SDK `fsel_exinput`, `fsel_save` and `fsel_directory`; SDK-owned layout, modal loop, placement and overwrite confirmation. Portable extension completion retains its additional destination check. |
+| `message_box` | **N** | SDK `form_alert` with standard icon, message lines and one to three native buttons; SDK placement and interaction. |
 
 ## Microsoft Windows
 
@@ -584,7 +626,7 @@ the client inset with a canvas painting to its edges.
 | `code_edit` | **C** | Library child-window class and portable document/editor painter. |
 | `split_view` | **C** | Library child-window class; Win32 has no stock splitter control. |
 | `panel` | **N** | Child window of a Native class whose background brush is `COLOR_BTNFACE`; Win32 fills it and it is a real parent HWND. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **H** | Win32 flat toolbar common control, native image list, toggle buttons and orientation-aware separators. |
 | `canvas` | **H** | Child window of the shared Native class; `WM_PAINT` routes to the portable paint path, which draws the client, rulers, and themed scrollbars. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -631,7 +673,7 @@ registration is complete, preventing early custom-draw callbacks.
 | `code_edit` | **C** | Portable document/editor painted in a `BView`. |
 | `split_view` | **N** | `BSplitView`. |
 | `panel` | **N** | Child `BView` with the panel background view color and no `B_WILL_DRAW`; the app_server fills it and it is a real parent view. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **H** | Native shared-kit BToolBar, flat BButton actions, native layout and oriented separators. |
 | `canvas` | **H** | Shared collection host `BView`; the client, rulers, and themed scrollbars are painted by portable code. Native `BScrollBar` is not used because the portable scroll range is signed 32-bit content, not view pixels. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -689,7 +731,7 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | `code_edit` | **C** | Portable document/editor painted in a custom `NSView`. |
 | `split_view` | **N** | `NSSplitView` owns divider appearance, tracking and pane allocation; borrowed controls fill the actual panes. |
 | `panel` | **N** | Child `NSView` filling `windowBackgroundColor`; a real AppKit parent for every control. |
-| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; background painting cannot cover editor input. |
+| `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **H** | Flexible-height native flat NSButton tools and NSBox separators in the existing edge surface; AppKit draws states and images. Derived bars retain custom drawing. |
 | `canvas` | **H** | Child `NSView` whose `drawRect:` routes to the portable paint path; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
@@ -902,3 +944,50 @@ Mac settings rows use 24-pixel images and 32-pixel page heights. Vision supplies
 shared, embedded Font Awesome Free tiles to every backend rather than generic
 filesystem icons; its existing text-only adapters retain native text lists.
 The artwork and license are recorded in `src/assets/navigation/README.md`.
+
+GTK/Open Look/Window Maker control review (2026-10-23): editable GTK combos
+retain **N** native GtkComboBoxText, with popup focus following an exact typed
+match. GTK tool primitives keep native button rendering; their separate
+labels now use native button foregrounds. OPEN LOOK editors retain **N/H**
+PANEL_TEXT/PANEL_MULTILINE_TEXT with the same native font; search has an
+explicit regular-font Search: label. Its flattened **N** structural Panels
+restore descendant stacking when a page maps after its pickers. WINGs text
+views retain I-beam cursors in their native view state, and code editors
+acquire keyboard focus on first mapping. WINGs dates remain **H** native
+text/arrow fields, fitting their text instead of the whole page allocation;
+the native-button calendar has a themed enclosing frame and is at least as
+wide as the visible field.
+
+GEM/Athena/Motif/GTK review (2026-10-23): GEM and Athena pickers retain their
+existing **H** text/arrow composition, with text-fitting widths and
+half-character horizontal margins. Athena uses square native Command time
+buttons and an arrow cursor on its native calendar shell. Motif keeps native
+ToggleButton font resources for both checkboxes and radios, an I-beam over
+native editors, and a native shell border on the calendar popup under
+CDE. Date fields retain the ordinary native combo enclosure.
+GTK toolbar bezels remain CSS-rendered **C** theme composition; native CSS
+background/frame parts now fit narrow vertical items without clipping a wider
+minimum-size button widget. GEM modal input blocking no longer dims parent
+commands; input routing remains blocked.
+
+
+OPEN LOOK/WINGs/CDE picker review (2026-10-23): existing native/hybrid kinds
+are retained. OPEN LOOK search/list spacing uses native item rectangles;
+its picker fields fit the native value font, character margins and arrows.
+Repeated time stepping preserves the native component selection/caret. The
+pinned XView private text/list-state headers are confined to that adapter
+because PANEL_TEXT exposes no public insertion-position property and PANEL_LIST
+exposes only whole-row viewport heights. Native list painting/input still own
+the frame, row selection and scrolling; the extended bottom area stays empty. WINGs time fields
+fit their text and native arrow column. Their paired WINGs-relief time buttons
+have equal heights, with any spare odd pixel between them. The arrow glyphs
+use mirrored pixel rows to avoid X11 polygon edge rules giving the upward
+and downward triangles different visible sizes. Native-desktop pixel checks
+cover six even/odd field heights; the **H** kind is unchanged.
+Motif calendar popups have their
+own native shell border, while date fields retain ordinary XmComboBox styling.
+Native Motif time arrows use equal odd square geometry, centered as a pair,
+and flat native glyphs so their visible silhouettes match.
+Inspector text, numeric, boolean, choice and arbitrary-dropdown values use
+one control font and black ink with matching entry paper. Ordinary native
+toggle fonts outside the property grid are unchanged.

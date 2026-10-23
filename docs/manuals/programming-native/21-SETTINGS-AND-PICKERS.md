@@ -167,11 +167,56 @@ the [control audit](../../notes/CUSTOM.md).
 
 Single-line fields share the active theme's standard input height. Mac dates
 have a calendar trigger inside the field and no date stepper. Motif time
-arrows change the selected component or caret component. Classic composed
-dates use `DD.MM.YYYY`; display formatting follows other native platforms.
+arrows change the selected component or caret component; both buttons are
+square and use native Motif relief. Motif dates use the same native combo
+border and arrow as editable choices. Click the arrow again or click outside
+the calendar to dismiss it after typing or selecting a date. Settings check
+labels align left, and search/navigation use equal outside margins and gap. Window Maker,
+Motif, GEM, and OPEN LOOK composed dates use `DD.MM.YYYY`; Athena uses `YYYY-MM-DD`. Display formatting follows
+other native platforms.
 Use `date::to_string()` for unambiguous `YYYY-MM-DD` storage, independently of
 the field's presentation.
+
+GEM and Athena fit picker widths to their formatted text with half-character
+left and right text margins. Enabling seconds adjusts the time field width.
+The calendar can be wider than the compact field to keep day cells readable.
+Athena's calendar retains the normal arrow cursor and its time-step buttons
+are equal squares. Motif keeps its normal native date-field style and frames
+the calendar popup itself.
+
+GEM keeps the editable-combo border around date and time text. Its equal
+square time buttons change the hour, minute or second at the caret or start
+of the selected text. Search and navigation have equal six-pixel outside
+margins and separation, with a smaller inset inside the navigation frame.
+
+SDL date and time fields use compact text-fitting widths within their
+allocated bounds; enabling seconds expands the time field as needed. Its
+time stepper has two equal square buttons with matching up/down arrows.
+The settings search field, its gap to the navigator, and the top, left and
+bottom margins use the same six-pixel spacing.
 
 Try the larger acceptance window with `vision --settings`. See
 [Chapter 12](12-BUILDING-AND-DISTRIBUTING.md) for the WinUI runtime dependency,
 and [Chapter 22](22-TOOLBARS-AND-PROPERTIES.md) for commands and inspectors.
+
+
+Athena search includes a native `Search:` prompt. The search row and framed
+navigator use equal six-pixel outside margins and separation. Its date popup
+uses native calendar day buttons with insensitive excluded dates. Time's two
+equal square arrow buttons share a half-height column at the right edge and adjust the
+selected hour, minute, or second while retaining that selection.
+
+Window Maker settings use a native WINGs list with fixed bold category labels,
+optional page icons and compact indentation. Categories do not collapse;
+search/list spacing matches the outer margins. Its date field fits the date
+text and arrow, and the calendar has a border and is at least as wide as that
+field. OPEN LOOK search has a Search: prompt, and nested page creation keeps
+native date/time controls above their page background.
+
+
+OPEN LOOK and Window Maker pickers also fit their text within a wider layout
+allocation. OPEN LOOK reserves a character margin on each side of the value;
+its time arrows continue to adjust the selected hour, minute or second across
+successive clicks. Search and navigator spacing is measured from their native
+rectangles, so their gap matches the outside margins. Motif uses compact
+text/arrow fields and a framed calendar popup.

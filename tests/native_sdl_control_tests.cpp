@@ -174,6 +174,74 @@ namespace
             throw std::runtime_error(
                 "picker has one editable combo field");
         }
+        void arrow(panel &owner, bool upper = true) {
+            auto &value = field(owner);
+            click(value,
+                  int(value.get_dimensions().w) - 4,
+                  upper ? 4 : int(value.get_dimensions().h) - 5);
+        }
+        // Inspect painted arrows, not just the rectangles used to draw
+        // them: both masks must be visible and exact vertical mirrors.
+        void picker_geometry() {
+            auto &date_field = field(dates);
+            auto &time_field = field(times);
+            expect(date_field.get_dimensions().w < 180 &&
+                       time_field.get_dimensions().w <
+                           date_field.get_dimensions().w,
+                   "pickers fit their formatted text instead of "
+                   "stretching");
+            const int minutes_width = time_field.get_dimensions().w;
+            times.set_seconds_visible(true);
+            expect(time_field.get_dimensions().w > minutes_width &&
+                       time_field.get_dimensions().w < 180,
+                   "seconds add just their formatted text width");
+            times.set_seconds_visible(false);
+            dates.set_bounds(rect(430, 260, 90, 30));
+            expect(date_field.get_dimensions().w <= 90,
+                   "compact date field respects a smaller allocation");
+            dates.set_bounds(rect(430, 260, 240, 30));
+            render();
+            const auto bounds = root_bounds(time_field);
+            const auto up = combo_step_button_bounds(bounds, true);
+            const auto down = combo_step_button_bounds(bounds, false);
+            expect(up.w() == up.h() && down.w() == down.h() &&
+                       up.w() == down.w() && up.y2() == down.y1(),
+                   "time buttons are adjacent equal squares");
+            const auto *peer =
+                combo_box_bindings.object_from_handle(&time_field);
+            expect(peer->editor->get_dimensions().w ==
+                       bounds.w() - up.w() - 1,
+                   "time text uses the space up to its narrow button "
+                   "column");
+            img capture(900, 700);
+            SDL_RenderReadPixels(
+                wnd_gpx_bindings.object_from_handle(this)->renderer,
+                nullptr,
+                SDL_PIXELFORMAT_RGBA32,
+                capture.pixels(),
+                900 * 4);
+            const auto ink =
+                theme::create(get_gpx())->native_palette().button_text;
+            int count = 0;
+            for (int y = 0; y < up.h(); ++y)
+                for (int x = 0; x < up.w(); ++x) {
+                    const bool a =
+                        capture.pixels()[(up.y1() + y +
+                                          content_origin_y(this)) *
+                                             900 +
+                                         up.x1() + x] == ink;
+                    const bool b =
+                        capture.pixels()[(down.y2() - 1 - y +
+                                          content_origin_y(this)) *
+                                             900 +
+                                         down.x1() + x] == ink;
+                    expect(a == b,
+                           "time arrow glyphs have matching size and "
+                           "alignment");
+                    count += a;
+                }
+            expect(count > 0, "both time arrow glyphs are visible");
+        }
         void render() {
             invalidate();
             render_window_if_needed(this);
@@ -348,7 +416,7 @@ namespace
                            "typed holiday is rejected");
                     expect(field(dates).get_text() == "2026-12-24",
                            "rejected date restores field text");
-                    click(field(dates), 230, 12);
+                    arrow(dates);
                     break;
                 case 11: {
                     auto &date_field = field(dates);
@@ -364,9 +432,10 @@ namespace
                                         ->get_list_item_height();
                     // December 2026 starts Tuesday; Friday the 25th is
                     // disabled.
-                    click(point(bounds.x1() + int(bounds.w()) * 5 / 7 +
-                                    10,
-                                bounds.y2() + 1 + row * 5 + row / 2));
+                    click(point(
+                        bounds.x1() +
+                            std::max(224, int(bounds.w())) * 5 / 7 + 10,
+                        bounds.y2() + 1 + row * 5 + row / 2));
                     break;
                 }
                 case 12:
@@ -375,7 +444,7 @@ namespace
                                    .object_from_handle(&field(dates))
                                    ->open,
                            "disabled calendar day cannot commit");
-                    click(field(dates), 230, 12);
+                    arrow(dates);
                     break;
                 case 13:
                     expect(!combo_box_bindings
@@ -391,7 +460,7 @@ namespace
                     expect(times.get_time() == time_of_day{12, 45, 0},
                            "joined time editor accepts HH:MM");
                     times.set_minute_step(15);
-                    click(field(times), 230, 4);
+                    arrow(times);
                     break;
                 case 15:
                     expect(times.get_time() == time_of_day{13, 0, 0},
@@ -403,6 +472,7 @@ namespace
                                    combo.get_dimensions().h,
                            "date and time fields match standard combo "
                            "height");
+                    picker_geometry();
                     for (auto *tree : tree_views)
                         if (tree->get_parent() == &sidebar) {
                             const auto bounds = tree->get_bounds();
@@ -416,7 +486,25 @@ namespace
                             expect(tree->get_border_visible(),
                                    "settings navigation is framed like "
                                    "search");
+                            text_edit *search = nullptr;
+                            for (auto *editor : text_edits)
+                                if (editor->get_parent() == &sidebar)
+                                    search = editor;
+                            expect(search,
+                                   "settings search is present");
+                            const auto input = search->get_bounds();
+                            expect(input.x1() == 6 && input.y1() == 6 &&
+                                       input.w() == bounds.w() &&
+                                       bounds.y1() - input.y2() == 6,
+                                   "settings search gap matches all "
+                                   "outer margins");
                         }
+                    arrow(times, false);
+                    break;
+                case 16:
+                    expect(
+                        times.get_time() == time_of_day{12, 45, 0},
+                        "lower square button reverses the minute step");
                     if (const char *path =
                             std::getenv("NATIVE_SDL_CONTROL_SNAPSHOT"))
                         snapshot(path);
