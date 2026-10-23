@@ -134,7 +134,9 @@ source.on_complete.connect(
 ```
 
 Up and Down change the active choice, Enter or Tab accepts it, and Escape dismisses
-the popup while keyboard focus remains in the editor. Language-server and
+the popup while keyboard focus remains in the editor. The shared painted
+completion also accepts a mouse click on its visible row. SDL gives an open
+completion priority over sibling text-field keyboard input. Language-server and
 debugger protocols are application responsibilities.
 
 Completion accepts the active choice with Enter or Tab. GTK transfers focus

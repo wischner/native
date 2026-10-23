@@ -19,6 +19,7 @@
 #include "../../platforms/linux/x_image.h"
 #include "../../rotated_text.h"
 #include "globals.h"
+#include "control_font.h"
 
 namespace
 {
@@ -348,6 +349,7 @@ namespace
                 XmNsensitive, owner.get_item(index).get_enabled(),
                 nullptr);
             XmStringFree(label);
+            linux::openmotif::apply_control_font(tab);
             if (side_tabs(owner.get_tab_placement())) {
                 const Pixmap pixmap = create_rotated_label(
                     tab,

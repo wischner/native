@@ -8,6 +8,8 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +23,7 @@
 #include <bindings.h>
 
 #include "../../wnd_peer.h"
+#include "../../input_state.h"
 
 #include "../../emulated_tree.h"
 
@@ -35,6 +38,8 @@ namespace linux::sdl2
         void shutdown();
     } // namespace x11_clipboard
 
+    struct sdl2_gpx;
+
     // SDL events carry handles, so process-wide registries
     // recover the corresponding C++ objects during event dispatch.
 #ifdef HAVE_SDL2_TTF
@@ -43,6 +48,7 @@ namespace linux::sdl2
     // drawing into scaled window renderers.
     struct sdl2_font
     {
+        std::uint32_t id = 0;
         TTF_Font *ttf_font = nullptr;
         std::string path;
         int size = 0;
@@ -73,13 +79,28 @@ namespace linux::sdl2
                        const std::string &text,
                        int x,
                        int y,
-                       SDL_Color color);
+                       SDL_Color color,
+                       sdl2_gpx *cache = nullptr);
 #endif
 
     // Graphics cache structure for SDL2
     struct sdl2_gpx
     {
         SDL_Renderer *renderer = nullptr; // Cached renderer per window
+        struct text_texture
+        {
+            std::uint32_t font_id;
+            const void *face;
+            std::string text;
+            native::rgba color;
+            SDL_Texture *texture;
+            int width, height;
+            std::uint64_t used;
+        };
+        std::vector<text_texture> text_textures;
+        std::size_t text_bytes = 0;
+        std::uint64_t text_clock = 0;
+        std::uint64_t text_uploads = 0;
 
         // Cached draw parameters
         native::rgba current_fg = 0xFFFFFFFF;
@@ -160,6 +181,11 @@ namespace linux::sdl2
         bool open = false;
         bool focused = false;
         int hovered_index = -1;
+        std::unique_ptr<native::text_edit> editor;
+        std::function<void()> commit;
+        std::function<void(int)> step;
+        std::function<bool(int, int)> popup_click;
+        std::function<void(native::gpx &)> popup_paint;
     };
 
     struct sdl2_text_edit
@@ -258,6 +284,8 @@ namespace linux::sdl2
     // Render every visible emulated list owned by a window.
     void render_lists(native::wnd *, native::gpx &);
 
+    // Keep editable combos on the existing text editor input path.
+    void update_combo_editor(native::combo_box &);
     bool handle_combo_mouse(native::wnd *, int, int, bool, bool);
     bool handle_combo_motion(native::wnd *, int, int);
     bool handle_combo_key(native::wnd *, const SDL_KeyboardEvent &);
@@ -313,6 +341,9 @@ namespace linux::sdl2
                                  int);
     bool handle_collection_wheel(native::wnd *, int, int, int);
     bool handle_collection_motion(native::wnd *, int, int);
+    // Route an open editor completion before stale sibling focus.
+    bool handle_completion_key(native::wnd *,
+                               const SDL_KeyboardEvent &);
     bool handle_collection_key(native::wnd *, const SDL_KeyboardEvent &);
     bool handle_collection_text(native::wnd *, const char *);
 

@@ -88,8 +88,10 @@ namespace linux::wayland
                                    const std::string &text,
                                    const state &value) {
         auto *button = gtk_button_new_with_label(text.c_str());
-        gtk_widget_add_css_class(button, "flat");
-        return paint(button, bounds, value);
+        auto control = value;
+        control.selected = false;
+        control.pressed = value.pressed || value.selected;
+        return paint(button, bounds, control);
     }
     native::theme &gtk_theme::draw_check(const native::rect &bounds,
                                          const std::string &text,

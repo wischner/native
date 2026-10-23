@@ -142,6 +142,55 @@ int program(int, char **) {
                                        gtk_window_get_modal(modal_peer),
                                    "modal windows must retain native ownership");
                         }
+                        {
+                            tree_view tree(
+                                {tree_node("Folder",
+                                           1,
+                                           {tree_node("File", 2)},
+                                           true),
+                                 tree_node("Plain", 3)},
+                                0,
+                                0,
+                                200,
+                                120);
+                            tree.set_parent(&host);
+                            tree.create();
+                            tree.show();
+                            auto *folder = gtk_widget_get_first_child(
+                                state(tree).editor);
+                            auto *file =
+                                gtk_widget_get_next_sibling(folder);
+                            int folder_height = 0;
+                            int file_height = 0;
+                            gtk_widget_measure(folder,
+                                               GTK_ORIENTATION_VERTICAL,
+                                               200,
+                                               nullptr,
+                                               &folder_height,
+                                               nullptr,
+                                               nullptr);
+                            gtk_widget_measure(file,
+                                               GTK_ORIENTATION_VERTICAL,
+                                               200,
+                                               nullptr,
+                                               &file_height,
+                                               nullptr,
+                                               nullptr);
+                            expect(folder_height == file_height,
+                                   "GTK folder disclosure does not add "
+                                   "extra row padding");
+                            auto *arrow = gtk_widget_get_first_child(
+                                gtk_list_box_row_get_child(
+                                    GTK_LIST_BOX_ROW(folder)));
+                            expect(GTK_IS_EXPANDER(arrow),
+                                   "tree disclosure uses a native "
+                                   "expander");
+                            gtk_expander_set_expanded(
+                                GTK_EXPANDER(arrow), false);
+                            expect(!tree.get_expanded(1),
+                                   "native tree disclosure updates the "
+                                   "portable model");
+                        }
                         test_native_gtk_theme(window);
                         test_native_gtk_borders(window);
                         {
@@ -154,6 +203,13 @@ int program(int, char **) {
                             expect(combo.get_selected_index() == 1 &&
                                 gtk_combo_box_get_active(GTK_COMBO_BOX(state(combo).editor)) == 1,
                                 "typed exact matches select the native popup item");
+                            combo.set_text("10 mm");
+                            combo.set_text("25 mm");
+                            expect(
+                                gtk_combo_box_get_active(GTK_COMBO_BOX(
+                                    state(combo).editor)) == 1,
+                                "programmatic exact matches "
+                                "synchronize the popup index");
                             gtk_editable_set_text(GTK_EDITABLE(state(combo).drawing), "42 mm");
                             expect(combo.get_text() == "42 mm" && combo.get_selected_index() == -1,
                                 "native editable combos retain custom text");
@@ -488,6 +544,69 @@ int program(int, char **) {
                             expect(!first.get_created() && !second.get_created(),
                                    "pending native splitter delivery must cancel on destruction");
                         }
+                        {
+                            modeless_wnd shell(window,
+                                               "Closing moved splitter",
+                                               0,
+                                               0,
+                                               240,
+                                               160);
+                            list first({"First"});
+                            list second({"Second"});
+                            split_view split(
+                                first,
+                                second,
+                                split_orientation::horizontal,
+                                0,
+                                0,
+                                240,
+                                160);
+                            shell.create();
+                            shell.show();
+                            split.set_parent(&shell);
+                            split.create();
+                            split.show();
+                            gtk_widget_allocate(state(split).widget,
+                                                240,
+                                                160,
+                                                -1,
+                                                nullptr);
+                            gtk_paned_set_position(
+                                GTK_PANED(state(split).widget), 100);
+                            auto *retained_rows = GTK_LIST_BOX(
+                                g_object_ref(state(first).editor));
+                            int late_selection = 0;
+                            first.on_selection_change.connect([&](int) {
+                                ++late_selection;
+                                return false;
+                            });
+                            gboolean handled = false;
+                            g_signal_emit_by_name(state(shell).widget,
+                                                  "close-request",
+                                                  &handled);
+                            for (int i = 0;
+                                 i < 50 &&
+                                 g_main_context_pending(nullptr);
+                                 ++i)
+                                g_main_context_iteration(nullptr,
+                                                         false);
+                            expect(!shell.get_created() &&
+                                       !split.get_created(),
+                                   "closing an owning window cancels "
+                                   "moved-splitter delivery");
+                            late_selection = 0;
+                            g_signal_emit_by_name(
+                                retained_rows,
+                                "row-selected",
+                                gtk_list_box_get_row_at_index(
+                                    retained_rows, 0));
+                            expect(
+                                late_selection == 0,
+                                "retained GTK list rows cannot "
+                                "dispatch into closed splitter panes");
+                            g_object_unref(retained_rows);
+                        }
+
                         expect(rows.ids < 10000 && rows.cells < 10000,
                                "virtual rows must remain lazy");
                         if (const char *path = std::getenv(

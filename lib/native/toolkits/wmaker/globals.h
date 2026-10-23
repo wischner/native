@@ -108,10 +108,12 @@ namespace linux::wmaker
     {
         WMFrame *frame = nullptr;
         WMPopUpButton *popup = nullptr;
+        std::vector<WMMenuItem *> items;
         WMTextField *field = nullptr;
         WMFrame *arrow = nullptr;
         WMTextFieldDelegate delegate = {};
         WMHandlerID arrow_timer = nullptr;
+        int arrow_part = 0;
         bool arrow_pressed = false;
         bool arrow_overlay = false;
         bool suppress = false;
@@ -129,6 +131,7 @@ namespace linux::wmaker
         bool repaint_pending = false;
         bool vertical_visible = false;
         bool horizontal_visible = false;
+        bool completion_visible = false;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =

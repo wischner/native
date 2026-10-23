@@ -75,7 +75,8 @@ int program(int, char **) {
 `settings_page(id, title, content, image, section, enabled)` also accepts a
 `std::shared_ptr<const native::img>` and a section heading. Images use the
 same ownership as tree and icon-view items. Native text-list navigation on
-Athena, XView and WINGs displays labels only; image-capable adapters display
+Athena, XView and WINGs displays labels only; Athena uses native full-width
+Toggle rows and insensitive section headings. Image-capable adapters display
 the supplied images. `set_selected_item(id)` is silent; user navigation
 emits `on_selection_change` with that ID. Zero clears selection.
 `set_item_enabled`, `set_item_text`, `set_item_image`, `remove_item` and
@@ -478,6 +479,13 @@ directly below the field and aligns left. It is never narrower than the field
 and grows when needed for readable day columns. Month navigation uses small,
 equal square native buttons. Date and time fields match the standard Haiku
 text-control height, with centered text and equal time arrows.
+Generic GTK date and time pickers use linked native entry and down-arrow
+controls at the standard input height. Their popovers contain a calendar or
+time spin controls. Enter commits `YYYY-MM-DD` or `HH:MM[:SS]`; unavailable
+values roll back. Athena dates use the existing editable-combo field with a
+native calendar popup, insensitive excluded days and native month buttons.
+Athena time uses the same field with two equal step buttons in its arrow
+column. Both typed values and calendar/step changes use the shared rules.
 On elementary,
 you can type a locale date or `YYYY-MM-DD` and press Enter. Calendar selection
 and typed input both apply the same date exclusions. GTK calendars show
@@ -509,3 +517,28 @@ native control background color. The date field contains its text-only editor
 and calendar trigger; the time field contains its editor and native stepper.
 Text, steppers and calendar buttons are vertically centered. Changing toolbar icon dimensions grows the native button feedback;
 removing every preview button border removes its complete rounded bezel.
+
+On SDL2, click an editable combo's text to edit or select it, and click its
+arrow to show the choices. Date pickers use the same field with a calendar
+popup and accept `YYYY-MM-DD` on Enter. Time pickers accept `HH:MM` (or
+`HH:MM:SS` with seconds enabled); the caret chooses which part the paired
+arrows change. Availability rules apply equally to typing and popup input.
+
+OPEN LOOK date fields accept `DD.MM.YYYY` on Enter and open a native calendar
+from the abbreviated menu button. Time fields use `HH:MM`, optional seconds,
+and paired step buttons. Search has a native `Search:` prompt; native list
+headings are bold/inactive and page labels are indented.
+
+Window Maker, Motif and GEM date fields accept `DD.MM.YYYY` and open a
+calendar from the joined combo arrow. A second arrow click closes it.
+Time fields accept `HH:MM` or `HH:MM:SS`; their paired arrows apply the
+configured minute step. Disabled dates are unavailable in the calendar and
+rejected on Return. These backends show a `Search:` prompt beside optional
+navigation search. GEM file/folder/message forms center over the owner,
+constrained to the desktop, and preserve native AES field/button styling.
+
+On Motif/CDE the date arrow opens the populated native-button calendar.
+Time arrows change the highlighted hour, minute or second; without a
+selection they follow the caret. Repeated clicks keep that component active.
+Minute changes honor `set_minute_step()` and every proposal still passes the
+configured time range and validator.

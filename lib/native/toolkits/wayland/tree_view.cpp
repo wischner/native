@@ -87,19 +87,24 @@ namespace native
             auto *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
             gtk_widget_set_margin_start(box, visible.depth * 20);
             if (!item.children.empty()) {
-                auto *button = gtk_button_new_from_icon_name(
-                    item.expanded ? "pan-down-symbolic"
-                                  : "pan-end-symbolic");
-                gtk_widget_add_css_class(button, "flat");
+                // A native disclosure avoids GtkButton's minimum height
+                // and keeps folder rows the same height as ordinary
+                // rows.
+                auto *button = gtk_expander_new(nullptr);
+                gtk_expander_set_expanded(GTK_EXPANDER(button),
+                                          item.expanded);
                 gtk_box_append(GTK_BOX(box), button);
                 g_signal_connect_data(
                     button,
-                    "clicked",
-                    G_CALLBACK(+[](GtkButton *, gpointer data) {
+                    "notify::expanded",
+                    G_CALLBACK(+[](GObject *expander,
+                                   GParamSpec *,
+                                   gpointer data) {
                         auto action = *static_cast<tree_action *>(data);
                         action.owner->on_native_expansion(
                             action.id,
-                            !action.owner->get_expanded(action.id));
+                            gtk_expander_get_expanded(
+                                GTK_EXPANDER(expander)));
                     }),
                     new tree_action{this, item.id},
                     free_action,

@@ -43,136 +43,93 @@ namespace
 
 namespace linux::sdl2
 {
-    bool handle_combo_mouse(native::wnd *owner,
-                            int x,
-                            int y,
-                            bool pressed,
-                            bool released) {
-        if (pressed) {
-            // Popups paint above every ordinary control, so they must also
-            // win hit testing when their rows overlap another combo box.
-            for (auto iterator = combo_boxes.rbegin();
-                 iterator != combo_boxes.rend(); ++iterator) {
-                native::combo_box *combo = *iterator;
-                auto *state =
-                    combo_box_bindings.object_from_handle(combo);
-                if (!state || root_of(combo) != owner ||
-                    !state->visible || !state->open)
-                    continue;
-                const native::rect bounds = root_bounds(*combo);
-                const int item_height =
-                    native::theme::metrics{}.list_item_height;
-                const native::rect popup = popup_bounds(
-                    *owner, *combo, bounds, item_height);
-                const native::point position(
-                    static_cast<native::coord>(x),
-                    static_cast<native::coord>(y));
-                if (popup.contains(position)) {
-                    const int index = (y - popup.y1()) / item_height;
-                    if (auto *window_state =
-                            wnd_gpx_bindings.object_from_handle(owner)) {
-                        window_state->suppress_combo_release = true;
-                    }
-                    state->open = false;
-                    state->focused = true;
-                    combo->on_native_focus(true);
-                    state->hovered_index = -1;
-                    combo->on_native_drop_down(false);
-                    if (still_registered(combo) && index >= 0 &&
-                        index < static_cast<int>(
-                            combo->get_items().size())) {
-                        combo->on_native_selection(index);
-                    }
-                    return true;
-                }
-                if (!bounds.contains(position)) {
-                    state->open = false;
-                    state->focused = false;
-                    combo->on_native_focus(false);
-                    state->hovered_index = -1;
-                    combo->on_native_drop_down(false);
-                }
-                return true;
-            }
-
-            for (auto iterator = combo_boxes.rbegin();
-                 iterator != combo_boxes.rend(); ++iterator) {
-                native::combo_box *combo = *iterator;
-                auto *state =
-                    combo_box_bindings.object_from_handle(combo);
-                if (!state || root_of(combo) != owner ||
-                    !state->visible || state->open)
-                    continue;
-                const native::rect bounds = root_bounds(*combo);
-                if (bounds.contains({
-                        static_cast<native::coord>(x),
-                        static_cast<native::coord>(y)}))
-                    return true;
-            }
+    bool handle_combo_mouse(
+        native::wnd *owner, int x, int y, bool pressed, bool released) {
+        if (!pressed && !released)
             return false;
-        }
-        if (!released)
-            return false;
-        if (auto *window_state =
-                wnd_gpx_bindings.object_from_handle(owner);
-            window_state && window_state->suppress_combo_release) {
-            window_state->suppress_combo_release = false;
+        auto *window = wnd_gpx_bindings.object_from_handle(owner);
+        if (released && window && window->suppress_combo_release) {
+            window->suppress_combo_release = false;
             return true;
         }
-        bool changed = false;
+        const native::point point(x, y);
+        // Transient content wins over all sibling fields.
+        for (auto *combo : combo_boxes) {
+            auto *state = combo_box_bindings.object_from_handle(combo);
+            if (!state || root_of(combo) != owner || !state->visible ||
+                !state->open)
+                continue;
+            const auto bounds = root_bounds(*combo);
+            if (bounds.contains(point))
+                break;
+            if (!pressed)
+                return true;
+            if (window)
+                window->suppress_combo_release = true;
+            if (state->popup_click) {
+                auto click = state->popup_click;
+                click(x, y);
+                return true;
+            }
+            const auto popup =
+                popup_bounds(*owner,
+                             *combo,
+                             bounds,
+                             native::theme::create(owner->get_gpx())
+                                 ->get_list_item_height());
+            state->open = false;
+            state->hovered_index = -1;
+            combo->on_native_drop_down(false);
+            if (still_registered(combo) && popup.contains(point)) {
+                const int index =
+                    (y - popup.y1() - 1) /
+                    std::max(1,
+                             native::theme::create(owner->get_gpx())
+                                 ->get_list_item_height());
+                if (index >= 0 &&
+                    index < int(combo->get_items().size())) {
+                    combo->on_native_selection(index);
+                    if (still_registered(combo)) {
+                        update_combo_editor(*combo);
+                        auto *peer =
+                            combo_box_bindings.object_from_handle(
+                                combo);
+                        if (peer->editor)
+                            peer->editor->on_native_focus(true);
+                    }
+                }
+            }
+            return true;
+        }
         for (auto iterator = combo_boxes.rbegin();
-             iterator != combo_boxes.rend(); ++iterator) {
-            native::combo_box *combo = *iterator;
+             iterator != combo_boxes.rend();
+             ++iterator) {
+            auto *combo = *iterator;
             auto *state = combo_box_bindings.object_from_handle(combo);
             if (!state || root_of(combo) != owner || !state->visible)
                 continue;
-            const native::rect bounds = root_bounds(*combo);
-            const int item_height = native::theme::metrics{}.list_item_height;
-            const native::rect popup =
-                popup_bounds(*owner, *combo, bounds, item_height);
-            if (state->open && popup.contains({
-                    static_cast<native::coord>(x),
-                    static_cast<native::coord>(y)})) {
-                const int index = (y-popup.y1())/item_height;
-                state->open = false;
-                state->hovered_index = -1;
-                combo->on_native_drop_down(false);
-                if (still_registered(combo) && index >= 0 &&
-                    index < static_cast<int>(combo->get_items().size()))
-                    combo->on_native_selection(index);
+            update_combo_editor(*combo);
+            const auto bounds = root_bounds(*combo);
+            if (!bounds.contains(point))
+                continue;
+            const int button = std::min<int>(bounds.w(), bounds.h());
+            const bool arrow = x >= bounds.x2() - button;
+            if (!arrow && state->editor)
+                return false;
+            if (pressed) {
+                combo->on_native_focus(true);
                 return true;
-            } else if (bounds.contains({static_cast<native::coord>(x),
-                                        static_cast<native::coord>(y)})) {
-                state->focused = true;
-                    combo->on_native_focus(true);
-                state->open = !state->open;
-                state->hovered_index = -1;
-                const bool open = state->open;
-                combo->on_native_drop_down(open);
-                if (still_registered(combo) &&
-                    combo->get_style() ==
-                        native::combo_box_style::editable) {
-                    SDL_StartTextInput();
-                }
-                return true;
-            } else {
-                if (state->open) {
-                    state->open = false;
-                    state->hovered_index = -1;
-                    combo->on_native_drop_down(false);
-                    // Avoid retaining an iterator across user callbacks
-                    // which may mutate the registry.
-                    return true;
-                }
-                state->open = false;
-                state->hovered_index = -1;
-                changed = changed || state->focused;
-                state->focused = false;
-                    combo->on_native_focus(false);
             }
+            if (state->step) {
+                auto step = state->step;
+                step(y < bounds.y1() + int(bounds.h()) / 2 ? 1 : -1);
+                return true;
+            }
+            state->open = !state->open;
+            state->hovered_index = -1;
+            combo->on_native_drop_down(state->open);
+            return true;
         }
-        if (changed)
-            owner->invalidate();
         return false;
     }
 
@@ -213,55 +170,58 @@ namespace linux::sdl2
     bool handle_combo_key(native::wnd *owner,
                           const SDL_KeyboardEvent &event) {
         if (event.type != SDL_KEYDOWN) return false;
+        auto *focus = native::detail::input_target(*owner);
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || root_of(combo) != owner ||
-                !state->focused || !state->visible) continue;
-            if (event.keysym.sym == SDLK_BACKSPACE &&
-                combo->get_style() == native::combo_box_style::editable &&
-                !combo->get_text().empty()) {
-                std::string text = combo->get_text();
-                text.pop_back();
-                combo->on_native_text(text);
-                if (still_registered(combo) && owner->get_created())
-                    owner->invalidate();
-            } else if (event.keysym.sym == SDLK_ESCAPE && state->open) {
+            if (!state || root_of(combo) != owner || !state->visible ||
+                (focus != combo && focus != state->editor.get()))
+                continue;
+            const auto key = event.keysym.sym;
+            if ((key == SDLK_RETURN || key == SDLK_KP_ENTER) &&
+                state->commit) {
+                auto commit = state->commit;
+                commit();
+                return true;
+            }
+            if ((key == SDLK_ESCAPE || key == SDLK_RETURN ||
+                 key == SDLK_KP_ENTER) &&
+                state->open) {
                 state->open = false;
-                state->hovered_index = -1;
                 combo->on_native_drop_down(false);
-                if (still_registered(combo) && owner->get_created())
-                    owner->invalidate();
-            } else if (event.keysym.sym == SDLK_DOWN ||
-                       event.keysym.sym == SDLK_UP) {
+                return true;
+            }
+            if (state->step && (key == SDLK_UP || key == SDLK_DOWN)) {
+                auto step = state->step;
+                step(key == SDLK_UP ? 1 : -1);
+                return true;
+            }
+            if (state->editor && !state->open) {
+                if (key != SDLK_DOWN || !(event.keysym.mod & KMOD_ALT))
+                    return false;
+                state->open = true;
+                combo->on_native_drop_down(true);
+                return true;
+            }
+            if (key == SDLK_DOWN || key == SDLK_UP) {
                 if (combo->get_items().empty())
                     return true;
-                int index = combo->get_selected_index();
-                index += event.keysym.sym == SDLK_DOWN ? 1 : -1;
-                index = std::clamp(index, 0,
-                    static_cast<int>(combo->get_items().size())-1);
-                state->hovered_index = -1;
+                const int index =
+                    std::clamp(combo->get_selected_index() +
+                                   (key == SDLK_DOWN ? 1 : -1),
+                               0,
+                               int(combo->get_items().size()) - 1);
                 combo->on_native_selection(index);
-                if (still_registered(combo) && owner->get_created())
-                    owner->invalidate();
+                if (still_registered(combo))
+                    update_combo_editor(*combo);
+                return true;
             }
-            return true;
+            return false;
         }
         return false;
     }
 
-    bool handle_combo_text(native::wnd *owner, const char *value) {
-        for (auto *combo : combo_boxes) {
-            auto *state = combo_box_bindings.object_from_handle(combo);
-            if (!state || root_of(combo) != owner ||
-                !state->focused || !state->visible ||
-                combo->get_style() != native::combo_box_style::editable)
-                continue;
-            combo->on_native_text(combo->get_text()+
-                                  (value ? value : ""));
-            if (still_registered(combo) && owner->get_created())
-                owner->invalidate();
-            return true;
-        }
+    bool handle_combo_text(native::wnd *, const char *) {
+        // Editable text, selection and clipboard use text_edit.
         return false;
     }
 
@@ -270,12 +230,47 @@ namespace linux::sdl2
         for (auto *combo : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(combo);
             if (!state || root_of(combo) != owner || !state->visible) continue;
+            update_combo_editor(*combo);
             native::theme::state control_state;
-            control_state.focused = state->focused;
+            control_state.focused =
+                native::detail::input_target(*owner) == combo;
+            control_state.pressed = state->open;
             const native::rect bounds = root_bounds(*combo);
             native::detail::control_render_access::draw(
                 *combo, graphics, *appearance,
                 bounds, control_state);
+            if (state->step) {
+                const int side = std::min<int>(bounds.w(), bounds.h());
+                const int half = int(bounds.h()) / 2;
+                const auto colors = appearance->native_palette();
+                const int x = bounds.x2() - side;
+                graphics.set_pen(1)
+                    .set_ink(colors.content_bg)
+                    .draw_rect(native::rect(x,
+                                            bounds.y1() + 1,
+                                            side - 1,
+                                            bounds.h() - 2),
+                               true)
+                    .set_ink(colors.button_border)
+                    .draw_line(native::point(x, bounds.y1()),
+                               native::point(x, bounds.y2() - 1))
+                    .draw_line(native::point(x, bounds.y1() + half),
+                               native::point(bounds.x2() - 1,
+                                             bounds.y1() + half));
+                const int center = x + side / 2;
+                for (int part = 0; part < 2; ++part) {
+                    const int y = bounds.y1() + part * half + half / 2;
+                    graphics.set_ink(colors.button_text)
+                        .draw_polygon(
+                            {{native::coord(center - 3),
+                              native::coord(y + (part ? -2 : 2))},
+                             {native::coord(center + 3),
+                              native::coord(y + (part ? -2 : 2))},
+                             {native::coord(center),
+                              native::coord(y + (part ? 2 : -2))}},
+                            true);
+                }
+            }
         }
     }
 
@@ -288,6 +283,10 @@ namespace linux::sdl2
             if (!state || root_of(combo) != owner || !state->visible ||
                 !state->open)
                 continue;
+            if (state->popup_paint) {
+                state->popup_paint(graphics);
+                continue;
+            }
             const native::rect bounds = root_bounds(*combo);
             const native::rect popup =
                 popup_bounds(*owner, *combo, bounds, row_height);
@@ -331,8 +330,14 @@ namespace native
 {
     void combo_box::apply_items() { invalidate(); }
     void combo_box::apply_selected_index() { invalidate(); }
-    void combo_box::apply_text() { invalidate(); }
-    void combo_box::apply_style() { invalidate(); }
+    void combo_box::apply_text() {
+        linux::sdl2::update_combo_editor(*this);
+        invalidate();
+    }
+    void combo_box::apply_style() {
+        linux::sdl2::update_combo_editor(*this);
+        invalidate();
+    }
 
     void combo_box::create_native() {
         wnd *parent = get_parent();
@@ -352,6 +357,9 @@ namespace native
         if (!_created || !state)
             throw std::runtime_error("SDL2: combo box is not created.");
         state->visible = true;
+        linux::sdl2::update_combo_editor(*this);
+        if (state->editor)
+            state->editor->show();
         state->parent->invalidate();
     }
 

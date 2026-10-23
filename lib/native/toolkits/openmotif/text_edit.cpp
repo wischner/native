@@ -21,6 +21,7 @@
 
 #include "../../text_util.h"
 #include "globals.h"
+#include "control_font.h"
 
 namespace
 {
@@ -206,6 +207,18 @@ namespace native
         if (!widget)
             throw std::runtime_error(
                 "Motif: Failed to create text_edit.");
+        linux::openmotif::apply_control_font(widget);
+        if (!multiline)
+            XtVaSetValues(widget,
+                          XmNmarginHeight,
+                          2,
+                          XmNmarginWidth,
+                          4,
+                          XmNhighlightThickness,
+                          1,
+                          XmNshadowThickness,
+                          1,
+                          nullptr);
         if (native::detail::property_grid_owner(*this)) {
             Pixel paper = 0;
             XtVaGetValues(XtParent(widget), XmNbackground, &paper, nullptr);

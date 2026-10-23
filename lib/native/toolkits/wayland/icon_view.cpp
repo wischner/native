@@ -90,10 +90,17 @@ namespace native
             G_CALLBACK(
                 +[](GObject *selection, GParamSpec *, gpointer data) {
                     auto &owner = *static_cast<icon_view *>(data);
-                    if (!linux::wayland::state(owner).updating)
-                        owner.on_native_selection(static_cast<int>(
-                            gtk_single_selection_get_selected(
-                                GTK_SINGLE_SELECTION(selection))));
+                    auto &peer = linux::wayland::state(owner);
+                    if (peer.updating)
+                        return;
+                    const detail::window_guard guard(owner);
+                    peer.selecting_native = true;
+                    owner.on_native_selection(static_cast<int>(
+                        gtk_single_selection_get_selected(
+                            GTK_SINGLE_SELECTION(selection))));
+                    if (guard.alive())
+                        linux::wayland::state(owner).selecting_native =
+                            false;
                 }),
             this);
         g_signal_connect(
@@ -142,6 +149,11 @@ namespace native
             gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(peer.widget)), offset);
     }
     void icon_view::apply_scroll_offset() {
+        // GTK already reveals its focused tile using actual grid
+        // geometry. Portable tile estimates must not scroll a native
+        // mouse selection.
+        if (linux::wayland::state(*this).selecting_native)
+            return;
         gtk_adjustment_set_value(
             gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(
                 linux::wayland::state(*this).widget)),

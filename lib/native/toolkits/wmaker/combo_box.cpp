@@ -17,6 +17,9 @@
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "dialog_position.h"
+#include "../../combo_picker.h"
+#include <X11/keysym.h>
 
 namespace
 {
@@ -35,10 +38,12 @@ namespace
             WMSetTextFieldText(state->field, text ? text : "");
             state->suppress = false;
         }
-        linux::wmaker::defer([owner, index]() {
-            if (owner->get_created()) {
+        const native::detail::window_guard guard(*owner);
+        linux::wmaker::defer([owner, index, guard]() {
+            if (guard.alive() && owner->get_created()) {
                 owner->on_native_selection(index);
-                owner->on_native_drop_down(false);
+                if (guard.alive())
+                    owner->on_native_drop_down(false);
             }
         });
     }
@@ -51,8 +56,42 @@ namespace
         char *value = WMGetTextFieldText(state->field);
         const std::string text = value ? value : "";
         if (value) std::free(value);
-        linux::wmaker::defer([owner, text]() {
-            if (owner->get_created()) owner->on_native_text(text);
+        const native::detail::window_guard guard(*owner);
+        linux::wmaker::defer([owner, text, guard]() {
+            if (!guard.alive())
+                return;
+            owner->on_native_text(text);
+            if (guard.alive()) {
+                auto *state = binding(owner);
+                if (state)
+                    WMSetPopUpButtonSelectedItem(
+                        state->popup, owner->get_selected_index());
+            }
+        });
+    }
+
+    void field_key(XEvent *event, void *data) {
+        auto *owner = static_cast<native::combo_box *>(data);
+        const auto *actions = native::detail::peer_state<
+            native::detail::combo_picker_actions>(*owner);
+        const bool readonly_click = event->type == ButtonRelease &&
+                                    actions && actions->read_only;
+        if (!readonly_click &&
+            (event->type != KeyPress ||
+             XLookupKeysym(&event->xkey, 0) != XK_Return))
+            return;
+        const native::detail::window_guard guard(*owner);
+        linux::wmaker::defer([owner, guard] {
+            if (!guard.alive())
+                return;
+            if (auto *actions = native::detail::peer_state<
+                    native::detail::combo_picker_actions>(*owner)) {
+                const auto callback = actions->read_only
+                                          ? actions->open
+                                          : actions->commit;
+                if (callback)
+                    callback();
+            }
         });
     }
 
@@ -88,6 +127,39 @@ namespace
                      static_cast<unsigned int>(width),
                      static_cast<unsigned int>(height),
                      state.arrow_pressed ? WRSunken : WRRaised);
+        if (auto *actions = native::detail::peer_state<
+                native::detail::combo_picker_actions>(owner);
+            actions && actions->step) {
+            for (int part = 0; part < 2; ++part) {
+                const int top = part * height / 2;
+                const int extent = (part + 1) * height / 2 - top;
+                W_DrawRelief(screen,
+                             target,
+                             0,
+                             top,
+                             width,
+                             extent,
+                             state.arrow_pressed &&
+                                     state.arrow_part == part
+                                 ? WRSunken
+                                 : WRRaised);
+                const int center = top + extent / 2;
+                XPoint points[] = {{short(width / 2 - 3),
+                                    short(center + (part ? -1 : 1))},
+                                   {short(width / 2 + 3),
+                                    short(center + (part ? -1 : 1))},
+                                   {short(width / 2),
+                                    short(center + (part ? 2 : -2))}};
+                XFillPolygon(linux::wmaker::display,
+                             target,
+                             WMColorGC(screen->black),
+                             points,
+                             3,
+                             Convex,
+                             CoordModeOrigin);
+            }
+            return;
+        }
         const int center_x = width / 2;
         const int center_y = height / 2;
         XPoint arrow[] = {
@@ -152,6 +224,25 @@ namespace
             if (event->xbutton.button != Button1)
                 return;
             state->arrow_pressed = true;
+            state->arrow_part =
+                event->xbutton.y < int(WMWidgetHeight(state->arrow)) / 2
+                    ? 0
+                    : 1;
+            if (auto *actions = native::detail::peer_state<
+                    native::detail::combo_picker_actions>(*owner)) {
+                const auto open = actions->open;
+                const auto step = actions->step;
+                const int direction = state->arrow_part ? -1 : 1;
+                const native::detail::window_guard guard(*owner);
+                linux::wmaker::defer([guard, open, step, direction] {
+                    if (!guard.alive())
+                        return;
+                    if (open)
+                        open();
+                    else if (step)
+                        step(direction);
+                });
+            }
             if (!state->arrow_timer) {
                 state->arrow_timer = WMAddTimerHandler(
                     16, poll_arrow_release, owner);
@@ -164,10 +255,16 @@ namespace
 
     void replace(linux::wmaker::native_combo_box *state,
                  const std::vector<std::string> &items) {
-        while (WMGetPopUpButtonNumberOfItems(state->popup) > 0)
+        for (auto *item : state->items) {
             WMRemovePopUpButtonItem(state->popup, 0);
+            // The pinned SDK destroys the item's contents but omits
+            // releasing its own WMCreateMenuItem allocation.
+            std::free(item);
+        }
+        state->items.clear();
         for (const auto &item : items)
-            WMAddPopUpButtonItem(state->popup, item.c_str());
+            state->items.push_back(
+                WMAddPopUpButtonItem(state->popup, item.c_str()));
     }
 }
 
@@ -176,6 +273,9 @@ namespace linux::wmaker
     void configure_combo_box(native::combo_box &owner,
                              native_combo_box &state) {
         const native::size dimensions = owner.get_dimensions();
+        if (auto *actions = native::detail::peer_state<
+                native::detail::combo_picker_actions>(owner))
+            WMSetTextFieldEditable(state.field, !actions->read_only);
         const bool editable = owner.get_style() ==
             native::combo_box_style::editable;
         const int width = std::max(1, static_cast<int>(dimensions.w));
@@ -278,6 +378,15 @@ namespace linux::wmaker
                                 empty,
                                 ShapeSet);
             XDestroyRegion(empty);
+            if (native::detail::peer_state<
+                    native::detail::combo_picker_actions>(owner))
+                XShapeCombineMask(display,
+                                  arrow_window,
+                                  ShapeInput,
+                                  0,
+                                  0,
+                                  None,
+                                  ShapeSet);
         }
         WMSetPopUpButtonPullsDown(
             state.popup, editable ? True : False);
@@ -312,13 +421,21 @@ namespace native
 
     void combo_box::apply_text() {
         auto *state = binding(this);
-        if (!state) throw std::runtime_error(
-            "Window Maker/WINGs: missing combo box binding.");
+        if (!state)
+            throw std::runtime_error(
+                "Window Maker/WINGs: missing combo box binding.");
         state->suppress = true;
         WMSetPopUpButtonText(state->popup, get_text().c_str());
-        if (state->field)
-            WMSetTextFieldText(state->field, get_text().c_str());
+        if (state->field) {
+            char *text = WMGetTextFieldText(state->field);
+            if (get_text() != (text ? text : ""))
+                WMSetTextFieldText(state->field, get_text().c_str());
+            std::free(text);
+        }
         state->suppress = false;
+        // Private picker actions are installed after native creation.
+        if (detail::peer_state<detail::combo_picker_actions>(*this))
+            linux::wmaker::configure_combo_box(*this, *state);
     }
 
     void combo_box::apply_style() {
@@ -327,8 +444,7 @@ namespace native
             !state->arrow)
             throw std::runtime_error(
                 "Window Maker/WINGs: missing combo box binding.");
-        const bool editable =
-            get_style() == combo_box_style::editable;
+        const bool editable = get_style() == combo_box_style::editable;
         linux::wmaker::configure_combo_box(*this, *state);
 
         if (WMWidgetXID(state->frame) != None) {
@@ -373,13 +489,17 @@ namespace native
         state->delegate.data = self;
         state->delegate.didChange = field_changed;
         WMSetTextFieldDelegate(state->field, &state->delegate);
+        WMCreateEventHandler(WMWidgetView(state->field),
+                             KeyPressMask | ButtonReleaseMask,
+                             field_key,
+                             self);
         WMSetTextFieldText(state->field, get_text().c_str());
         WMCreateEventHandler(WMWidgetView(state->popup),
                              ButtonPressMask,
                              paint_editable_arrow,
                              self);
         WMCreateEventHandler(WMWidgetView(state->arrow),
-                             ExposureMask,
+                             ExposureMask | ButtonPressMask,
                              paint_editable_arrow,
                              self);
         linux::wmaker::configure_combo_box(*self, *state);
@@ -422,6 +542,25 @@ namespace native
         linux::wmaker::combo_box_bindings.unregister_by_handle(self);
         linux::wmaker::wnd_bindings.unregister_by_object(self);
         if (state && state->frame) WMDestroyWidget(state->frame);
+        if (state)
+            for (auto *item : state->items)
+                std::free(item);
         delete state;
     }
 } // namespace native
+
+namespace native::detail
+{
+    void configure_picker_day(button &day, bool enabled) {
+        auto *widget =
+            linux::wmaker::wnd_bindings.handle_from_object(&day);
+        WMSetButtonEnabled(reinterpret_cast<WMButton *>(widget),
+                           enabled);
+    }
+    point picker_popup_position(combo_box &field) {
+        auto *widget =
+            linux::wmaker::wnd_bindings.handle_from_object(&field);
+        const auto origin = linux::wmaker::screen_position(widget);
+        return point(origin.x, origin.y + WMWidgetHeight(widget));
+    }
+} // namespace native::detail

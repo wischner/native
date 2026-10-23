@@ -352,3 +352,9 @@ On macOS both panel and canvas hosts set `clipsToBounds`. Recent AppKit
 versions otherwise allow a dirty region to extend outside the host. A panel
 background must remain inside its own frame so it cannot cover sibling
 non-client toolbar canvases or their icons.
+
+OPEN LOOK hosts structural Panels directly on the top-level Frame. Both
+creation and later geometry changes accumulate all portable ancestor offsets;
+a settings page restored after search must not jump to frame-local page
+coordinates and cover unrelated controls. Native Panel children still use
+their immediate host's local coordinates.

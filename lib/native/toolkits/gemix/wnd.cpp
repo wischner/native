@@ -6,6 +6,7 @@
 //
 
 #include <stdexcept>
+#include <algorithm>
 
 #include <native.h>
 #include <native/wnd.h>
@@ -44,18 +45,54 @@ namespace native
 
     void wnd::apply_position() {
         apply_window_bounds(this, _bounds);
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state =
+                linux::gemix::combo_box_bindings.object_from_handle(
+                    combo);
+            if (state && state->editor)
+                state->editor->set_bounds(rect(
+                    2,
+                    0,
+                    std::max(1,
+                             int(_bounds.w()) - int(_bounds.h()) - 2),
+                    _bounds.h()));
+        }
         if (_parent)
             _parent->invalidate();
     }
 
     void wnd::apply_dimensions() {
         apply_window_bounds(this, _bounds);
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state =
+                linux::gemix::combo_box_bindings.object_from_handle(
+                    combo);
+            if (state && state->editor)
+                state->editor->set_bounds(rect(
+                    2,
+                    0,
+                    std::max(1,
+                             int(_bounds.w()) - int(_bounds.h()) - 2),
+                    _bounds.h()));
+        }
         if (_parent)
             _parent->invalidate();
     }
 
     void wnd::apply_bounds() {
         apply_window_bounds(this, _bounds);
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state =
+                linux::gemix::combo_box_bindings.object_from_handle(
+                    combo);
+            if (state && state->editor)
+                state->editor->set_bounds(rect(
+                    2,
+                    0,
+                    std::max(1,
+                             int(_bounds.w()) - int(_bounds.h()) - 2),
+                    _bounds.h()));
+        }
         if (_parent)
             _parent->invalidate();
     }

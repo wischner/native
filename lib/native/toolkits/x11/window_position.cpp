@@ -17,6 +17,9 @@
 
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/StringDefs.h>
+#include <X11/Shell.h>
 
 #include <native/screen.h>
 
@@ -212,5 +215,102 @@ namespace linux::x11
                                             maximum_y);
         return native::point(static_cast<native::coord>(x),
                              static_cast<native::coord>(y));
+    }
+} // namespace linux::x11
+
+namespace
+{
+    void
+    modal_mapped(Widget shell, XtPointer, XEvent *event, Boolean *) {
+        if (event->type != MapNotify)
+            return;
+        auto *display = XtDisplay(shell);
+        XRaiseWindow(display, XtWindow(shell));
+        XGrabPointer(display,
+                     XtWindow(shell),
+                     True,
+                     ButtonPressMask | ButtonReleaseMask |
+                         PointerMotionMask,
+                     GrabModeAsync,
+                     GrabModeAsync,
+                     None,
+                     None,
+                     CurrentTime);
+        XGrabKeyboard(display,
+                      XtWindow(shell),
+                      True,
+                      GrabModeAsync,
+                      GrabModeAsync,
+                      CurrentTime);
+        XSetInputFocus(
+            display, XtWindow(shell), RevertToParent, CurrentTime);
+    }
+} // namespace
+namespace linux::x11
+{
+    void prepare_modal_shell(Widget shell, Widget parent) {
+        if (!XtIsRealized(shell))
+            XtRealizeWidget(shell);
+        auto *display = XtDisplay(shell);
+        auto *screen = XtScreen(shell);
+        int center_x = WidthOfScreen(screen) / 2;
+        int center_y = HeightOfScreen(screen) / 2;
+        XWindowAttributes attributes{};
+        if (parent && XtIsRealized(parent) &&
+            XGetWindowAttributes(
+                display, XtWindow(parent), &attributes) &&
+            attributes.map_state == IsViewable) {
+            int x = 0, y = 0;
+            Window child = None;
+            XTranslateCoordinates(display,
+                                  XtWindow(parent),
+                                  RootWindowOfScreen(screen),
+                                  0,
+                                  0,
+                                  &x,
+                                  &y,
+                                  &child);
+            center_x = x + attributes.width / 2;
+            center_y = y + attributes.height / 2;
+            XSetTransientForHint(
+                display, XtWindow(shell), XtWindow(parent));
+        }
+        Dimension width = 0, height = 0, border = 0;
+        XtVaGetValues(shell,
+                      XtNwidth,
+                      &width,
+                      XtNheight,
+                      &height,
+                      XtNborderWidth,
+                      &border,
+                      nullptr);
+        const int x = std::clamp(
+            center_x - int(width + 2 * border) / 2,
+            0,
+            std::max(0,
+                     WidthOfScreen(screen) - int(width + 2 * border)));
+        const int y = std::clamp(
+            center_y - int(height + 2 * border) / 2,
+            0,
+            std::max(
+                0, HeightOfScreen(screen) - int(height + 2 * border)));
+        XtVaSetValues(shell,
+                      XtNx,
+                      x,
+                      XtNy,
+                      y,
+                      XtNwinGravity,
+                      StaticGravity,
+                      nullptr);
+        XSizeHints hints{};
+        long supplied = 0;
+        XGetWMNormalHints(display, XtWindow(shell), &hints, &supplied);
+        hints.flags |= USPosition | PWinGravity;
+        hints.win_gravity = StaticGravity;
+        hints.x = x;
+        hints.y = y;
+        XSetWMNormalHints(display, XtWindow(shell), &hints);
+        XtAddEventHandler(
+            shell, StructureNotifyMask, False, modal_mapped, nullptr);
     }
 } // namespace linux::x11

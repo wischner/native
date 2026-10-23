@@ -15,6 +15,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include <X11/cursorfont.h>
 
 namespace
 {
@@ -46,8 +47,11 @@ namespace
             if (!XtIsManaged(children[index]))
                 XtManageChild(children[index]);
             XtAddEventHandler(children[index],
-                ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-                False, splitter_event, owner);
+                              ButtonPressMask | ButtonReleaseMask |
+                                  PointerMotionMask | EnterWindowMask,
+                              False,
+                              splitter_event,
+                              owner);
         }
     }
 
@@ -62,6 +66,18 @@ namespace
         if (!owner || !state || !event)
             return;
         Widget paned = state->paned;
+        if (event->type == EnterNotify) {
+            const auto shape =
+                owner->get_orientation() ==
+                        native::split_orientation::horizontal
+                    ? XC_sb_h_double_arrow
+                    : XC_sb_v_double_arrow;
+            const auto cursor =
+                XCreateFontCursor(XtDisplay(source), shape);
+            XDefineCursor(XtDisplay(source), XtWindow(source), cursor);
+            XFreeCursor(XtDisplay(source), cursor);
+            return;
+        }
         native::point position(
             event->type == MotionNotify ? event->xmotion.x
                                         : event->xbutton.x,

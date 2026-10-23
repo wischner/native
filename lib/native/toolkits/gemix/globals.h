@@ -51,6 +51,9 @@ namespace linux::gemix
         bool installed = false;
     };
 
+    // Include ancestor visibility when drawing emulated child controls.
+    bool visible_in_tree(const native::wnd &control);
+
     extern runtime_state runtime;
     extern native::bindings<WORD, native::wnd *> wnd_bindings;
     extern std::vector<native::button *> buttons;
@@ -101,11 +104,14 @@ namespace linux::gemix
     {
         std::size_t cursor = 0;
         std::size_t anchor = 0;
+        native::combo_box *combo_owner = nullptr;
         bool visible = false;
         bool focused = false;
     };
     struct gem_combo_box
     {
+        std::unique_ptr<native::text_edit> editor;
+        int hot = -1;
         bool open = false;
         bool focused = false;
     };
@@ -160,7 +166,8 @@ namespace linux::gemix
 
     // Route a local click release to a collection control.
     bool activate_collection(native::app_wnd *parent,
-                             native::point point);
+                             native::point point,
+                             WORD modifiers = 0);
 
     // Route one AES key packet to the focused collection control.
     bool handle_collection_key(native::app_wnd *parent,

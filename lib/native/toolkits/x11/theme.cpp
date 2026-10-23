@@ -196,7 +196,9 @@ namespace
                 kind = native::surface_kind::header;
             saved_state saved(_g);
             draw_surface_fallback(bounds, kind, element_state);
-            if (kind == native::surface_kind::header && bounds.d.h)
+            if ((kind == native::surface_kind::header ||
+                 kind == native::surface_kind::table_header) &&
+                bounds.d.h)
                 _g.set_pen(1).set_ink(native_palette().separator)
                     .draw_line(bounds.p,
                         native::point(bounds.x2() - 1, bounds.y1()));

@@ -22,6 +22,7 @@
 #include <native/save_file_dialog.h>
 
 #include "globals.h"
+#include "dialog_position.h"
 
 namespace
 {
@@ -184,6 +185,8 @@ namespace
                       handle_overwrite_destroy,
                       dialog);
         XtSetSensitive(state->selector, False);
+        linux::openmotif::position_dialog(confirmation,
+                                          state->selector);
         XtManageChild(confirmation);
     }
 
@@ -378,6 +381,10 @@ namespace linux::openmotif
                       XmNdestroyCallback,
                       handle_destroy,
                       &dialog);
+        position_dialog(
+            widget,
+            linux::openmotif::wnd_bindings.handle_from_object(
+                dialog.get_owner()));
         XtManageChild(widget);
     }
 } // namespace linux::openmotif

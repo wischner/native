@@ -173,20 +173,29 @@ namespace
 
 namespace linux::wmaker
 {
-    void configure_text_cell(native::text_edit &owner, native_text_edit &state) {
-        if (!state.cell || !state.text) return;
+    void configure_text_cell(native::text_edit &owner,
+                             native_text_edit &state) {
+        if (!state.cell || !state.text)
+            return;
         const auto dimensions = owner.get_dimensions();
-        const int font_height = WMFontHeight(WMDefaultSystemFont(WMWidgetScreen(state.cell)));
+        auto *font = WMDefaultSystemFont(WMWidgetScreen(state.cell));
+        const int font_height = WMFontHeight(font);
+        WMReleaseFont(font);
         // WMText places a line two pixels into a buffer copied at y=3.
-        // Clip that native inset in the host, then center the font cell.
-        const auto metrics = native::font_t::stock(native::font_role::control).get_metrics();
+        // Clip that native inset in the host, then center the font
+        // cell.
+        const auto metrics =
+            native::font_t::stock(native::font_role::control)
+                .get_metrics();
         const int top = (int(dimensions.h) - font_height) / 2 - 5 -
                         (metrics.height - metrics.ascent);
         WMMoveWidget(state.text, 0, top);
-        WMResizeWidget(state.text, std::max(1, int(dimensions.w)),
-                       std::max(font_height + 6, int(dimensions.h) - top));
+        WMResizeWidget(
+            state.text,
+            std::max(1, int(dimensions.w)),
+            std::max(font_height + 6, int(dimensions.h) - top));
     }
-}
+} // namespace linux::wmaker
 
 namespace native
 {
@@ -233,14 +242,26 @@ namespace native
                 binding->cell = WMCreateFrame(parent);
                 WMSetFrameRelief(binding->cell, WRFlat);
             }
-            binding->text = WMCreateText(property ? binding->cell : parent);
-            binding->widget = property ? static_cast<WMWidget *>(binding->cell) : binding->text;
-            WMSetTextHasVerticalScroller(binding->text, !property);
+            binding->text =
+                WMCreateText(property ? binding->cell : parent);
+            binding->widget =
+                property ? static_cast<WMWidget *>(binding->cell)
+                         : binding->text;
+            auto *font = WMDefaultSystemFont(WMWidgetScreen(parent));
+            WMSetTextDefaultFont(binding->text, font);
+            WMReleaseFont(font);
+            WMSetTextUsesMonoFont(binding->text, True);
+            WMSetTextHasRuler(binding->text, False);
+            WMSetTextRelief(binding->text, WRSunken);
+            WMSetTextHasVerticalScroller(binding->text,
+                                         !property && !_read_only);
             if (property) {
                 // WMTextField hard-codes white in its painter. WMText
-                // provides the native editable surface with configurable
-                // paper and can suppress newlines for compact value cells.
-                WMSetTextBackgroundColor(binding->text, WMGrayColor(WMWidgetScreen(parent)));
+                // provides the native editable surface with
+                // configurable paper and can suppress newlines for
+                // compact value cells.
+                WMSetTextBackgroundColor(
+                    binding->text, WMGrayColor(WMWidgetScreen(parent)));
                 WMSetTextRelief(binding->text, WRFlat);
                 WMSetTextIgnoresNewline(binding->text, True);
                 WMSetTextDefaultFont(binding->text, WMDefaultSystemFont(WMWidgetScreen(parent)));

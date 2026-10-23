@@ -16,6 +16,19 @@ namespace linux::openmotif
 {
     struct motif_gpx;
 
+    // CDE tree disclosure dimensions, shared with painted headers.
+    constexpr int disclosure_side = 13;
+
+    // Return the tree's flat triangle centered in a disclosure cell.
+    std::vector<native::point>
+    disclosure_points(const native::rect &bounds, bool expanded);
+
+    // Fill the same native triangle in a tree pixmap or painted header.
+    void draw_disclosure_triangle(Drawable target,
+                                  GC gc,
+                                  const native::rect &bounds,
+                                  bool expanded);
+
     // Identifies a drawable Motif window graphics target.
     struct theme_target
     {

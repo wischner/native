@@ -356,6 +356,10 @@ namespace native
         _completion = std::move(items);
         _completion_visible = !_completion.empty();
         _completion_index = _completion_visible ? 0 : -1;
+        if (auto *geometry =
+                detail::peer_state<detail::code_completion_geometry>(
+                    *this))
+            *geometry = {};
         invalidate();
     }
 
@@ -758,6 +762,22 @@ namespace native
     }
 
     void code_edit::handle_click(point position) {
+        if (_completion_visible) {
+            const auto *popup =
+                detail::peer_state<detail::code_completion_geometry>(
+                    *this);
+            if (popup && popup->bounds.contains(position)) {
+                _completion_index =
+                    std::clamp(popup->first + (position.y -
+                                               popup->bounds.y1() - 1) /
+                                                  popup->row_height,
+                               0,
+                               int(_completion.size()) - 1);
+                on_native_key(code_edit_key::enter);
+                return;
+            }
+            hide_completion();
+        }
         const int height = line_height();
         const int line = std::clamp(
             _first_visible_line +

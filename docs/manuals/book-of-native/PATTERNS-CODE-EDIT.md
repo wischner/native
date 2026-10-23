@@ -77,3 +77,22 @@ construction, overlays, lexer integration, completion, and file handling.
 Completion accepts the active choice with Enter or Tab. GTK transfers focus
 to the completion keyboard host when the application opens the overlay.
 The application still inserts the accepted item through `on_complete`.
+
+The shared painter records the completion viewport, first visible item and
+row height in the editor peer. Pointer selection uses that painted geometry
+and accepts the clicked item through the existing completion callback. A
+click outside dismisses the overlay before placing the caret. SDL routes an
+open completion's keys before sibling text-editor focus, so commands that
+open completion leave Up/Down and Enter/Tab available immediately.
+
+OPEN LOOK consumes source-editor X key events after translating the shared
+commands, rather than allowing Panel traversal to handle Tab or arrows again.
+Its native paint-window masks include raw keyboard events; physical server
+input is exercised alongside the synthetic notifier callback fixture.
+
+Opening completion on Window Maker or Motif moves native keyboard focus to
+the editor, even when a different control launched the command. WINGs also
+updates its internal focused view; XSetInputFocus alone leaves its key
+redirector on the previous widget. Motif stops further translation dispatch
+for handled editor keys. Both adapters share the painted popup's pointer
+geometry and apply Ctrl/Shift table input separately.

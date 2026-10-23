@@ -39,6 +39,9 @@ Current per-backend build and new
 runtime evidence are recorded separately in the feature matrix.
 
 
+- Generic GTK Wayland passes 20/20 headless tests after the picker, combo,
+  disclosure and close-lifetime fixes. Its native runtime fixture also exits
+  normally on the host Wayland desktop, with 120 theme pixel comparisons.
 - GTK 4.14 Wayland and elementary OS adapters are separately buildable and
   exercised under headless Weston (20/20 tests each), including the actual
   elementary stylesheet. The elementary OS 8.1 Pantheon desktop also passes
@@ -51,14 +54,24 @@ runtime evidence are recorded separately in the feature matrix.
   recorded in
   the [VM note](../notes/ELEMENTARY-VM-RUNTIME.md).
 - Runtime-tested in this project workflow:
-  - Linux X11 backend
-  - Linux SDL2 backend, including nested canvas renderer pixels, real
-    SDL pointer routing/capture, and close-policy regressions
-  - Linux OpenMotif backend
-  - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm
-  - Linux Window Maker/WINGs backend in Docker with Xephyr and Window Maker
+  - Linux X11 backend: 21/21 tests under Xvfb and TWM, including native
+    modal panels, editable fields, date calendars and scrollbar input
+  - Linux SDL2 backend: 27/27 tests, including queued control input,
+    editable combo/picker fields, completion acceptance, table modifiers,
+    nested canvas pixels, pointer capture and close-policy regressions. The
+    control fixture also passes through the normal desktop GDB path
+  - Linux OpenMotif backend: 25/25 headless tests plus the CDE desktop
+    control fixture, including native picker fields and centered panels
+  - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm: 24/24
+    tests, including native input, editable-combo/picker composition and
+    background damage that preserves windowless text items
+  - Linux Window Maker/WINGs backend in Docker with Xephyr and Window Maker;
+    classic input/picker/panel checks pass on the desktop, while full CTest
+    reports 20/22 due to Fontconfig/Pango exit allocations
   - Linux GEMix backend through Docker and local rasta, both direct AES/VDI
-    and serialized libgem/gemd builds; direct-backend regressions also
+    and serialized libgem/gemd builds (20/21 and 21/22; existing SDK menu
+    restoration failure). Positioned AES forms and packet-driven input pass;
+    direct-backend regressions also
     cover nested tab/split/canvas framebuffer composition and secondary
     canvas button identity. On 2026-10-21, full Rasta desktop colors and
     viewer-driven GDB/MI shutdown pass with 32-bit output and inversion off;

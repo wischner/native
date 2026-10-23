@@ -31,9 +31,9 @@ namespace
     }
 
     bool hit(native::wnd &control, native::point point) {
-        return native::rect(origin_in_root(control),
-                            control.get_dimensions())
-            .contains(point);
+        auto *root = root_of(&control);
+        return root &&
+               native::detail::deepest_at(*root, point) == &control;
     }
 
     void clear_focus(native::app_wnd *root) {
@@ -109,6 +109,7 @@ namespace linux::gemix
                             native::gpx &graphics) {
         for (auto *control : icon_views) {
             if (control && control->get_created() &&
+                visible_in_tree(*control) &&
                 root_of(control) == parent) {
                 native::detail::draw_icon_view_at(
                     *control, graphics, origin_in_root(*control));
@@ -116,6 +117,7 @@ namespace linux::gemix
         }
         for (auto *control : tree_views) {
             if (control && control->get_created() &&
+                visible_in_tree(*control) &&
                 root_of(control) == parent) {
                 native::detail::draw_tree_view_at(
                     *control, graphics, origin_in_root(*control));
@@ -123,6 +125,7 @@ namespace linux::gemix
         }
         for (auto *control : table_views) {
             if (control && control->get_created() &&
+                visible_in_tree(*control) &&
                 root_of(control) == parent) {
                 native::detail::draw_table_view_at(
                     *control, graphics, origin_in_root(*control));
@@ -130,6 +133,7 @@ namespace linux::gemix
         }
         for (auto *control : code_edits) {
             if (control && control->get_created() &&
+                visible_in_tree(*control) &&
                 root_of(control) == parent) {
                 native::draw_code_edit(
                     *control, graphics, origin_in_root(*control));
@@ -138,7 +142,8 @@ namespace linux::gemix
     }
 
     bool activate_collection(native::app_wnd *parent,
-                             native::point point) {
+                             native::point point,
+                             WORD modifiers) {
         for (auto iterator = code_edits.rbegin();
              iterator != code_edits.rend(); ++iterator) {
             native::code_edit *control = *iterator;
@@ -162,7 +167,10 @@ namespace linux::gemix
             clear_focus(parent);
             control->on_native_focus(true);
             native::detail::handle_table_click(
-                *control, local_point(*control, point));
+                *control,
+                local_point(*control, point),
+                (modifiers & 4) != 0,
+                (modifiers & 3) != 0);
             const auto selected = control->get_selected_rows();
             const native::table_row_id row = selected.empty()
                 ? native::invalid_table_row_id
@@ -486,6 +494,7 @@ namespace linux::gemix
              iterator != code_edits.rend(); ++iterator) {
             native::code_edit *control = *iterator;
             if (control && control->get_created() &&
+                visible_in_tree(*control) &&
                 root_of(control) == parent && hit(*control, point)) {
                 control->on_native_mouse_move(
                     local_point(*control, point));

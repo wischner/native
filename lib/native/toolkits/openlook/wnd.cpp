@@ -187,6 +187,17 @@ namespace native
         }
 
         Panel_item item = control_item(this);
+        if (item && dynamic_cast<panel *>(this)) {
+            int menu_height = 0;
+            const point position = frame_position(this, menu_height);
+            xv_set(item,
+                   XV_X,
+                   position.x,
+                   XV_Y,
+                   position.y + menu_height,
+                   nullptr);
+            return;
+        }
         if (item) {
             int y = _bounds.p.y;
             // XView lists have integral rows. Keep the bottom-facing tab
@@ -316,7 +327,7 @@ namespace native
                 *self,
                 rect(point(0, 0), self->get_dimensions()));
         } else if (Panel_item item = control_item(self)) {
-            panel_paint(item, PANEL_CLEAR);
+            panel_paint(item, PANEL_NO_CLEAR);
             linux::openlook::mask_panel_borders(linux::openlook::parent_panel(this));
         }
         return *self;
@@ -334,7 +345,7 @@ namespace native
         } else if (collection_state(self)) {
             linux::openlook::repaint_collection(*self, area);
         } else if (Panel_item item = control_item(self)) {
-            panel_paint(item, PANEL_CLEAR);
+            panel_paint(item, PANEL_NO_CLEAR);
             linux::openlook::mask_panel_borders(linux::openlook::parent_panel(this));
         }
         return *self;

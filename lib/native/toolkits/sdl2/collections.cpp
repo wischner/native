@@ -413,11 +413,15 @@ namespace linux::sdl2
                 }
             }
             const native::point local = local_point(*control, x, y);
-            control->on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                pressed ? native::mouse_action::press
-                        : native::mouse_action::release,
-                local));
+            const native::detail::window_guard guard(*control);
+            if (released)
+                native::detail::handle_table_click(
+                    *control,
+                    local,
+                    (SDL_GetModState() & KMOD_CTRL) != 0,
+                    (SDL_GetModState() & KMOD_SHIFT) != 0);
+            if (!guard.alive())
+                return true;
             if (released && clicks >= 2) {
                 const auto selected = control->get_selected_rows();
                 if (!selected.empty())
@@ -496,6 +500,13 @@ namespace linux::sdl2
             if (!control || !visible(*control) ||
                 root_of(control) != owner || !hit(*control, x, y))
                 continue;
+            const auto local = local_point(*control, x, y);
+            bool header = false;
+            for (std::size_t i = 0; i < control->get_item_count(); ++i)
+                header = header ||
+                         control->get_header_bounds(i).contains(local);
+            if (!header)
+                continue;
             if (pressed) {
                 clear_focus(owner);
                 control->on_native_focus(true);
@@ -512,6 +523,13 @@ namespace linux::sdl2
             native::tab_view *control = *iterator;
             if (!control || !visible(*control) ||
                 root_of(control) != owner || !hit(*control, x, y))
+                continue;
+            const auto local = local_point(*control, x, y);
+            bool header = false;
+            for (std::size_t i = 0; i < control->get_item_count(); ++i)
+                header = header ||
+                         control->get_tab_bounds(i).contains(local);
+            if (!header)
                 continue;
             control->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left,
@@ -627,6 +645,21 @@ namespace linux::sdl2
                 control->on_native_mouse_move(
                     local_point(*control, x, y));
                 return true;
+            }
+        }
+        return false;
+    }
+
+    bool handle_completion_key(native::wnd *owner,
+                               const SDL_KeyboardEvent &event) {
+        if (event.type != SDL_KEYDOWN)
+            return false;
+        for (auto *control : code_edits) {
+            if (control && visible(*control) &&
+                root_of(control) == owner &&
+                control->get_completion_visible()) {
+                control->on_native_focus(true);
+                return handle_collection_key(owner, event);
             }
         }
         return false;

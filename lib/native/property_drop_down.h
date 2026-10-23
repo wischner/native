@@ -8,6 +8,7 @@
 
 #include <native/canvas.h>
 #include <native/property_grid.h>
+#include <native/combo_box.h>
 
 namespace native::detail
 {
@@ -30,6 +31,7 @@ namespace native::detail
         property_item _item;
         property_drop_down::commit _commit;
         std::unique_ptr<popup> _popup;
+        std::unique_ptr<combo_box> _field;
         std::shared_ptr<int> _lifetime;
         std::shared_ptr<int> _session;
 

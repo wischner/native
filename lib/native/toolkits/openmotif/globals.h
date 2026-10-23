@@ -88,6 +88,7 @@ namespace linux::openmotif
         bool native_scroll_callbacks = false;
         bool synchronizing_scrollbars = false;
         bool suppress = false;
+        bool completion_visible = false;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =

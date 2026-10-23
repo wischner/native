@@ -35,11 +35,11 @@ if(APPLE)
 endif()
 
 if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
-    add_executable(native_openlook_runtime_tests native_openlook_runtime_tests.cpp)
+    add_executable(native_openlook_runtime_tests native_openlook_runtime_tests.cpp native_openlook_control_checks.cpp)
     target_include_directories(native_openlook_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_openlook_runtime_tests PRIVATE
-        native native_developer_options)
+        native native_developer_options ${CMAKE_DL_LIBS})
     add_test(NAME native_openlook_runtime_tests COMMAND native_openlook_runtime_tests)
     set_tests_properties(native_openlook_runtime_tests PROPERTIES TIMEOUT 30)
 endif()
@@ -95,6 +95,8 @@ if(APPLE)
     target_link_libraries(native_settings_tests PRIVATE "-framework AppKit")
 elseif(HAIKU)
     target_include_directories(native_settings_tests SYSTEM PRIVATE ${HAIKU_SHARED_INCLUDE})
+elseif(TOOLKIT STREQUAL "X11")
+    target_compile_definitions(native_settings_tests PRIVATE NATIVE_SETTINGS_X11)
 elseif(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
     target_link_libraries(native_settings_tests PRIVATE PkgConfig::GTK4)
     target_compile_definitions(native_settings_tests PRIVATE NATIVE_SETTINGS_GTK)
@@ -223,6 +225,16 @@ if(UNIX AND TOOLKIT STREQUAL "X11")
 endif()
 
 if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
+    add_executable(native_sdl_control_tests native_sdl_control_tests.cpp)
+    target_include_directories(native_sdl_control_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_sdl_control_tests PRIVATE native native_developer_options)
+    target_compile_definitions(native_sdl_control_tests PRIVATE
+        $<TARGET_PROPERTY:native,COMPILE_DEFINITIONS>)
+    add_test(NAME native_sdl_control_tests COMMAND native_sdl_control_tests)
+    set_tests_properties(native_sdl_control_tests PROPERTIES TIMEOUT 20
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
     add_executable(native_canvas_input_tests native_canvas_input_tests.cpp)
     target_include_directories(native_canvas_input_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
@@ -523,4 +535,24 @@ if(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
     add_test(NAME native_collection_runtime_tests COMMAND native_collection_runtime_tests)
     set_tests_properties(native_collection_runtime_tests PROPERTIES TIMEOUT 30)
     set_tests_properties(native_wayland_runtime_tests PROPERTIES TIMEOUT 20)
+endif()
+
+if(UNIX AND NOT APPLE AND TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$")
+    add_executable(native_classic_control_tests native_classic_control_tests.cpp)
+    target_include_directories(native_classic_control_tests PRIVATE
+        $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+    target_link_libraries(native_classic_control_tests PRIVATE native native_developer_options ${CMAKE_DL_LIBS})
+    target_compile_definitions(native_classic_control_tests PRIVATE NATIVE_TEST_${TOOLKIT})
+    add_test(NAME native_classic_control_tests COMMAND ${gemd_runner} $<TARGET_FILE:native_classic_control_tests>)
+    set_tests_properties(native_classic_control_tests PROPERTIES TIMEOUT 40)
+    if(TOOLKIT STREQUAL "GEMIX")
+        set_tests_properties(native_classic_control_tests PROPERTIES ENVIRONMENT
+            "GEM_RASTA_FRAMEBUFFER=/tmp/native-classic-gem-tests.fb;GEM_RASTA_PORT=5022;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
+    elseif(TOOLKIT STREQUAL "WMAKER")
+        set_tests_properties(native_classic_control_tests PROPERTIES ENVIRONMENT
+            "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-wmaker-suppressions.txt")
+    else()
+        set_tests_properties(native_classic_control_tests PROPERTIES ENVIRONMENT
+            "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-motif-suppressions.txt")
+    endif()
 endif()

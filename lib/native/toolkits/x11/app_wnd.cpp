@@ -407,18 +407,19 @@ namespace native
                       _title.c_str(),
                       nullptr);
 
-        Widget main_window = XtVaCreateManagedWidget("main_window",
-                                                     formWidgetClass,
-                                                     shell,
-                                                     XtNwidth,
-                                                     linux::x11::device_dimension(_bounds.d.w),
-                                                     XtNheight,
-                                                     linux::x11::device_dimension(_bounds.d.h),
-                                                     XtNborderWidth,
-                                                     0,
-                                                     XtNdefaultDistance,
-                                                     0,
-                                                     nullptr);
+        Widget main_window = XtVaCreateManagedWidget(
+            "main_window",
+            linux::x11::layout_host_class(),
+            shell,
+            XtNwidth,
+            linux::x11::device_dimension(_bounds.d.w),
+            XtNheight,
+            linux::x11::device_dimension(_bounds.d.h),
+            XtNborderWidth,
+            0,
+            XtNdefaultDistance,
+            0,
+            nullptr);
         if (!main_window)
             throw std::runtime_error(
                 "X11/Athena: Failed to create main container.");
@@ -563,6 +564,11 @@ namespace native
                         &linux::x11::wm_delete_window_atom,
                         1);
 
+        if (get_modal())
+            linux::x11::prepare_modal_shell(
+                shell,
+                linux::x11::shell_bindings.handle_from_object(
+                    get_owner()));
         if (get_owner())
             XtPopup(shell,
                     get_modal() ? XtGrabExclusive : XtGrabNone);

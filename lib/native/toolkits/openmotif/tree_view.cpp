@@ -22,16 +22,18 @@
 #include "../../platforms/linux/x_image.h"
 #include "collection_host.h"
 #include "globals.h"
+#include "theme_support.h"
 
 namespace
 {
     using collection_state = linux::openmotif::motif_collection;
-    constexpr unsigned int infolib_disclosure_side = 13;
-    constexpr short infolib_disclosure_inset = 3;
+    constexpr int infolib_disclosure_side =
+        linux::openmotif::disclosure_side;
 
     collection_state &binding_for(native::tree_view &tree) {
-        auto *state = linux::openmotif::tree_view_bindings
-                          .object_from_handle(&tree);
+        auto *state =
+            linux::openmotif::tree_view_bindings.object_from_handle(
+                &tree);
         if (!state || !state->widget)
             throw std::runtime_error(
                 "Motif: missing tree_view binding.");
@@ -163,19 +165,13 @@ namespace
         if (!display || !reference)
             return XmUNSPECIFIED_PIXMAP;
         Pixel background = 0;
-        Pixel foreground = 0;
-        XtVaGetValues(reference,
-                      XmNbackground,
-                      &background,
-                      XmNforeground,
-                      &foreground,
-                      nullptr);
-        Pixmap pixmap = XCreatePixmap(
-            display,
-            RootWindowOfScreen(XtScreen(reference)),
-            infolib_disclosure_side,
-            infolib_disclosure_side,
-            DefaultDepthOfScreen(XtScreen(reference)));
+        XtVaGetValues(reference, XmNbackground, &background, nullptr);
+        Pixmap pixmap =
+            XCreatePixmap(display,
+                          RootWindowOfScreen(XtScreen(reference)),
+                          infolib_disclosure_side,
+                          infolib_disclosure_side,
+                          DefaultDepthOfScreen(XtScreen(reference)));
         if (pixmap == None)
             return XmUNSPECIFIED_PIXMAP;
         GC gc = XCreateGC(display, pixmap, 0, nullptr);
@@ -187,29 +183,14 @@ namespace
                        0,
                        infolib_disclosure_side,
                        infolib_disclosure_side);
-        XPoint points[3];
-        if (expanded) {
-            points[0] = {0, infolib_disclosure_inset};
-            points[1] = {
-                static_cast<short>(infolib_disclosure_side - 1),
-                infolib_disclosure_inset};
-            points[2] = {
-                static_cast<short>(infolib_disclosure_side / 2),
-                static_cast<short>(infolib_disclosure_side - 1 -
-                                   infolib_disclosure_inset)};
-        } else {
-            points[0] = {infolib_disclosure_inset, 0};
-            points[1] = {
-                static_cast<short>(infolib_disclosure_side - 1 -
-                                   infolib_disclosure_inset),
-                static_cast<short>(infolib_disclosure_side / 2)};
-            points[2] = {
-                infolib_disclosure_inset,
-                static_cast<short>(infolib_disclosure_side - 1)};
-        }
-        XSetForeground(display, gc, foreground);
-        XFillPolygon(display, pixmap, gc, points, 3, Convex,
-                     CoordModeOrigin);
+        XSetForeground(
+            display, gc, BlackPixelOfScreen(XtScreen(reference)));
+        linux::openmotif::draw_disclosure_triangle(
+            pixmap,
+            gc,
+            native::rect(
+                0, 0, infolib_disclosure_side, infolib_disclosure_side),
+            expanded);
         XFreeGC(display, gc);
         return pixmap;
     }
@@ -221,12 +202,11 @@ namespace
             return XmUNSPECIFIED_PIXMAP;
         Display *display = linux::openmotif::cached_display;
         Screen *screen = XtScreen(state.content);
-        Pixmap pixmap = XCreatePixmap(
-            display,
-            RootWindowOfScreen(screen),
-            dimensions.w,
-            dimensions.h,
-            DefaultDepthOfScreen(screen));
+        Pixmap pixmap = XCreatePixmap(display,
+                                      RootWindowOfScreen(screen),
+                                      dimensions.w,
+                                      dimensions.h,
+                                      DefaultDepthOfScreen(screen));
         if (pixmap == None)
             return XmUNSPECIFIED_PIXMAP;
         Pixel background = 0;

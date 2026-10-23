@@ -16,6 +16,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "dialog_position.h"
 #include "../x_keyboard.h"
 
 namespace
@@ -321,6 +322,8 @@ namespace native
     }
 
     void app_wnd::show_native() {
+        if (get_modal() && get_owner())
+            center_to_parent();
         if (!_created) {
             throw std::runtime_error(
                 "Window Maker/WINGs: cannot show an uncreated window.");
@@ -337,6 +340,10 @@ namespace native
         XSetWindowBackgroundPixmap(linux::wmaker::display,
                                    target,
                                    None);
+        if (get_modal() && get_owner())
+            linux::wmaker::position_dialog(
+                window_state->window,
+                linux::wmaker::state(get_owner())->window);
         WMMapWidget(window_state->window);
         if (get_modal())
             WMRaiseWidget(window_state->window);

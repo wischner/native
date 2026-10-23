@@ -43,7 +43,7 @@ click replaces multi-selection afterward.
 
 | Backend | Final validation for this change |
 | --- | --- |
-| SDL2 | 26/26 dummy/software CTests |
+| SDL2 | 27/27 dummy/software CTests, including queued control input and renderer cache checks |
 | GTK Wayland / elementary | 20/20 CTests each under Weston |
 | Haiku | 20/20 native commands on `hotel`; desktop pointer checks verify pressed feedback and second-click dismissal for calendar and both combo styles; visible search/footer inspection; tested Vision deployed to normal run location with matching SHA-256 |
 | macOS | 19/19 native CTests on `mike`, including light/dark picker text and accessory pixels |
@@ -72,15 +72,15 @@ value. Rules can invalidate a cached value without coercing it.
 | Backend | Adapter | Current validation |
 | --- | --- | --- |
 | elementary | GraniteSettingsSidebar, GraniteDatePicker, GraniteTimePicker plus optional GTK seconds | Full headless Weston suite 20/20; native callbacks and page recreation |
-| GTK Wayland | GtkListBox navigation, GtkCalendar popover and spin fields | Full headless Weston suite 20/20 |
+| GTK Wayland | GtkListBox navigation, linked native entry/arrow fields with calendar or time-spin popovers | Full headless Weston suite 20/20 |
 | Windows | Real WinUI 3 NavigationView, AutoSuggestBox and ImageIcon rows; Win32 date/time common controls | Pinned Docker SDK build; four interactive control/inspector/settings runs pass on `whiskey`; physical navigation, search and normal close verified |
 | macOS | Source-list NSOutlineView, sidebar material, optional NSSearchField; compact NSDatePicker and native calendar-button popover | Remote AppleClang Debug build; full suite 19/19 on `mike`; production Dates/Time pages inspected offscreen |
 | Haiku | Framed, inset BOutlineListView; standard-height shared-kit DateEdit/TimeEdit, internal calendar trigger and native calendar popup | Docker cross-build; 20 native checks pass on `hotel`, including all three file-panel centers, picker geometry, toolbar icon sizes and status-edge pixels |
-| X11/Athena | XawList, native year entry and date/time choices | Full Xvfb suite 21/21 |
+| X11/Athena | Native Label/Toggle navigator; editable-combo date field with native-button calendar, and time field with native step buttons | Full Xvfb suite 21/21 |
 | OpenMotif | XmContainer and native entry/choice fields | Full Xvfb suite 24/24 |
-| OPEN LOOK | PANEL_LIST and native entry/choice fields | Full Xvfb suite 24/24 |
+| OPEN LOOK | Indented native PANEL_LIST with labeled search; editable-combo date calendar and joined time editor with paired buttons | Full Xvfb/olwm suite 24/24; native input and repaint coverage recorded below |
 | Window Maker | WMList and native entry/choice fields | New settings tests pass; full suite 20/21, existing repaint fixture reports Fontconfig/Pango allocations at exit |
-| SDL2 | Existing themed tree, entry and choices | Full dummy/software suite 26/26 |
+| SDL2 | Framed themed tree/search; editable-combo date calendar and joined time editor with step arrows | Full dummy/software suite 27/27, including queued SDL control input and frame pixels |
 | GEMix direct / gemd | Existing themed tree, entry and choices | New settings tests pass; full suites 19/20 and 20/21, respectively; recorded SDK menu-strip restoration failure remains |
 
 Optional search is exercised in the current Mac, GTK Wayland, elementary and
@@ -132,8 +132,7 @@ generic GTK Vision gallery was also inspected after 760×477 → 900×800 →
 
 Native calendar APIs do not universally offer individually disabled day
 painting. GTK marks unavailable days; every adapter rejects unavailable
-commits, and composed day choices omit them. Native Athena, XView and WINGs
-navigation lists display text only, retaining optional images in the portable
+commits, and composed day choices omit them. Native Athena rows and XView/WINGs lists display text only, retaining optional images in the portable
 model. Haiku suppresses obsolete row painting and portable latch lookup while
 BOutlineListView synchronously removes selected rows during model replacement.
 
@@ -485,7 +484,7 @@ centered message buttons and parent-centered shells (including moved/off-screen
 and hidden-owner cases), all four open tab joins, individual menu borders
 without a full-width bar rule, and server-delivered two-pane separator movement with preserved
 child borders, vertical/zero-ratio native backing, monochrome collection pixels,
-unaltered canvas images and all four copied alert bitmaps. X11 collections
+dithered canvas images with unchanged source pixels and all four copied alert bitmaps. X11 collections
 display monochrome icons and white alternating rows; alerts use copied local
 monochrome artwork. `native_x11_scrollbar_tests` verifies actual Xaw widgets
 for tables, icon grids, trees and canvases, native middle-button dragging,
@@ -622,7 +621,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 - `open_file_dialog`, `save_file_dialog`, and `directory_dialog` adapt every native chooser to the
   same `modal_wnd` session and `dialog_result` contract. Windows, AppKit,
   Haiku, Motif, XView, WINGs, and GEM use their standard panels. Athena
-  prefers Zenity or KDialog and falls back to an Xaw browser. SDL2 consistently
+  uses its native Xaw browser with parent-centered modal placement. SDL2 consistently
   uses its compact library-owned themed C++ filesystem browser for open, save,
   and folder selection. It provides icon-backed Places and Name/Type/Size
   tables, icon-only history navigation, a breadcrumb that toggles direct path
@@ -1250,3 +1249,154 @@ persistent group collapse and repeated splitter dragging. Live typing preserves 
 individual preview edges, the fully borderless preview and the property
 grid's right frame were also inspected. Test screenshots
 are development artifacts under `build/elementary-control-review-*.png`.
+
+## GTK4 and X11 control review (2026-10-22)
+
+Generic GTK Wayland passes 20/20 CTests under headless Weston. Its native
+runtime fixture also exits normally on the host Wayland desktop, including
+120 native-theme pixel comparisons. Native split close and retained-widget
+callbacks, equal-height tree rows, editable-combo synchronization and linked
+entry/arrow date and time popovers have regression coverage. Icon selection
+leaves scrolling to GTK; toolbar highlights use native button state colors.
+The gallery file/dialog buttons have room for their native minimum widths.
+
+X11 passes 21/21 CTests under both Xvfb and monochrome TWM. Coverage includes
+Ctrl/Shift table selection, editable text replacement and Enter commits,
+window grow/shrink, all three centered native file panels, modal server grabs,
+calendar selection and disabled dates, full-width native navigator rows,
+monochrome image presentation, and scrollbar thumb/page input. Calendar
+painting was inspected under TWM. Source image pixels retain their colors.
+These checks cover generic GTK and X11; elementary was not retested in this review.
+
+## SDL2 control review (2026-10-22)
+
+The SDL2 Docker suite passes 27/27 tests. The new control fixture sends SDL
+mouse, text and key events through the application loop, covering Ctrl/Shift
+table selection, editable combo replacement and popup synchronization,
+completion keyboard/mouse acceptance, child lists inside tabs, date exclusions
+and popup toggling, and joined time editing/stepping. It compares actual list
+pixels with the theme primitive, checks navigation margins and borders, and
+verifies that repeated table frames reuse bounded renderer text textures.
+
+SDL date and time fields now extend the existing editable combo rather than
+using separate year/month/day or hour/minute choices. The calendar uses the
+same theme and disables unavailable dates; the time field has paired arrows
+in one button column. Search includes a magnifier, framed navigation has
+six-pixel margins and half the former tree indentation, and read-only Vision
+help/status fields retain standard borders. Toolbar strip edge rules follow
+their horizontal or vertical orientation. Frame and calendar snapshots were
+inspected with the software renderer. The same queued-input fixture also
+passes through the normal Docker/GDB desktop path with SDL's X11 video driver
+and exits normally. This is automated desktop coverage, not a physical mouse
+walkthrough.
+
+## OPEN LOOK control review (2026-10-22)
+
+The Open Look Docker build and all 24 Xvfb/olwm CTests pass. The native runtime
+fixture sends XTest mouse and keyboard events through XView, covering Ctrl/Shift
+table selection, source-editor caret movement, completion arrows/Tab/mouse/Escape,
+and editable-combo typing followed by native popup selection synchronization.
+Native calendar opening, repeated-arrow dismissal, month navigation, disabled
+dates and minute-step buttons are checked, together with visible arrow bitmaps
+and non-overlapping time-button geometry. Search insertion/deletion and
+restored nested-page frame coordinates are also checked. The native navigation
+scrollbar stays inside the sidebar margins, with whole rows fitted using the
+actual XView row height.
+
+Portable background updates now merge damage and copy only the affected area,
+excluding live windowless Panel items. This prevents editor/selection erasure
+while rulers track the pointer. Full off-screen OLGX scene rendering remains;
+native XView clear/expose callbacks still restore the background and affected
+items. A pixel sentinel verifies that an application redraw preserves the native
+editor area. The calendar and closed-control screenshots were inspected on the
+composed olwm desktop. Navigation uses native indented list rows, bold inactive
+section headings and a labeled Search field. Dates use DD.MM.YYYY; times use
+HH:MM with optional seconds. Both fields extend the existing native editable
+combo and apply shared availability rules. The same fixture exits normally
+through the maintained Docker/GDB Xephyr/olwm launcher; this is automated
+desktop input coverage, not a physical mouse walkthrough.
+
+## Window Maker, GEM and CDE control review (2026-10-22)
+
+The three adapters now extend their editable combo for joined dotted date
+entry and colon time entry. Native WINGs/Motif buttons form the calendar;
+GEM uses the same themed button/editor paths as its ordinary controls.
+Availability rules cover both typing and calendar selection, including
+excluded holidays. Calendar arrows toggle the popup, and reopening recreates
+native children safely. Settings retain page images and indented sections,
+with a labeled native search field, equal outer margins and matching paper.
+Window Maker read-only help no longer requests a scrollbar; plain multiline
+text uses the same native default font as single-line fields. Its theme list
+includes the native scrollbar gutter/stipple and selected toolbar buttons
+use pressed relief. Motif editors/tabs use the measured control font, icons
+wrap within the viewport and selected icons scroll into view. Its custom
+property dropdown trigger uses the existing native combo. These font changes
+require no replacement CDE Docker image.
+
+GEM editable combos contain real text editors, synchronize typed matches
+and track popup hover. Tab children receive their own clicks; hidden ancestor
+pages do not paint through the active page. Table modifiers use the shared
+selection path, and WINGs/Motif completion takes real native focus and handles
+arrows, Enter, Escape and pointer selection. GEM image presentation uses two
+monochrome VDI transfers instead of many individual pixel runs; dirty drawing
+is culled. Its disclosure triangles, resize cursors, oriented toolbar edges,
+dotted property-grid rules and compact navigator follow its existing theme.
+The native AES footer/scrollbar order remains unchanged.
+
+WINGs and Motif standard panels center over their owner using desktop client
+coordinates after native decoration placement. GEM file/save/folder/message
+panels are positioned AES forms, constrained to the desktop, with filesystem
+browsing, filters, typed paths, extension handling and overwrite confirmation.
+No SDK extension, pin or runtime-image change is needed.
+
+Validation: Docker builds succeed for WINGs, Motif, GEM direct and GEM/gemd.
+Motif passes 25/25 CTests. The classic interaction fixture also exits normally
+through the maintained Window Maker and CDE Docker/GDB desktop launchers,
+including centered open/save/folder/message panels and inspected picker/list/
+navigation snapshots. CDE must finish its startup grabs before synthetic
+input begins. GEM direct passes 20/21 tests and gemd passes 21/22; their sole
+failure remains the existing SDK menu-strip restoration assertion. Real Rasta
+packet tests accept and cancel all composed form types and restore owner input.
+WINGs passes 20/22 CTests: the repaint fixture and new classic fixture report
+Fontconfig/Pango exit allocations; all classic functional assertions pass.
+Leak detection remains enabled there. The standalone WINGs-only font test
+independently reproduces measurement retention as well as factory retention;
+its exceptions match WMWidthOfString/WMCreateFont rather than all Fontconfig
+or Native allocations.
+
+The shared private-combo hook also compiles on SDL2; its existing inspector
+and SDL control fixtures pass, covering adapters that retain the original
+painted property trigger.
+
+## Motif disclosure arrows (2026-10-23)
+
+Accordion headers, table grouping bands and the native tree use the same
+13-pixel flat disclosure triangle and native Xlib fill routine. Arrows remain
+black when a header is selected. The Motif runtime fixture compares both
+collapsed and expanded selected-header arrow masks with the tree pixmaps.
+The Docker GCC build and all 25 Motif CTests pass; the same pixel comparison
+also passes in the maintained CDE desktop session.
+
+## Motif/CDE picker popup and time buttons (2026-10-23)
+
+Date/time fields now own an XmTextField and their XmArrowButton children
+inside one XmForm. The date trigger opens the populated native-button
+calendar; there is no underlying empty XmComboBox dropdown. Form attachments
+keep the buttons visible and inside the field after resizing or raising it.
+Time buttons use the highlighted component or caret: hours change by one,
+minutes use the configured step and visible seconds change by one. The
+native text selection survives model refresh so repeated clicks retain the
+same component. Typed text is committed before stepping, and normal range,
+step and validator checks still apply.
+
+Private composition callbacks are copied into the peer before backend
+widget creation, allowing the adapter to create the correct native widget
+hierarchy directly. Regular Motif combos retain XmComboBox.
+
+The Docker GCC build and all 25 Motif CTests pass. The expanded classic
+fixture also passes under the maintained CDE desktop/GDB launcher with real
+pointer input: calendar days are visible and selectable, arrows remain
+mapped after relayout/raising, and up/down clicks cover selected hours,
+minutes and seconds plus caret-only stepping. Calendar and field snapshots
+were inspected under both generic Motif and CDE. Shared callback setup also
+builds for WINGs, GEM and SDL; their focused picker/property checks pass.

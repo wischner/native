@@ -45,7 +45,7 @@ namespace vision
         _sidebar.set_parent(this);
         _sidebar.set_search_visible(true);
         for (auto *text : {&_notes, &_date_help, &_time_help, &_date_status, &_time_status})
-            text->set_read_only(true).set_border_sides(native::border_sides::none);
+            text->set_read_only(true);
         const auto year = native::date::today().year;
         _date.set_range({year, 1, 1}, {std::min(9999, year + 2), 12, 31});
         _time.set_range({8, 0, 0}, {18, 0, 0});

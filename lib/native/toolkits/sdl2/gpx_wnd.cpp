@@ -84,6 +84,8 @@ namespace native
         if (!cache)
             return;
 
+        for (auto &entry : cache->text_textures)
+            SDL_DestroyTexture(entry.texture);
         if (cache->renderer)
             SDL_DestroyRenderer(cache->renderer);
         delete cache;
@@ -181,7 +183,7 @@ namespace native
             SDL_Color color = {
                 get_ink().r, get_ink().g, get_ink().b, get_ink().a};
             if (linux::sdl2::draw_ttf_text(
-                    renderer, *fh, text, p.x, p.y, color))
+                    renderer, *fh, text, p.x, p.y, color, cache))
                 return *this;
         }
 #endif

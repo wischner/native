@@ -75,7 +75,10 @@ Those details remain backend state; `get_text()` always returns the same
 portable complete-value model. Emulated text selection uses the same themed
 active/inactive selection background and text colors as lists and tables. SDL2
 also reclamps horizontal scrolling after bounds changes, including controls
-temporarily collapsed by a composite view.
+temporarily collapsed by a composite view. Editable SDL combos embed this
+same editor, so caret placement, range replacement and clipboard shortcuts
+share the standard input path. Keyboard dispatch checks the focused input
+tree rather than retaining a stale editor-local focus flag.
 
 GEMix gives a focused editor first refusal of keyboard commands, including
 selection and clipboard shortcuts, before trying application menu accelerators.
@@ -136,3 +139,11 @@ GTK reads clipboard streams asynchronously while dispatching its main context,
 including when reading a provider owned by this process. Blocking stream reads
 on the UI thread prevent that provider from writing. Paste checks its editor's
 resource generation again after clipboard event delivery before replacing text.
+
+OPEN LOOK application redraws preserve native Panel editor pixels rather
+than clearing and repainting every editor. XView-initiated clears still
+restore the requested native background, so shorter replacements remove old
+text. Combo complete-value synchronization runs after the native edit and
+does not rewrite an unchanged entry or disturb its caret. Combo and settings
+search notify callbacks retain `panel_text_notify`'s insertion/traversal result;
+returning `PANEL_NONE` would suppress XView's normal text insertion.

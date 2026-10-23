@@ -258,6 +258,7 @@ namespace native
                 XCloseDisplay(probe_display);
 
             linux::openmotif::cached_display = XtDisplay(shell);
+
         } else if (app_wnd *owner = get_owner()) {
             Widget owner_shell = linux::openmotif::shell_bindings
                                      .handle_from_object(owner);
@@ -358,6 +359,8 @@ namespace native
     }
 
     void app_wnd::show_native() {
+        if (get_modal() && get_owner())
+            center_to_parent();
         if (!_created)
             throw std::runtime_error(
                 "Motif: Cannot show window before it is created.");
@@ -378,6 +381,18 @@ namespace native
         XtRealizeWidget(shell);
         linux::openmotif::set_work_dimensions(this, requested);
         linux::openmotif::cached_display = XtDisplay(shell);
+        // The public bounds already specify a position. CDE otherwise
+        // enters interactive placement and grabs the first client
+        // clicks.
+        XSizeHints placement{};
+        long supplied = 0;
+        XGetWMNormalHints(
+            XtDisplay(shell), XtWindow(shell), &placement, &supplied);
+        placement.flags |= USPosition;
+        placement.x = _bounds.p.x;
+        placement.y = _bounds.p.y;
+        XSetWMNormalHints(
+            XtDisplay(shell), XtWindow(shell), &placement);
 
         // Prevent XClearArea from blanking the drawing surface before
         // Expose. The backbuffer XCopyArea should own what reaches the

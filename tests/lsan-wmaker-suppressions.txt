@@ -3,3 +3,7 @@
 # even after WMReleaseFont, WMReleaseApplication and XCloseDisplay.
 # Match the SDK factory path, never Native registries or all Fontconfig.
 leak:WMCreateFont
+
+# The native-only allocation fixture also measures and draws non-ASCII
+# text. Its released Pango/Xft layout retains a separate font pattern.
+leak:WMWidthOfString

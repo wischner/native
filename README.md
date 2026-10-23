@@ -100,8 +100,10 @@ toolchain with C++20 support. A direct Linux build also needs
   its windows, menus, controls, text editors, standard file panels, clipboard
   selection service, stock fonts, and native-look drawing resources.
 - File dialogs use the standard OS or toolkit panel on Windows, macOS, Haiku,
-  OpenMotif, OPEN LOOK, Window Maker, and GEMix. X11/Athena prefers Zenity or
-  KDialog and otherwise uses its Xaw browser. SDL2 consistently uses its
+  OpenMotif, OPEN LOOK, and Window Maker. GEMix composes parent-centered AES
+  forms because its standard selectors have no owner-position option.
+  X11/Athena composes its file and folder browser from native Xaw controls,
+  with parent-centered placement and modal input grabs. SDL2 consistently uses its
   library-owned themed C++ filesystem browser for file open, file save, and folder
   selection.
 - Portable TrueType/OpenType fonts use the vendored `stb_truetype`
@@ -175,11 +177,18 @@ Current exercised runtime paths are:
 
 - Linux X11 in monochrome TWM inside Xephyr. Select **Linux X11, Xephyr** for F5, or run `bash scripts/linux/x11/run-twm.sh` after
   the Docker build. The session runs entirely from the X11 image and follows
-  the desktop scale; details are in
+  the desktop scale. The current suite passes 21/21 under Xvfb and TWM,
+  including modal panels, selection, editable fields and calendar popups.
+  Window images are dithered; their source pixels remain unchanged. Details are in
   [Build System](docs/manuals/book-of-native/BUILD-SYSTEM.md#monochrome-x11-runtime-session).
-- Linux SDL2, with nine CTests covering nested canvas composition, real
-  SDL pointer capture, close-request policy, and the shared UI contracts.
-- Linux OPEN LOOK/XView in Docker with Xephyr and olwm
+- Linux SDL2, with 27 CTests covering nested canvas composition, pointer
+  capture, close policy, editable fields, table modifiers, completion input,
+  tab child lists and themed calendar/time pickers. Repeated text rendering
+  uses a bounded cache owned by each window renderer.
+- Linux OPEN LOOK/XView in Docker with Xephyr and olwm. Its 24 CTests cover
+  native modifier selection, source-editor keyboard/mouse completion, editable
+  combo synchronization, calendar/time fields and damage copies that preserve
+  windowless native editors.
 - Linux Window Maker/WINGs in Docker with Xephyr and Window Maker
 - **GEM, Rasta@SDL2** runs GEM through gemd with the image-provided SDL2
   Rasta viewer and GDB in `wischner/gcc-x86_64-gemix:latest`.

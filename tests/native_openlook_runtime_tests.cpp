@@ -22,6 +22,8 @@
 extern "C" void rl_initwithrect(Rect *, Rectlist *);
 extern "C" void rl_free(Rectlist *);
 
+void check_openlook_controls(native::app_wnd &owner);
+
 namespace
 {
     namespace ol = linux::openlook;
@@ -321,6 +323,7 @@ int program(int, char **) {
         native::app::post([&root] {
             try {
                 checks(root);
+                check_openlook_controls(root);
                 std::cout << "OPEN LOOK peer checks passed\n";
             } catch (const std::exception &error) {
                 ++failures;

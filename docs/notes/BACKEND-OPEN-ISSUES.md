@@ -18,6 +18,72 @@ session shutdown after inferior exit have been verified on the VM.
 
 This note lists backend-level open issues that are real today.
 
+## OPEN LOOK control review (2026-10-22)
+
+The Open Look Docker build and all 24 Xvfb/olwm CTests pass. The native runtime
+fixture sends XTest mouse and keyboard events through XView, covering Ctrl/Shift
+table selection, source-editor caret movement, completion arrows/Tab/mouse/Escape,
+and editable-combo typing followed by native popup selection synchronization.
+Native calendar opening, repeated-arrow dismissal, month navigation, disabled
+dates and minute-step buttons are checked, together with visible arrow bitmaps
+and non-overlapping time-button geometry. Search insertion/deletion and
+restored nested-page frame coordinates are also checked. The native navigation
+scrollbar stays inside the sidebar margins, with whole rows fitted using the
+actual XView row height.
+
+Portable background updates now merge damage and copy only the affected area,
+excluding live windowless Panel items. This prevents editor/selection erasure
+while rulers track the pointer. Full off-screen OLGX scene rendering remains;
+native XView clear/expose callbacks still restore the background and affected
+items. A pixel sentinel verifies that an application redraw preserves the native
+editor area. The calendar and closed-control screenshots were inspected on the
+composed olwm desktop. Navigation uses native indented list rows, bold inactive
+section headings and a labeled Search field. Dates use DD.MM.YYYY; times use
+HH:MM with optional seconds. Both fields extend the existing native editable
+combo and apply shared availability rules. The same fixture exits normally
+through the maintained Docker/GDB Xephyr/olwm launcher; this is automated
+desktop input coverage, not a physical mouse walkthrough.
+
+## SDL2 control review (2026-10-22)
+
+The SDL2 Docker suite passes 27/27 tests. The new control fixture sends SDL
+mouse, text and key events through the application loop, covering Ctrl/Shift
+table selection, editable combo replacement and popup synchronization,
+completion keyboard/mouse acceptance, child lists inside tabs, date exclusions
+and popup toggling, and joined time editing/stepping. It compares actual list
+pixels with the theme primitive, checks navigation margins and borders, and
+verifies that repeated table frames reuse bounded renderer text textures.
+
+SDL date and time fields now extend the existing editable combo rather than
+using separate year/month/day or hour/minute choices. The calendar uses the
+same theme and disables unavailable dates; the time field has paired arrows
+in one button column. Search includes a magnifier, framed navigation has
+six-pixel margins and half the former tree indentation, and read-only Vision
+help/status fields retain standard borders. Toolbar strip edge rules follow
+their horizontal or vertical orientation. Frame and calendar snapshots were
+inspected with the software renderer. The same queued-input fixture also
+passes through the normal Docker/GDB desktop path with SDL's X11 video driver
+and exits normally. This is automated desktop coverage, not a physical mouse
+walkthrough.
+
+
+## GTK4 and X11 control review (2026-10-22)
+
+Generic GTK Wayland passes 20/20 CTests under headless Weston. Its native
+runtime fixture also exits normally on the host Wayland desktop, including
+120 native-theme pixel comparisons. Native split close and retained-widget
+callbacks, equal-height tree rows, editable-combo synchronization and linked
+entry/arrow date and time popovers have regression coverage. Icon selection
+leaves scrolling to GTK; toolbar highlights use native button state colors.
+The gallery file/dialog buttons have room for their native minimum widths.
+
+X11 passes 21/21 CTests under both Xvfb and monochrome TWM. Coverage includes
+Ctrl/Shift table selection, editable text replacement and Enter commits,
+window grow/shrink, all three centered native file panels, modal server grabs,
+calendar selection and disabled dates, full-width native navigator rows,
+monochrome image presentation, and scrollbar thumb/page input. Calendar
+painting was inspected under TWM. Source image pixels retain their colors.
+These checks cover generic GTK and X11; elementary was not retested in this review.
 
 ## Windows/elementary control review (2026-10-22)
 
@@ -457,3 +523,16 @@ notebook, XView drop-interest and WINGs font-pattern allocations were reproduced
 without Native and have narrow test exceptions. They are SDK limitations;
 they are not new Native leak findings or a blanket leak-free claim.
 The Amiga diagnostic remains excluded from this pass and adds no UI backend.
+
+### Classic control verification — 2026-10-22
+
+Window Maker's new classic input checks pass under its managed desktop,
+but its sanitizer fixture still reports Pango worker FcFontRenderPrepare
+exit allocations; the existing repaint fixture also retains Fontconfig
+allocations. Full CTest result is 20/22. Only the separately reproduced
+WMCreateFont/WMWidthOfString patterns are excepted, with no blanket leak
+suppression. Motif passes 25/25 headless CTests and the CDE desktop fixture
+passes after startup completes. Its native font alignment is fixed in the
+adapter; the Docker image does not need a font change. GEM direct/gemd pass
+20/21 and 21/22, retaining the previously recorded menu-strip restoration
+failure. Their new composed forms and packet-driven input checks pass.

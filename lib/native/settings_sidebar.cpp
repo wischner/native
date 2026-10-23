@@ -228,7 +228,8 @@ namespace native
                 _navigation->set_bounds(rect(area.x1(), area.y1(),
                     area.w(), area.h()));
                 _navigation->set_selected_item(_navigation->contains_item(_selected) ? _selected : 0);
-            } else detail::refresh_settings_sidebar_peer(*this);
+            }
+            detail::refresh_settings_sidebar_peer(*this);
             const auto items = _items;
             for (const auto &item : items) {
                 if (item.id == _selected && item.enabled) {

@@ -35,6 +35,7 @@
 #include "../../platforms/linux/file_dialog_process.h"
 #include "file_dialog_fallback.h"
 #include "globals.h"
+#include "window_position.h"
 #include "scale.h"
 
 namespace
@@ -503,6 +504,7 @@ namespace linux::x11
                         &protocol,
                         1);
         XtSetKeyboardFocus(form, state->path_edit);
+        prepare_modal_shell(state->shell, owner_shell);
         XtPopup(state->shell, XtGrabExclusive);
         file_dialog_bindings.register_pair(&dialog, state.get());
         state.release();

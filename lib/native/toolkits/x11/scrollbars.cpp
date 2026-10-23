@@ -76,10 +76,90 @@ namespace
         move(axis, pixels < 0 ? -amount : amount);
     }
 
-    void wheel(Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+    void scroll_input(Widget widget,
+                      XtPointer data,
+                      XEvent *event,
+                      Boolean *dispatch) {
+        auto &axis = *static_cast<xaw_scroll_axis *>(data);
+        if (event->type == MotionNotify) {
+            if (!axis.primary_drag)
+                return;
+            const int coordinate =
+                axis.horizontal ? event->xmotion.x : event->xmotion.y;
+            const long double target =
+                axis.drag_position +
+                static_cast<long double>(coordinate -
+                                         axis.drag_pointer) *
+                    axis.total / std::max(1, axis.length);
+            scroll(axis,
+                   static_cast<std::uint64_t>(std::clamp<long double>(
+                       target, 0, maximum(axis))));
+            XawScrollbarSetThumb(
+                widget,
+                axis.total
+                    ? static_cast<float>(axis.position) / axis.total
+                    : 0,
+                axis.total ? std::min(1.0f,
+                                      static_cast<float>(axis.page) /
+                                          axis.total)
+                           : 1);
+            *dispatch = False;
+            return;
+        }
+        if (event->xbutton.button == Button1) {
+            if (event->type == ButtonRelease && axis.primary_drag) {
+                axis.primary_drag = false;
+                XtCallActionProc(
+                    widget, "EndScroll", event, nullptr, 0);
+                *dispatch = False;
+                return;
+            }
+            if (event->type == ButtonRelease && axis.page_click) {
+                axis.page_click = false;
+                *dispatch = False;
+                return;
+            }
+            if (event->type != ButtonPress || !axis.total)
+                return;
+            const int coordinate =
+                axis.horizontal ? event->xbutton.x : event->xbutton.y;
+            Dimension minimum_thumb = 7;
+            XtVaGetValues(
+                widget, "minimumThumb", &minimum_thumb, nullptr);
+            // Xaw gives tiny virtual pages a minimum-size visible
+            // thumb. Hit testing must use that physical size, not a
+            // subpixel range.
+            const long double thumb = std::min<long double>(
+                axis.length,
+                std::max<long double>(
+                    minimum_thumb,
+                    static_cast<long double>(axis.page) * axis.length /
+                        axis.total));
+            const auto top = std::min<long double>(
+                axis.length - thumb,
+                static_cast<long double>(axis.position) * axis.length /
+                    axis.total);
+            const auto bottom = top + thumb;
+            if (coordinate < top || coordinate > bottom) {
+                axis.page_click = true;
+                move(axis,
+                     coordinate < top
+                         ? -static_cast<long double>(axis.page)
+                         : axis.page);
+                *dispatch = False;
+            } else {
+                axis.primary_drag = true;
+                axis.drag_pointer = coordinate;
+                axis.drag_position = axis.position;
+                String mode = const_cast<char *>("Continuous");
+                XtCallActionProc(
+                    widget, "StartScroll", event, &mode, 1);
+                *dispatch = False;
+            }
+            return;
+        }
         if (event->type != ButtonPress ||
             (event->xbutton.button != Button4 && event->xbutton.button != Button5)) return;
-        auto &axis = *static_cast<xaw_scroll_axis *>(data);
         const int amount = dynamic_cast<table_view *>(axis.owner) && !axis.horizontal ? 3 : 48;
         move(axis, event->xbutton.button == Button4 ? -amount : amount);
         *dispatch = False;
@@ -115,7 +195,13 @@ namespace
             }
             XtAddCallback(axis.widget, XtNjumpProc, jump, &axis);
             XtAddCallback(axis.widget, XtNscrollProc, step, &axis);
-            XtAddEventHandler(axis.widget, ButtonPressMask, False, wheel, &axis);
+            XtInsertEventHandler(axis.widget,
+                                 ButtonPressMask | ButtonReleaseMask |
+                                     Button1MotionMask,
+                                 False,
+                                 scroll_input,
+                                 &axis,
+                                 XtListHead);
         }
         // Xaw reports scroll distances in device pixels.
         const rect device = linux::x11::rect_to_device(track);

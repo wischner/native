@@ -261,9 +261,14 @@ namespace native
                         target->on_native_key(physical);
                         break;
                     }
-                    if (linux::sdl2::handle_combo_key(wnd, event.key) ||
-                        linux::sdl2::handle_text_edit_key(wnd, event.key) ||
-                        linux::sdl2::handle_collection_key(wnd, event.key)) break;
+                    if (linux::sdl2::handle_completion_key(wnd,
+                                                           event.key) ||
+                        linux::sdl2::handle_combo_key(wnd, event.key) ||
+                        linux::sdl2::handle_text_edit_key(wnd,
+                                                          event.key) ||
+                        linux::sdl2::handle_collection_key(wnd,
+                                                           event.key))
+                        break;
                     if (auto *aw = dynamic_cast<native::app_wnd *>(wnd);
                         aw && aw->menu.id() &&
                         linux::sdl2::handle_menu_key(

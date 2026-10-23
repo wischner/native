@@ -9,6 +9,7 @@
 #include "vision_window.h"
 
 #include <exception>
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -56,34 +57,44 @@ namespace vision
                                  bool open_input_chrome_on_start,
                                  bool open_properties_on_start,
                                  bool open_settings_on_start)
-        : native::app_wnd("Vision Native Feature Gallery",
-                          36, 36, 820, 660)
+        : native::app_wnd(
+              "Vision Native Feature Gallery", 36, 36, 820, 660)
         , _action("Activate", 20, 20, 120, 32)
         , _editing_enabled("Editing enabled", 20, 62, 150, 24)
         , _compact("Compact", 20, 94, 140, 24)
         , _detailed("Detailed", 20, 122, 140, 24)
         , _features({"Controls", "Images", "Fonts", "Clipboard"},
-                    180, 20, 170, 130)
+                    180,
+                    20,
+                    170,
+                    130)
         , _single_line("Live validation",
                        native::text_edit_mode::single_line,
-                       20, 170, 330, 28)
+                       20,
+                       170,
+                       330,
+                       28)
         , _multi_line("Multiline editor\nCtrl+C, X, and V work here.",
                       native::text_edit_mode::multi_line,
-                      20, 210, 330, 112)
+                      20,
+                      210,
+                      330,
+                      112)
         , _copy_text("Copy field", 20, 334, 104, 30)
         , _paste_text("Paste text", 136, 334, 104, 30)
-        , _open_file("Open file...", 20, 378, 84, 30)
-        , _save_file("Save file...", 112, 378, 84, 30)
-        , _show_modeless("Modeless", 204, 378, 84, 30)
-        , _show_modal("Modal", 296, 378, 84, 30)
+        , _open_file("Open file...", 20, 378, 110, 30)
+        , _save_file("Save file...", 140, 378, 110, 30)
+        , _show_modeless("Modeless", 260, 378, 100, 30)
+        , _show_modal("Modal", 370, 378, 90, 30)
         , _show_layout("Layout managers...", 20, 566, 170, 30)
         , _show_collections("Collections...", 204, 566, 130, 30)
         , _show_tables("Tables...", 348, 566, 110, 30)
         , _show_code_editor("Code editor...", 472, 566, 130, 30)
         , _show_splitter("Split view...", 616, 566, 150, 30)
-        , _show_input_chrome("Input and window chrome...",
-                             20, 606, 210, 30)
-        , _show_properties("Properties and toolbars...", 244, 606, 236, 30)
+        , _show_input_chrome(
+              "Input and window chrome...", 20, 606, 210, 30)
+        , _show_properties(
+              "Properties and toolbars...", 244, 606, 236, 30)
         , _show_settings("Settings and pickers...", 494, 606, 272, 30)
         , _status("Starting portable feature gallery...")
         , _open_splitter_on_start(open_splitter_on_start)
@@ -249,6 +260,33 @@ namespace vision
     }
 
     bool vision_window::on_create() {
+        const auto &font =
+            native::font_t::stock(native::font_role::control);
+        auto appearance = native::theme::create(get_gpx());
+        const int height =
+            std::max(30, appearance->get_button_height());
+        int x = 20, y = 566;
+        for (auto *button : {&_show_layout,
+                             &_show_collections,
+                             &_show_tables,
+                             &_show_code_editor,
+                             &_show_splitter,
+                             &_show_input_chrome,
+                             &_show_properties,
+                             &_show_settings}) {
+            const int width = std::max(
+                int(button->get_dimensions().w),
+                font.measure_text(button->get_text()).width + 24);
+            if (x > 20 && x + width > int(get_dimensions().w) - 20) {
+                x = 20;
+                y += height + 10;
+            }
+            button->set_bounds(native::rect(x, y, width, height));
+            x += width + 14;
+        }
+        if (y + height + 24 > get_dimensions().h)
+            set_dimensions(
+                native::size(get_dimensions().w, y + height + 24));
         create_child(_action, *this);
         create_child(_editing_enabled, *this);
         create_child(_compact, *this);

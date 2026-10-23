@@ -390,9 +390,11 @@ panel has drawable window geometry.
 Backends must use the operating system or toolkit file selector when one
 exists. The Windows Common Item Dialog, AppKit panels, Haiku `BFilePanel`,
 Motif `FileSelectionBox`, XView `File_chooser`, WINGs `WMOpenPanel` and
-`WMSavePanel`, and GEM AES file selector are the standard paths. Toolkits
-without a chooser, including Athena and SDL2, may delegate to an installed
-desktop chooser. A backend fallback must be composed from that toolkit's
+`WMSavePanel` are the standard paths. GEM uses positioned native AES form
+objects because its SDK selectors cannot honor owner-relative placement.
+Toolkits without a chooser may delegate to an installed desktop chooser. Athena
+composes its own native-widget browser so modal ownership and monochrome
+presentation remain in the Xt application. A backend fallback must be composed from that toolkit's
 native controls rather than custom-painted substitutes. Unsupported
 native options may degrade conservatively: an older single-selection chooser
 may return one path, and a platform may keep mandatory overwrite confirmation.
@@ -1220,7 +1222,8 @@ preserve the portable document and overlays; otherwise it provides a
 keyboard-focusable, toolkit-themed painted editor through its normal event
 loop. The shared painted path renders visible source rows, current-line and
 selection surfaces, style runs, diagnostic marks, caret, and a themed
-completion list. Enter and Tab accept its active choice; the application
+completion list. Its painted viewport supplies pointer hit geometry; clicking
+a visible completion accepts that item. Enter and Tab accept its active choice; the application
 remains responsible for inserting the accepted item. Platform input translation must preserve scalar boundaries
 and route standard clipboard and undo keys through the public commands.
 An unset `code_theme::current_line` is a native selected-row surface, and all
@@ -1462,8 +1465,9 @@ destruction; deferred selection/search callbacks check resource generation.
 
 The elementary backend uses `GraniteSettingsSidebar`; Windows uses the
 actual WinUI navigation control. Other backends prefer
-their native image tree or text list. Athena, XView and WINGs use native text
-lists rather than their library-painted trees. Optional images are retained
+their native image tree or text list. Athena uses native Label headings and
+Toggle item rows; XView and WINGs use native text lists rather than their
+library-painted trees. Optional images are retained
 but not displayed by these text-only lists. SDL2/GEM reuse their existing
 themed navigation. Backend adaptation state belongs to the window's peer.
 
@@ -1489,7 +1493,15 @@ Dedicated platform widgets take precedence: Granite date/time pickers,
 AppKit `NSDatePicker` at its intrinsic compact size (with an explicit native
 calendar button and calendar popover for dates), Win32 date/time common controls, and Haiku's installed
 shared-kit `DateEdit`/`TimeEdit`. Generic GTK uses `GtkCalendar` in a popover
-and native spin fields. Toolkits without a dedicated picker compose their
+and spin fields inside linked editable-entry/menu-button controls. Athena
+reuses its native editable-combo field with a calendar made of native
+Toggle/Command/Label widgets, or two native time-step buttons. Excluded calendar
+dates use native insensitive buttons. SDL extends its existing editable
+combo/editor with a themed calendar popup or paired time-step buttons;
+its fields share the standard input height and shared availability checks.
+OPEN LOOK extends its native editable combo with a Panel-button calendar or
+paired native image buttons, using dot date separators and colon time separators.
+Toolkits without a dedicated picker compose their
 existing choice controls; they must not add a second painted calendar.
 Availability is enforced even when a native calendar cannot gray individual
 dates. GTK marks unavailable days; composed date fields omit them.

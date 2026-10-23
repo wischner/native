@@ -256,6 +256,10 @@ namespace
             XmSPATIAL,
             XmNspatialStyle,
             XmGRID,
+            XmNspatialResizeModel,
+            XmGROW_MINOR,
+            XmNwidth,
+            std::max(1, int(bounds.w()) - 20),
             XmNentryViewType,
             view_type(view),
             XmNselectionPolicy,
@@ -310,6 +314,10 @@ namespace native
                 nullptr);
         }
         state.suppress = false;
+        if (get_selected_index() >= 0 &&
+            get_selected_index() < int(state.items.size()))
+            XmScrollVisible(
+                state.widget, state.items[get_selected_index()], 3, 3);
     }
 
     void icon_view::apply_scroll_offset() {

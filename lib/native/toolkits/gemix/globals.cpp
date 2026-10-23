@@ -12,22 +12,62 @@
 
 namespace linux::gemix
 {
+    bool visible_in_tree(const native::wnd &control) {
+        for (auto *item = &control; item; item = item->get_parent())
+            if (!item->get_visible())
+                return false;
+        return true;
+    }
+
     namespace
     {
         WORD current_mouse_form = ARROW;
         bool mouse_hidden = false;
 
+        constexpr WORD horizontal_resize = 1000, vertical_resize = 1001;
+        MFORM resize_form(bool horizontal) {
+            MFORM form{};
+            form.mf_xhot = form.mf_yhot = 7;
+            form.mf_nplanes = 1;
+            form.mf_fg = WHITE;
+            form.mf_bg = BLACK;
+            auto set = [&](int x, int y) {
+                if (!horizontal)
+                    std::swap(x, y);
+                form.mf_data[y] |= UWORD(0x8000U >> x);
+            };
+            for (int x = 2; x <= 13; ++x)
+                set(x, 7);
+            for (int i = 1; i <= 4; ++i) {
+                set(2 + i, 7 - i);
+                set(2 + i, 7 + i);
+                set(13 - i, 7 - i);
+                set(13 - i, 7 + i);
+            }
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 16; ++x)
+                    if (form.mf_data[y] & (0x8000U >> x))
+                        for (int dy = -1; dy <= 1; ++dy)
+                            for (int dx = -1; dx <= 1; ++dx)
+                                if (y + dy >= 0 && y + dy < 16 &&
+                                    x + dx >= 0 && x + dx < 16)
+                                    form.mf_mask[y + dy] |=
+                                        UWORD(0x8000U >> (x + dx));
+            return form;
+        }
         WORD mouse_form(native::mouse_cursor cursor) {
             if (cursor == native::mouse_cursor::ibeam)
                 return TEXT_CRSR;
             if (cursor == native::mouse_cursor::crosshair)
                 return THIN_CROSS;
-            if (cursor == native::mouse_cursor::resize_horizontal ||
-                cursor == native::mouse_cursor::resize_vertical ||
-                cursor == native::mouse_cursor::
-                              resize_northwest_southeast ||
-                cursor == native::mouse_cursor::
-                              resize_northeast_southwest)
+            if (cursor == native::mouse_cursor::resize_horizontal)
+                return horizontal_resize;
+            if (cursor == native::mouse_cursor::resize_vertical)
+                return vertical_resize;
+            if (cursor ==
+                    native::mouse_cursor::resize_northwest_southeast ||
+                cursor ==
+                    native::mouse_cursor::resize_northeast_southwest)
                 return THIN_CROSS;
             return ARROW;
         }
@@ -120,7 +160,12 @@ namespace linux::gemix
         if (next_form == current_mouse_form)
             return;
 
-        graf_mouse(next_form, nullptr);
+        if (next_form == horizontal_resize ||
+            next_form == vertical_resize) {
+            auto form = resize_form(next_form == horizontal_resize);
+            graf_mouse(USER_DEF, &form);
+        } else
+            graf_mouse(next_form, nullptr);
         current_mouse_form = next_form;
     }
 

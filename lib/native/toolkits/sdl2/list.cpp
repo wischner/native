@@ -22,7 +22,10 @@ namespace linux::sdl2
             if (!b || root_of(c) != owner || !b->visible ||
                 !r.contains(native::point(x, y)))
                 continue;
-            int index = (y - r.p.y - 1) / 20;
+            const int row_height =
+                native::theme::create(owner->get_gpx())
+                    ->get_list_item_height();
+            int index = (y - r.p.y - 1) / std::max(1, row_height);
             if (index >= 0 &&
                 index < static_cast<int>(c->get_items().size()))
                 c->on_native_selection(index);

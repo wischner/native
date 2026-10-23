@@ -393,9 +393,9 @@ their native event dispatch. Both forms produce the same signal and result.
 The backend selection follows native facilities: Windows Common Item Dialogs,
 AppKit `NSOpenPanel`/`NSSavePanel`, Haiku `BFilePanel`, Motif
 `XmFileSelectionBox`, XView `File_chooser`, WINGs
-`WMOpenPanel`/`WMSavePanel`, and GEM AES `fsel_input`. Athena does not include
-a standard chooser, so it first invokes Zenity or KDialog directly without a
-shell and otherwise presents a browser made entirely from Athena widgets.
+`WMOpenPanel`/`WMSavePanel`. GEM composes native AES forms to support
+parent-centered placement without changing its pinned SDK. Athena presents
+a browser made entirely from Athena widgets, with modal input grabs.
 SDL2 consistently presents Native's themed C++ filesystem browser for open, save, and
 folder modes, then restores its owner after either result.
 

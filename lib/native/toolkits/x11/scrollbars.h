@@ -15,6 +15,10 @@ namespace linux::x11
         native::wnd *owner = nullptr;
         Widget widget = nullptr;
         bool horizontal = false;
+        bool page_click = false;
+        bool primary_drag = false;
+        int drag_pointer = 0;
+        std::uint64_t drag_position = 0;
         std::uint64_t total = 0;
         std::uint64_t page = 0;
         std::uint64_t position = 0;

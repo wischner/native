@@ -6,6 +6,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include "property_drop_down.h"
+#include "combo_picker.h"
+#include "wnd_peer.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -52,6 +54,31 @@ namespace native::detail
           _lifetime(std::make_shared<int>(0)) {
         set_horizontal_scrollbar_policy(scrollbar_policy::never);
         set_vertical_scrollbar_policy(scrollbar_policy::never);
+        on_wnd_create.connect([this] {
+            if (supports_combo_picker_actions()) {
+                auto field = std::make_unique<combo_picker_field>();
+                auto &actions = field->configured_actions();
+                _field = std::move(field);
+                _field->set_parent(this);
+                _field->set_bounds(get_client_bounds());
+                actions.read_only = true;
+                actions.open = [this] {
+                    open(point(get_dimensions().w - 10,
+                               get_dimensions().h / 2));
+                };
+                _field->create();
+                _field->set_text(_item.drop_down->to_text(_item.value));
+                _field->show();
+            }
+            return true;
+        });
+        on_wnd_resize.connect([this](size) {
+            if (_field) {
+                _field->set_bounds(get_client_bounds());
+                _field->set_text(_item.drop_down->to_text(_item.value));
+            }
+            return true;
+        });
         on_wnd_paint.connect([this](wnd_paint_event event) { paint(event); return true; });
         on_mouse_click.connect([this](mouse_event event) {
             if (!_item.read_only && event.button == mouse_button::left &&
@@ -68,11 +95,14 @@ namespace native::detail
     void property_drop_down_editor::destroy_native() {
         _session.reset();
         if (_popup) _popup->destroy();
+        _field.reset();
         canvas::destroy_native();
     }
 
     void property_drop_down_editor::set_value(property_value value) {
         _item.value = std::move(value);
+        if (_field)
+            _field->set_text(_item.drop_down->to_text(_item.value));
         invalidate();
     }
 
@@ -81,6 +111,8 @@ namespace native::detail
         auto appearance = theme::create(event.g);
         const auto bounds = get_client_bounds();
         appearance->draw_surface(bounds, surface_kind::panel, {});
+        if (_field)
+            return;
         event.g.set_font(font_t::stock(font_role::control))
             .set_ink(appearance->native_palette().content_text)
             .draw_text(_item.drop_down->to_text(_item.value),
@@ -119,8 +151,10 @@ namespace native::detail
         if (!content || content->get_created())
             throw std::invalid_argument("A property dropdown needs uncreated content.");
         const auto screen_position = get_mouse_screen_position();
-        point origin(screen_position.x - position.x,
-                     screen_position.y - position.y + get_dimensions().h);
+        point origin = _field ? picker_popup_position(*_field)
+                              : point(screen_position.x - position.x,
+                                      screen_position.y - position.y +
+                                          get_dimensions().h);
         for (const auto &display : screen::detect()) {
             const auto area = display.work_area();
             if (!area.contains(screen_position)) continue;

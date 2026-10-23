@@ -448,3 +448,12 @@ AppKit may retain a content view beyond window close while servicing queued
 painting. Its weak resource-generation token rejects that paint before it
 looks up graphics or calls C++; reopening the same C++ window cannot revive
 callbacks from its old native view.
+
+OPEN LOOK keeps OLGX's complete scene rendering in its backing pixmap, while
+queued invalidations union their requested rectangles and copy only that
+damage to the visible Panel. The copy region excludes visible windowless
+Panel items. Their native editor contents, caret and selection therefore
+remain on screen while rulers or other portable backgrounds update; native
+item invalidation uses `PANEL_NO_CLEAR`. Native XView clear/expose callbacks
+can still restore background under an item; affected live native items are then
+repainted, allowing shorter text replacements to remove the old characters.

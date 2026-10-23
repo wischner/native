@@ -20,44 +20,12 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "window_position.h"
 #include "alert_icons.h"
 #include "../../message_box_common.h"
 
 namespace
 {
-    // Use the owner's current screen position, not its creation-time bounds.
-    // A hidden owner falls back to the X screen center. Position the shell
-    // before mapping so the window manager never first shows it at (0, 0).
-    void center_shell(Widget shell, Widget parent) {
-        Screen *screen = XtScreen(shell);
-        const int screen_width = WidthOfScreen(screen);
-        const int screen_height = HeightOfScreen(screen);
-        int center_x = screen_width / 2;
-        int center_y = screen_height / 2;
-        XWindowAttributes attributes{};
-        if (XtIsRealized(parent) && XGetWindowAttributes(XtDisplay(parent),
-                XtWindow(parent), &attributes) && attributes.map_state == IsViewable) {
-            int x = 0, y = 0;
-            Window child = None;
-            if (XTranslateCoordinates(XtDisplay(parent), XtWindow(parent),
-                    RootWindowOfScreen(screen), 0, 0, &x, &y, &child)) {
-                center_x = x + attributes.width / 2;
-                center_y = y + attributes.height / 2;
-            }
-        }
-        Dimension width = 0, height = 0, border = 0;
-        XtVaGetValues(shell, XtNwidth, &width, XtNheight, &height,
-            XtNborderWidth, &border, nullptr);
-        const int outer_width = width + 2 * border;
-        const int outer_height = height + 2 * border;
-        XtVaSetValues(shell,
-            XtNx, std::clamp(center_x - outer_width / 2,
-                0, std::max(0, screen_width - outer_width)),
-            XtNy, std::clamp(center_y - outer_height / 2,
-                0, std::max(0, screen_height - outer_height)),
-            XtNwinGravity, CenterGravity, nullptr);
-    }
-
     void center_buttons(Widget dialog, XtPointer, XEvent *event, Boolean *) {
         if (event && event->type != ConfigureNotify) return;
         WidgetList children = nullptr;
@@ -160,7 +128,7 @@ namespace native
         }
         XtRealizeWidget(shell);
         center_buttons(dialog, nullptr, nullptr, nullptr);
-        center_shell(shell, parent);
+        linux::x11::prepare_modal_shell(shell, parent);
         XtAddEventHandler(dialog, StructureNotifyMask, False,
             center_buttons, nullptr);
         state.delete_window = XInternAtom(

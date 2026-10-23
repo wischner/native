@@ -112,7 +112,9 @@ namespace linux::x11
         Widget button = nullptr;
         Widget menu = nullptr;
         Pixmap arrow = None;
+        Pixmap reverse_arrow = None;
         bool opening_press = false;
+        std::function<void()> layout;
         std::vector<xaw_combo_callback *> callbacks;
         bool suppress = false;
     };

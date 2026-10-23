@@ -22,6 +22,13 @@
 
 namespace
 {
+    native::rgba monochrome_color(native::rgba color) {
+        const auto level =
+            299 * color.r + 587 * color.g + 114 * color.b >= 128000
+                ? 255
+                : 0;
+        return native::rgba(level, level, level, color.a);
+    }
     // Thin pens draw one device pixel at every scale; wider pens
     // cover the device pixels of their logical width.
     bool thick_pen(int pen) {
@@ -72,7 +79,7 @@ static void apply_gc(Display *display,
             cache->gc,
             native::detail::x_pixel(
                 DefaultVisual(display, DefaultScreen(display)),
-                self->get_ink()));
+                monochrome_color(self->get_ink())));
         cache->current_fg = self->get_ink();
     }
 
@@ -185,7 +192,8 @@ namespace native
             display,
             cache->gc,
             detail::x_pixel(
-                DefaultVisual(display, DefaultScreen(display)), color));
+                DefaultVisual(display, DefaultScreen(display)),
+                monochrome_color(color)));
         XRectangle clip = device_clip(_clip);
         XSetClipRectangles(
             display, cache->gc, 0, 0, &clip, 1, Unsorted);
@@ -274,7 +282,17 @@ namespace native
         if (!cache || !cache->backbuffer)
             return *this;
 
+        const auto original_ink = get_ink();
+        if (dynamic_cast<code_edit *>(_wnd)) {
+            const auto level = original_ink.r == 255 &&
+                                       original_ink.g == 255 &&
+                                       original_ink.b == 255
+                                   ? 255
+                                   : 0;
+            set_ink(rgba(level, level, level, original_ink.a));
+        }
         apply_gc(display, cache, this);
+        set_ink(original_ink);
 
         auto *fh = linux::x11::font_bindings.object_from_handle(
             get_font().id());
@@ -305,25 +323,45 @@ namespace native
 
         apply_gc(display, cache, this);
 
-        // Collection imagery follows Athena's two-color control style.
-        // Threshold after scaling so interpolation cannot add gray fringes.
-        // Application canvases and other image surfaces retain full color.
-        std::unique_ptr<img> monochrome;
-        if (dynamic_cast<icon_view *>(_wnd) ||
-            dynamic_cast<table_view *>(_wnd) ||
-            dynamic_cast<tree_view *>(_wnd) ||
-            dynamic_cast<accordion *>(_wnd)) {
-            monochrome = std::make_unique<img>(src.w(), src.h());
-            rgba *pixels = monochrome->pixels();
-            for (int index = 0; index < src.w() * src.h(); ++index) {
-                const rgba color = src.pixels()[index];
-                const int brightness = 299 * color.r +
-                    587 * color.g + 114 * color.b;
-                const std::uint8_t value = brightness >= 224000 ? 255 : 0;
-                pixels[index] = rgba(value, value, value, color.a >= 128 ? 255 : 0);
+        // Ordered monochrome coverage preserves shading on the
+        // dedicated Athena black/white desktop, including ordinary
+        // application images.
+        auto monochrome = std::make_unique<img>(src.w(), src.h());
+        static constexpr int bayer[4][4] = {{0, 8, 2, 10},
+                                            {12, 4, 14, 6},
+                                            {3, 11, 1, 9},
+                                            {15, 7, 13, 5}};
+        for (int y = 0; y < src.h(); ++y)
+            for (int x = 0; x < src.w(); ++x) {
+                const auto color = src.pixels()[y * src.w() + x];
+                const int level =
+                    dynamic_cast<code_edit *>(_wnd)
+                        ? (color.r == 255 && color.g == 255 &&
+                                   color.b == 255
+                               ? 255
+                               : 0)
+                        : (299 * color.r + 587 * color.g +
+                           114 * color.b) /
+                              1000;
+                const auto value =
+                    level * 16 >
+                            bayer[(dst.y + y) & 3][(dst.x + x) & 3] *
+                                    255 +
+                                127
+                        ? 255
+                        : 0;
+                monochrome->pixels()[y * src.w() + x] =
+                    rgba(value,
+                         value,
+                         value,
+                         color.a * 16 > bayer[(dst.y + y + 2) & 3]
+                                             [(dst.x + x) & 3] *
+                                                255 +
+                                            127
+                             ? 255
+                             : 0);
             }
-        }
-        const img &logical = monochrome ? *monochrome : src;
+        const img &logical = *monochrome;
         std::unique_ptr<img> device;
         if (linux::x11::coordinate_scale() != 1.0)
             device = device_image(logical);

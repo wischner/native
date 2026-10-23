@@ -183,6 +183,11 @@ namespace
             result.content_alt_bg = table
                                         ? native::rgba(200, 200, 200, 255)
                                         : native::rgba(0, 0, 0, 0);
+            if (dynamic_cast<native::tree_view *>(target.owner) &&
+                target.owner->get_parent() &&
+                dynamic_cast<native::settings_sidebar *>(
+                    target.owner->get_parent()))
+                result.content_bg = white;
             result.content_text = black;
             result.selection_bg = row_selection
                                       ? native::rgba(85, 85, 85, 255)
@@ -192,6 +197,11 @@ namespace
                                         : white;
             result.selection_inactive_bg = dark;
             result.selection_inactive_text = white;
+            if (dynamic_cast<native::tree_view *>(target.owner) &&
+                target.owner->get_parent() &&
+                dynamic_cast<native::settings_sidebar *>(
+                    target.owner->get_parent()))
+                result.selection_inactive_text = dark;
             result.separator = dark;
             result.focus = black;
             return result;
@@ -208,12 +218,14 @@ namespace
             saved_state saved(_g);
             fill(target,
                  bounds,
-                 element_state.pressed
+                 (element_state.pressed || element_state.selected)
                      ? target.screen->white
                      : target.screen->gray);
             relief(target,
                    bounds,
-                   element_state.pressed ? WRPushed : WRRaised);
+                   (element_state.pressed || element_state.selected)
+                       ? WRPushed
+                       : WRRaised);
             const palette colors = native_palette();
             _g.set_font(native::font_t::stock(
                             native::font_role::control))
@@ -221,7 +233,9 @@ namespace
                              ? colors.button_disabled_text
                              : colors.button_text)
                 .set_clip(_g.get_clip().intersect(bounds));
-            const int offset = element_state.pressed ? 1 : 0;
+            const int offset =
+                (element_state.pressed || element_state.selected) ? 1
+                                                                  : 0;
             _g.draw_text(
                 text,
                 native::point(
@@ -385,11 +399,49 @@ namespace
             if (bounds.d.w <= 4 || bounds.d.h <= 4)
                 return *this;
             const int item_height = defaults().list_item_height;
-            const native::rect content(
-                bounds.p.x + 2,
-                bounds.p.y + 2,
-                bounds.d.w - 4,
-                bounds.d.h - 4);
+            const int scroller =
+                std::min<int>(SCROLLER_WIDTH, bounds.w() - 4);
+            const native::rect bar(bounds.x1() + 1,
+                                   bounds.y1() + 1,
+                                   scroller,
+                                   bounds.h() - 2);
+            fill(target, bar, target.screen->gray);
+            _g.set_ink(native_palette().button_border)
+                .draw_rect(bar, false);
+            if (bar.w() > 4 && bar.h() > 4) {
+                const auto clip = _g.get_clip().intersect(bar);
+                XRectangle rectangle{
+                    clip.x1(), clip.y1(), clip.w(), clip.h()};
+                XSetClipRectangles(target.screen->display,
+                                   target.screen->stippleGC,
+                                   0,
+                                   0,
+                                   &rectangle,
+                                   1,
+                                   Unsorted);
+                XSetTSOrigin(target.screen->display,
+                             target.screen->stippleGC,
+                             bar.x1(),
+                             bar.y1());
+                XFillRectangle(target.screen->display,
+                               target.graphics->backbuffer,
+                               target.screen->stippleGC,
+                               bar.x1() + 2,
+                               bar.y1() + 2,
+                               bar.w() - 4,
+                               bar.h() - 4);
+                XSetClipMask(target.screen->display,
+                             target.screen->stippleGC,
+                             None);
+                XSetTSOrigin(target.screen->display,
+                             target.screen->stippleGC,
+                             0,
+                             0);
+            }
+            const native::rect content(bounds.p.x + scroller + 2,
+                                       bounds.p.y + 2,
+                                       bounds.d.w - scroller - 4,
+                                       bounds.d.h - 4);
             _g.set_clip(_g.get_clip().intersect(content));
             for (std::size_t index = 0; index < items.size(); ++index) {
                 const int y = content.p.y +

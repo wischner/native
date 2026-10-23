@@ -293,6 +293,29 @@ namespace linux::wayland
             GTK_STYLE_PROVIDER(provider),
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
+    namespace
+    {
+        // GTK can retain widgets/controllers through allocation and
+        // gesture completion. Retire callbacks before unparenting or
+        // disposing them.
+        void disconnect_owner(GtkWidget *widget, native::wnd &owner) {
+            g_signal_handlers_disconnect_by_data(widget, &owner);
+            auto *controllers = gtk_widget_observe_controllers(widget);
+            for (guint i = 0; i < g_list_model_get_n_items(controllers);
+                 ++i) {
+                auto *controller =
+                    g_list_model_get_item(controllers, i);
+                g_signal_handlers_disconnect_by_data(controller,
+                                                     &owner);
+                g_object_unref(controller);
+            }
+            g_object_unref(controllers);
+            for (auto *child = gtk_widget_get_first_child(widget);
+                 child;
+                 child = gtk_widget_get_next_sibling(child))
+                disconnect_owner(child, owner);
+        }
+    } // namespace
     void destroy(native::wnd &owner) {
         auto *resource =
             native::detail::peer_state<widget_state>(owner);
@@ -300,6 +323,12 @@ namespace linux::wayland
             return;
         auto &peer = *resource;
         auto *widget = peer.widget;
+        peer.updating = true;
+        if (peer.position_source) {
+            g_source_remove(peer.position_source);
+            peer.position_source = 0;
+        }
+        disconnect_owner(widget, owner);
         peer.widget = nullptr;
         wnd_bindings.unregister_by_handle(widget);
         if (GTK_IS_WINDOW(widget))

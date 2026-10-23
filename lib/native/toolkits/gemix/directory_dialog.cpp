@@ -1,5 +1,5 @@
 //
-// Adapts the AES standard selector to directory selection.
+// Adapts the positioned AES chooser to directory selection.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -18,14 +18,14 @@ namespace native
             return;
         try {
             const auto response = linux::gemix::show_file_dialog(
-                *this, std::string());
+                *this, std::string(), false, true);
             auto *self = this;
             if (!response.accepted) {
                 self->on_native_cancel();
                 return;
             }
             const std::filesystem::path selected(response.path);
-            const std::string folder = selected.parent_path().string();
+            const std::string folder = selected.string();
             if (folder.empty())
                 self->on_native_cancel();
             else

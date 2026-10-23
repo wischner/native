@@ -22,6 +22,7 @@
 #include "globals.h"
 #include "scale.h"
 #include "scrollbars.h"
+#include "../../table_render.h"
 
 namespace
 {
@@ -416,13 +417,27 @@ namespace
                                RevertToParent,
                                event->xbutton.time);
             }
-            owner->on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                event->type == ButtonPress
-                    ? native::mouse_action::press
-                    : native::mouse_action::release,
-                linux::x11::pointer_to_logical(event->xbutton.x,
-                                               event->xbutton.y)));
+            if (auto *table =
+                    dynamic_cast<native::table_view *>(owner)) {
+                // Shared table clicks commit on release; preserve
+                // native modifiers instead of dispatching an unmodified
+                // click.
+                if (event->type == ButtonPress)
+                    break;
+                native::detail::handle_table_click(
+                    *table,
+                    linux::x11::pointer_to_logical(event->xbutton.x,
+                                                   event->xbutton.y),
+                    event->xbutton.state & ControlMask,
+                    event->xbutton.state & ShiftMask);
+            } else
+                owner->on_native_mouse_click(native::mouse_event(
+                    native::mouse_button::left,
+                    event->type == ButtonPress
+                        ? native::mouse_action::press
+                        : native::mouse_action::release,
+                    linux::x11::pointer_to_logical(event->xbutton.x,
+                                                   event->xbutton.y)));
             if (event->type != ButtonRelease)
                 break;
             if (auto *table =

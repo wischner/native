@@ -216,13 +216,76 @@ namespace
             ++*static_cast<int *>(data);
     }
 
+    // Compare selected header arrows with the native tree's exact pixels.
+    void check_disclosure_pixels(native::app_wnd &root,
+                                 motif::motif_collection &tree) {
+        auto &graphics = root.get_gpx();
+        auto saved = graphics.save_state();
+        graphics.set_clip(root.get_client_bounds());
+        auto appearance = native::theme::create(graphics);
+        auto *cache = motif::wnd_gpx_bindings.object_from_handle(&root);
+        const native::rect bounds(340, 10, 13, 13);
+        const auto black = BlackPixelOfScreen(XtScreen(widget(root)));
+        for (const bool expanded : {false, true}) {
+            graphics.set_ink(native::rgba(255, 255, 255, 255))
+                .draw_rect(bounds, true);
+            native::theme::state selected;
+            selected.selected = true;
+            appearance->draw_disclosure(
+                bounds,
+                expanded ? native::disclosure_state::expanded
+                         : native::disclosure_state::collapsed,
+                selected);
+            XImage *actual = XGetImage(motif::cached_display,
+                                       cache->backbuffer,
+                                       bounds.x1(),
+                                       bounds.y1(),
+                                       13,
+                                       13,
+                                       AllPlanes,
+                                       ZPixmap);
+            XImage *expected =
+                XGetImage(motif::cached_display,
+                          expanded ? tree.expanded_tree_pixmap
+                                   : tree.collapsed_tree_pixmap,
+                          0,
+                          0,
+                          13,
+                          13,
+                          AllPlanes,
+                          ZPixmap);
+            bool equal = true;
+            int ink = 0;
+            for (int y = 0; y < 13; ++y)
+                for (int x = 0; x < 13; ++x) {
+                    const bool native_ink =
+                        XGetPixel(expected, x, y) == black;
+                    ink += native_ink;
+                    equal = equal && ((XGetPixel(actual, x, y) ==
+                                       black) == native_ink);
+                }
+            XDestroyImage(actual);
+            XDestroyImage(expected);
+            expect(equal && ink > 0,
+                   "selected accordion/table arrows match the tree's "
+                   "black triangle pixels");
+        }
+    }
+
     // Branch changes repaint the outline without exposing the outer frame.
     void check_tree_content_repaint(native::app_wnd &root) {
-        native::tree_view tree({native::tree_node("Folder", 1,
-            {native::tree_node("Child", 2)}, true)}, 10, 10, 300, 180);
+        native::tree_view tree(
+            {native::tree_node(
+                "Folder", 1, {native::tree_node("Child", 2)}, true)},
+            10,
+            10,
+            300,
+            180);
         attach(tree, root);
         pump();
-        auto *state = motif::tree_view_bindings.object_from_handle(&tree);
+        auto *state =
+            motif::tree_view_bindings.object_from_handle(&tree);
+        check_disclosure_pixels(root, *state);
         const auto original_items = state->items;
         const auto border_pixels = [&] {
             Dimension width = 0, height = 0;

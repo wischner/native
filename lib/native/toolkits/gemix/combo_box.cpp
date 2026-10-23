@@ -12,14 +12,16 @@
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "../../combo_picker.h"
 
 namespace linux::gemix
 {
     bool handle_combo_key(native::app_wnd *parent, WORD, WORD key) {
         for (auto *control : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(control);
-            if (!control || !state || control->get_parent() != parent ||
-                !state->focused) continue;
+            if (!control || !state || root_of(control) != parent ||
+                !state->focused)
+                continue;
             const unsigned char character = key & 0xff;
             if (control->get_style() ==
                 native::combo_box_style::editable) {
@@ -43,8 +45,17 @@ namespace linux::gemix
 namespace native
 {
     void combo_box::apply_items() { invalidate(); }
-    void combo_box::apply_selected_index() { invalidate(); }
-    void combo_box::apply_text() { invalidate(); }
+    void combo_box::apply_selected_index() {
+        apply_text();
+    }
+    void combo_box::apply_text() {
+        auto *state =
+            linux::gemix::combo_box_bindings.object_from_handle(this);
+        if (state && state->editor &&
+            state->editor->get_text() != get_text())
+            state->editor->set_text(get_text());
+        invalidate();
+    }
     void combo_box::apply_style() { invalidate(); }
 
     void combo_box::create_native() {
@@ -60,6 +71,34 @@ namespace native
     void combo_box::show_native() {
         if (!_created)
             throw std::runtime_error("GEMix: combo box is not created.");
+        auto *state =
+            linux::gemix::combo_box_bindings.object_from_handle(this);
+        if (get_style() == combo_box_style::editable &&
+            !state->editor) {
+            state->editor = std::make_unique<text_edit>(get_text());
+            if (auto *actions = native::detail::peer_state<
+                    native::detail::combo_picker_actions>(*this))
+                state->editor->set_read_only(actions->read_only);
+            state->editor->set_parent(this);
+            state->editor->set_border_sides(border_sides::none);
+            state->editor->set_bounds(
+                rect(2,
+                     0,
+                     std::max(1,
+                              int(get_dimensions().w) -
+                                  int(get_dimensions().h) - 2),
+                     get_dimensions().h));
+            state->editor->create();
+            state->editor->show();
+            linux::gemix::text_edit_bindings
+                .object_from_handle(state->editor.get())
+                ->combo_owner = this;
+            state->editor->on_change.connect(
+                [this](const std::string &value) {
+                    on_native_text(value);
+                    return true;
+                });
+        }
         invalidate();
     }
 
@@ -76,3 +115,18 @@ namespace native
         delete state;
     }
 } // namespace native
+
+namespace native::detail
+{
+    void configure_picker_day(button &day, bool) {
+        day.invalidate();
+    }
+    point picker_popup_position(combo_box &field) {
+        auto *root =
+            static_cast<app_wnd *>(linux::gemix::root_of(&field));
+        const auto work = linux::gemix::work_rect(
+            linux::gemix::wnd_bindings.handle_from_object(root));
+        const auto bounds = linux::gemix::root_bounds(field);
+        return point(work.x1() + bounds.x1(), work.y1() + bounds.y2());
+    }
+} // namespace native::detail

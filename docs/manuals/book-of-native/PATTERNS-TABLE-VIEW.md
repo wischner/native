@@ -3,7 +3,9 @@
 The GTK painted-table adapter handles pointer selection, modifiers and group
 disclosure once, on press. Release completes scrollbar dragging without
 dispatching another unmodified table click. Hit testing and paging use the
-same peer's CSS/font metrics as painting.
+same peer's CSS/font metrics as painting. Athena preserves native Ctrl/Shift
+modifiers in its single table release dispatch. Its native scrollbar pages
+toward the pointer when the track is clicked above or below the thumb.
 
 GEMix uses the shared virtual-table geometry and scrollbar drag calculations.
 Its root peer captures a thumb drag through release; painting uses GEM-style
@@ -158,3 +160,19 @@ pointer input, and Shift extension for keyboard navigation. Table header
 backgrounds snapshot only the native frame, avoiding a second built-in sort
 glyph under the explicit indicator. GTK palettes and metrics are cached for
 the lifetime of each theme painter, avoiding repeated widget probes per cell.
+
+SDL table pointer releases preserve the current Ctrl/Shift modifiers for
+additive and range selection. Frames request only visible model cells. SDL
+renderers cache repeated native-font strings by font, device face, text and
+color, with LRU limits of 256 textures and 4 MiB per window. Window graphics
+release these textures before destroying their renderer; image graphics and
+the optional bitmap-font fallback retain their existing paths.
+
+OPEN LOOK table releases preserve XView Ctrl/Shift state for additive and
+range selection. Shared editor key commands consume their native X events
+before default Panel traversal, so arrows, Tab and Escape retain the source
+editor's navigation/completion semantics.
+
+Window Maker, Motif and GEM pass native Ctrl/Shift state to the shared table
+click handler exactly once on release. This preserves additive and range
+selection rather than following it with a second unmodified click.

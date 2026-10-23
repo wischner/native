@@ -15,6 +15,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "dialog_position.h"
 #include "../../message_box_common.h"
 
 namespace
@@ -148,6 +149,9 @@ namespace native
         if (help)
             XtAddCallback(dialog, XmNhelpCallback, auxiliary, &state);
         XtAddCallback(dialog, XmNdestroyCallback, destroyed, &state);
+        linux::openmotif::position_dialog(
+            dialog,
+            linux::openmotif::wnd_bindings.handle_from_object(&owner));
         XtManageChild(dialog);
         while (!state.done)
             XtAppProcessEvent(linux::openmotif::app_instance,

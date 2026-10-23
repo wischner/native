@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <thread>
@@ -426,6 +428,82 @@ namespace
             }, "composite controls survive destroy and recreate");
         }
 
+        // Standard forms must accept typed paths and preserve owner
+        // input. Send real Return/Escape packets through the native
+        // modal form loop.
+        void check_dialogs() {
+            const auto source =
+                std::filesystem::current_path().parent_path() /
+                "CMakeCache.txt";
+            int stage = 0;
+            auto run = [&](auto show) {
+                auto result = std::make_shared<std::promise<bool>>();
+                auto future = result->get_future();
+                native::app::post([show, result] {
+                    result->set_value(show());
+                });
+                std::this_thread::sleep_for(200ms);
+                if (const auto snapshot =
+                        std::getenv("NATIVE_GEM_FORM_SNAPSHOT")) {
+                    std::ifstream source(
+                        std::getenv("GEM_RASTA_FRAMEBUFFER"),
+                        std::ios::binary);
+                    std::ofstream target(std::string(snapshot) + "." +
+                                             std::to_string(stage),
+                                         std::ios::binary);
+                    target << source.rdbuf();
+                }
+                ++stage;
+                key(40);
+                const bool ready =
+                    future.wait_for(3s) == std::future_status::ready;
+                if (!ready) {
+                    key(41);
+                    future.wait_for(1s);
+                }
+                expect(ready && future.get(),
+                       "positioned GEM form accepts its native default "
+                       "button");
+            };
+            run([this, source] {
+                native::open_file_dialog dialog(*this);
+                dialog.set_initial_path(source);
+                dialog.create();
+                dialog.show();
+                return dialog.get_path() == source &&
+                       get_input_enabled();
+            });
+            run([this] {
+                native::save_file_dialog dialog(*this);
+                dialog.set_initial_path("/tmp");
+                dialog.set_suggested_name("native-gem-form-regression")
+                    .set_default_extension("txt")
+                    .set_confirm_overwrite(false);
+                dialog.create();
+                dialog.show();
+                return dialog.get_path() ==
+                           "/tmp/native-gem-form-regression.txt" &&
+                       get_input_enabled();
+            });
+            run([this] {
+                native::directory_dialog dialog(*this);
+                dialog.set_initial_path("/tmp");
+                dialog.create();
+                dialog.show();
+                return dialog.get_path() == "/tmp" &&
+                       get_input_enabled();
+            });
+            run([this] {
+                return native::message_box::show(
+                           *this,
+                           "Native centered message",
+                           "Form regression",
+                           native::message_box_buttons::yes_no_cancel,
+                           native::message_box_icon::question) ==
+                       native::message_box_result::yes;
+            });
+        }
+
         void exercise() {
             try {
                 char subscription[4096];
@@ -477,6 +555,7 @@ namespace
                 click(50, 173); click(200, 173);
                 wait_for([this] { return multi.get_text() == "g"; },
                          "clipboard buttons failed after dialogs");
+                check_dialogs();
                 check_collections();
                 check_inspector();
                 click(40, 30); shortcut(4); key(11);

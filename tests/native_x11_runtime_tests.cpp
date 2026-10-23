@@ -12,6 +12,8 @@
 #include <X11/Xutil.h>
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/Command.h>
+#include <X11/keysym.h>
+#include "../lib/native/table_render.h"
 #include <dlfcn.h>
 #include <algorithm>
 #include <iostream>
@@ -74,6 +76,19 @@ namespace
             send(target, ButtonPress, x, y);
             send(target, ButtonRelease, x, y);
         }
+        void key(KeySym symbol, bool down) {
+            using key_proc =
+                int (*)(Display *, unsigned, Bool, unsigned long);
+            auto key = reinterpret_cast<key_proc>(
+                dlsym(library, "XTestFakeKeyEvent"));
+            expect(key, "XTest keyboard entry point");
+            key(cached_display,
+                XKeysymToKeycode(cached_display, symbol),
+                down,
+                0);
+            XFlush(cached_display);
+        }
+
     private:
         using button_proc = int (*)(Display *, unsigned int, Bool, unsigned long);
         void *library;
@@ -103,7 +118,7 @@ namespace
         using table_view::table_view;
         void draw_row_background(gpx &g, theme &, table_row_id, std::size_t,
             const rect &r, const theme::state &) override {
-            g.set_ink(rgba(190, 190, 190, 255)).draw_rect(r, true);
+            g.set_ink(rgba(0, 0, 0, 255)).draw_rect(r, true);
         }
     };
 
@@ -241,6 +256,74 @@ namespace
                 "selected tab has no separating line in any orientation");
         }
 
+        void check_files() {
+            open_file_dialog open(*this);
+            save_file_dialog save(*this);
+            directory_dialog directory(*this);
+            for (file_dialog *dialog :
+                 std::initializer_list<file_dialog *>{
+                     &open, &save, &directory}) {
+                struct inspection
+                {
+                    test_window *owner;
+                    file_dialog *dialog;
+                    bool done = false;
+                    bool passed = false;
+                } state{this, dialog};
+                XtAppAddTimeOut(
+                    app_instance,
+                    120,
+                    +[](XtPointer data, XtIntervalId *) {
+                        auto &state = *static_cast<inspection *>(data);
+                        auto *binding =
+                            file_dialog_bindings.object_from_handle(
+                                state.dialog);
+                        if (binding) {
+                            auto *parent =
+                                shell_bindings.handle_from_object(
+                                    state.owner);
+                            XWindowAttributes owner_bounds{}, bounds{};
+                            XGetWindowAttributes(cached_display,
+                                                 XtWindow(parent),
+                                                 &owner_bounds);
+                            XGetWindowAttributes(
+                                cached_display,
+                                XtWindow(binding->shell),
+                                &bounds);
+                            Position x = 0, y = 0, px = 0, py = 0;
+                            XtTranslateCoords(parent, 0, 0, &px, &py);
+                            XtTranslateCoords(
+                                binding->shell, 0, 0, &x, &y);
+                            Window transient = None;
+                            state.passed =
+                                bounds.map_state == IsViewable &&
+                                !state.owner->get_input_enabled() &&
+                                XGetTransientForHint(
+                                    cached_display,
+                                    XtWindow(binding->shell),
+                                    &transient) &&
+                                transient == XtWindow(parent) &&
+                                std::abs(2 * x + bounds.width - 2 * px -
+                                         owner_bounds.width) <= 2 &&
+                                std::abs(2 * y + bounds.height -
+                                         2 * py -
+                                         owner_bounds.height) <= 2;
+                        }
+                        state.dialog->on_native_cancel();
+                        state.done = true;
+                    },
+                    &state);
+                dialog->create();
+                dialog->show();
+                while (!state.done)
+                    XtAppProcessEvent(app_instance, XtIMAll);
+                expect(
+                    state.passed && get_input_enabled(),
+                    "Athena open/save/directory panels center on their "
+                    "parent and block input until cancellation");
+            }
+        }
+
         void check_message() {
             bool centered = false;
             std::pair<test_window *, bool *> state{this, &centered};
@@ -266,6 +349,36 @@ namespace
                     ++buttons;
                 }
                 *state.second = buttons == 3 && std::abs(left - (int(width) - right)) <= 1;
+                Display *other =
+                    XOpenDisplay(DisplayString(cached_display));
+                if (other) {
+                    const int pointer =
+                        XGrabPointer(other,
+                                     DefaultRootWindow(other),
+                                     False,
+                                     ButtonPressMask,
+                                     GrabModeAsync,
+                                     GrabModeAsync,
+                                     None,
+                                     None,
+                                     CurrentTime);
+                    const int keyboard =
+                        XGrabKeyboard(other,
+                                      DefaultRootWindow(other),
+                                      False,
+                                      GrabModeAsync,
+                                      GrabModeAsync,
+                                      CurrentTime);
+                    *state.second &= pointer == AlreadyGrabbed &&
+                                     keyboard == AlreadyGrabbed;
+                    if (pointer == GrabSuccess)
+                        XUngrabPointer(other, CurrentTime);
+                    if (keyboard == GrabSuccess)
+                        XUngrabKeyboard(other, CurrentTime);
+                    XCloseDisplay(other);
+                } else
+                    *state.second = false;
+
                 Widget shell = XtParent(dialog);
                 Widget parent = shell_bindings.handle_from_object(state.first);
                 XWindowAttributes owner_bounds{}, bounds{};
@@ -281,10 +394,56 @@ namespace
                 const int center_y = visible ? owner_y + owner_bounds.height / 2 : screen_height / 2;
                 const int w = bounds.width + 2 * bounds.border_width;
                 const int h = bounds.height + 2 * bounds.border_width;
-                *state.second &= x - bounds.border_width ==
-                    std::clamp(center_x - w / 2, 0, std::max(0, screen_width - w)) &&
+                int frame_width = w, frame_height = h;
+                int offset_x = 0, offset_y = 0;
+                Window root = None, frame = None, *frames = nullptr;
+                unsigned frame_count = 0;
+                XQueryTree(cached_display,
+                           XtWindow(shell),
+                           &root,
+                           &frame,
+                           &frames,
+                           &frame_count);
+                if (frames)
+                    XFree(frames);
+                if (frame != root) {
+                    XWindowAttributes outer{};
+                    XGetWindowAttributes(cached_display, frame, &outer);
+                    Position frame_x = 0, frame_y = 0;
+                    int translated_x = 0, translated_y = 0;
+                    Window unused = None;
+                    XTranslateCoordinates(cached_display,
+                                          frame,
+                                          root,
+                                          0,
+                                          0,
+                                          &translated_x,
+                                          &translated_y,
+                                          &unused);
+                    frame_x = translated_x - outer.border_width;
+                    frame_y = translated_y - outer.border_width;
+                    frame_width = outer.width + 2 * outer.border_width;
+                    frame_height =
+                        outer.height + 2 * outer.border_width;
+                    offset_x = x - bounds.border_width - frame_x;
+                    offset_y = y - bounds.border_width - frame_y;
+                }
+                // The WM clamps its complete decorated frame. Preserve
+                // exact client centering when that frame fits on
+                // screen.
+                *state.second &=
+                    x - bounds.border_width ==
+                        std::clamp(
+                            center_x - w / 2 - offset_x,
+                            0,
+                            std::max(0, screen_width - frame_width)) +
+                            offset_x &&
                     y - bounds.border_width ==
-                    std::clamp(center_y - h / 2, 0, std::max(0, screen_height - h));
+                        std::clamp(
+                            center_y - h / 2 - offset_y,
+                            0,
+                            std::max(0, screen_height - frame_height)) +
+                            offset_y;
                 if (!*state.second)
                     std::cerr << "Message placement: " << x << ',' << y
                         << " owner " << owner_x << ',' << owner_y
@@ -299,11 +458,37 @@ namespace
                 "message shell and buttons are centered, screen-clamped and return the chosen result");
         }
 
+        int row_y(int row) {
+            const auto metrics =
+                theme::create(table.get_gpx())->defaults();
+            const auto body =
+                native::detail::table_body_bounds(table, metrics);
+            const int pitch = std::max(
+                1,
+                std::min(
+                    metrics.table_row_height,
+                    int(body.h() /
+                        std::max<std::size_t>(
+                            1, table.get_visible_row_range().count))));
+            return body.y1() + row * pitch + pitch / 2;
+        }
         void check() {
             try {
                 if (phase == 0) {
-                    expect(pixel(picture, 5, 5) == 0xff2233 && artwork->pixels()[0].g == 34,
-                        "canvas imagery and source pixels retain full color");
+                    int black_image = 0, white_image = 0;
+                    for (int y = 0; y < 16; ++y)
+                        for (int x = 0; x < 16; ++x) {
+                            const auto color = pixel(picture, x, y);
+                            black_image +=
+                                color == BlackPixel(cached_display, 0);
+                            white_image +=
+                                color == WhitePixel(cached_display, 0);
+                        }
+                    expect(black_image && white_image &&
+                               black_image + white_image == 256 &&
+                               artwork->pixels()[0].g == 34,
+                           "window images use monochrome dithering "
+                           "without changing source pixels");
                     XImage *image = XGetImage(cached_display, XtWindow(widget(icons)),
                         0, 0, 80, 100, AllPlanes, ZPixmap);
                     int dark = 0;
@@ -469,15 +654,63 @@ namespace
                         combo_selections == 2, "hover changes highlight, not committed selection");
                     choose_combo(1);
                 } else if (phase == 17) {
-                    check_message();
+                    table.set_selection_mode(
+                        table_selection_mode::multiple);
+                    input.click(widget(table), 30, row_y(0));
                 } else if (phase == 18) {
+                    input.key(XK_Control_L, true);
+                    input.click(widget(table), 30, row_y(2));
+                    input.key(XK_Control_L, false);
+                } else if (phase == 19) {
+                    expect(table.get_selected_rows().size() == 2,
+                           "real Ctrl-click retains both X11 table "
+                           "selections after release");
+                    input.key(XK_Shift_L, true);
+                    input.click(widget(table), 30, row_y(4));
+                    input.key(XK_Shift_L, false);
+                } else if (phase == 20) {
+                    expect(table.get_selected_rows().size() == 3,
+                           "real Shift-click selects a stable range "
+                           "after release");
+                    input.click(widget(table), 30, row_y(1));
+                } else if (phase == 21) {
+                    expect(table.get_selected_rows().size() == 1,
+                           "an unmodified click replaces an X11 table "
+                           "multiselection");
+                    combo.set_style(combo_box_style::editable);
+                    auto *field =
+                        combo_box_bindings.object_from_handle(&combo)
+                            ->text;
+                    XSetInputFocus(cached_display,
+                                   XtWindow(field),
+                                   RevertToParent,
+                                   CurrentTime);
+                    input.key(XK_Control_L, true);
+                    input.key(XK_a, true);
+                    input.key(XK_a, false);
+                    input.key(XK_Control_L, false);
+                    input.key(XK_q, true);
+                    input.key(XK_q, false);
+                } else if (phase == 22) {
+                    expect(combo.get_text() == "q" &&
+                               combo.get_selected_index() == -1,
+                           "Ctrl+A and typing replace the complete "
+                           "native combo selection");
+                    input.key(XK_Return, true);
+                    input.key(XK_Return, false);
+                } else if (phase == 23) {
+                    expect(combo.get_text() == "q",
+                           "Enter retains custom editable-combo text");
+                    check_message();
+                    check_files();
+                } else if (phase == 24) {
                     set_dimensions(size(100, 100));
                     XMoveWindow(cached_display, XtWindow(shell_bindings.handle_from_object(this)),
                         WidthOfScreen(XtScreen(widget(*this))) - 100,
                         HeightOfScreen(XtScreen(widget(*this))) - 100);
-                } else if (phase == 19) {
+                } else if (phase == 25) {
                     check_message();
-                } else if (phase == 20) {
+                } else if (phase == 26) {
                     XtPopdown(shell_bindings.handle_from_object(this));
                     check_message();
                 } else {

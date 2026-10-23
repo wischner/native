@@ -5,7 +5,66 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-22.
+Audit date: 2026-10-23.
+
+Motif picker review (2026-10-23): date/time fields remain **H**, composed
+from a native XmForm, XmTextField and owned XmArrowButton children. They do
+not instantiate an empty XmComboBox popup or overlay sibling buttons. The
+date trigger opens the native-button calendar; time arrows use the selected
+text component (or caret), preserving it across repeated increments.
+
+Motif disclosure review (2026-10-23): accordion headers and table grouping
+bands share the native tree's flat triangle geometry and Xlib fill routine.
+All three use black arrows, including selected headers, rather than inheriting
+selection-text colors. Existing native/hybrid kind marks are unchanged.
+
+The Window Maker/Motif/GEM review uses joined editable-combo fields for
+dates (`DD.MM.YYYY`) and times (`HH:MM[:SS]`). Window Maker and Motif are
+**H** compositions of native text/buttons and shared civil-date policy;
+GEM remains **C** using its existing themed editor and calendar buttons.
+Window Maker navigation now reuses its image-capable tree with native
+scrollbars instead of a plain WMList: WINGs has no image-capable hierarchical list.
+Search uses a native text editor and
+`Search:` prompt on these three backends. GEM standard panels are **H**
+compositions of native AES form objects, explicitly positioned over the
+owner and constrained to the desktop. Its SDK selectors expose no owner
+geometry, so the adapter supplies browsing/filtering with `std::filesystem`
+and modal command dispatch while AES edits fields and tracks buttons.
+The pinned SDK and published runtime image remain unchanged.
+
+The OPEN LOOK control review retains native **H** navigation, choices and
+pickers. Search is a labeled Panel text item; section rows use native bold
+fonts and inactive styling. List sizing reserves the native scrollbar and
+fits whole rows using its actual metrics. Date/time fields extend the native editable
+combo, with a native Panel-button calendar or paired image buttons. Native
+windowless items are excluded from portable background copies, and queued
+repaints merge their damage rectangles rather than clearing editors.
+On Linux, the image-button adapter releases the old label string when
+switching a native button to a server image. The SDK's Linux
+[`panel_make_image`](https://sources.debian.org/src/xview/3.2p1.4-28.1/lib/libxview/panel/p_utl.c/)
+path frees that string only for string replacements, so an image replacement
+otherwise loses the allocation. The non-Linux toolkit path retains its own
+normal ownership.
+
+
+
+The SDL2 control review retains **C** controls: SDL has no native widget kit.
+Editable combos embed the existing text editor; date and time fields extend
+that composition. Framed navigation/search use equal margins and compact
+indentation, with a drawn search magnifier. Theme lists retain the same inner
+selection margin as real lists. Table modifier routing, tab-child hit testing,
+completion mouse/keyboard handling and renderer-owned bounded text caching
+are covered by the SDL control fixture.
+
+
+The GTK4/X11 control review retains native composition (**H**) for GTK
+pickers and Athena settings/pickers. Generic GTK uses linked native entry
+and menu-button fields. Athena uses native text, Label, Toggle and Command
+widgets for navigation, calendar days and time steps. File/folder dialogs
+now consistently use the native Xaw browser (**H**), with server-enforced
+modal input. Window image presentation uses ordered monochrome dithering;
+source image data remains unchanged. Verification is recorded in the feature
+matrix; elementary was not retested during this review.
 
 The Windows/elementary control review retains the existing kind marks.
 Windows accordion headers omit the extra focused-header outline; native
@@ -28,16 +87,16 @@ no custom painting replaces those widgets.
 | Backend | `settings_sidebar` | `date_picker` | `time_picker` |
 | --- | --- | --- | --- |
 | elementary | **H** GraniteSettingsSidebar/SettingsPage metadata and GtkStack, with borrowed Native pages | **N** GraniteDatePicker | **H** GraniteTimePicker, optional GtkSpinButton seconds |
-| GTK Wayland | **H** existing GtkListBox-backed tree | **H** GtkMenuButton, GtkPopover and GtkCalendar | **H** GtkSpinButton fields |
+| GTK Wayland | **H** GtkListBox-backed native tree rows | **H** linked native GtkEntry/MenuButton with GtkCalendar popover | **H** linked native GtkEntry/MenuButton with GtkSpinButton popup |
 | Windows | **H** genuine WinUI NavigationView in DesktopWindowXamlSource, with native search and ImageIcon rows | **N** DATETIMEPICK_CLASS | **N** DATETIMEPICK_CLASS time mode |
 | macOS | **H** AppKit source-list NSOutlineView, sidebar material and optional NSSearchField | **H** NSDatePicker and internal calendar action inside one native text-field bezel | **H** NSDatePicker time elements inside one native text-field bezel |
 | Haiku | **H** framed BOutlineListView with equal panel margins, automatic scrollbar visibility and optional search | **H** DateEdit with an internal calendar button and native BCalendarView popup | **H** BPrivate::TimeEdit with corrected field metrics and native arrows |
-| OpenMotif | **H** existing XmContainer tree | **H** native year entry and month/day choices | **H** native combo fields |
-| X11/Athena | **H** XawList navigation | **H** native year entry and month/day choices | **H** native choice fields |
-| OPEN LOOK | **H** PANEL_LIST navigation | **H** native year entry and month/day choices | **H** native choice fields |
-| Window Maker | **H** WMList navigation | **H** native year entry and month/day choices | **H** native choice fields |
-| SDL2 | **C** existing themed tree | **C** existing themed entry/choices | **C** existing themed choices |
-| GEMix (direct and gemd) | **C** existing themed tree | **C** existing themed entry/choices | **C** existing themed choices |
+| OpenMotif | **H** XmContainer tree and labeled XmTextField search | **H** joined XmTextField/calendar button in XmForm and XmPushButton calendar | **H** joined XmTextField with paired owned XmArrowButtons |
+| X11/Athena | **H** framed native Label/Toggle rows, disabled stipple and full-width selection | **H** existing AsciiText/MenuButton field with native Toggle day grid and Command month buttons | **H** existing editable field with two native Command arrow buttons |
+| OPEN LOOK | **H** native PANEL_LIST with indented items, bold inactive sections and labeled search | **H** native editable-combo field with Panel-button calendar | **H** native editable-combo field with paired native image buttons |
+| Window Maker | **H** image-capable themed tree, native scrollbars and labeled WMTextField search | **H** joined WMTextField/combo arrow and WMButton calendar | **H** joined WMTextField with paired WINGs-relief arrows |
+| SDL2 | **C** framed themed tree and search editor | **C** existing editable combo with a themed calendar popup | **C** existing editable combo with paired step arrows |
+| GEMix (direct and gemd) | **C** compact themed tree and labeled search | **C** editable combo with calendar popup | **C** joined colon editor and paired arrows |
 
 Granite settings rows use the installed theme's `sidebar` CSS class for
 padding, background, border and selection. A missing icon/title grid gap in
@@ -75,7 +134,8 @@ configured logical icon size. GTK/elementary structural hosts retain their
 native **H** composition; the fixed child overlay is clipped and non-measured
 to avoid turning the current client height into a new top-level minimum.
 
-Granite's real settings widget is preferred over emulation. Athena, XView
+Granite's real settings widget is preferred over emulation. Athena uses native
+Label/Toggle rows with insensitive headings and full-row selection. XView
 and WINGs use their native text lists because their existing trees are
 library-painted; optional descriptor images are retained but not shown there.
 Other native trees display images. Haiku uses its SDK's shared-kit editors
@@ -115,7 +175,7 @@ Property grids remain **H** (or **C** on SDL/GEM), with value editors parented
 to their background canvas, native-sized editors,
 matching host backgrounds and a light dotted grid across labels and values.
 Win32 partial button borders clip the native control instead of switching to
-a different renderer. GTK stock buttons likewise clip their native widgets.
+a different renderer. GTK partial button masks use scoped CSS on the original widget.
 Granite navigation icons use centered native GtkImage widgets at 24 logical
 pixels. Search uses GtkSearchEntry on GTK, and native text editors with a
 small magnifier on Windows/Haiku; its width matches the navigation column.
@@ -130,7 +190,7 @@ margins, native font/client metrics on Win32, and AppKit alignment rectangles
 preserve native painting and interaction on the other adapters.
 
 OPEN LOOK retains its **N/H** native input items. After a canvas copy, the
-adapter repaints windowless Panel items through XView so their text and controls
+adapter preserves windowless Panel item rectangles during background copies so their text and controls
 remain visible above their parent's background. Items whose callback binding
 has been removed are skipped during XView's deferred native destruction.
 
@@ -188,7 +248,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 
 | Backend and control | Decision |
 | --- | --- |
-| SDL2/GEMix `settings_sidebar`, `date_picker`, `time_picker` | Keep **C** through existing themed tree/choice controls. Neither backend supplies native settings, calendar or time widgets; reuse the established renderers and input routes rather than introducing a separate calendar painter. |
+| SDL2 `settings_sidebar`, `date_picker`, `time_picker` | Keep **C**. SDL supplies no desktop widgets. Navigation reuses the existing framed tree/search editor; pickers extend the editable combo with one themed calendar or paired time arrows, sharing input, height, paper and availability policy. |
+| GEMix `settings_sidebar`, `date_picker`, `time_picker` | Keep **C** through the existing themed tree and entry/choice controls; AES supplies no matching settings or date/time widget. |
 | Wayland/elementary `toolbar`, `ruler`, `status_bar` | Keep **C**. These are arbitrary-edge portable non-client strips with staged application painting. GTK 4 has no ruler or multipart in-client status-bar control, and removed the GTK 3 toolbar widget. Native editors are used inside the property grid. |
 | Wayland/elementary advanced source/table drawing | Keep **H**. Stock content uses GtkSourceView/GtkColumnView; application lexer overlays, markers, diagnostics, derived drawing and grouped/headerless/alternating tables retain the shared semantic painter because GTK widgets do not implement those portable staged hooks. |
 | Wayland/elementary `shader_view` | Keep **C**. GTK drawing areas host application-owned multipass/history image programs; no Granite widget provides that program contract. |
@@ -245,8 +306,9 @@ Stock Xaw scrollbars serve tables, icon grids,
 trees and canvases, and the live splitter has a small non-XOR grip. Visual
 checks run in monochrome TWM inside Xephyr with display-local resources.
 Selected tabs are white
-and open to the page without a separator. Collection icons are thresholded to
-black/white at display time; user image buffers and canvas images stay intact.
+and open to the page without a separator. Window images use ordered black/white
+dithering, including canvas images, while source RGBA image buffers stay intact.
+Code text also follows the monochrome desktop presentation.
 Accordion headers have top rules, and alternating table rows retain the white
 content background. Native alerts use local copies of GEM's monochrome assets
 in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
@@ -276,7 +338,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler` | **C** | Shared library-painted non-client strip. |
 | `status_bar` | **C** | Shared library-painted non-client strip. |
-| File open/save/directory | **E/H** | Zenity or KDialog when available; otherwise the library's Xaw file browser. |
+| File open/save/directory | **H** | Owner-centered native Xaw file browser, with transient hints and native pointer/keyboard grabs. |
 | `message_box` | **N/H** | Xaw `Dialog` shell and Xaw buttons, composed to support the portable one-to-three-button contract. |
 ## Linux SDL2
 
@@ -424,7 +486,7 @@ retired native list pages hide before their deferred destruction.
 | `canvas` | **H** | Shared WINGs collection frame; the client, rulers, and themed scrollbars are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using WINGs colors/fonts. |
-| File open/save/directory | **N** | WINGs open/save file panels, including directory-selection mode; owner exposes remain live while their private modal loop moves a panel, and focus returns explicitly when it closes. |
+| File open/save/directory | **N** | WINGs open/save file panels centered in desktop coordinates after mapping, including directory-selection mode; owner exposes remain live while their private modal loop moves a panel, and focus returns explicitly when it closes. |
 | `message_box` | **N/H** | Native WINGs alert panel, controls, fonts, and modal loop, with the requested frame title and attributed embedded PNG semantic badge. |
 ## Linux GEMix/AES
 
@@ -500,8 +562,8 @@ the client inset with a canvas painting to its edges.
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips through VDI. |
-| File open/save/directory | **N/H** | AES `fsel_input`; portable code adapts mode, path, and overwrite confirmation. |
-| `message_box` | **N** | AES `form_alert`. |
+| File open/save/directory | **H** | Positioned native AES form objects; shared filesystem browsing, filters, typed paths, extension handling and centered overwrite confirmation. |
+| `message_box` | **H** | Positioned native AES form with wrapped message text, semantic prompt, paging for long messages and one to three native buttons. |
 
 ## Microsoft Windows
 

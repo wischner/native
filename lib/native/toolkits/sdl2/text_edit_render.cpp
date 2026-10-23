@@ -23,22 +23,54 @@ namespace
                      linux::sdl2::sdl2_text_edit *binding,
                      native::gpx &g) {
         const native::rect bounds = binding->bounds;
+        const bool focused = native::detail::input_target(
+                                 *linux::sdl2::root_of(owner)) == owner;
         auto painter = native::theme::create(g);
         const native::theme::palette colors =
             painter->native_palette();
         native::theme::state frame_state;
-        frame_state.selected = binding->focused;
-        frame_state.disabled = owner->get_read_only();
-        native::detail::control_render_access::draw(
-            *owner, g, *painter, bounds, frame_state);
-        const int padding = owner->get_border_sides() == native::border_sides::none ? 1 : 4;
+        frame_state.selected = focused;
+        frame_state.disabled = !owner->get_input_enabled();
+        const bool combo_editor =
+            dynamic_cast<native::combo_box *>(owner->get_parent());
+        if (combo_editor)
+            g.set_ink(colors.content_bg)
+                .draw_rect(
+                    native::rect(bounds.x1() + 1,
+                                 bounds.y1() + 1,
+                                 std::max(0, int(bounds.w()) - 2),
+                                 std::max(0, int(bounds.h()) - 2)),
+                    true);
+        else
+            native::detail::control_render_access::draw(
+                *owner, g, *painter, bounds, frame_state);
+        const int padding =
+            combo_editor || owner->get_border_sides() !=
+                                native::border_sides::none
+                ? 4
+                : 1;
         if (bounds.d.w <= 2 * padding || bounds.d.h <= 2 * padding)
             return;
 
-        const native::rect content(bounds.p.x + padding,
-                                   bounds.p.y + padding,
-                                   bounds.d.w - 2 * padding,
-                                   bounds.d.h - 2 * padding);
+        const int search = dynamic_cast<native::settings_sidebar *>(
+                               owner->get_parent())
+                               ? 18
+                               : 0;
+        if (search) {
+            const int center = bounds.y1() + int(bounds.h()) / 2;
+            g.set_pen(1)
+                .set_ink(colors.content_text)
+                .draw_ellipse(
+                    native::rect(bounds.x1() + 6, center - 5, 8, 8),
+                    false)
+                .draw_line(native::point(bounds.x1() + 13, center + 2),
+                           native::point(bounds.x1() + 17, center + 6));
+        }
+        const native::rect content(
+            bounds.p.x + padding + search,
+            bounds.p.y + padding,
+            std::max(0, int(bounds.d.w) - 2 * padding - search),
+            bounds.d.h - 2 * padding);
         g.set_clip(g.get_clip().intersect(content));
         g.set_font(native::font_t::stock(native::font_role::control));
         const int line_height =
@@ -68,12 +100,11 @@ namespace
                     const int x2 = origin_x + linux::sdl2::text_width(
                         text.substr(begin, last - begin));
                     const native::rgba selection_background =
-                        binding->focused
-                            ? colors.selection_bg
-                            : colors.selection_inactive_bg;
-                    const native::rgba selection_text = binding->focused
-                        ? colors.selection_text
-                        : colors.selection_inactive_text;
+                        focused ? colors.selection_bg
+                                : colors.selection_inactive_bg;
+                    const native::rgba selection_text =
+                        focused ? colors.selection_text
+                                : colors.selection_inactive_text;
                     g.set_ink(selection_background)
                         .draw_rect(native::rect(
                                        x1,
@@ -100,7 +131,7 @@ namespace
                         .draw_text(text.substr(begin, end - begin),
                                    native::point(origin_x, y));
                 }
-                if (binding->focused && binding->cursor >= begin &&
+                if (focused && binding->cursor >= begin &&
                     binding->cursor <= end) {
                     const int caret_x = origin_x +
                                         linux::sdl2::text_width(

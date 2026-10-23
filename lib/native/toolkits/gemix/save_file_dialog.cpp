@@ -1,5 +1,5 @@
 //
-// Presents the standard GEM AES file selector for saving one file.
+// Presents the owner-centered GEM form for saving one file.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -16,18 +16,13 @@ namespace native
             return;
 
         try {
-            linux::gemix::file_dialog_response response =
-                linux::gemix::show_file_dialog(
-                    *this, get_suggested_name());
-            if (response.accepted) {
-                response.path = linux::gemix::add_default_extension(
-                    response.path, get_default_extension());
-                if (get_confirm_overwrite() &&
-                    !linux::gemix::confirm_file_overwrite(
-                        response.path)) {
-                    response.accepted = false;
-                }
-            }
+            const auto response =
+                linux::gemix::show_file_dialog(*this,
+                                               get_suggested_name(),
+                                               true,
+                                               false,
+                                               get_default_extension(),
+                                               get_confirm_overwrite());
 
             if (response.accepted) {
                 this->on_native_accept(

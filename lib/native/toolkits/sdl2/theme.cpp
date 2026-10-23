@@ -64,6 +64,7 @@ namespace
             m.tab_height = m.header_height;
             m.disclosure_size = 9;
             m.tree_lines_visible = false;
+            m.tree_indent_width = 10;
             return m;
         }
 
@@ -145,10 +146,16 @@ namespace
             const palette p = native_palette();
             _g.set_pen(1).set_ink(p.menu_bar_bg).draw_rect(r, true);
             if (r.d.w && r.d.h) {
+                const bool vertical = r.h() > r.w();
                 _g.set_ink(p.menu_bar_line_top)
-                    .draw_line(r.p, native::point(r.x2() - 1, r.p.y));
+                    .draw_line(r.p,
+                               vertical
+                                   ? native::point(r.x1(), r.y2() - 1)
+                                   : native::point(r.x2() - 1, r.y1()));
                 _g.set_ink(p.menu_bar_line_bottom)
-                    .draw_line(native::point(r.p.x, r.y2() - 1),
+                    .draw_line(vertical
+                                   ? native::point(r.x2() - 1, r.y1())
+                                   : native::point(r.x1(), r.y2() - 1),
                                native::point(r.x2() - 1, r.y2() - 1));
             }
             return *this;
@@ -267,7 +274,8 @@ namespace
 
             const native::rect content(
                 r.p.x + 1, r.p.y + 1, r.d.w - 2, r.d.h - 2);
-            _g.set_clip(_g.get_clip().intersect(content));
+            const auto clip = _g.get_clip();
+            _g.set_clip(clip.intersect(content));
             const int item_height =
                 std::max(1, defaults().list_item_height);
             for (std::size_t i = 0; i < items.size(); ++i) {
@@ -286,6 +294,13 @@ namespace
                                items[i],
                                item_state);
             }
+            _g.set_clip(clip);
+            _g.set_ink(p.menu_popup_bg)
+                .draw_rect(
+                    native::rect(
+                        r.x1() + 1, r.y1() + 1, r.w() - 2, r.h() - 2),
+                    false);
+            draw_bevel(r, true, p);
             return *this;
         }
 

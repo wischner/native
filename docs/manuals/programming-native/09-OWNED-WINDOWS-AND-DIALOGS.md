@@ -247,8 +247,8 @@ their native safeguard.
 | OpenMotif | `XmFileSelectionBox` |
 | OPEN LOOK | XView `File_chooser` |
 | Window Maker | WINGs `WMOpenPanel` and `WMSavePanel` |
-| GEMix | AES `fsel_input` |
-| X11/Athena | Zenity, KDialog, then an Athena-widget browser |
+| GEMix | Parent-centered native AES forms with filesystem browsing |
+| X11/Athena | Parent-centered Athena-widget browser |
 | SDL2 | Themed Native C++ filesystem browser |
 
 Athena and SDL2 have no standard file chooser of their own. X11 can always use

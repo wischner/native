@@ -51,7 +51,10 @@ namespace
         }
         const int value = static_cast<int>(
             xv_get(item, MENU_VALUE));
+        const native::detail::window_guard guard(*owner);
         owner->on_native_selection(value);
+        if (!guard.alive())
+            return item;
         if (binding->text) {
             binding->suppress = true;
             xv_set(binding->text,
@@ -64,17 +67,70 @@ namespace
         return item;
     }
 
-    Panel_setting edited(Panel_item item, Event *) {
+    void synchronize_menu(native::combo_box &owner) {
+        auto *binding = state(&owner);
+        if (!binding || !binding->menu)
+            return;
+        const int selected = owner.get_selected_index();
+        // A choice menu tracks the actual typed match, including no
+        // match.
+        for (int i = 0; i < int(owner.get_items().size()); ++i) {
+            const auto item =
+                xv_get(binding->menu, MENU_NTH_ITEM, i + 1);
+            xv_set(item, MENU_SELECTED, i == selected, nullptr);
+        }
+        if (selected >= 0)
+            xv_set(binding->menu, MENU_DEFAULT, selected + 1, nullptr);
+    }
+    Panel_setting edited(Panel_item item, Event *event) {
         auto *owner = reinterpret_cast<native::combo_box *>(
             xv_get(item, PANEL_CLIENT_DATA));
-        auto *binding = state(owner);
-        if (owner && binding && !binding->suppress &&
-            linux::openlook::permit_input(owner)) {
-            const char *value = reinterpret_cast<const char *>(
-                xv_get(item, PANEL_VALUE));
-            owner->on_native_text(value ? value : "");
+        auto *binding = owner ? state(owner) : nullptr;
+        if (!binding || binding->suppress ||
+            !linux::openlook::permit_input(owner))
+            return PANEL_NONE;
+        const bool commit = event && (event_id(event) == '\r' ||
+                                      event_id(event) == '\n');
+        if (!binding->sync_pending) {
+            binding->sync_pending = true;
+            const native::detail::window_guard guard(*owner);
+            native::app::post([owner, guard] {
+                if (!guard.alive())
+                    return;
+                auto *binding = state(owner);
+                binding->sync_pending = false;
+                const char *value = reinterpret_cast<const char *>(
+                    xv_get(binding->text, PANEL_VALUE));
+                owner->on_native_text(value ? value : "");
+                if (guard.alive())
+                    synchronize_menu(*owner);
+            });
         }
-        return PANEL_NONE;
+        if (commit && binding->commit) {
+            const native::detail::window_guard guard(*owner);
+            native::app::post([owner, guard] {
+                if (!guard.alive())
+                    return;
+                auto callback = state(owner)->commit;
+                if (callback)
+                    callback();
+            });
+        }
+        return panel_text_notify(item, event);
+    }
+    void choice_event(Panel_item item, Event *event) {
+        auto *owner = reinterpret_cast<native::combo_box *>(
+            xv_get(item, PANEL_CLIENT_DATA));
+        auto *binding = owner ? state(owner) : nullptr;
+        if (binding && binding->open_popup &&
+            event_action(event) == ACTION_SELECT) {
+            if (event_is_down(event)) {
+                auto callback = binding->open_popup;
+                callback(event);
+            }
+            return;
+        }
+        panel_default_handle_event(item, event);
     }
 
     void add_choices(Panel_item choice,
@@ -116,8 +172,8 @@ namespace
     }
 
     Menu create_menu(native::combo_box *owner) {
-        Menu menu = static_cast<Menu>(xv_create(
-            XV_NULL, MENU_COMMAND_MENU, nullptr));
+        Menu menu = static_cast<Menu>(
+            xv_create(XV_NULL, MENU_CHOICE_MENU, nullptr));
         if (!menu)
             return XV_NULL;
         for (std::size_t index = 0;
@@ -153,24 +209,26 @@ namespace
         if (editable) {
             menu = create_menu(owner);
             if (menu) {
-                choice = static_cast<Panel_item>(xv_create(
-                    panel,
-                    PANEL_ABBREV_MENU_BUTTON,
-                    PANEL_ITEM_MENU,
-                    menu,
-                    PANEL_CLIENT_DATA,
-                    owner,
-                    XV_X,
-                    bounds.x2()-choice_width,
-                    XV_Y,
-                    bounds.p.y,
-                    XV_WIDTH,
-                    choice_width,
-                    XV_HEIGHT,
-                    bounds.d.h,
-                    XV_SHOW,
-                    FALSE,
-                    nullptr));
+                choice = static_cast<Panel_item>(
+                    xv_create(panel,
+                              PANEL_ABBREV_MENU_BUTTON,
+                              PANEL_ITEM_MENU,
+                              menu,
+                              PANEL_CLIENT_DATA,
+                              owner,
+                              PANEL_EVENT_PROC,
+                              choice_event,
+                              XV_X,
+                              bounds.x2() - choice_width,
+                              XV_Y,
+                              bounds.p.y,
+                              XV_WIDTH,
+                              choice_width,
+                              XV_HEIGHT,
+                              bounds.d.h,
+                              XV_SHOW,
+                              FALSE,
+                              nullptr));
             }
         } else {
             choice = static_cast<Panel_item>(xv_create(
@@ -253,16 +311,13 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: missing combo box binding.");
         binding->suppress = true;
-        if (binding->text && binding->menu &&
-            get_selected_index() >= 0) {
-            xv_set(binding->menu,
-                   MENU_DEFAULT,
-                   std::max(1, get_selected_index()+1),
+        if (binding->menu)
+            synchronize_menu(*this);
+        else
+            xv_set(binding->choice,
+                   PANEL_VALUE,
+                   std::max(0, get_selected_index()),
                    nullptr);
-        } else {
-            xv_set(binding->choice, PANEL_VALUE,
-                   std::max(0, get_selected_index()), nullptr);
-        }
         binding->suppress = false;
     }
 
@@ -272,8 +327,15 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: missing combo box binding.");
         binding->suppress = true;
-        if (binding->text)
-            xv_set(binding->text, PANEL_VALUE, get_text().c_str(), nullptr);
+        if (binding->text) {
+            const char *value = reinterpret_cast<const char *>(
+                xv_get(binding->text, PANEL_VALUE));
+            if (get_text() != (value ? value : ""))
+                xv_set(binding->text,
+                       PANEL_VALUE,
+                       get_text().c_str(),
+                       nullptr);
+        }
         binding->suppress = false;
     }
 

@@ -17,6 +17,7 @@
 #include <native/save_file_dialog.h>
 
 #include "globals.h"
+#include "dialog_position.h"
 
 namespace
 {
@@ -89,12 +90,15 @@ namespace linux::wmaker
         WMSetFilePanelCanChooseDirectories(panel, directory ? True : False);
         WMSetFilePanelAutoCompletion(panel, True);
         const std::string path = initial_path(dialog, save);
+        position_dialog(panel_prefix->window, owner_state->window);
         const int accepted = WMRunModalFilePanelForDirectory(
             panel,
             owner_state->window,
             path.c_str(),
             nullptr,
             nullptr);
+        finish_position_dialog(panel_prefix->window,
+                               owner_state->window);
         WMRaiseWidget(owner_state->window);
         const Window owner_window = WMWidgetXID(owner_state->window);
         if (owner_window != None) {

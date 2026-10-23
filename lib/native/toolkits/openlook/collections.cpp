@@ -21,6 +21,8 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "panel_painting.h"
+#include "../../table_render.h"
 #include "../../mouse_state.h"
 
 namespace
@@ -256,7 +258,8 @@ namespace
 
     void paint_and_copy(native::wnd &owner,
                         linux::openlook::openlook_collection &state,
-                        const native::rect &requested) {
+                        const native::rect &requested,
+                        bool preserve_items = true) {
         if (!owner.get_created() || !state.panel ||
             !state.paint_window) {
             return;
@@ -286,31 +289,8 @@ namespace
             window == None) {
             return;
         }
-        XSetClipMask(linux::openlook::cached_display,
-                     cache->gc,
-                     None);
-        XCopyArea(linux::openlook::cached_display,
-                  cache->backbuffer,
-                  window,
-                  cache->gc,
-                  invalid.p.x,
-                  invalid.p.y,
-                  invalid.d.w,
-                  invalid.d.h,
-                  invalid.p.x,
-                  invalid.p.y);
-        // Panel editors are windowless. Restore their native drawing after
-        // copying the owner's background, as child windows would naturally
-        // appear above a canvas on the other backends.
-        for (auto item = static_cast<Panel_item>(xv_get(state.panel, PANEL_FIRST_ITEM));
-             item; item = static_cast<Panel_item>(xv_get(item, PANEL_NEXT_ITEM))) {
-            // XView clears an item's area during deferred destruction after
-            // releasing its text buffer but before unlinking it from Panel.
-            auto *child = linux::openlook::wnd_bindings.object_from_handle(item);
-            if (child && child->get_created() && child->get_visible())
-                panel_paint(item, PANEL_NO_CLEAR);
-        }
-        linux::openlook::mask_panel_borders(state.panel);
+        linux::openlook::copy_panel_background(
+            state.panel, window, *cache, invalid, preserve_items);
         XFlush(linux::openlook::cached_display);
     }
 
@@ -379,7 +359,7 @@ namespace
         // XView supplies the same paint window held by the collection
         // state. Keep it synchronized in case a Canvas recreates it.
         state->paint_window = paint_window;
-        paint_and_copy(*owner, *state, invalid);
+        paint_and_copy(*owner, *state, invalid, false);
     }
 
     void navigate(native::wnd &owner, KeySym symbol, bool extend = false) {
@@ -423,34 +403,34 @@ namespace
                 dynamic_cast<native::table_view *>(&owner)) {
             if (symbol == XK_Up)
                 table->on_native_navigation(
-                    native::table_navigation::up);
+                    native::table_navigation::up, extend);
             else if (symbol == XK_Down)
                 table->on_native_navigation(
-                    native::table_navigation::down);
+                    native::table_navigation::down, extend);
             else if (symbol == XK_Home)
                 table->on_native_navigation(
-                    native::table_navigation::home);
+                    native::table_navigation::home, extend);
             else if (symbol == XK_End)
                 table->on_native_navigation(
-                    native::table_navigation::end);
+                    native::table_navigation::end, extend);
             else if (symbol == XK_Page_Up)
                 table->on_native_navigation(
-                    native::table_navigation::page_up);
+                    native::table_navigation::page_up, extend);
             else if (symbol == XK_Page_Down)
                 table->on_native_navigation(
-                    native::table_navigation::page_down);
+                    native::table_navigation::page_down, extend);
             else if (symbol == XK_Left)
                 table->on_native_navigation(
-                    native::table_navigation::collapse);
+                    native::table_navigation::collapse, extend);
             else if (symbol == XK_Right)
                 table->on_native_navigation(
-                    native::table_navigation::expand);
+                    native::table_navigation::expand, extend);
             else if (symbol == XK_space)
                 table->on_native_navigation(
-                    native::table_navigation::toggle);
+                    native::table_navigation::toggle, extend);
             else if (symbol == XK_Return || symbol == XK_KP_Enter)
                 table->on_native_navigation(
-                    native::table_navigation::activate);
+                    native::table_navigation::activate, extend);
             return;
         }
         if (auto *accordion =
@@ -562,11 +542,24 @@ namespace
         } else if (action == ACTION_SELECT) {
             if (event_is_down(event))
                 xv_set(window, WIN_SET_FOCUS, nullptr);
-            owner->on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                event_is_down(event) ? native::mouse_action::press
-                                     : native::mouse_action::release,
-                native::point(event_x(event), event_y(event))));
+            const native::detail::window_guard guard(*owner);
+            if (auto *table =
+                    dynamic_cast<native::table_view *>(owner)) {
+                if (!event_is_down(event))
+                    native::detail::handle_table_click(
+                        *table,
+                        native::point(event_x(event), event_y(event)),
+                        event_ctrl_is_down(event),
+                        event_shift_is_down(event));
+            } else
+                owner->on_native_mouse_click(native::mouse_event(
+                    native::mouse_button::left,
+                    event_is_down(event)
+                        ? native::mouse_action::press
+                        : native::mouse_action::release,
+                    native::point(event_x(event), event_y(event))));
+            if (!guard.alive())
+                return NOTIFY_DONE;
             if (!event_is_down(event)) {
                 if (auto *table =
                         dynamic_cast<native::table_view *>(owner)) {
@@ -699,7 +692,9 @@ namespace
                     }
                 }
             } else {
-                navigate(*owner, symbol);
+                navigate(*owner,
+                         symbol,
+                         (native_event->xkey.state & ShiftMask) != 0);
             }
             if (auto *table =
                     dynamic_cast<native::table_view *>(owner)) {
@@ -719,6 +714,10 @@ namespace
                 }
             }
         }
+        if (dynamic_cast<native::code_edit *>(owner) && native_event &&
+            (native_event->type == KeyPress ||
+             native_event->type == KeyRelease))
+            return NOTIFY_DONE;
         return notify_next_event_func(
             window,
             reinterpret_cast<Notify_event>(event),
@@ -751,6 +750,9 @@ namespace
                KBD_USE,
                KBD_DONE,
                WIN_ASCII_EVENTS,
+               WIN_UP_ASCII_EVENTS,
+               WIN_META_EVENTS,
+               WIN_TOP_KEYS,
                WIN_LEFT_KEYS,
                WIN_RIGHT_KEYS,
                LOC_WINENTER,
@@ -762,6 +764,9 @@ namespace
                ACTION_SCROLL_UP,
                ACTION_SCROLL_DOWN,
                nullptr,
+               WIN_CONSUME_X_EVENT_MASK,
+               KeyPressMask | KeyReleaseMask | ButtonPressMask |
+                   ButtonReleaseMask | PointerMotionMask,
                nullptr);
     }
 
@@ -935,7 +940,19 @@ namespace linux::openlook
     void repaint_collection(native::wnd &owner,
                             const native::rect &area) {
         openlook_collection *state = state_for(owner);
-        if (!state || state->repaint_pending || !area.d.w || !area.d.h)
+        if (!state || !area.d.w || !area.d.h)
+            return;
+        if (auto *editor = dynamic_cast<native::code_edit *>(&owner)) {
+            const bool completion = editor->get_completion_visible();
+            const bool focus = completion && !state->completion_visible;
+            state->completion_visible = completion;
+            if (focus) {
+                xv_set(state->paint_window, WIN_SET_FOCUS, nullptr);
+                editor->on_native_focus(true);
+            }
+        }
+        merge_damage(state->pending_damage, area);
+        if (state->repaint_pending)
             return;
         state->repaint_pending = true;
         const Panel panel = state->panel;
@@ -945,14 +962,15 @@ namespace linux::openlook
             if (!current)
                 return;
             current->repaint_pending = false;
-            paint_and_copy(*current_owner, *current,
-                native::rect(native::point(0, 0), current_owner->get_dimensions()));
+            const auto damage = current->pending_damage;
+            current->pending_damage = {};
+            paint_and_copy(*current_owner, *current, damage);
             // Removing the old page clears its native Panel item area.
             // Restore the new page after that deferred item cleanup.
             // Clear spare row-fitting space too: a moved native list may
             // have painted its provisional border there during creation.
             if (current->content_panel) {
-                panel_paint(current->content_panel, PANEL_CLEAR);
+                panel_paint(current->content_panel, PANEL_NO_CLEAR);
                 linux::openlook::mask_panel_borders(current->content_panel);
             }
         });

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -40,7 +41,7 @@ namespace linux::openlook
         Xv_Window paint_window = XV_NULL;
         int menu_height = 0;
         bool repaint_pending = false;
-        bool items_repaint_pending = false;
+        native::rect pending_damage;
     };
 
     // Owns Xlib drawing state and the window backbuffer.
@@ -93,6 +94,9 @@ namespace linux::openlook
         Panel_item choice = XV_NULL;
         Menu menu = XV_NULL;
         bool suppress = false;
+        bool sync_pending = false;
+        std::function<void()> commit;
+        std::function<void(Event *)> open_popup;
     };
 
     struct openlook_collection
@@ -105,7 +109,9 @@ namespace linux::openlook
         Scrollbar vertical_scrollbar = XV_NULL;
         Scrollbar horizontal_scrollbar = XV_NULL;
         bool synchronizing_scrollbars = false;
+        bool completion_visible = false;
         bool repaint_pending = false;
+        native::rect pending_damage;
         Time last_click = 0;
         int last_item = -1;
         native::table_row_id last_row =

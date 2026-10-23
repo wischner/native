@@ -182,6 +182,10 @@ namespace native
     void split_view::destroy_native() {
         auto &peer = linux::wayland::state(*this);
         peer.updating = true;
+        if (peer.position_source) {
+            g_source_remove(peer.position_source);
+            peer.position_source = 0;
+        }
         g_signal_handlers_disconnect_by_data(peer.widget, this);
         destroy_children();
         linux::wayland::destroy(*this);

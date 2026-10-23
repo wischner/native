@@ -18,8 +18,13 @@ namespace linux::x11
     void request_frame_extents(Widget shell);
 
     // Keep a preferred client position and its title frame reachable.
-    native::point constrain_shell_position(
-        Widget shell,
-        const native::point &preferred,
-        const native::size &dimensions);
+    native::point
+    constrain_shell_position(Widget shell,
+                             const native::point &preferred,
+                             const native::size &dimensions);
+
+    // Center a modal shell on its live parent and use native server
+    // grabs after mapping, so TWM decorations cannot reactivate the
+    // owner.
+    void prepare_modal_shell(Widget shell, Widget parent);
 } // namespace linux::x11

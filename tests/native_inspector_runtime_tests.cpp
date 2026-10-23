@@ -287,9 +287,14 @@ namespace
                 int red = 0;
                 for (int y = 2; y < 22; ++y)
                     for (int x = 2; x < 75; ++x)
-                        if (const auto color = pixels[y * image->w() + x];
-#if defined(_WIN32)
-                            color.r >= 209 && color.r <= 211 && color.g == 20 && color.b == 30 && color.a == 255)
+                        if (const auto color =
+                                pixels[y * image->w() + x];
+#if defined(INSPECTOR_X11)
+                            color == rgba(0, 0, 0, 255))
+#elif defined(_WIN32)
+                            color.r >= 209 && color.r <= 211 &&
+                            color.g == 20 && color.b == 30 &&
+                            color.a == 255)
 #else
                             color == rgba(210, 20, 30, 255))
 #endif

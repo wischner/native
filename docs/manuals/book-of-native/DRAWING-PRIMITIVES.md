@@ -484,3 +484,17 @@ rendered; the API has no animation-progress parameter.
 On macOS, `draw_toolbar_button()` draws an AppKit accessory-style button,
 matching the native controls used by edge toolbars. Selected/pressed feedback
 uses AppKit's accessory appearance rather than a menu selection fill.
+
+## Athena monochrome presentation
+
+The X11/Athena adapter presents window graphics in black and white. Ordinary
+image drawing uses an ordered dither, including alpha coverage; source RGBA
+pixels and image-to-image operations remain unchanged. The same window policy
+keeps source-editor lexer text monochrome. This is a presentation rule for
+this backend, not a conversion of the application's image assets.
+
+SDL list primitives and real list controls use the same inner selection
+margin and final frame painting. Menu-like toolbar strips orient their edge
+rules along the strip, including vertical toolbars. Window native-font text
+uses a renderer-owned bounded texture cache; this does not change image
+painting, source pixels or text metrics.

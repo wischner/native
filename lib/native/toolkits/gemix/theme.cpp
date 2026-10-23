@@ -38,10 +38,60 @@ namespace
             // AES titles and menu chrome reserve six pixels around the font.
             m.status_bar_height = character_height + 6;
             m.tab_height = m.header_height;
-            m.disclosure_size = std::max(5, character_height - 2);
+            m.disclosure_size = std::clamp(character_height / 2, 5, 9);
+            m.tree_indent_width = 9;
             m.icon_view_padding_x = std::max(2, character_width);
             m.icon_view_padding_y = 4;
             return m;
+        }
+
+        theme &draw_menu_bar(const native::rect &r) override {
+            if (!r.w() || !r.h())
+                return *this;
+            auto saved = _g.save_state();
+            const auto colors = native_palette();
+            _g.set_ink(colors.menu_bar_bg)
+                .draw_rect(r, true)
+                .set_ink(colors.menu_bar_line_bottom);
+            if (r.h() > r.w())
+                _g.draw_line(native::point(r.x2() - 1, r.y1()),
+                             native::point(r.x2() - 1, r.y2() - 1));
+            else
+                _g.draw_line(native::point(r.x1(), r.y2() - 1),
+                             native::point(r.x2() - 1, r.y2() - 1));
+            return *this;
+        }
+        theme &draw_list(const native::rect &r,
+                         const std::vector<std::string> &items,
+                         int selected,
+                         const state &s) override {
+            auto saved = _g.save_state();
+            const auto colors = native_palette();
+            _g.set_ink(colors.content_bg)
+                .draw_rect(r, true)
+                .set_ink(colors.button_border)
+                .draw_rect(r, false);
+            if (r.w() <= 4 || r.h() <= 2)
+                return *this;
+            const native::rect inner(
+                r.x1() + 2, r.y1() + 1, r.w() - 4, r.h() - 2);
+            _g.set_clip(_g.get_clip().intersect(inner));
+            const int height = get_list_item_height();
+            for (std::size_t i = 0;
+                 i < items.size() &&
+                 inner.y1() + int(i) * height < inner.y2();
+                 ++i) {
+                auto row = s;
+                row.selected = int(i) == selected;
+                draw_list_item(
+                    native::rect(inner.x1(),
+                                 inner.y1() + int(i) * height,
+                                 inner.w(),
+                                 height),
+                    items[i],
+                    row);
+            }
+            return *this;
         }
 
         palette native_palette() const override {

@@ -4,7 +4,9 @@ GTK split views retain native GtkPaned handles. Scoped CSS reserves the
 requested separator width/height without a theme's negative margins shrinking
 it to a single pixel. Position notifications coalesce into one idle delivery;
 portable pane layout runs after GTK allocation. Destroying the peer cancels
-pending delivery. Native GtkNotebook tabs retain the desktop theme and add
+pending delivery before pane destruction. GTK teardown also disconnects
+owner callbacks on retained widgets/controllers before unparenting, so later
+native notifications cannot enter closed panes. Native GtkNotebook tabs retain the desktop theme and add
 equal label margins for readable horizontal and side navigation. Granite 7
 provides no separate notebook widget in the pinned SDK.
 
@@ -176,3 +178,7 @@ in windows with non-client chrome. Divider input is translated from root
 coordinates, captures the active split until button release, and updates the panes continuously during
 motion. Horizontal and vertical orientations select their matching system
 resize cursor automatically.
+
+SDL tab and accordion containers consume pointer events only on their
+headers. Their client regions pass input to nested lists, editors and other
+leaf controls; repainting still follows parent-first structural order.

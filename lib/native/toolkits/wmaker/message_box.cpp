@@ -16,6 +16,7 @@
 #include <native/message_box.h>
 
 #include "globals.h"
+#include "dialog_position.h"
 #include "../../message_box_common.h"
 #include "../../message_box_icons.h"
 
@@ -92,9 +93,12 @@ namespace native
                         static_cast<int>(panel_size.width)) / 2,
             origin.y + (static_cast<int>(owner_size.height) -
                         static_cast<int>(panel_size.height)) / 2);
+        linux::wmaker::position_dialog(panel->win, owner_state->window);
         WMMapWidget(panel->win);
         WMRunModalLoop(linux::wmaker::screen, panel_view);
         const int result = panel->result;
+        linux::wmaker::finish_position_dialog(panel->win,
+                                              owner_state->window);
         WMDestroyAlertPanel(panel);
         const int index = result == WAPRDefault ? 0
                         : result == WAPRAlternate ? 1

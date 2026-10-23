@@ -59,7 +59,12 @@ namespace
 
         const int cursor_x = linux::sdl2::text_width(
             text.substr(line_start, binding->cursor - line_start));
-        const int width = std::max(1, binding->bounds.d.w - 10);
+        const int search = dynamic_cast<native::settings_sidebar *>(
+                               owner->get_parent())
+                               ? 18
+                               : 0;
+        const int width =
+            std::max(1, binding->bounds.d.w - 10 - search);
         if (cursor_x < binding->horizontal_scroll)
             binding->horizontal_scroll = cursor_x;
         if (cursor_x >= binding->horizontal_scroll + width)
@@ -112,7 +117,11 @@ namespace
         const std::size_t end = text.find('\n', begin);
         const std::size_t limit =
             end == std::string::npos ? text.size() : end;
-        const int local_x = x - binding->bounds.p.x - padding +
+        const int search = dynamic_cast<native::settings_sidebar *>(
+                               owner->get_parent())
+                               ? 18
+                               : 0;
+        const int local_x = x - binding->bounds.p.x - padding - search +
                             binding->horizontal_scroll;
         std::size_t offset = begin;
         while (offset < limit) {
@@ -255,7 +264,8 @@ namespace linux::sdl2
             auto *candidate =
                 text_edit_bindings.object_from_handle(editor);
             if (candidate && root_of(editor) == parent &&
-                candidate->visible && candidate->focused) {
+                candidate->visible &&
+                native::detail::input_target(*parent) == editor) {
                 owner = editor;
                 binding = candidate;
                 break;
@@ -367,7 +377,8 @@ namespace linux::sdl2
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
             if (binding && root_of(editor) == parent &&
-                binding->visible && binding->focused) {
+                binding->visible &&
+                native::detail::input_target(*parent) == editor) {
                 return replace_selection(
                     editor, binding, text ? text : "");
             }

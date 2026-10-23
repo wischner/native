@@ -14,6 +14,7 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../combo_picker.h"
 #include "../../mouse_state.h"
 #include "gpx_wnd.h"
 #include "../../control_render_access.h"
@@ -26,9 +27,10 @@ namespace
 
     native::button *button_at(native::app_wnd *owner, native::point p) {
         for (auto *button : linux::gemix::buttons) {
-            if (!button || root_of(button) != owner)
+            if (!button || !button->get_input_enabled() ||
+                root_of(button) != owner)
                 continue;
-            if (root_bounds(*button).contains(p))
+            if (native::detail::deepest_at(*owner, p) == button)
                 return button;
         }
         return nullptr;
@@ -43,7 +45,9 @@ namespace
             if (!control || !state || root_of(control) != owner)
                 continue;
             const native::rect combo_bounds = root_bounds(*control);
-            const int row_height = 20;
+            const int row_height =
+                native::theme::create(owner->get_gpx())
+                    ->get_list_item_height();
             const native::rect popup(combo_bounds.x1() + 1,
                 combo_bounds.y2() + 1, std::max(0, int(combo_bounds.w()) - 2),
                 static_cast<native::dim>(
@@ -57,7 +61,28 @@ namespace
                 owner->invalidate();
                 return;
             }
-            if (combo_bounds.contains(p)) {
+            const auto *actions = native::detail::peer_state<
+                native::detail::combo_picker_actions>(*control);
+            const auto *target = native::detail::deepest_at(*owner, p);
+            if ((target == control ||
+                 (actions && actions->read_only &&
+                  state->editor.get() == target)) &&
+                combo_bounds.contains(p)) {
+                if (auto *actions = native::detail::peer_state<
+                        native::detail::combo_picker_actions>(
+                        *control)) {
+                    const auto open = actions->open;
+                    const auto step = actions->step;
+                    if (open)
+                        open();
+                    else if (step)
+                        step(p.y < combo_bounds.y1() +
+                                         combo_bounds.h() / 2
+                                 ? 1
+                                 : -1);
+                    return;
+                }
+                state->hot = control->get_selected_index();
                 state->open = !state->open;
                 state->focused = true;
                 control->on_native_drop_down(state->open);
@@ -85,7 +110,8 @@ namespace
             const native::rect bounds = control
                 ? root_bounds(*control) : native::rect();
             if (!control || root_of(control) != owner ||
-                !bounds.contains(p))
+                !bounds.contains(p) ||
+                native::detail::deepest_at(*owner, p) != control)
                 continue;
             const int index =
                 (p.y - bounds.p.y - 1) / 20;
@@ -212,6 +238,30 @@ namespace native
                 if (mx != prev_mx || my != prev_my) {
                     linux::gemix::update_collection_pointer(
                         pointer_window, local);
+                    for (auto *combo : linux::gemix::combo_boxes) {
+                        auto *state = linux::gemix::combo_box_bindings
+                                          .object_from_handle(combo);
+                        if (!state || !state->open ||
+                            root_of(combo) != pointer_window)
+                            continue;
+                        const auto bounds = root_bounds(*combo);
+                        const int row = native::theme::create(
+                                            pointer_window->get_gpx())
+                                            ->get_list_item_height();
+                        const native::rect popup(
+                            bounds.x1() + 1,
+                            bounds.y2() + 1,
+                            std::max(0, int(bounds.w()) - 2),
+                            combo->get_items().size() * row);
+                        const int hot =
+                            popup.contains(local)
+                                ? (local.y - popup.y1()) / row
+                                : -1;
+                        if (state->hot != hot) {
+                            state->hot = hot;
+                            pointer_window->invalidate(popup);
+                        }
+                    }
                     if (!linux::gemix::dispatch_drag_move(pointer_window, local) &&
                         !linux::gemix::dispatch_surface_move(
                             pointer_window, local)) {
@@ -268,8 +318,9 @@ namespace native
                                 button_at(pointer_window, local)) {
                             if (button == pressed)
                                 button->on_native_click();
-                        } else if (!pressed && !linux::gemix::activate_collection(
-                                       pointer_window, local)) {
+                        } else if (!pressed &&
+                                   !linux::gemix::activate_collection(
+                                       pointer_window, local, ks)) {
                             activate_selection_control(pointer_window,
                                                        local);
                         }

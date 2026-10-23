@@ -62,6 +62,7 @@ namespace
         h->path = path;
         h->size = size;
         uint32_t id = next_id();
+        h->id = id;
         linux::sdl2::font_bindings.register_pair(id, h);
         return id;
     }

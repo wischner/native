@@ -217,14 +217,17 @@ namespace
                    covered_combo.get_selected_index() == -1,
                "SDL combo popup commits an overlapping item on its first "
                "press");
-        expect(linux::sdl2::handle_combo_mouse(
-                   &owner, 200, 30, true, false) &&
-                   linux::sdl2::handle_combo_mouse(
-                       &owner, 200, 30, false, true) &&
-                   linux::sdl2::handle_combo_motion(
-                       &owner, 200, 70),
-               "SDL editable combo opens from its text and tracks popup "
-               "hover");
+        expect(!linux::sdl2::handle_combo_mouse(
+                   &owner, 200, 30, true, false),
+               "SDL editable combo text is routed to its editor");
+        expect(
+            linux::sdl2::handle_combo_mouse(
+                &owner, 290, 30, true, false) &&
+                linux::sdl2::handle_combo_mouse(
+                    &owner, 290, 30, false, true) &&
+                linux::sdl2::handle_combo_motion(&owner, 200, 70),
+            "SDL editable combo opens from its arrow and tracks popup "
+            "hover");
 
         expect(linux::sdl2::handle_collection_mouse(
                    &owner, 132, 90, true, false, 1) &&

@@ -19,6 +19,7 @@
 
 #include "../../text_util.h"
 #include "globals.h"
+#include "../../combo_picker.h"
 #include "../../control_render_access.h"
 
 namespace
@@ -289,6 +290,20 @@ namespace linux::gemix
             return false;
         const WORD scan = static_cast<WORD>((key >> 8) & 0xff);
         const char character = static_cast<char>(key & 0xff);
+        if (binding->combo_owner &&
+            (character == '\r' || character == '\n')) {
+            auto *actions = native::detail::peer_state<
+                native::detail::combo_picker_actions>(
+                *binding->combo_owner);
+            if (actions) {
+                const auto callback = actions->read_only
+                                          ? actions->open
+                                          : actions->commit;
+                if (callback)
+                    callback();
+            }
+            return true;
+        }
         if ((modifiers & control_modifier) != 0) {
             switch (scan) {
             case scan_a:
@@ -388,7 +403,7 @@ namespace linux::gemix
             auto *binding =
                 text_edit_bindings.object_from_handle(editor);
             if (binding && root_of(editor) == parent &&
-                binding->visible) {
+                binding->visible && visible_in_tree(*editor)) {
                 g.set_clip(clip);
                 draw_editor(editor, binding, g);
             }

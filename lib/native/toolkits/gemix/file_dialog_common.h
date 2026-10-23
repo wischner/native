@@ -1,5 +1,5 @@
 //
-// Declares private helpers around GEM AES's standard file selector for
+// Declares private helpers for owner-centered GEM forms used by
 // portable open and save dialogs.
 //
 // MIT License (see: LICENSE)
@@ -14,22 +14,25 @@
 
 namespace linux::gemix
 {
-    // Contains the single path returned by the AES file selector.
+    // Contains the selected file or directory path.
     struct file_dialog_response
     {
         bool accepted = false;
         std::string path;
     };
 
-    // Show the AES file selector with an optional suggested filename.
-    file_dialog_response show_file_dialog(
-        const native::file_dialog &dialog,
-        const std::string &suggested_name);
+    // Show a positioned AES form with native path, list and command
+    // controls.
+    file_dialog_response
+    show_file_dialog(native::file_dialog &dialog,
+                     const std::string &suggested_name,
+                     bool save = false,
+                     bool directory_only = false,
+                     const std::string &extension = {},
+                     bool confirm_overwrite = false);
 
     // Append an extension when a selected filename has no suffix.
     std::string add_default_extension(
         const std::string &path, const std::string &extension);
 
-    // Ask AES for overwrite confirmation when the selected file exists.
-    bool confirm_file_overwrite(const std::string &path);
 } // namespace linux::gemix

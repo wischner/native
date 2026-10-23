@@ -30,6 +30,7 @@ namespace linux::wayland
         cairo_t *context = nullptr;
         std::shared_ptr<theme_snapshot> theme_cache;
         bool updating = false;
+        bool selecting_native = false;
         bool portable_drawing = false;
         bool completion_visible = false;
         bool dragging_scrollbar = false;

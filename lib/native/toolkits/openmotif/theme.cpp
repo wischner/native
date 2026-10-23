@@ -24,11 +24,12 @@
 #include "../emulated_theme.h"
 #include "globals.h"
 #include "theme_support.h"
+#include "../../platforms/linux/x_image.h"
 
 namespace
 {
-    constexpr int infolib_disclosure_side = 13;
-    constexpr int infolib_disclosure_inset = 3;
+    constexpr int infolib_disclosure_side =
+        linux::openmotif::disclosure_side;
 
     native::rgba x_resource_color(const char *application,
                                   const char *resource,
@@ -106,7 +107,12 @@ namespace
             m.table_row_height = m.list_item_height;
             m.header_height = text_height() + 8;
             m.tab_height = m.header_height;
-            m.disclosure_size = infolib_disclosure_side + 4;
+            m.disclosure_size = infolib_disclosure_side;
+            m.text_edit_height = std::max(24, text_height() + 8);
+            m.button_height = std::max(28, text_height() + 10);
+            m.check_height = std::max(22, text_height() + 6);
+            m.menu_bar_height = std::max(24, text_height() + 8);
+            m.menu_item_height = m.menu_bar_height;
             if (native_infolib_tree()) {
                 // Dtinfo's OutlineList is a compact, indentation-only tree.
                 m.disclosure_size = infolib_disclosure_side;
@@ -358,8 +364,12 @@ namespace
                           XmNfontList, &fonts, nullptr);
             XmString label = XmStringCreateLocalized(
                 const_cast<char *>(text.c_str()));
-            GC gc = linux::openmotif::theme_gc(target,
-                s.selected ? background : foreground,
+            GC gc = linux::openmotif::theme_gc(
+                target,
+                native::detail::x_pixel(
+                    DefaultVisualOfScreen(XtScreen(probe)),
+                    s.selected ? colors.selection_text
+                               : colors.content_text),
                 _g.get_clip().intersect(r));
             if (gc && fonts) {
                 const int height = XmStringHeight(fonts, label);
@@ -395,58 +405,30 @@ namespace
             return *this;
         }
 
-        theme &draw_disclosure(
-            const native::rect &r,
-            native::disclosure_state disclosure,
-            const state &s) override {
-            {
-                saved_state saved(_g);
-                const palette colors = native_palette();
-                const bool flat = native_infolib_tree();
-                const int inset = flat ? 0 : 2;
-                if (!flat) {
-                    _g.set_ink(colors.button_bg).draw_rect(r, true);
-                    draw_shadow(r, s.pressed ? XmSHADOW_IN : XmSHADOW_OUT, 2);
-                }
-                const int left = r.p.x + inset;
-                const int top = r.p.y + inset;
-                const int right = r.x2() - 1 - inset;
-                const int bottom = r.y2() - 1 - inset;
-                const int horizontal_middle = (left + right) / 2;
-                const int vertical_middle = (top + bottom) / 2;
-                std::vector<native::point> triangle;
-                if (disclosure == native::disclosure_state::expanded) {
-                    triangle = {
-                        {static_cast<native::coord>(left),
-                         static_cast<native::coord>(
-                             top + infolib_disclosure_inset)},
-                        {static_cast<native::coord>(right),
-                         static_cast<native::coord>(
-                             top + infolib_disclosure_inset)},
-                        {static_cast<native::coord>(horizontal_middle),
-                         static_cast<native::coord>(
-                             bottom - infolib_disclosure_inset)}};
-                } else {
-                    triangle = {
-                        {static_cast<native::coord>(
-                             left + infolib_disclosure_inset),
-                         static_cast<native::coord>(top)},
-                        {static_cast<native::coord>(
-                             right - infolib_disclosure_inset),
-                         static_cast<native::coord>(vertical_middle)},
-                        {static_cast<native::coord>(
-                             left + infolib_disclosure_inset),
-                         static_cast<native::coord>(bottom)}};
-                }
-                _g.set_pen(1)
-                    .set_ink(s.disabled
-                                 ? colors.selection_inactive_text
-                                 : (s.selected ? colors.selection_text
-                                               : (flat ? colors.content_text
-                                                       : colors.button_text)))
-                    .draw_polygon(triangle, true);
+        theme &draw_disclosure(const native::rect &r,
+                               native::disclosure_state disclosure,
+                               const state &) override {
+            const bool expanded =
+                disclosure == native::disclosure_state::expanded;
+            const auto target = linux::openmotif::theme_target_from(_g);
+            if (target.widget && target.cache &&
+                target.cache->backbuffer) {
+                GC gc = linux::openmotif::theme_gc(
+                    target,
+                    BlackPixelOfScreen(XtScreen(target.widget)),
+                    _g.get_clip());
+                linux::openmotif::draw_disclosure_triangle(
+                    target.cache->backbuffer, gc, r, expanded);
+                XFreeGC(linux::openmotif::cached_display, gc);
                 return *this;
             }
+            saved_state saved(_g);
+            const auto triangle =
+                linux::openmotif::disclosure_points(r, expanded);
+            _g.set_pen(1)
+                .set_ink(native::rgba(0, 0, 0, 255))
+                .draw_polygon(triangle, true);
+            return *this;
         }
 
         theme &draw_focus(const native::rect &r,
@@ -456,10 +438,10 @@ namespace
             return emulated_theme::draw_focus(r, s);
         }
 
-        theme &draw_sort_indicator(
-            const native::rect &r,
-            native::sort_indicator_state direction,
-            const state &s) override {
+        theme &
+        draw_sort_indicator(const native::rect &r,
+                            native::sort_indicator_state direction,
+                            const state &s) override {
             return draw_native_arrow(
                 r,
                 direction == native::sort_indicator_state::ascending

@@ -17,6 +17,8 @@
 #include <X11/Xaw/SimpleMenu.h>
 #include <X11/Xaw/SmeBSB.h>
 #include <X11/Xaw/TextP.h>
+#include <X11/Xaw/TextSrc.h>
+#include <X11/keysym.h>
 
 #include <native/combo_box.h>
 
@@ -44,8 +46,7 @@ namespace
         XtVaGetValues(binding->root, XtNwidth, &width, XtNheight, &height, nullptr);
         // Device pixels throughout; borders are one-pixel strokes.
         const int pixel = 1;
-        const int button_width =
-            std::min<int>(width, height + linux::x11::to_device(4));
+        const int button_width = std::min<int>(width, height);
         const int child_height = std::max(1, int(height) - 2 * pixel);
         XFontStruct *font = nullptr;
         XtVaGetValues(XawTextGetSink(binding->text), XtNfont, &font, nullptr);
@@ -64,6 +65,8 @@ namespace
         XtVaSetValues(binding->button,
             XtNwidth, std::max(1, button_width - 2 * pixel),
             XtNheight, child_height, nullptr);
+        if (binding->layout)
+            binding->layout();
     }
 
     void resized(Widget, XtPointer data, XEvent *event, Boolean *) {
@@ -135,26 +138,82 @@ namespace
         if (!callback || !callback->owner) return;
         auto *owner = callback->owner;
         const int index = callback->index;
-        if (auto *binding = state(owner))
+        if (auto *binding = state(owner)) {
+            binding->suppress = true;
             XtVaSetValues(binding->text, XtNstring,
                 owner->get_items().at(index).c_str(), nullptr);
+            binding->suppress = false;
+        }
         owner->on_native_selection(index);
     }
 
-    void text_event(Widget widget, XtPointer data,
-                    XEvent *event, Boolean *) {
+    // Source notifications keep text and exact-match selection in sync
+    // even for paste and replacement; Enter commits without inserting a
+    // newline.
+    void text_changed(Widget, XtPointer data, XtPointer) {
         auto *owner = static_cast<native::combo_box *>(data);
         auto *binding = state(owner);
-        if (!owner || !binding || binding->suppress || !event) return;
+        if (!binding || binding->suppress)
+            return;
+        char *value = nullptr;
+        XtVaGetValues(binding->text, XtNstring, &value, nullptr);
+        owner->on_native_text(value ? value : "");
+    }
+    void text_event(Widget widget,
+                    XtPointer data,
+                    XEvent *event,
+                    Boolean *dispatch) {
+        auto *owner = static_cast<native::combo_box *>(data);
+        auto *binding = state(owner);
+        if (!binding || binding->suppress || !event)
+            return;
         if (event->type == ButtonPress && event->xbutton.button == Button1 &&
             owner->get_style() != native::combo_box_style::editable) {
             XtCallActionProc(binding->button, "PopupMenu", event, nullptr, 0);
             return;
         }
-        if (event->type != KeyRelease) return;
-        char *value = nullptr;
-        XtVaGetValues(widget, XtNstring, &value, nullptr);
-        owner->on_native_text(value ? value : "");
+        if (event->type != KeyPress)
+            return;
+        char text[64]{};
+        KeySym symbol = NoSymbol;
+        const int length = XLookupString(
+            &event->xkey, text, sizeof(text), &symbol, nullptr);
+        if (symbol == XK_Return || symbol == XK_KP_Enter) {
+            text_changed(widget, data, nullptr);
+            *dispatch = False;
+            return;
+        }
+        if ((event->xkey.state & ControlMask) &&
+            (symbol == XK_a || symbol == XK_A)) {
+            char *value = nullptr;
+            XtVaGetValues(widget, XtNstring, &value, nullptr);
+            XawTextSetSelection(
+                widget,
+                0,
+                value ? std::char_traits<char>::length(value) : 0);
+            *dispatch = False;
+            return;
+        }
+        XawTextPosition begin = 0, end = 0;
+        XawTextGetSelectionPos(widget, &begin, &end);
+        if (begin >= end ||
+            owner->get_style() != native::combo_box_style::editable ||
+            (event->xkey.state & (ControlMask | Mod1Mask)))
+            return;
+        const bool erase =
+            symbol == XK_BackSpace || symbol == XK_Delete;
+        if (!erase &&
+            (length <= 0 || static_cast<unsigned char>(text[0]) < 32))
+            return;
+        XawTextBlock block{};
+        block.ptr = text;
+        block.length = erase ? 0 : length;
+        block.format = FMT8BIT;
+        if (XawTextReplace(widget, begin, end, &block) == XawEditDone) {
+            XawTextUnsetSelection(widget);
+            XawTextSetInsertionPoint(widget, begin + block.length);
+        }
+        *dispatch = False;
     }
 
     void clear_callbacks(linux::x11::xaw_combo_box *binding) {
@@ -262,8 +321,8 @@ namespace native
         const int pixel = 1;
         const int device_width = linux::x11::to_device(_bounds.d.w);
         const int device_height = linux::x11::to_device(_bounds.d.h);
-        const int button_width = std::min<int>(
-            device_width, device_height + linux::x11::to_device(4));
+        const int button_width =
+            std::min<int>(device_width, device_height);
         const int child_height = std::max(1, device_height - 2 * pixel);
         const int text_width = std::max(1,
             device_width - button_width - pixel);
@@ -283,19 +342,38 @@ namespace native
             XtNleft, XtChainLeft, XtNright, XtChainRight,
             XtNtop, XtChainTop, XtNbottom, XtChainBottom,
             nullptr);
-        binding->button = XtVaCreateManagedWidget(
-            "comboButton", menuButtonWidgetClass, binding->root,
-            XtNfromHoriz, binding->text,
-            XtNhorizDistance, -pixel,
-            XtNvertDistance, 0,
-            XtNwidth, arrow_width,
-            XtNheight, child_height,
-            XtNborderWidth, pixel,
-            XtNlabel, "", XtNmenuName, "comboMenu",
-            XtNresize, False,
-            XtNleft, XtChainRight, XtNright, XtChainRight,
-            XtNtop, XtChainTop, XtNbottom, XtChainBottom,
-            nullptr);
+        binding->button = XtVaCreateManagedWidget("comboButton",
+                                                  menuButtonWidgetClass,
+                                                  binding->root,
+                                                  XtNfromHoriz,
+                                                  binding->text,
+                                                  XtNhorizDistance,
+                                                  -pixel,
+                                                  XtNvertDistance,
+                                                  0,
+                                                  XtNwidth,
+                                                  arrow_width,
+                                                  XtNheight,
+                                                  child_height,
+                                                  XtNborderWidth,
+                                                  pixel,
+                                                  XtNlabel,
+                                                  "",
+                                                  XtNmenuName,
+                                                  "comboMenu",
+                                                  XtNjustify,
+                                                  XtJustifyCenter,
+                                                  XtNresize,
+                                                  False,
+                                                  XtNleft,
+                                                  XtChainRight,
+                                                  XtNright,
+                                                  XtChainRight,
+                                                  XtNtop,
+                                                  XtChainTop,
+                                                  XtNbottom,
+                                                  XtChainBottom,
+                                                  nullptr);
         if (linux::x11::cached_display) {
             binding->arrow = linux::x11::create_device_bitmap(
                 linux::x11::cached_display,
@@ -317,8 +395,15 @@ namespace native
             throw std::runtime_error("X11: Failed to create combo box.");
         }
         fit_children(binding);
-        XtAddEventHandler(binding->text, KeyReleaseMask | ButtonPressMask, False,
-                          text_event, self);
+        XtAddEventHandler(binding->text,
+                          KeyPressMask | ButtonPressMask,
+                          False,
+                          text_event,
+                          self);
+        XtAddCallback(XawTextGetSource(binding->text),
+                      XtNcallback,
+                      text_changed,
+                      self);
         linux::x11::wnd_bindings.register_pair(binding->root, self);
         linux::x11::combo_box_bindings.register_pair(self, binding);
         XtAddEventHandler(binding->root, StructureNotifyMask, False, resized, self);
@@ -345,6 +430,10 @@ namespace native
                 XFreePixmap(linux::x11::cached_display,
                             binding->arrow);
             }
+            if (binding->reverse_arrow != None &&
+                linux::x11::cached_display)
+                XFreePixmap(linux::x11::cached_display,
+                            binding->reverse_arrow);
             clear_callbacks(binding); delete binding;
         }
     }

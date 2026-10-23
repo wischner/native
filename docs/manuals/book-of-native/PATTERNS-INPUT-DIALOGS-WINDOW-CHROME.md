@@ -1,6 +1,7 @@
 # Patterns: Input, Standard Dialogs, and Window Chrome
 
-GTK editable combos retain the native entry's caret and selection when
+GTK editable combos avoid rewriting unchanged native text, which would clear
+GTK's active popup row. They retain the native entry's caret and selection when
 synchronizing a typed exact match with its popup. Ordinary keystrokes do not
 rewrite unchanged text or reset an unchanged active index. Windows date/time
 pickers retain their native segmented editors, with literal space fields
@@ -27,6 +28,35 @@ allocation centers that standard-height field; multiline editors still fill
 their bounds. A status bar always occupies the outermost bottom strip, so
 bottom toolbars appear above it regardless of construction order. Setting a
 status bar's edge to another edge throws `invalid_argument`.
+
+Classic adapters use the private editable-combo interface as the basis of
+civil pickers. Window Maker composes its native field and arrow; Motif uses
+one XmForm containing an XmTextField and native XmArrowButton children.
+The Motif date field has no empty native list shell, and raising/resizing
+its field cannot cover its owned buttons. Both use native calendar day
+buttons; time uses paired arrows in the same trailing button column. GEM extends its real text editor inside the
+existing themed combo. All three accept `DD.MM.YYYY` and `HH:MM[:SS]` on
+Return and validate both typed and calendar proposals through the same
+availability policy. A second calendar-trigger click dismisses the popup.
+Motif time arrows target the selected text component or insertion position:
+hours step by one hour, minutes use the configured minute step, and visible
+seconds step by one second. Native text updates preserve the selection and
+caret. Private callbacks are published after peer allocation but before
+backend widget creation, so the adapter can choose its native composition
+without constructing an unused dropdown.
+Their search row uses a native text editor with a `Search:` prompt; the
+existing image-capable tree supplies indented rows and section headings.
+
+Window Maker standard panels are centered after mapping with actual X11
+desktop coordinates. `WMGetViewScreenPosition` subtracts top-level geometry
+in the pinned SDK, so it cannot supply this origin. Motif panels center
+using their final preferred dimensions in the map callback. GEM forms are
+composed from AES objects because its SDK selectors cannot take an owner
+position. Filesystem traversal/filtering remain standard C++; AES supplies
+editable fields and pressed button tracking. The modal adapter explicitly
+separates Escape cancellation from Return acceptance, since the pinned
+`form_do` maps both to the default command. These forms do not change the
+public dialog lifecycle or the pinned SDK.
 
 ## Settings navigation and civil pickers
 
@@ -68,8 +98,11 @@ portable straight-RGBA format; an empty render uses the existing fallback. Other
 reuse native image trees (Haiku outline, Motif container, GTK rows). GTK rows
 create native texture-backed image widgets for optional page icons. The fixed
 page host is clipped and excluded from overlay measurement, allowing a
-client-filling sidebar to shrink after the window has been enlarged. Athena, XView and
-WINGs instead use native text lists: their tree adapters require painting,
+client-filling sidebar to shrink after the window has been enlarged. Athena
+composes native Label section headings and Toggle item rows in a framed host.
+Insensitive headings/items use Xaw's text stipple; item text is indented and
+selection fills the complete row. Search and navigation share six-pixel outer
+margins. XView and WINGs use native text lists: their tree adapters require painting,
 while the sidebar's flat navigation can remain native. These text lists
 retain optional image ownership but display text only. SDL2 and GEM reuse
 the existing themed tree and its input/scrolling contract.
@@ -93,10 +126,17 @@ Granite supplies date/time widgets (a GTK seconds field extends its minute
 editor); AppKit and Win32 supply their native date/time pickers. Haiku uses
 the installed shared-kit `DateEdit`/`TimeEdit` through private SDK headers,
 `libshared` and `localestub`, isolated in its platform adapter. Generic GTK
-uses a native calendar/popover and spin fields. Other toolkits compose the
-existing year entry and month/day choices, or hour/minute/second choices.
+uses linked native entry/menu-button fields. Their arrow popovers contain a
+GtkCalendar or hour/minute/second GtkSpinButtons. Typed ISO dates and 24-hour
+times commit on Enter through the shared availability policy. Athena reuses
+its editable-combo field and arrow, with a calendar assembled from native
+Command/Label widgets; excluded dates are insensitive. Its time field replaces
+the combo arrow with two native Command halves and steps the segment at the
+caret. The remaining choice-based adapters compose the existing year entry and
+month/day choices, or hour/minute/second choices.
 A numeric year entry avoids materializing the entire 1601..9999 range.
-No new calendar painter or input dispatcher exists. AppKit editors retain
+The remaining choice-based adapters reuse their established input paths;
+SDL supplies a themed calendar and OPEN LOOK composes native calendar buttons. AppKit editors retain
 one enclosing field at the standard NSTextField intrinsic height, using the
 native adaptive control background. AppKit baseline metrics align text with
 a standard field after applying the native editor height. The enclosing field
@@ -154,10 +194,10 @@ height. Pre-show graphics support status-metric lookup during creation.
 GEMix paints open combo lists as the final overlay, inside a separate one-pixel
 frame, so ordinary lists or editors below cannot cover popup choices. Its AES
 menu tree uses the conventional root siblings for the bar and popup container.
-File selectors remain synchronous AES dialogs; the hosted GEM runtime restores
-exposed caller pixels while a selector moves. Native supplies buffers large
-enough for the GEM selector's path/name contract and releases pressed-button
-feedback before entering a blocking dialog.
+File selectors remain synchronous native AES forms. The backend composes
+owner-centered objects, enumerates folders with standard filesystem APIs,
+and releases pressed-button feedback before entering their modal loop.
+Closing a form repaints the exposed Native windows.
 Selector buttons themselves remain inverted while held and activate only on
 release inside the original button. GEM list selection invalidates the list's
 own region rather than relying on an application callback to repaint it.
@@ -198,8 +238,12 @@ widget hierarchy is destroyed. Message dialogs center their native Command
 button row using Form constraints, including after resize. Before mapping,
 their shell centers over the owner's current screen position, falling back
 to the X screen center when the owner is hidden. Requested shell bounds are
-clamped to that screen, and center gravity preserves the placement when the
-window manager adds decorations. They use X11-owned
+clamped to that screen; explicit position and gravity hints preserve the
+placement when the window manager adds decorations. Modal shells and native
+Athena open/save/directory panels share this positioning policy. Native
+pointer and keyboard grabs keep owner decorations from reactivating the
+blocked window. The top-level layout host follows shell dimensions without
+renegotiating its children's preferred sizes, permitting grow/shrink cycles. They use X11-owned
 copies of GEM's 32-pixel monochrome alert artwork, supplied to the native Xaw
 Dialog icon resource; there are no GEM headers, libraries or runtime assets
 in that path. Information/warning use the exclamation, question uses the
@@ -569,3 +613,30 @@ Vision supplies embedded Font Awesome Free navigation tiles on every backend.
 The AppKit sidebar allocates 24-pixel images in 32-pixel page rows. Native
 selection retains the original full-color image. Attribution and regeneration
 are documented in `src/assets/navigation/README.md`.
+
+SDL editable combos embed the existing single-line editor. Clicking text
+positions its caret; the square arrow opens or closes its popup. Exact-match
+selection, clipboard replacement and popup choices share one text value.
+Date pickers extend this field with an aligned, themed calendar; excluded
+days are disabled and Enter validates typed `YYYY-MM-DD`. Time uses one
+`HH:MM[:SS]` field and two arrows in the combo button column. The caret
+chooses the stepped part, and minute changes honor the configured step.
+
+SDL settings search and its framed tree share six-pixel outer margins. The
+search editor reserves space for a magnifier without changing stored text.
+Tree indentation is ten logical pixels, half its previous derived pitch.
+Vision's read-only help/status editors retain their standard text-control
+border and paper.
+
+OPEN LOOK settings search uses a native labeled `PANEL_TEXT` with `Search:`
+and six-pixel outer spacing. The framed `PANEL_LIST` indents page labels;
+section rows use a bold native font and inactive appearance. Editable combo
+notifications synchronize their complete text and native choice-menu
+selection after XView finishes its edit, preserving the native caret.
+
+OPEN LOOK dates use the same text/abbreviated-menu field with `DD.MM.YYYY`
+text and a popup built from native Panel buttons and labels. Unavailable days
+are inactive. Its time field accepts `HH:MM[:SS]` and uses two native image
+buttons in the combo button column, stepping by the configured minute step.
+Typed values pass through the same shared availability policy as calendar
+and arrow input.

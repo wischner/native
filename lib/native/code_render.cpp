@@ -17,6 +17,7 @@
 #include <native/theme.h>
 
 #include "code_document.h"
+#include "wnd_peer.h"
 #include "control_render_access.h"
 #include "text_util.h"
 
@@ -254,6 +255,15 @@ namespace
                 static_cast<native::coord>(origin.y + y),
                 static_cast<native::dim>(popup_width),
                 static_cast<native::dim>(popup_height));
+        auto *geometry = native::detail::peer_state<
+            native::detail::code_completion_geometry>(editor);
+        if (!geometry) {
+            geometry = new native::detail::code_completion_geometry;
+            native::detail::assign_peer_state(editor, geometry);
+        }
+        *geometry = {native::rect(x, y, popup_width, popup_height),
+                     first,
+                     row_height};
         native::detail::control_render_access::
             draw_completion_background(
                 editor,

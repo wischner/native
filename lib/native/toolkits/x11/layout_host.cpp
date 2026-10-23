@@ -6,6 +6,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include <algorithm>
 #include <X11/IntrinsicP.h>
 #include <X11/Xaw/FormP.h>
 
@@ -57,7 +58,38 @@ namespace
 
     // Resize notifications drive Native layout; Form must not do another
     // proportional resize, or temporarily unmap all of the child windows.
-    void resized(Widget) {}
+    void resized(Widget host) {
+        auto *owner =
+            linux::x11::main_wnd_bindings.object_from_handle(host);
+        if (!owner)
+            return;
+        Widget canvas =
+            linux::x11::wnd_bindings.handle_from_object(owner);
+        if (!canvas)
+            return;
+        auto *form = reinterpret_cast<FormWidget>(host);
+        int top = 0;
+        for (Cardinal i = 0; i < form->composite.num_children; ++i) {
+            Widget child = form->composite.children[i];
+            if (child == canvas || !XtIsManaged(child))
+                continue;
+            XtConfigureWidget(child,
+                              0,
+                              0,
+                              host->core.width,
+                              child->core.height,
+                              child->core.border_width);
+            top = std::max(
+                top,
+                int(child->core.height + 2 * child->core.border_width));
+        }
+        XtConfigureWidget(canvas,
+                          0,
+                          top,
+                          host->core.width,
+                          std::max(1, int(host->core.height) - top),
+                          0);
+    }
 
     Dimension requested_dimension(Widget child, Dimension value, bool horizontal) {
         if (value) return value;

@@ -27,6 +27,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/alert_icons.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/combo_box.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/pickers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/settings_sidebar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/check.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/list.cpp

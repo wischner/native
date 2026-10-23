@@ -112,3 +112,8 @@ label follows the image with spacing and ellipsizes within the row. Replacing
 items rebuilds native children and releases their old texture references.
 The settings fixture checks the displayed texture's pixels, not just the
 portable image descriptor.
+
+GTK folder disclosure uses a compact native GtkExpander without a label.
+The row owns its image and caption separately, so folder and leaf rows have
+the same natural height. Native expansion notifications update the portable
+model; rebuilding rows keeps the existing synchronization guard.

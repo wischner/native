@@ -48,11 +48,19 @@ namespace
         if (!guard.alive()) return;
         for (auto *button : linux::gemix::buttons) {
             auto saved = graphics.save_state();
-            if (!button || root_of(button) != owner)
+            if (!button || !linux::gemix::visible_in_tree(*button) ||
+                root_of(button) != owner ||
+                !root_bounds(*button)
+                     .intersect(graphics.get_clip())
+                     .w() ||
+                !root_bounds(*button)
+                     .intersect(graphics.get_clip())
+                     .h())
                 continue;
 
             auto painter = native::theme::create(graphics);
             native::theme::state button_state;
+            button_state.disabled = !button->get_input_enabled();
             button_state.pressed = linux::gemix::runtime.pressed_button == button;
             native::detail::control_render_access::draw(
                 *button,
@@ -65,7 +73,14 @@ namespace
         auto painter = native::theme::create(graphics);
         for (auto *control : linux::gemix::checks) {
             auto saved = graphics.save_state();
-            if (!control || root_of(control) != owner)
+            if (!control || !linux::gemix::visible_in_tree(*control) ||
+                root_of(control) != owner ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .w() ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .h())
                 continue;
             native::theme::state state;
             native::detail::control_render_access::draw(
@@ -77,7 +92,14 @@ namespace
         }
         for (auto *control : linux::gemix::radios) {
             auto saved = graphics.save_state();
-            if (!control || root_of(control) != owner)
+            if (!control || !linux::gemix::visible_in_tree(*control) ||
+                root_of(control) != owner ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .w() ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .h())
                 continue;
             native::theme::state state;
             native::detail::control_render_access::draw(
@@ -89,7 +111,14 @@ namespace
         }
         for (auto *control : linux::gemix::lists) {
             auto saved = graphics.save_state();
-            if (!control || root_of(control) != owner)
+            if (!control || !linux::gemix::visible_in_tree(*control) ||
+                root_of(control) != owner ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .w() ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .h())
                 continue;
             // A framed tab page already supplies the viewport enclosure.
             if (auto *tabs = dynamic_cast<native::tab_view *>(control->get_parent());
@@ -109,7 +138,15 @@ namespace
         }
         for (auto *control : linux::gemix::combo_boxes) {
             auto saved = graphics.save_state();
-            if (!control || root_of(control) != owner) continue;
+            if (!control || !linux::gemix::visible_in_tree(*control) ||
+                root_of(control) != owner ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .w() ||
+                !root_bounds(*control)
+                     .intersect(graphics.get_clip())
+                     .h())
+                continue;
             const native::rect combo_bounds = root_bounds(*control);
             native::detail::control_render_access::draw(
                 *control, graphics, *painter, combo_bounds,
@@ -120,7 +157,9 @@ namespace
         // Popups are overlays: they must follow every ordinary child.
         for (auto *control : linux::gemix::combo_boxes) {
             auto saved = graphics.save_state();
-            if (!control || root_of(control) != owner) continue;
+            if (!control || !linux::gemix::visible_in_tree(*control) ||
+                root_of(control) != owner)
+                continue;
             const native::rect combo_bounds = root_bounds(*control);
             auto *state = linux::gemix::combo_box_bindings
                               .object_from_handle(control);
@@ -134,8 +173,8 @@ namespace
             for (std::size_t index = 0;
                  index < control->get_items().size(); ++index) {
                 native::theme::state item_state;
-                item_state.selected = static_cast<int>(index) ==
-                                      control->get_selected_index();
+                item_state.selected =
+                    static_cast<int>(index) == state->hot;
                 painter->draw_list_item(
                     native::rect(box.x1() + 1,
                         static_cast<native::coord>(box.y1() + 1 +

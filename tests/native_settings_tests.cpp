@@ -16,6 +16,15 @@
 #include <array>
 #include <cstdint>
 #endif
+#ifdef NATIVE_SETTINGS_X11
+#include "../lib/native/toolkits/x11/globals.h"
+#include <X11/StringDefs.h>
+#include <X11/Xutil.h>
+#include <X11/Xaw/Text.h>
+#include <X11/Xaw/Toggle.h>
+#include <X11/Xaw/Label.h>
+#include <X11/keysym.h>
+#endif
 #ifdef _WIN32
 #include "../lib/native/platforms/windows/globals.h"
 #endif
@@ -176,6 +185,32 @@ namespace
         auto *picker = dynamic_cast<BPrivate::DateEdit *>(view->ChildAt(0));
         expect(picker, "Haiku shared-kit date editor exists");
         picker->SetDate(value.year, value.month, value.day); picker->Invoke();
+#elif defined(NATIVE_SETTINGS_X11)
+        auto *field = XtNameToWidget(
+            linux::x11::wnd_bindings.handle_from_object(&owner),
+            const_cast<char *>("comboBox.comboText"));
+        expect(
+            field,
+            "Athena date picker has one native editable-combo entry");
+        const auto text = value.to_string();
+        char *previous = nullptr;
+        XtVaGetValues(field, XtNstring, &previous, nullptr);
+        XawTextBlock block{};
+        block.ptr = const_cast<char *>(text.c_str());
+        block.length = text.size();
+        block.format = FMT8BIT;
+        XawTextReplace(
+            field,
+            0,
+            previous ? std::char_traits<char>::length(previous) : 0,
+            &block);
+        XEvent event{};
+        event.xkey.type = KeyRelease;
+        event.xkey.display = XtDisplay(field);
+        event.xkey.window = XtWindow(field);
+        event.xkey.keycode =
+            XKeysymToKeycode(XtDisplay(field), XK_Return);
+        XtDispatchEvent(&event);
 #else
         owner.on_native_date(value);
 #endif
@@ -183,8 +218,8 @@ namespace
     void native_time(native::time_picker &owner, native::time_of_day value) {
 #ifdef NATIVE_SETTINGS_GTK
         auto &peer = *native::detail::peer_state<linux::wayland::picker_state>(owner);
-        if (peer.entry) {
-            expect(std::string_view(G_OBJECT_TYPE_NAME(peer.entry)) == "GraniteTimePicker", "Granite time picker exists");
+        if (peer.entry && std::string_view(G_OBJECT_TYPE_NAME(
+                              peer.entry)) == "GraniteTimePicker") {
             auto *time = g_date_time_new_local(2000, 1, 1, value.hour, value.minute, value.second);
             g_object_set(peer.entry, "time", time, nullptr); g_date_time_unref(time);
             g_signal_emit_by_name(peer.entry, "time-changed");
@@ -220,6 +255,32 @@ namespace
         auto *picker = dynamic_cast<BPrivate::TimeEdit *>(view->ChildAt(0));
         expect(picker, "Haiku shared-kit time editor exists");
         picker->SetTime(value.hour, value.minute, value.second); picker->Invoke();
+#elif defined(NATIVE_SETTINGS_X11)
+        auto *field = XtNameToWidget(
+            linux::x11::wnd_bindings.handle_from_object(&owner),
+            const_cast<char *>("comboBox.comboText"));
+        expect(
+            field,
+            "Athena time picker has one native editable-combo entry");
+        const auto text = value.to_string();
+        char *previous = nullptr;
+        XtVaGetValues(field, XtNstring, &previous, nullptr);
+        XawTextBlock block{};
+        block.ptr = const_cast<char *>(text.c_str());
+        block.length = text.size();
+        block.format = FMT8BIT;
+        XawTextReplace(
+            field,
+            0,
+            previous ? std::char_traits<char>::length(previous) : 0,
+            &block);
+        XEvent event{};
+        event.xkey.type = KeyRelease;
+        event.xkey.display = XtDisplay(field);
+        event.xkey.window = XtWindow(field);
+        event.xkey.keycode =
+            XKeysymToKeycode(XtDisplay(field), XK_Return);
+        XtDispatchEvent(&event);
 #else
         owner.on_native_time(value);
 #endif
@@ -246,7 +307,8 @@ namespace
                 sidebar.set_bounds(get_client_bounds()); return true;
             });
 #endif
-#if defined(__APPLE__) || defined(_WIN32) || defined(__HAIKU__)
+#if defined(__APPLE__) || defined(_WIN32) || defined(__HAIKU__) ||     \
+    defined(NATIVE_SETTINGS_X11)
             sidebar << native::settings_page(1, "General", first, image, "Settings")
                     << native::settings_page(2, "Dates", second, {}, "Controls")
                     << native::settings_page(3, "Disabled", third, {}, "Settings", false);
@@ -396,6 +458,41 @@ namespace
                 expect(first.get_created() && sidebar.get_selected_item() == 1,
                     "filtering every navigation row retains the active page");
                 sidebar.set_search_text("");
+#ifdef NATIVE_SETTINGS_X11
+                {
+                    auto *navigation = XtNameToWidget(
+                        linux::x11::wnd_bindings.handle_from_object(
+                            &sidebar),
+                        const_cast<char *>("settingsNavigation"));
+                    expect(navigation,
+                           "Athena settings navigation has a native "
+                           "framed host");
+                    WidgetList children = nullptr;
+                    Cardinal count = 0;
+                    XtVaGetValues(navigation,
+                                  XtNchildren,
+                                  &children,
+                                  XtNnumChildren,
+                                  &count,
+                                  nullptr);
+                    expect(count >= 5 &&
+                               XtIsSubclass(children[0],
+                                            labelWidgetClass) &&
+                               !XtIsSensitive(children[0]),
+                           "Athena section headings use native "
+                           "disabled stipple");
+                    Dimension width = 0, row_width = 0;
+                    XtVaGetValues(
+                        navigation, XtNwidth, &width, nullptr);
+                    XtVaGetValues(
+                        children[1], XtNwidth, &row_width, nullptr);
+                    expect(
+                        XtIsSubclass(children[1], toggleWidgetClass) &&
+                            row_width == width,
+                        "Athena navigation selection spans the full "
+                        "native row");
+                }
+#endif
 #ifdef __APPLE__
                 auto *host = mac::panel_bindings.object_from_handle(&sidebar)->view;
                 auto *material = [[host subviews] firstObject];
@@ -550,8 +647,139 @@ namespace
                     g_signal_emit_by_name(peer.entry, "activate");
                     expect(unrestricted.get_date() == native::date{2026, 12, 23}, "typed date commits through the native entry");
                 }
+#elif defined(NATIVE_SETTINGS_X11)
+                {
+                    auto *root = XtNameToWidget(
+                        linux::x11::wnd_bindings.handle_from_object(
+                            &unrestricted),
+                        const_cast<char *>("comboBox"));
+                    auto *field = dynamic_cast<native::combo_box *>(
+                        linux::x11::wnd_bindings.object_from_handle(
+                            root));
+                    expect(
+                        field,
+                        "Athena date picker reuses the editable combo");
+                    auto *binding = linux::x11::combo_box_bindings
+                                        .object_from_handle(field);
+                    unrestricted.set_date({2026, 12, 23})
+                        .set_disabled_dates({{2026, 12, 25}});
+                    XtCallCallbacks(
+                        binding->button, XtNcallback, nullptr);
+                    auto *popup = XtNameToWidget(
+                        root, const_cast<char *>("dateCalendar"));
+                    auto *grid = XtNameToWidget(
+                        popup, const_cast<char *>("calendar"));
+                    expect(popup && grid,
+                           "Athena date arrow opens a native calendar "
+                           "popup");
+                    WidgetList children = nullptr;
+                    Cardinal count = 0;
+                    XtVaGetValues(grid,
+                                  XtNchildren,
+                                  &children,
+                                  XtNnumChildren,
+                                  &count,
+                                  nullptr);
+                    bool disabled_holiday = false;
+                    Widget available = nullptr;
+                    for (Cardinal i = 10; i < count; ++i) {
+                        char *label = nullptr;
+                        XtVaGetValues(
+                            children[i], XtNlabel, &label, nullptr);
+                        if (label && std::string_view(label) == "25")
+                            disabled_holiday =
+                                !XtIsSensitive(children[i]);
+                        if (label && std::string_view(label) == "24")
+                            available = children[i];
+                    }
+                    expect(disabled_holiday && available &&
+                               XtIsSensitive(available),
+                           "Athena calendar applies native disabled "
+                           "state to excluded holidays");
+                    if (const char *path = std::getenv(
+                            "NATIVE_X11_CALENDAR_SNAPSHOT")) {
+                        XSync(linux::x11::cached_display, False);
+                        for (int i = 0;
+                             i < 20000 &&
+                             (XtAppPending(linux::x11::app_instance) &
+                              XtIMXEvent);
+                             ++i)
+                            XtAppProcessEvent(linux::x11::app_instance,
+                                              XtIMXEvent);
+                        XWindowAttributes bounds{};
+                        XGetWindowAttributes(linux::x11::cached_display,
+                                             XtWindow(popup),
+                                             &bounds);
+                        auto *pixels =
+                            XGetImage(linux::x11::cached_display,
+                                      XtWindow(popup),
+                                      0,
+                                      0,
+                                      bounds.width,
+                                      bounds.height,
+                                      AllPlanes,
+                                      ZPixmap);
+                        native::img image(bounds.width, bounds.height);
+                        for (int y = 0; y < bounds.height; ++y)
+                            for (int x = 0; x < bounds.width; ++x) {
+                                const auto value =
+                                    XGetPixel(pixels, x, y);
+                                image.pixels()[y * bounds.width + x] =
+                                    native::rgba((value >> 16) & 255,
+                                                 (value >> 8) & 255,
+                                                 value & 255,
+                                                 255);
+                            }
+                        XDestroyImage(pixels);
+                        image.save(path);
+                        XWindowAttributes day_bounds{};
+                        XGetWindowAttributes(linux::x11::cached_display,
+                                             XtWindow(available),
+                                             &day_bounds);
+                        auto *glyphs =
+                            XGetImage(linux::x11::cached_display,
+                                      XtWindow(available),
+                                      0,
+                                      0,
+                                      day_bounds.width,
+                                      day_bounds.height,
+                                      AllPlanes,
+                                      ZPixmap);
+                        int ink = 0;
+                        for (int y = 3; y < day_bounds.height - 3; ++y)
+                            for (int x = 3; x < day_bounds.width - 3;
+                                 ++x)
+                                ink +=
+                                    XGetPixel(glyphs, x, y) ==
+                                    BlackPixel(
+                                        linux::x11::cached_display, 0);
+                        XDestroyImage(glyphs);
+                        expect(ink > 5,
+                               "native calendar day captions are "
+                               "actually painted");
+                    }
+
+                    XtCallCallbacks(available, XtNcallback, nullptr);
+                    expect(unrestricted.get_date() ==
+                               native::date{2026, 12, 24},
+                           "a native calendar day commits through date "
+                           "availability policy");
+                    XtCallCallbacks(
+                        binding->button, XtNcallback, nullptr);
+                    XtCallCallbacks(
+                        binding->button, XtNcallback, nullptr);
+                    XWindowAttributes attributes{};
+                    XGetWindowAttributes(linux::x11::cached_display,
+                                         XtWindow(popup),
+                                         &attributes);
+                    expect(attributes.map_state == IsUnmapped,
+                           "second calendar-arrow click closes its "
+                           "native popup");
+                }
 #elif defined(__HAIKU__)
-                auto *view = haiku::panel_bindings.object_from_handle(&unrestricted)->view;
+                auto *view = haiku::panel_bindings
+                                 .object_from_handle(&unrestricted)
+                                 ->view;
                 BAutolock lock(view->Window());
                 expect(view->ChildAt(0)->Bounds().Width() < 180 &&
                     view->ChildAt(0)->Bounds().Height() < 32,

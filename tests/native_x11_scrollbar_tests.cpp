@@ -68,6 +68,7 @@ namespace
         tree_view tree{{}, 610, 10, 240, 240};
         canvas surface{10, 280, 300, 180};
         int phase = 0;
+        std::uint64_t previous_row = 0;
         void *input_library = nullptr;
 
         xaw_scrollbars &bars(wnd &owner) {
@@ -82,14 +83,18 @@ namespace
             }, this);
         }
 
-        void pointer(Widget bar, int y, int press) {
+        void pointer(Widget bar,
+                     int y,
+                     int press,
+                     unsigned native_button = Button2) {
             using button_proc = int (*)(Display *, unsigned int, Bool, unsigned long);
             if (!input_library) input_library = dlopen("libXtst.so.6", RTLD_NOW);
             expect(input_library, "XTest runtime");
             auto button = reinterpret_cast<button_proc>(dlsym(input_library, "XTestFakeButtonEvent"));
             expect(button, "XTest button entry point");
             XWarpPointer(cached_display, None, XtWindow(bar), 0, 0, 0, 0, 6, y);
-            if (press >= 0) button(cached_display, Button2, press, 0);
+            if (press >= 0)
+                button(cached_display, native_button, press, 0);
             XFlush(cached_display);
         }
 
@@ -121,14 +126,27 @@ namespace
                     float start = 0;
                     XtCallCallbacks(bars(table).vertical.widget, XtNjumpProc, &start);
                 } else if (phase == 2) {
-                    pointer(bars(table).vertical.widget, 20, 1);
+                    pointer(bars(table).vertical.widget, 1, 1, Button1);
+                    pointer(bars(table).vertical.widget, 1, 0, Button1);
                 } else if (phase == 3) {
+                    expect(table.get_vertical_scroll_row() == 0,
+                           "clicking the native thumb at the top does "
+                           "not scroll downward");
+                    pointer(bars(table).vertical.widget, 20, 1);
                     pointer(bars(table).vertical.widget, bars(table).vertical.length - 1, -1);
                 } else if (phase == 4) {
                     expect(table.get_vertical_scroll_row() > 800000,
                         "real middle-button thumb dragging changes the virtual viewport");
                     pointer(bars(table).vertical.widget, bars(table).vertical.length - 1, 0);
                 } else if (phase == 5) {
+                    previous_row = table.get_vertical_scroll_row();
+                    pointer(bars(table).vertical.widget, 1, 1, Button1);
+                    pointer(bars(table).vertical.widget, 1, 0, Button1);
+                } else if (phase == 6) {
+                    expect(table.get_vertical_scroll_row() <
+                               previous_row,
+                           "clicking above a native thumb scrolls "
+                           "toward the top");
                     table.set_vertical_scrollbar_policy(scrollbar_policy::never)
                         .set_horizontal_scrollbar_policy(scrollbar_policy::never);
                     icons.set_items({}); tree.clear_items();

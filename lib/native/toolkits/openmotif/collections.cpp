@@ -20,6 +20,7 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../../table_render.h"
 
 namespace
 {
@@ -338,7 +339,8 @@ namespace
                   0);
     }
 
-    void navigate(native::wnd &owner, KeySym symbol) {
+    void
+    navigate(native::wnd &owner, KeySym symbol, bool extend = false) {
         if (auto *editor =
                 dynamic_cast<native::code_edit *>(&owner)) {
             native::code_edit_key key;
@@ -372,41 +374,41 @@ namespace
             else
                 handled = false;
             if (handled)
-                editor->on_native_key(key);
+                editor->on_native_key(key, extend);
             return;
         }
         if (auto *table =
                 dynamic_cast<native::table_view *>(&owner)) {
             if (symbol == XK_Up)
                 table->on_native_navigation(
-                    native::table_navigation::up);
+                    native::table_navigation::up, extend);
             else if (symbol == XK_Down)
                 table->on_native_navigation(
-                    native::table_navigation::down);
+                    native::table_navigation::down, extend);
             else if (symbol == XK_Home)
                 table->on_native_navigation(
-                    native::table_navigation::home);
+                    native::table_navigation::home, extend);
             else if (symbol == XK_End)
                 table->on_native_navigation(
-                    native::table_navigation::end);
+                    native::table_navigation::end, extend);
             else if (symbol == XK_Page_Up)
                 table->on_native_navigation(
-                    native::table_navigation::page_up);
+                    native::table_navigation::page_up, extend);
             else if (symbol == XK_Page_Down)
                 table->on_native_navigation(
-                    native::table_navigation::page_down);
+                    native::table_navigation::page_down, extend);
             else if (symbol == XK_Left)
                 table->on_native_navigation(
-                    native::table_navigation::collapse);
+                    native::table_navigation::collapse, extend);
             else if (symbol == XK_Right)
                 table->on_native_navigation(
-                    native::table_navigation::expand);
+                    native::table_navigation::expand, extend);
             else if (symbol == XK_space)
                 table->on_native_navigation(
-                    native::table_navigation::toggle);
+                    native::table_navigation::toggle, extend);
             else if (symbol == XK_Return || symbol == XK_KP_Enter)
                 table->on_native_navigation(
-                    native::table_navigation::activate);
+                    native::table_navigation::activate, extend);
             return;
         }
         if (auto *accordion =
@@ -490,7 +492,7 @@ namespace
     void handle_event(Widget widget,
                       XtPointer data,
                       XEvent *event,
-                      Boolean *) {
+                      Boolean *continue_dispatch) {
         auto *owner = static_cast<native::wnd *>(data);
         if (!owner || !event)
             return;
@@ -542,7 +544,9 @@ namespace
                             extend ? native::code_edit_key::redo
                                    : native::code_edit_key::undo);
                 } else {
-                    navigate(*owner, symbol);
+                    navigate(*owner,
+                             symbol,
+                             (event->xkey.state & ShiftMask) != 0);
                     const bool command =
                         symbol == XK_Left || symbol == XK_Right ||
                         symbol == XK_Up || symbol == XK_Down ||
@@ -567,9 +571,12 @@ namespace
                         }
                     }
                 }
+                if (continue_dispatch)
+                    *continue_dispatch = False;
                 break;
             }
-            navigate(*owner, symbol);
+            navigate(
+                *owner, symbol, (event->xkey.state & ShiftMask) != 0);
             if (auto *table =
                     dynamic_cast<native::table_view *>(owner)) {
                 char text[64]{};
@@ -606,12 +613,25 @@ namespace
                 break;
             if (event->type == ButtonPress)
                 XmProcessTraversal(widget, XmTRAVERSE_CURRENT);
-            owner->on_native_mouse_click(native::mouse_event(
-                native::mouse_button::left,
-                event->type == ButtonPress
-                    ? native::mouse_action::press
-                    : native::mouse_action::release,
-                native::point(event->xbutton.x, event->xbutton.y)));
+            const native::detail::window_guard click_guard(*owner);
+            if (auto *table =
+                    dynamic_cast<native::table_view *>(owner)) {
+                if (event->type == ButtonRelease)
+                    native::detail::handle_table_click(
+                        *table,
+                        native::point(event->xbutton.x,
+                                      event->xbutton.y),
+                        (event->xbutton.state & ControlMask) != 0,
+                        (event->xbutton.state & ShiftMask) != 0);
+            } else
+                owner->on_native_mouse_click(native::mouse_event(
+                    native::mouse_button::left,
+                    event->type == ButtonPress
+                        ? native::mouse_action::press
+                        : native::mouse_action::release,
+                    native::point(event->xbutton.x, event->xbutton.y)));
+            if (!click_guard.alive())
+                return;
             if (event->type == ButtonRelease) {
                 if (auto *table =
                         dynamic_cast<native::table_view *>(owner)) {

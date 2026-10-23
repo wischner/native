@@ -176,7 +176,10 @@ namespace linux::sdl2
                        const std::string &text,
                        int x,
                        int y,
-                       SDL_Color color) {
+                       SDL_Color color,
+                       sdl2_gpx *cache) {
+        if (text.empty())
+            return true;
         float scale_x = 1.0F;
         float scale_y = 1.0F;
         SDL_RenderGetScale(renderer, &scale_x, &scale_y);
@@ -184,6 +187,25 @@ namespace linux::sdl2
         if (!face.font)
             return false;
 
+        const native::rgba ink(color.r, color.g, color.b, color.a);
+        // Renderer-owned, bounded LRU: repeated table cells avoid font
+        // rasterization and GPU uploads on selection and scroll frames.
+        if (cache) {
+            for (auto &entry : cache->text_textures) {
+                if (entry.font_id != font.id ||
+                    entry.face != face.font || entry.color != ink ||
+                    entry.text != text)
+                    continue;
+                entry.used = ++cache->text_clock;
+                const SDL_FRect destination{float(x),
+                                            float(y),
+                                            entry.width / face.scale,
+                                            entry.height / face.scale};
+                SDL_RenderCopyF(
+                    renderer, entry.texture, nullptr, &destination);
+                return true;
+            }
+        }
         SDL_Surface *surface =
             TTF_RenderUTF8_Blended(face.font, text.c_str(), color);
         if (!surface)
@@ -198,7 +220,36 @@ namespace linux::sdl2
                 surface->w / face.scale,
                 surface->h / face.scale};
             SDL_RenderCopyF(renderer, texture, nullptr, &destination);
-            SDL_DestroyTexture(texture);
+            const auto bytes = std::size_t(surface->w) * surface->h * 4;
+            constexpr std::size_t budget = 4 * 1024 * 1024;
+            if (cache)
+                ++cache->text_uploads;
+            if (cache && bytes <= budget) {
+                while (!cache->text_textures.empty() &&
+                       (cache->text_textures.size() >= 256 ||
+                        cache->text_bytes + bytes > budget)) {
+                    const auto oldest = std::min_element(
+                        cache->text_textures.begin(),
+                        cache->text_textures.end(),
+                        [](const auto &a, const auto &b) {
+                            return a.used < b.used;
+                        });
+                    cache->text_bytes -=
+                        std::size_t(oldest->width) * oldest->height * 4;
+                    SDL_DestroyTexture(oldest->texture);
+                    cache->text_textures.erase(oldest);
+                }
+                cache->text_textures.push_back({font.id,
+                                                face.font,
+                                                text,
+                                                ink,
+                                                texture,
+                                                surface->w,
+                                                surface->h,
+                                                ++cache->text_clock});
+                cache->text_bytes += bytes;
+            } else
+                SDL_DestroyTexture(texture);
         }
         SDL_FreeSurface(surface);
         return true;

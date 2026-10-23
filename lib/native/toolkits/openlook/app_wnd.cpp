@@ -24,10 +24,14 @@
 #include <xview/xview.h>
 
 #include "globals.h"
+#include "panel_painting.h"
 #include "../../mouse_state.h"
 #include "../x_keyboard.h"
 #include "window_position.h"
 #include "xview_init.h"
+
+extern "C" void rl_initwithrect(Rect *, Rectlist *);
+extern "C" void rl_free(Rectlist *);
 
 namespace
 {
@@ -79,9 +83,10 @@ namespace
         cache->buffer_height = height;
     }
 
-    void repaint_panel(Panel panel,
-                       Xv_Window paint_window,
-                       Rectlist *areas) {
+    void paint_panel(Panel panel,
+                     Xv_Window paint_window,
+                     Rectlist *areas,
+                     bool preserve_items) {
         auto *owner = dynamic_cast<native::app_wnd *>(
             linux::openlook::wnd_bindings.object_from_handle(panel));
         if (!owner || !owner->get_created())
@@ -122,44 +127,40 @@ namespace
                           .object_from_handle(owner);
         if (!cache || !cache->gc || !cache->backbuffer)
             return;
-        XSetClipMask(
-            linux::openlook::cached_display, cache->gc, None);
-        XCopyArea(linux::openlook::cached_display,
-                  cache->backbuffer,
-                  window,
-                  cache->gc,
-                  invalid.p.x,
-                  invalid.p.y,
-                  invalid.d.w,
-                  invalid.d.h,
-                  invalid.p.x,
-                  invalid.p.y);
-
-        // XView calls this procedure to restore the background under
-        // an item it is clearing, which is what it does to every item
-        // a layout moves or resizes. The background just painted
-        // covers whatever else stood in that rectangle, so any other
-        // item overlapping it is now erased and nothing would draw it
-        // again. Put the items back on top.
-        //
-        // An item also requests background clearing during destruction,
-        // after its subclass data has been freed but before it is unlinked
-        // from the Panel. Defer item painting until that stack returns.
-        auto *state = linux::openlook::window_state(owner);
-        if (state && !state->items_repaint_pending) {
-            state->items_repaint_pending = true;
-            native::app::post([panel] {
-                auto *current_owner = dynamic_cast<native::app_wnd *>(
-                    linux::openlook::wnd_bindings.object_from_handle(panel));
-                auto *current = current_owner
-                    ? linux::openlook::window_state(current_owner) : nullptr;
-                if (!current)
+        linux::openlook::copy_panel_background(
+            panel, window, *cache, invalid, preserve_items);
+        if (!preserve_items)
+            native::app::post([panel, invalid] {
+                if (!linux::openlook::wnd_bindings.object_from_handle(
+                        panel))
                     return;
-                current->items_repaint_pending = false;
-                panel_paint(panel, PANEL_NO_CLEAR);
-                linux::openlook::mask_panel_borders(panel);
+                for (auto item = static_cast<Panel_item>(
+                         xv_get(panel, PANEL_FIRST_ITEM));
+                     item;
+                     item = static_cast<Panel_item>(
+                         xv_get(item, PANEL_NEXT_ITEM))) {
+                    auto *child = linux::openlook::wnd_bindings
+                                      .object_from_handle(item);
+                    if (!child || !child->get_created() ||
+                        !child->get_visible())
+                        continue;
+                    const auto *bounds =
+                        reinterpret_cast<Rect *>(xv_get(item, XV_RECT));
+                    if (bounds && native::rect(bounds->r_left,
+                                               bounds->r_top,
+                                               bounds->r_width,
+                                               bounds->r_height)
+                                      .intersect(invalid)
+                                      .w())
+                        panel_paint(item, PANEL_NO_CLEAR);
+                }
             });
-        }
+    }
+
+    void repaint_panel(Panel panel,
+                       Xv_Window paint_window,
+                       Rectlist *areas) {
+        paint_panel(panel, paint_window, areas, false);
     }
 
     void resize_panel(Canvas canvas, int width, int height) {
@@ -366,6 +367,7 @@ namespace linux::openlook
             return;
         }
 
+        merge_damage(state->pending_damage, area);
         if (state->repaint_pending)
             return;
         state->repaint_pending = true;
@@ -377,7 +379,16 @@ namespace linux::openlook
             if (!current)
                 return;
             current->repaint_pending = false;
-            repaint_panel(panel, current->paint_window, nullptr);
+            const auto damage = current->pending_damage;
+            current->pending_damage = {};
+            Rect rectangle{damage.x1(),
+                           damage.y1(),
+                           static_cast<short>(damage.w()),
+                           static_cast<short>(damage.h())};
+            Rectlist areas{};
+            rl_initwithrect(&rectangle, &areas);
+            paint_panel(panel, current->paint_window, &areas, true);
+            rl_free(&areas);
             XFlush(cached_display);
         });
     }

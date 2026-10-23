@@ -1,5 +1,5 @@
 //
-// Presents the standard GEM AES file selector for opening one file.
+// Presents the owner-centered GEM form for opening one file.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

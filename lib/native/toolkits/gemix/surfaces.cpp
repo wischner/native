@@ -33,7 +33,7 @@ namespace
 
     bool created_in(native::wnd *control, native::app_wnd *owner) {
         return control && control->get_created() &&
-               control->get_visible() &&
+               linux::gemix::visible_in_tree(*control) &&
                linux::gemix::root_of(control) == owner;
     }
 
@@ -258,7 +258,7 @@ namespace linux::gemix
                 continue;
             }
             if (auto *host = dynamic_cast<native::panel *>(region)) {
-                native::gpx_wnd region_gpx(parent, screen_origin);
+                native::gpx_wnd region_gpx(host, screen_origin);
                 const native::rect invalid(
                     0, 0, bounds.d.w, bounds.d.h);
                 region_gpx.set_clip(invalid);
@@ -275,7 +275,7 @@ namespace linux::gemix
             // canvas-local coordinates. A context carrying the
             // region's origin supplies that without translating the
             // window context every other control shares.
-            native::gpx_wnd region_gpx(parent, screen_origin);
+            native::gpx_wnd region_gpx(surface, screen_origin);
             const native::rect invalid(0,
                                        0,
                                        surface->get_dimensions().w,

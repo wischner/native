@@ -8,6 +8,8 @@
 
 #include "theme_support.h"
 
+#include <algorithm>
+
 #include <X11/StringDefs.h>
 #include <Xm/PushB.h>
 
@@ -16,6 +18,47 @@
 
 namespace linux::openmotif
 {
+    std::vector<native::point>
+    disclosure_points(const native::rect &bounds, bool expanded) {
+        const int side = std::min(
+            {disclosure_side, int(bounds.w()), int(bounds.h())});
+        if (side <= 0)
+            return {};
+        const int inset = side * 3 / disclosure_side;
+        const int left = bounds.x1() + (int(bounds.w()) - side) / 2;
+        const int top = bounds.y1() + (int(bounds.h()) - side) / 2;
+        const int right = left + side - 1;
+        const int bottom = top + side - 1;
+        if (expanded)
+            return {{native::coord(left), native::coord(top + inset)},
+                    {native::coord(right), native::coord(top + inset)},
+                    {native::coord((left + right) / 2),
+                     native::coord(bottom - inset)}};
+        return {{native::coord(left + inset), native::coord(top)},
+                {native::coord(right - inset),
+                 native::coord((top + bottom) / 2)},
+                {native::coord(left + inset), native::coord(bottom)}};
+    }
+
+    void draw_disclosure_triangle(Drawable target,
+                                  GC gc,
+                                  const native::rect &bounds,
+                                  bool expanded) {
+        const auto triangle = disclosure_points(bounds, expanded);
+        if (triangle.empty())
+            return;
+        XPoint points[3];
+        for (std::size_t index = 0; index < triangle.size(); ++index)
+            points[index] = {triangle[index].x, triangle[index].y};
+        XFillPolygon(cached_display,
+                     target,
+                     gc,
+                     points,
+                     3,
+                     Convex,
+                     CoordModeOrigin);
+    }
+
     theme_target theme_target_from(native::gpx &graphics) {
         auto *window_graphics =
             dynamic_cast<native::gpx_wnd *>(&graphics);

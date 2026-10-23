@@ -58,6 +58,8 @@ namespace native
     }
 
     void app_wnd::show_native() {
+        if (get_modal() && get_owner())
+            center_to_parent();
         if (!_created)
             throw std::runtime_error(
                 "GEMix: Cannot show window before it is created.");

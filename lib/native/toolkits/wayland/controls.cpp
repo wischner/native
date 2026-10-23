@@ -212,7 +212,10 @@ namespace native
         peer.updating = true;
         if (GTK_IS_COMBO_BOX(peer.editor)) {
             gtk_combo_box_set_active(GTK_COMBO_BOX(peer.editor), get_selected_index());
-            gtk_editable_set_text(GTK_EDITABLE(peer.drawing), get_text().c_str());
+            if (get_text() !=
+                gtk_editable_get_text(GTK_EDITABLE(peer.drawing)))
+                gtk_editable_set_text(GTK_EDITABLE(peer.drawing),
+                                      get_text().c_str());
         } else gtk_drop_down_set_selected(GTK_DROP_DOWN(peer.editor),
             get_selected_index() < 0 ? GTK_INVALID_LIST_POSITION : guint(get_selected_index()));
         peer.updating = false;
@@ -220,9 +223,7 @@ namespace native
     void combo_box::apply_text() {
         auto &peer = state(*this);
         if (!peer.drawing) return;
-        peer.updating = true;
-        gtk_editable_set_text(GTK_EDITABLE(peer.drawing), get_text().c_str());
-        peer.updating = false;
+        apply_selected_index();
     }
     void combo_box::apply_style() {
         auto &peer = state(*this);
@@ -235,8 +236,12 @@ namespace native
             peer.drawing = gtk_combo_box_get_child(GTK_COMBO_BOX(peer.editor));
             g_signal_connect(peer.editor, "changed", G_CALLBACK(+[](GtkComboBox *widget, gpointer data) {
                 auto &owner = *static_cast<combo_box *>(data);
-                if (!state(owner).updating && gtk_combo_box_get_active(widget) >= 0)
-                    owner.on_native_selection(gtk_combo_box_get_active(widget));
+                const int index = gtk_combo_box_get_active(widget);
+                if (!state(owner).updating && index >= 0 &&
+                    owner.get_items().at(index) ==
+                        gtk_editable_get_text(
+                            GTK_EDITABLE(state(owner).drawing)))
+                    owner.on_native_selection(index);
             }), this);
             g_signal_connect(peer.drawing, "changed", G_CALLBACK(+[](GtkEditable *entry, gpointer data) {
                 auto &owner = *static_cast<combo_box *>(data);

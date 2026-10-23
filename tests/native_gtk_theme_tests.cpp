@@ -280,6 +280,47 @@ void test_native_gtk_theme(native::app_wnd &window) {
                                               : "entry",
                         interaction,
                         dark);
+                if (control == &push) {
+                    img toolbar(180, height);
+                    auto toolbar_theme =
+                        native::theme::create(toolbar.get_gpx());
+                    toolbar_theme->draw_toolbar_button(
+                        {0, 0, 180, 40}, "Native parity", value);
+                    compare(*expected,
+                            toolbar,
+                            "toolbar native button",
+                            interaction,
+                            dark);
+                    auto pressed = value;
+                    pressed.pressed = true;
+                    button reference("Native parity", 0, 0, 180, 40);
+                    reference.set_parent(&window);
+                    reference.create();
+                    reference.show();
+                    theme_snapshot::apply_state(state(reference).widget,
+                                                pressed);
+                    gtk_widget_set_sensitive(state(reference).widget,
+                                             !pressed.disabled);
+                    gtk_widget_allocate(state(reference).widget,
+                                        180,
+                                        height,
+                                        -1,
+                                        nullptr);
+                    auto pressed_pixels =
+                        capture(state(reference).widget, 180, height);
+                    auto selected = value;
+                    selected.selected = true;
+                    img selected_toolbar(180, height);
+                    auto selected_theme = native::theme::create(
+                        selected_toolbar.get_gpx());
+                    selected_theme->draw_toolbar_button(
+                        {0, 0, 180, 40}, "Native parity", selected);
+                    compare(*pressed_pixels,
+                            selected_toolbar,
+                            "toolbar selected native button",
+                            interaction,
+                            dark);
+                }
                 if (interaction == 0) {
                     auto expected2x = capture(
                         state(*control).widget, 180, height, 2, true);
@@ -376,7 +417,7 @@ void test_native_gtk_theme(native::app_wnd &window) {
                                  "distinct native styles.");
     if (proof)
         proof->save(std::getenv("NATIVE_GTK_THEME_SNAPSHOT"));
-    std::cout << "GTK theme parity: 96 live-control pixel comparisons "
+    std::cout << "GTK theme parity: 120 live-control pixel comparisons "
                  "passed.\n";
 }
 

@@ -63,6 +63,19 @@ namespace
             .handle_from_object(&owner);
         if (!widget || !XtIsRealized(widget))
             return;
+        if (auto *editor = dynamic_cast<native::code_edit *>(&owner)) {
+            auto *state = native::detail::peer_state<
+                linux::openmotif::motif_collection>(owner);
+            const bool visible = editor->get_completion_visible();
+            const bool focus =
+                state && visible && !state->completion_visible;
+            if (state)
+                state->completion_visible = visible;
+            if (focus) {
+                XmProcessTraversal(widget, XmTRAVERSE_CURRENT);
+                editor->on_native_focus(true);
+            }
+        }
         int offset_x = 0, offset_y = 0;
         const auto *tree = native::detail::peer_state<
             linux::openmotif::motif_collection>(owner);
@@ -199,6 +212,15 @@ namespace native
             return;
         }
         if (widget) {
+            if (auto *icons = dynamic_cast<icon_view *>(this)) {
+                auto *state = linux::openmotif::icon_view_bindings
+                                  .object_from_handle(icons);
+                if (state && state->content)
+                    XtVaSetValues(state->content,
+                                  XmNwidth,
+                                  std::max(1, int(_bounds.d.w) - 20),
+                                  nullptr);
+            }
             XtVaSetValues(widget,
                           XmNwidth,
                           _bounds.d.w,
@@ -225,6 +247,15 @@ namespace native
             return;
         }
         if (widget) {
+            if (auto *icons = dynamic_cast<icon_view *>(this)) {
+                auto *state = linux::openmotif::icon_view_bindings
+                                  .object_from_handle(icons);
+                if (state && state->content)
+                    XtVaSetValues(state->content,
+                                  XmNwidth,
+                                  std::max(1, int(_bounds.d.w) - 20),
+                                  nullptr);
+            }
             XtVaSetValues(widget,
                           XmNx,
                           _bounds.p.x,
