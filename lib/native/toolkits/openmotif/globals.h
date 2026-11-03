@@ -47,6 +47,7 @@ namespace linux::openmotif
     {
         native::app_wnd *owner = nullptr;
         int item_id = 0;
+        Widget item = nullptr;
     };
 
     struct motif_menu

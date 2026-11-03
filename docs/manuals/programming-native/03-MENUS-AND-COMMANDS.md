@@ -24,6 +24,31 @@ accelerator. Pressing it dispatches the same command ID as selecting the item.
 The `on_menu` signal emits the identifier selected by the user. Commands that
 matter to application logic should use explicit IDs.
 
+## Checkable options
+
+Insert `native::menu_check_item{id, label, checked}` for an option with an
+on/off state. It can start a `menu_items()` group or follow `<<` in a group.
+The label supports the same mnemonic and shortcut markup as ordinary items.
+Selecting it toggles the state **before** `on_menu` runs, so the handler reads
+`menu.get_checked(id)` rather than toggling it again. The same rule applies
+to a keyboard shortcut.
+
+Call `menu.set_checked(id, value)` to restore preferences or update an option
+from another control. This setter emits no command, works before or after
+window creation, and retains state across destruction/recreation. It ignores
+ordinary items, separators and unknown IDs; `get_checked` returns false for
+those entries. Declare the checkable item before setting its state. Use
+distinct explicit IDs for options the application must address.
+
+Every supported backend displays its native checked/selected indicator, or
+a tick in the existing painted menu. OPEN LOOK represents a group containing
+checkable items as an XView toggle menu; ordinary commands in the same group
+remain momentary. No platform headers are needed in application code.
+
+The program below includes **View → Show command ID**, initially checked.
+Click it twice or press Ctrl+D twice to hide and restore the displayed ID.
+Reopening the menu must show the retained mark.
+
 ```cpp
 //
 // Demonstrates menu construction and command dispatch with native.
@@ -57,6 +82,9 @@ public:
              << (native::menu_items("Cu&t\tCtrl+X")
                      << std::string("&Copy\tCtrl+C")
                      << std::string("&Paste\tCtrl+V"))
+             << "&View"
+             << native::menu_items(native::menu_check_item{
+                    200, "Show command &ID\tCtrl+D", true})
              << "&Help"
              << (native::menu_items("&About...")
                      << std::make_pair(
@@ -84,7 +112,9 @@ private:
     // Display the most recently selected command identifier.
     bool on_paint(native::wnd_paint_event event) {
         event.g.set_ink(native::rgba(0, 0, 0, 255));
-        const std::string message = _last_id > 0
+        const std::string message = !menu.get_checked(200)
+            ? "Command display hidden."
+            : _last_id > 0
             ? "Selected menu item ID: " +
                   std::to_string(_last_id)
             : "Click a menu item above.";

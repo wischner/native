@@ -39,6 +39,26 @@ while `list` adds an item model and single-selection signal. `text_edit` adds
 single-line or multiline UTF-8 editing, read-only state, live validation, and
 selection-aware clipboard commands.
 
+Checkable
+menu commands are declared with `menu_check_item{id, label, checked}`.
+Their boolean lives in `main_menu`; silent `set_checked` calls update the
+attached native resource, while `get_checked` also works before creation or
+after destruction. Ordinary commands and unknown IDs are unchanged by the
+setter and read as false. `on_native_menu` applies the toggle before emitting
+`on_menu`, so the handler sees the new state and can silently override it.
+Blocked input does not toggle or emit. Callback code must not access the
+owner after notification because the handler may destroy the window/menu.
+Each backend recreates native marks from the retained model on attachment.
+
+Win32 uses menu check flags, AppKit uses `NSMenuItem.state`, Haiku uses
+`BMenuItem::SetMarked`, and GEM uses AES `CHECKED`/`menu_icheck`. GTK Wayland
+and elementary share boolean stateful GActions. Motif uses `XmToggleButton`
+with non-notifying state updates; Athena uses SmeBSB's native left bitmap.
+XView uses a native toggle menu for a group containing checkable commands;
+ordinary commands in that group clear their transient selection. SDL2 and
+Window Maker update their existing popup models and paint a separate tick
+gutter. The native resource never replaces the portable state as authority.
+
 Painted controls share two public intermediate bases. `custom_control` owns
 focus state and active-theme synchronization. `collection_view` identifies
 painted item collections and adds an optional pixel-based vertical offset;

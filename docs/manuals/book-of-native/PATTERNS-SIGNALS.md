@@ -23,6 +23,13 @@ signal<mouse_event> on_mouse_click;
 Grouping related fields in an event structure keeps a signal readable and
 allows all backends to produce the same payload.
 
+`app_wnd::on_menu` emits the selected command ID. A `menu_check_item` toggles
+its cached and native state before this signal runs; handlers read the result
+with `menu.get_checked(id)`. Returning `true` consumes notification rather
+than undoing the toggle. A handler can restore a previous value explicitly
+with silent `set_checked(id, value)`. Programmatic setters never emit a menu
+command, and modal-blocked commands do not change state or notify handlers.
+
 ## Handlers and propagation
 
 Every handler returns `bool`:

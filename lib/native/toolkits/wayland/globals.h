@@ -25,6 +25,7 @@ namespace linux::wayland
         GtkWidget *drawing = nullptr;
         GtkWidget *box = nullptr;
         GtkWidget *menu = nullptr;
+        GSimpleActionGroup *menu_actions = nullptr;
         GtkWidget *editor = nullptr;
         GtkEventController *shortcuts = nullptr;
         cairo_t *context = nullptr;

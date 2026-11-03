@@ -76,7 +76,8 @@ namespace native
         // Reconcile destruction initiated by the native toolkit.
         void on_native_destroy() override;
 
-        // Dispatch a command selected from the native menu.
+        // Toggle checkable commands, then dispatch the native selection.
+        // Commands blocked by an active modal window are ignored.
         virtual void on_native_menu(int command);
 
         // Paint the default window background before application handlers.
@@ -97,7 +98,7 @@ namespace native
         // Menu model attached when the application window is created.
         main_menu menu;
 
-        // Emits the command ID selected from the attached menu.
+        // Emits the command ID after any checkable state has toggled.
         signal<int> on_menu;
 
     protected:

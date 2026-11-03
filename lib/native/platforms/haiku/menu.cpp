@@ -55,6 +55,16 @@ namespace
 namespace native
 {
 
+    void main_menu::apply_checked(int command) {
+        auto *menu = haiku::menu_bindings.object_from_handle(_id);
+        if (!menu || !menu->bar) return;
+        BWindow *window = menu->bar->Window();
+        if (!window || !window->Lock()) return;
+        if (auto *item = menu->bar->FindItem(static_cast<uint32>(command)))
+            item->SetMarked(get_checked(command));
+        window->Unlock();
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -142,6 +152,7 @@ namespace native
                 if (item.mnemonic_index < item.label.size())
                     native_item->SetTrigger(
                         item.label[item.mnemonic_index]);
+                native_item->SetMarked(item.checked);
                 sub->AddItem(native_item);
                 h->item_ids.insert(item.id);
             }

@@ -19,7 +19,9 @@ these instructions do not provide a separate SDK or an installed CMake package.
 4. Read the chosen lesson's complete program and the exact declarations in
    `include/native/`. Read the
    [consumer build instructions](../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#native-as-a-cmake-dependency)
-   before creating build files. Load internal chapters only for a library task.
+   before creating build files. Use [native-build](../skills/native-build/SKILL.md)
+   for any supported target's SDK, optional-feature checks and distribution
+   payload. Load internal chapters only for a library task.
 5. Check [backend evidence](../manuals/book-of-native/FEATURE-MATRIX.md) and
    [native/custom mappings](../notes/CUSTOM.md) when presentation or target
    coverage matters. Dated test results describe those runs, not automatic

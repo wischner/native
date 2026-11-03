@@ -4,6 +4,10 @@ Native has eleven build selections: eight Linux toolkits plus Windows,
 Haiku, and macOS. Application source remains the same, but each selection has
 its own compiler, link closure, and deployment requirements.
 
+AI-assisted builds use [native-build](../../skills/native-build/SKILL.md) to
+select the SDK, check optional features, and prepare the runtime payload for
+any of these targets.
+
 This chapter distinguishes three different lists:
 
 - **Build dependencies** provide compilers, headers, CMake packages, and
@@ -97,8 +101,10 @@ libraries appear on an end user's machine.
 
 | Target | Application payload | Runtime that must be present |
 | --- | --- | --- |
+| Linux GTK Wayland | Executable and assets | Compatible GTK 4.14/GtkSourceView, GLib/GIO, Pango/Cairo, fonts, themes/icons, image/compiler runtimes and a Wayland session |
+| elementary OS | Executable and assets | GTK Wayland runtime above, Granite 7 and required GSettings schemas, including `org.gnome.desktop.interface` |
 | Linux X11 | Executable and assets | X11, Xaw7, Xt, pixman, Xrandr, PNG/JPEG, and GCC runtime; optional Zenity or KDialog desktop integration |
-| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime, optional SDL2_ttf and Fontconfig |
+| Linux SDL2 | Executable and assets | SDL2, X11, PNG/JPEG, GCC runtime; SDL2_ttf, Fontconfig configuration and installed fonts for scalable stock text |
 | Linux OpenMotif | Executable and assets | Xm, Xt, X11, PNG/JPEG, and GCC runtime |
 | Linux OPEN LOOK | Executable and assets | XView, OLGX, libtirpc, X11/Xrandr, PNG/JPEG, and GCC runtime |
 | Linux Window Maker | Executable and assets | WINGs, WUtil, wraster, Pango/Xft, Fontconfig/Freetype, X11/Xrandr, PNG/JPEG, and GCC runtime |
@@ -232,8 +238,65 @@ explicit font paths are tried and missing stock faces use the bitmap fallback.
 Typical Debian-family packages are libsdl2-dev, optional libsdl2-ttf-dev and
 libfontconfig1-dev, libx11-dev, libpng-dev and libjpeg-dev.
 
+For normal scalable stock text, include both optional font development
+dependencies in the **SDK that configures Native**. A successful build alone
+does not establish that they were enabled. Installing only the `fontconfig`
+command-line tools on the host does not provide the SDK's headers, library,
+or `fontconfig.pc` metadata.
+
 Portable fonts created from a file or memory do not depend on SDL2_ttf; they
 use Native's vendored TrueType rasterizer.
+
+### SDL2 font preflight
+
+Before configuring, check discovery inside the selected SDK (use the same
+image override as the build if one is configured):
+
+```bash
+docker run --rm wischner/gcc-x86_64-linux-sdl:latest \
+  pkg-config --modversion SDL2_ttf fontconfig
+```
+
+Fontconfig discovery requires `pkg-config`. SDL2_ttf can alternatively be
+found through its CMake package. If this probe fails, inspect those discovery
+paths and correct the SDK rather than treating a bitmap build as equivalent.
+In a Debian-family SDK, the relevant development packages are
+`libsdl2-ttf-dev` and `libfontconfig1-dev`, in addition to `pkg-config`.
+After configuring, inspect the SDL2 `font.cpp` entry in the target tree's
+`compile_commands.json` (or its verbose build command). It must contain both
+`HAVE_SDL2_TTF` and `HAVE_FONTCONFIG` for the normal stock-font path. These are
+private definitions set by dependency detection, not user-facing CMake options.
+Correcting a missing dependency requires reconfiguration and rebuilding.
+
+On the destination, provide the linked SDL2_ttf and Fontconfig libraries and
+their dependencies, Fontconfig's configuration, and readable sans/monospace
+font files, such as those supplied by `fonts-dejavu-core` on Debian-family
+systems. Choose a suitable licensed font package for the destination. In that
+runtime environment, use Fontconfig tools when available:
+
+```bash
+fc-match -f '%{file}\n' sans
+fc-match -f '%{file}\n' monospace
+```
+
+Check that the returned files exist and are readable under the packaged
+application's environment. For private runtimes, configure Fontconfig to find
+the bundled configuration and fonts; copying `libfontconfig` alone is
+insufficient. Refresh font caches with the destination's tools when installing
+fonts, rather than shipping caches with paths into the build container.
+
+Finally, run the application and inspect its stock roles, including system,
+control and fixed text. `font_t::stock(role).spec().family` reports
+`Built-in Bitmap` when the SDL2 fallback is selected; `valid()` alone does not
+distinguish that supported fallback from a loaded scalable font. Check actual
+rendering as well: the family field records the requested pattern, not
+necessarily the installed face chosen by Fontconfig. A missing library that
+was linked at build time can prevent startup altogether. Missing font data or
+configuration can instead leave the application using bitmap text.
+
+Keep bitmap-only builds available when deliberately requested. Record that
+choice and its visual limitation in the handoff. Portable file/memory fonts
+use a separate path and do not demonstrate stock-font readiness.
 
 ### Link libraries
 
@@ -246,10 +309,9 @@ The `native` target links:
 - libpng and libjpeg.
 
 The CMake link command also receives the X11 support libraries reported by
-`FindX11`, commonly Xext, SM, and ICE. With the current host Release linker,
-unused support libraries are dropped and the executable records only
-`libSDL2-2.0` and `libX11` directly, plus the common Linux libraries. Inspect
-the packaged artifact because linker `--as-needed` behavior can differ.
+`FindX11`, commonly Xext, SM, and ICE. Linker `--as-needed` behavior can drop
+unused support libraries. Inspect the packaged artifact for the actual
+dependency closure, including SDL2_ttf and Fontconfig when enabled.
 
 ### Distribute
 
@@ -257,7 +319,10 @@ The target system must provide:
 
 - A compatible SDL2 shared library.
 - X11 client libraries used by the clipboard backend.
-- SDL2_ttf and Fontconfig when the configure log says they were linked.
+- SDL2_ttf and Fontconfig when detected at build time, including their
+  transitive runtime dependencies.
+- Fontconfig configuration and usable installed or bundled sans/monospace
+  fonts for scalable stock text; retain licenses for bundled fonts.
 - The common libpng, zlib, libjpeg, and compiler runtime libraries.
 - Optionally `zenity` or `kdialog` for desktop-integrated file dialogs.
 

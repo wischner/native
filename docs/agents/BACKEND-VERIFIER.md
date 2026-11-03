@@ -6,6 +6,11 @@ and the relevant [build/runtime documentation](../manuals/programming-native/12-
 Use the source revision under review. Do not change application behavior unless
 repairs are part of the task.
 
+Use [native-build](../skills/native-build/SKILL.md) to check the selected
+target's SDK and staged runtime dependencies. For SDL2, verify scalable stock
+fonts as well as embedded/file fonts; bitmap fallback can accompany a passing
+build and is acceptable only when deliberately selected.
+
 Choose checks that demonstrate the requested behavior: compile/link with the
 selected SDK, then run representative input, selection, popup, resize, and
 shutdown scenarios. Use the toolkit's documented desktop/session. Remote

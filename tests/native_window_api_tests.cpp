@@ -616,6 +616,41 @@ namespace
                "unmarked menu labels receive a first-character mnemonic");
     }
 
+    // Check state is portable, silent, and visible before notification.
+    void test_menu_checks() {
+        native::app_wnd window("Menu model");
+        window.menu << "View" << (native::menu_items(
+            native::menu_check_item{42, "&Grid\tCtrl+G", true})
+            << native::menu_separator
+            << native::menu_check_item{43, "Rulers", false}
+            << std::make_pair(44, std::string("Refresh")));
+        const auto &item = window.menu.tops()[0].items[0];
+        expect(item.checkable && item.checked && item.label == "Grid" &&
+               item.shortcut == "Ctrl+G", "checkable builder metadata");
+        int commands = 0;
+        bool observed = false;
+        window.on_menu.connect([&](int id) {
+            ++commands;
+            observed = window.menu.get_checked(id);
+            return true;
+        });
+        window.menu.set_checked(42, false).set_checked(42, false);
+        window.menu.set_checked(0, true).set_checked(44, true)
+            .set_checked(999, true);
+        expect(commands == 0 && !window.menu.get_checked(42) &&
+               !window.menu.get_checked(0) && !window.menu.get_checked(44) &&
+               !window.menu.get_checked(999), "silent checked setters");
+        window.on_native_menu(42);
+        expect(commands == 1 && observed && window.menu.get_checked(42),
+               "user activation checks before notification");
+        window.on_native_menu(42);
+        expect(commands == 2 && !observed && !window.menu.get_checked(42),
+               "second activation unchecks exactly once");
+        window.on_native_menu(44);
+        expect(commands == 3 && !window.menu.get_checked(44),
+               "ordinary commands stay momentary");
+    }
+
     // Verify tab ordering, borrowed-page ownership, and event semantics.
     void test_tab_view_model() {
         native::button first("First", 0, 0, 10, 10);
@@ -3064,6 +3099,7 @@ int main() {
     test_close_request();
     test_cursor_property();
     test_menu_label_metadata();
+    test_menu_checks();
     test_tab_view_model();
     test_control_extension_hooks();
     test_parent_lifetime();

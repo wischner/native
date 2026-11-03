@@ -76,7 +76,7 @@ namespace linux::sdl2
                 linux::sdl2::text_width(
                     item.shortcut.empty()
                         ? item.label
-                        : item.label + "    " + item.shortcut) + 24);
+                        : item.label + "    " + item.shortcut) + 40);
         }
         return width;
     }
@@ -190,15 +190,33 @@ namespace linux::sdl2
                 st.selected = (m->hover_item == i);
                 st.hot = (m->hover_item == i);
                 painter->draw_menu_item(
-                    native::rect(
-                        m->popup_x + 1,
-                        row_y,
+                    native::rect(m->popup_x + 1, row_y,
                         static_cast<native::dim>(width - 2),
+                        static_cast<native::dim>(height)), "", st);
+                painter->draw_menu_item(
+                    native::rect(
+                        m->popup_x + 17,
+                        row_y,
+                        static_cast<native::dim>(width - 18),
                         static_cast<native::dim>(height)),
                     item.shortcut.empty()
                         ? item.label
                         : item.label + "    " + item.shortcut,
                     st);
+                if (item.checked) {
+                    const auto colors = painter->native_palette();
+                    const auto ink = g.get_ink();
+                    const auto pen = g.get_pen();
+                    const int x = m->popup_x + 6;
+                    const int y = row_y + height / 2;
+                    g.set_ink(st.hot ? colors.menu_hot_text
+                                    : colors.menu_text).set_pen(2)
+                        .draw_line(native::point(x, y),
+                                   native::point(x + 3, y + 3))
+                        .draw_line(native::point(x + 3, y + 3),
+                                   native::point(x + 9, y - 4));
+                    g.set_ink(ink).set_pen(pen);
+                }
                 row_y += height;
             }
         }
@@ -293,6 +311,16 @@ namespace linux::sdl2
 
 namespace native
 {
+
+    void main_menu::apply_checked(int command) {
+        auto *menu = linux::sdl2::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto &top : menu->tops)
+            for (auto &item : top.items)
+                if (item.id == command && item.checkable)
+                    item.checked = get_checked(command);
+        if (_owner) _owner->invalidate();
+    }
 
     main_menu::~main_menu() {
         detach();

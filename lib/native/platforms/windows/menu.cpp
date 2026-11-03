@@ -22,6 +22,14 @@ namespace
 namespace native
 {
 
+    void main_menu::apply_checked(int command) {
+        auto *menu = windows::menu_bindings.object_from_handle(_id);
+        if (menu && menu->hmenu)
+            CheckMenuItem(menu->hmenu, static_cast<UINT>(command),
+                          MF_BYCOMMAND | (get_checked(command)
+                              ? MF_CHECKED : MF_UNCHECKED));
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -75,7 +83,8 @@ namespace native
                     if (!item.shortcut.empty())
                         display += "\t" + item.shortcut;
                     AppendMenuA(sub,
-                                MF_STRING,
+                                MF_STRING | (item.checked
+                                    ? MF_CHECKED : MF_UNCHECKED),
                                 (UINT_PTR)item.id,
                                 display.c_str());
                     const auto parsed = native::detail::parse_menu_shortcut(

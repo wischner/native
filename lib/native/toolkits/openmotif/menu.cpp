@@ -12,6 +12,7 @@
 #include <Xm/RowColumn.h>
 #include <Xm/CascadeB.h>
 #include <Xm/PushB.h>
+#include <Xm/ToggleB.h>
 #include <Xm/Separator.h>
 
 #include <native.h>
@@ -29,16 +30,30 @@ namespace
 
 namespace
 {
-    void menu_callback(Widget, XtPointer client_data, XtPointer) {
+    void menu_callback(Widget item, XtPointer client_data, XtPointer) {
         auto *d = static_cast<linux::openmotif::motif_menu_callback *>(
             client_data);
-        if (d && d->owner)
+        if (!d || !d->owner) return;
+        if (d->owner->get_input_enabled())
             d->owner->on_native_menu(d->item_id);
+        else if (XmIsToggleButton(item))
+            XmToggleButtonSetState(item,
+                d->owner->menu.get_checked(d->item_id), False);
     }
 } // namespace
 
 namespace native
 {
+
+    void main_menu::apply_checked(int command) {
+        auto *menu = linux::openmotif::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command &&
+                XmIsToggleButton(callback->item))
+                XmToggleButtonSetState(callback->item,
+                    get_checked(command) ? True : False, False);
+    }
 
     main_menu::~main_menu() {
         detach();
@@ -151,16 +166,23 @@ namespace native
                              accelerator_text);
                     ++item_arg_count;
                 }
-                Widget btn = XmCreatePushButton(
-                    pulldown,
-                    const_cast<char *>(item.label.c_str()),
-                    item_args,
-                    item_arg_count);
+                Widget btn = item.checkable
+                    ? XmCreateToggleButton(pulldown,
+                          const_cast<char *>(item.label.c_str()),
+                          item_args, item_arg_count)
+                    : XmCreatePushButton(pulldown,
+                          const_cast<char *>(item.label.c_str()),
+                          item_args, item_arg_count);
+                cbd->item = btn;
+                if (item.checkable)
+                    XmToggleButtonSetState(btn, item.checked, False);
                 XmStringFree(item_label);
                 if (accelerator_text)
                     XmStringFree(accelerator_text);
                 XtAddCallback(
-                    btn, XmNactivateCallback, menu_callback, cbd);
+                    btn, item.checkable ? XmNvalueChangedCallback
+                                        : XmNactivateCallback,
+                    menu_callback, cbd);
                 XtManageChild(btn);
             }
         }

@@ -10,6 +10,7 @@ Application/source path:
 Native checkout and revision:
 User workflow and visible result:
 Target backends and desktops:
+Destination OS version/architecture and package format (when distributing):
 Existing build/deploy command:
 Controls or existing window to extend:
 Data model, persistence, and validation rules:
@@ -34,6 +35,9 @@ Changed application files and documentation:
 Controls/examples reused:
 Ownership and lifetime choices that matter:
 Build commands and results:
+SDK/toolchain, target ABI, and artifact location:
+Packaged files/licenses and declared runtime dependencies:
+Font/dependency checks on the staged runtime:
 Automated interactions actually exercised:
 Visual/manual checks actually performed:
 Skipped checks and remaining limitations:

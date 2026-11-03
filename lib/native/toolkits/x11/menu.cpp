@@ -78,6 +78,16 @@ namespace
 
 namespace native
 {
+    void main_menu::apply_checked(int command) {
+        auto *menu = linux::x11::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command)
+                XtVaSetValues(callback->item, XtNleftBitmap,
+                    get_checked(command) ? menu->check_mark : None,
+                    nullptr);
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -108,8 +118,12 @@ namespace native
                               0,
                               nullptr);
             }
-            if (menu->menu_bar)
+            if (menu->menu_bar) {
+                Display *display = XtDisplay(menu->menu_bar);
                 XtDestroyWidget(menu->menu_bar);
+                if (menu->check_mark != None)
+                    XFreePixmap(display, menu->check_mark);
+            }
             for (auto *callback : menu->callbacks)
                 delete callback;
             delete menu;
@@ -170,6 +184,11 @@ namespace native
         native_menu->menu_bar = menu_bar;
         native_menu->event_widget = main_window;
         native_menu->owner = &owner;
+        static const char check_bits[] = {
+            0x00, 0x40, 0x60, 0x31, 0x1b, 0x0e, 0x04, 0x00};
+        native_menu->check_mark = XCreateBitmapFromData(
+            XtDisplay(main_window),
+            RootWindowOfScreen(XtScreen(main_window)), check_bits, 8, 8);
         XtAddEventHandler(main_window,
                           KeyPressMask,
                           False,
@@ -218,6 +237,12 @@ namespace native
                                             XtNlabel,
                                             display.c_str(),
                                             nullptr);
+                callback->item = entry;
+                if (item.checkable)
+                    XtVaSetValues(entry, XtNleftMargin, 16,
+                        XtNleftBitmap,
+                        item.checked ? native_menu->check_mark : None,
+                        nullptr);
                 XtAddCallback(
                     entry, XtNcallback, menu_activate, callback);
             }

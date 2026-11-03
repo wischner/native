@@ -5,7 +5,15 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-10-23.
+Audit date: 2026-11-03.
+
+Menu check-state review (2026-11-03): all existing kind marks remain.
+Checkable commands retain portable state and update native marks silently.
+GTK/Granite uses boolean GActions, Motif uses native toggle menu items,
+Athena supplies SmeBSB left bitmaps, and XView uses toggle menus for groups
+containing options (ordinary commands remain momentary). Win32, AppKit,
+Haiku and AES use their native checked/marked states. SDL2 and Window Maker
+retain their existing popup renderers and reserve a tick gutter.
 
 GEM follow-up (2026-10-23): SDK file/folder selectors and standard alerts
 are restored as **N** controls. Existing painted controls remain **C** for
@@ -359,7 +367,7 @@ in `toolkits/x11/alert_icons.cpp`, not a dependency on the GEM backend.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Xt top-level/transient shells; portable ownership and modal-result state wrap Xt grabs and window-manager protocols. |
 | `wnd` | **H** | Xaw `Form` child host with library paint/input routing. |
-| `main_menu` | **N/H** | Xaw `MenuButton`, `SimpleMenu`, `SmeBSB`, and `SmeLine`; a composed Xaw menu bar maps mnemonics and shortcuts. |
+| `main_menu` | **N/H** | Xaw `MenuButton`, `SimpleMenu`, `SmeBSB`, and `SmeLine`; a composed Xaw menu bar maps mnemonics and shortcuts; left bitmaps show checked options. |
 | `button` | **N** | Xaw `Command`. |
 | `check` | **N** | Xaw `Toggle`. |
 | `radio` | **N** | Xaw `Toggle` with radio grouping. |
@@ -403,7 +411,7 @@ the event loop releases the complete SDL runtime after final window close.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `SDL_Window`; portable ownership, close-request policy, modality filtering, positioning, first-frame presentation, focus-click-through with one-shot activation-release reconstruction, renderer-before-window teardown, and results. |
 | `wnd` and all child-control hosts | **C** | SDL event routing and renderer-backed library windows; SDL2 supplies no desktop widget set. |
-| `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch. |
+| `main_menu` | **C** | Library-painted menu bar and popup with SDL keyboard/pointer dispatch and a tick gutter. |
 | `button`, `check`, `radio` | **C** | Library-painted controls using SDL's neutral system-gray emulation palette; live and complete theme check/radio drawing share the same stages and geometry. |
 | `list`, `combo_box`, `text_edit` | **C** | Library layout, painting, selection, editing, and conventionally stacked popup behavior; text selection uses the same active/inactive foreground and background palette as collections, and bounds changes reclamp retained text scrolling. Either combo field region opens the popup, its hot row follows pointer motion, it receives hits ahead of covered siblings, and it commits a row on the first press. Combos use a content-colored inset arrow button, and SDL text-input and clipboard services are used. |
 | `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including stable optional accordion frames, framed/strip-only tab pages, frame-aligned tab-strip starts, one-pixel selected-page overlap on every edge, and page routing. |
@@ -444,7 +452,7 @@ destruction, not a timeout that could outlive their parent.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Xt shells with `XmMainWindow`; explicit keyboard focus keeps typing with the clicked editor. Portable ownership/result state wraps Motif modality; drawing-area geometry is not enlarged by theme probe children. |
 | `wnd` | **H** | `XmDrawingArea` child host with library paint/input routing. |
-| `main_menu` | **N** | `XmMenuBar`, `XmPulldownMenu`, `XmCascadeButton`, `XmPushButton`, and `XmSeparator`. |
+| `main_menu` | **N** | `XmMenuBar`, `XmPulldownMenu`, `XmCascadeButton`, `XmPushButton`, checkable `XmToggleButton`, and `XmSeparator`. |
 | `button` | **N** | `XmPushButton`; per-edge masks include its focus margin and optional default-button enclosure so hiding an edge removes the complete native relief. |
 | `check`, `radio` | **N** | `XmToggleButton`; portable code manages radio grouping. |
 | `list` | **N** | `XmList` in `XmScrolledWindow`. |
@@ -486,7 +494,7 @@ retired native list pages hide before their deferred destruction.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | XView `Frame`/subframe and notifier; portable owner-busy and result handling. |
 | `wnd` | **H** | XView panel/canvas host with OLGX-assisted library drawing. |
-| `main_menu` | **N/H** | XView `Menu`/`Menu_item` attached to `PANEL_BUTTON` items in a composed menu panel. |
+| `main_menu` | **N/H** | XView command/toggle `Menu`/`Menu_item` attached to `PANEL_BUTTON` items in a composed menu panel. |
 | `button` | **N** | `PANEL_BUTTON`, retaining native intrinsic height and left-aligned labels while adapting width. |
 | `check` | **N** | `PANEL_CHECK_BOX`. |
 | `radio` | **N** | `PANEL_CHOICE` with explicit per-choice selection and portable sibling exclusion. |
@@ -511,7 +519,7 @@ retired native list pages hide before their deferred destruction.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `WMWindow`/`WMPanel`; portable ownership and input gating supplement WINGs. Owned windows destroy portable children before the recursive WINGs view tree and restore owner focus and repaint after either modal or modeless close. |
 | `wnd` | **H** | WINGs view/frame host with library paint/input routing. |
-| `main_menu` | **H** | WINGs `WMFrame` menu titles and separator plus a library-managed Xlib popup, mnemonics, accelerators, and hover tracking across top-level titles while a menu is open. |
+| `main_menu` | **H** | WINGs `WMFrame` menu titles and separator plus a library-managed Xlib popup, mnemonics, accelerators, checked-option tick gutter, and hover tracking across top-level titles while a menu is open. |
 | `button` | **N** | `WMCommandButton`. |
 | `check` | **N** | `WMSwitchButton`. |
 | `radio` | **N** | `WMRadioButton`. |
@@ -592,7 +600,7 @@ the client inset with a canvas painting to its edges.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | AES `wind_create` windows; library dispatcher supplies ownership/modality and the `1011` frame of modal and titleless modeless hosts. |
 | `wnd` | **C/H** | AES work-area registration with VDI library painting and dispatch. |
-| `main_menu` | **N/H** | The library builds an AES `OBJECT` tree and installs it with `menu_bar`; AES owns normal menu interaction while portable code maps commands and shortcuts. |
+| `main_menu` | **N/H** | The library builds an AES `OBJECT` tree and installs it with `menu_bar`; AES owns normal menu interaction and check marks while portable code maps commands and shortcuts. |
 | `button`, `check`, `radio` | **C** | GEM-themed library painting and AES event handling. |
 | `list`, `combo_box`, `text_edit` | **C** | Library painting, editing, popup/list, scrolling, and selection over AES/VDI. |
 | `accordion`, `tab_view` | **C** | Library-painted headers/tabs, including framed/strip-only pages, and page routing. |
@@ -613,7 +621,7 @@ the client inset with a canvas painting to its edges.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | Win32 top-level `HWND`; modeless HWNDs stack independently without native ownership, while the portable owner graph retains lifetime and modal exclusion. Modal HWNDs retain native ownership. |
 | `wnd` | **H** | Child `HWND` registered by the library for portable paint/input routing. |
-| `main_menu` | **N** | `HMENU`, menu separators, mnemonic labels, and `HACCEL` accelerators. |
+| `main_menu` | **N** | `HMENU` check flags, menu separators, mnemonic labels, and `HACCEL` accelerators. |
 | `button`, `check`, `radio` | **N** | Win32 `BUTTON` with `BS_PUSHBUTTON`, `BS_CHECKBOX`, and `BS_RADIOBUTTON`; native painting, metrics, focus, and input. Derived controls and partial-border buttons retain `BS_OWNERDRAW` for protected drawing stages. |
 | `list` | **N** | Win32 `LISTBOX`. |
 | `combo_box` | **N/H** | Win32 `COMBOBOX`; property-grid value cells use owner-drawn text/paper, retaining the native arrow, popup, keyboard and selection behavior. |
@@ -658,7 +666,7 @@ registration is complete, preventing early custom-draw callbacks.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `BWindow`; portable owner graph and result contract supplement native subset/modal behavior. |
 | `wnd` | **H** | `BView` child host with portable paint/input routing. |
-| `main_menu` | **N** | `BMenuBar`, `BMenu`, `BMenuItem`, and native separators/shortcuts. |
+| `main_menu` | **N** | `BMenuBar`, `BMenu`, marked `BMenuItem`, and native separators/shortcuts. |
 | `button` | **H** | `BButton` subclass with a library theme-drawing override. |
 | `check` | **H** | `BCheckBox` subclass with Haiku-only drawing stages; indicator and label use the same `BControlLook` primitives as custom themed checks. No SDL2/default checkbox painter is linked into Haiku. |
 | `radio` | **H** | `BRadioButton` subclass with a library theme-drawing override. |
@@ -718,7 +726,7 @@ single-open scrollbar ownership, and light/dark grid and stripe contrast.
 | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | `NSWindow`; portable ownership/result state wraps sheets and modal sessions. |
 | `wnd` | **H** | `NSView` child host with portable paint/input routing. |
-| `main_menu` | **N** | `NSMenu`/`NSMenuItem`, separators, mnemonics, and key equivalents. |
+| `main_menu` | **N** | `NSMenu`/`NSMenuItem` check states, separators, mnemonics, and key equivalents. |
 | `button`, `check`, `radio` | **N/H** | Stock `NSButton` painting and interaction; only derived controls route to portable drawing hooks. |
 | `list` | **N/H** | One-column `NSTableView` in `NSScrollView`, adapted to the portable list model. |
 | `combo_box` | **N** | `NSComboBox`. |
@@ -857,7 +865,7 @@ The elementary specialization calls Granite 7's C API from C++.
 | Public control | WAYLAND | ELEMENTARY | Current implementation |
 | --- | --- | --- | --- |
 | `app_wnd`, `modeless_wnd`, `modal_wnd` | **N/H** | **N/H** | GTK application windows and header bars; modeless top levels stack independently, modal windows retain native transience. Portable ownership and close policy remain. |
-| `main_menu` | **N** | **N** | GMenu/GAction and GtkPopoverMenuBar. |
+| `main_menu` | **N** | **N** | GMenu/GAction (boolean state for options) and GtkPopoverMenuBar. |
 | `button`, `check`, `radio` | **N** | **N** | GtkButton and GtkCheckButton; portable radio groups and silent setters. |
 | `list`, `combo_box` | **N/H** | **N/H** | GtkListBox/scroller; GtkDropDown for selection and the native GTK 4.14 GtkComboBoxText for editable fields. |
 | `text_edit` | **N** | **N** | GTK entry/text view; elementary single-line fields use GraniteValidatedEntry. |

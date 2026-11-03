@@ -407,7 +407,7 @@ control index, and build instructions.
 | --- | --- |
 | [01-FIRST-APPLICATION.md](docs/manuals/programming-native/01-FIRST-APPLICATION.md) | The smallest program: `app_wnd` passed to `app::run()`. |
 | [02-PAINTING-AND-INPUT.md](docs/manuals/programming-native/02-PAINTING-AND-INPUT.md) | Deriving a window class, paint events, mouse input. |
-| [03-MENUS-AND-COMMANDS.md](docs/manuals/programming-native/03-MENUS-AND-COMMANDS.md) | The `main_menu` model, construction order, commands. |
+| [03-MENUS-AND-COMMANDS.md](docs/manuals/programming-native/03-MENUS-AND-COMMANDS.md) | The `main_menu` model, construction order, commands and checkable options. |
 | [04-BUTTONS.md](docs/manuals/programming-native/04-BUTTONS.md) | Control objects and the native-resource creation lifecycle. |
 | [05-CONFIGURING-CONTROLS.md](docs/manuals/programming-native/05-CONFIGURING-CONTROLS.md) | Geometry constructors and post-creation changes. |
 | [06-ABSOLUTE-LAYOUT.md](docs/manuals/programming-native/06-ABSOLUTE-LAYOUT.md) | `absolute_layout_manager`. |
@@ -438,6 +438,7 @@ headers rather than duplicating an API reference.
 | --- | --- |
 | [docs/skills/README.md](docs/skills/README.md) | Skill catalog and checkout-relative loading guidance. |
 | [native-app/SKILL.md](docs/skills/native-app/SKILL.md) | Application entry, ownership, creation, public API and SDK build workflow. |
+| [native-build/SKILL.md](docs/skills/native-build/SKILL.md) | All supported target SDKs, build/runtime dependency checks, SDL2 stock fonts and distribution payloads. |
 | [native-controls/SKILL.md](docs/skills/native-controls/SKILL.md) | Control selection, composition, signals and native presentation rules. |
 | [native-verify/SKILL.md](docs/skills/native-verify/SKILL.md) | Scoped compile/runtime/visual acceptance and truthful result reporting. |
 | [docs/agents/README.md](docs/agents/README.md) | Provider-neutral role catalog and invocation boundaries. |

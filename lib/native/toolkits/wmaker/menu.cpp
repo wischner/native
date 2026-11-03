@@ -250,8 +250,17 @@ namespace
                                     font,
                                     items[index].label,
                                     items[index].mnemonic_index,
-                                    10,
+                                    26,
                                     text_y);
+            if (items[index].checked) {
+                const int center = y + row_height / 2;
+                XDrawLine(linux::wmaker::display, menu.popup,
+                          WMColorGC(native_screen->black),
+                          8, center, 11, center + 3);
+                XDrawLine(linux::wmaker::display, menu.popup,
+                          WMColorGC(native_screen->black),
+                          11, center + 3, 17, center - 4);
+            }
             if (!items[index].shortcut.empty()) {
                 WMDrawString(
                     linux::wmaker::screen,
@@ -359,7 +368,7 @@ namespace
         }
         menu.popup_width = std::max(
             180,
-            20 + label_width +
+            36 + label_width +
                 (shortcut_width > 0 ? 30 + shortcut_width : 0));
         menu.popup_height = 4;
         for (const auto &item : menu.tops[top_index].items)
@@ -564,6 +573,16 @@ namespace
 
 namespace native
 {
+    void main_menu::apply_checked(int command) {
+        auto *menu = linux::wmaker::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto &top : menu->tops)
+            for (auto &item : top.items)
+                if (item.id == command && item.checkable)
+                    item.checked = get_checked(command);
+        paint_popup(*menu);
+    }
+
     main_menu::~main_menu() {
         detach();
     }

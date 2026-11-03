@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <cstdint>
 
 #include <native.h>
@@ -30,9 +31,15 @@ namespace
         auto *callback = reinterpret_cast<
             linux::openlook::openlook_menu_callback *>(
                 xv_get(item, MENU_CLIENT_DATA));
+        if (callback && !callback->checkable)
+            xv_set(item, MENU_SELECTED, FALSE, nullptr);
         if (callback &&
             linux::openlook::permit_input(callback->owner)) {
             callback->owner->on_native_menu(callback->item_id);
+        } else if (callback && callback->owner && callback->checkable) {
+            xv_set(item, MENU_SELECTED,
+                callback->owner->menu.get_checked(callback->item_id)
+                    ? TRUE : FALSE, nullptr);
         }
         return item;
     }
@@ -43,6 +50,15 @@ namespace
 
 namespace native
 {
+    void main_menu::apply_checked(int command) {
+        auto *menu = linux::openlook::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command && callback->checkable)
+                xv_set(callback->item, MENU_SELECTED,
+                       get_checked(command) ? TRUE : FALSE, nullptr);
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -101,8 +117,12 @@ namespace native
         state->owner = &owner;
 
         for (const auto &top : _tops) {
+            const bool toggles = std::any_of(
+                top.items.begin(), top.items.end(),
+                [](const auto &item) { return item.checkable; });
             Menu menu = static_cast<Menu>(xv_create(
-                XV_NULL, MENU_COMMAND_MENU, nullptr));
+                XV_NULL, toggles ? MENU_TOGGLE_MENU : MENU_COMMAND_MENU,
+                nullptr));
             state->menus.push_back(menu);
             Menu_item previous = static_cast<Menu_item>(XV_NULL);
             for (const auto &entry : top.items) {
@@ -123,10 +143,15 @@ namespace native
                     MENU_STRING,
                     entry.label.c_str(),
                     MENU_NOTIFY_PROC,
-                    activate,
+                    ::activate,
                     MENU_CLIENT_DATA,
                     callback,
                     nullptr));
+                callback->item = item;
+                callback->checkable = entry.checkable;
+                if (entry.checkable)
+                    xv_set(item, MENU_SELECTED,
+                           entry.checked ? TRUE : FALSE, nullptr);
                 if (!entry.shortcut.empty())
                     xv_set(item,
                            MENU_ACCELERATOR,

@@ -14,7 +14,7 @@ construction sequence. For implementing the library, use the
 | [Feature matrix](manuals/book-of-native/FEATURE-MATRIX.md) | Recorded build/runtime evidence and limitations |
 | [Native/custom audit](notes/CUSTOM.md) | Which controls use native widgets, composition, painting, or helpers |
 | [AI generation entry point](ai/README.md) | Context loading, generation workflow, request and handoff template |
-| [Reusable skills](skills/README.md) | Application construction, control composition, verification |
+| [Reusable skills](skills/README.md) | Application construction, target builds and packaging, control composition, verification |
 | [Agent roles](agents/README.md) | Provider-neutral builder, reviewer, and verifier instructions |
 | [Exceptional notes](notes/README.md) | Remote hosts, unusual dependencies, open issues and dated reviews |
 

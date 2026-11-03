@@ -77,9 +77,22 @@ namespace native
         return *this;
     }
 
+    menu_items_proxy &menu_items_proxy::operator<<(menu_check_item item) {
+        const parsed_menu_text parsed = parse_menu_text(item.label);
+        entries.push_back({item.id, parsed.text, parsed.mnemonic_index,
+                           parsed.shortcut, false, true, item.checked});
+        return *this;
+    }
+
     menu_items_proxy menu_items(const std::string &first) {
         menu_items_proxy proxy;
         proxy << first;
+        return proxy;
+    }
+
+    menu_items_proxy menu_items(menu_check_item first) {
+        menu_items_proxy proxy;
+        proxy << std::move(first);
         return proxy;
     }
 
@@ -101,7 +114,9 @@ namespace native
                 _menu.add_item(entry.id,
                                entry.label,
                                entry.mnemonic_index,
-                               entry.shortcut);
+                               entry.shortcut,
+                               entry.checkable,
+                               entry.checked);
         }
         return *this;
     }
@@ -118,6 +133,34 @@ namespace native
 
     const std::vector<main_menu::top_entry> &main_menu::tops() const {
         return _tops;
+    }
+
+    main_menu &main_menu::set_checked(int command, bool checked) {
+        for (auto &top : _tops) {
+            for (auto &item : top.items) {
+                if (item.id != command || !item.checkable ||
+                    item.separator)
+                    continue;
+                item.checked = checked;
+                if (_id)
+                    apply_checked(command);
+                return *this;
+            }
+        }
+        return *this;
+    }
+
+    bool main_menu::get_checked(int command) const {
+        for (const auto &top : _tops)
+            for (const auto &item : top.items)
+                if (item.id == command && item.checkable &&
+                    !item.separator)
+                    return item.checked;
+        return false;
+    }
+
+    void main_menu::activate(int command) {
+        set_checked(command, !get_checked(command));
     }
 
     void main_menu::add_top(const std::string &title) {
@@ -149,12 +192,15 @@ namespace native
     void main_menu::add_item(int id,
                              const std::string &label,
                              std::size_t mnemonic_index,
-                             const std::string &shortcut) {
+                             const std::string &shortcut,
+                             bool checkable,
+                             bool checked) {
         if (id == 0)
             id = next_auto_item_id();
         if (!_tops.empty())
             _tops.back().items.push_back(
-                {id, label, mnemonic_index, shortcut, false});
+                {id, label, mnemonic_index, shortcut, false,
+                 checkable, checkable && checked});
     }
 
     void main_menu::add_separator() {

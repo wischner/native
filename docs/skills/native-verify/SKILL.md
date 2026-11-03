@@ -13,7 +13,9 @@ counts. Relative links here resolve in the Native checkout.
 1. Identify which controls and behaviors changed. Inspect lifetime order,
    parent/create/show sequencing, borrowed models/pages, and signal argument
    types against current public headers and the corresponding book example.
-2. Build with the existing Docker-backed backend target or the consumer's
+2. Use [native-build](../native-build/SKILL.md) for target dependencies and
+   packaging, including SDL2 scalable stock-font checks in the SDK and staged
+   runtime. Build with the existing Docker-backed backend target or the consumer's
    build inside the same SDK. Keep build artifacts in the root `build/`
    tree and backend trees separate. Check shared C++ with GCC/Docker first;
    macOS compilation uses the remote Apple SDK. Do not silently substitute a

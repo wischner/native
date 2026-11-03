@@ -513,6 +513,19 @@ alternate row, `#555555` selection, and `#808080` header roles. Table,
 accordion, collection, and table headers share the same compact edge recipe:
 white on the left only, black on top, and dark on the right and bottom.
 
+Application menus retain check state in the portable `main_menu` model.
+`menu_check_item{id, label, checked}` declares a toggling command; ordinary
+items remain momentary. `set_checked(id, value)` is silent before and after
+attachment, and `get_checked(id)` reads the cached state. Setters ignore
+unknown IDs, separators and ordinary commands; their getter result is false.
+User selection, mnemonics and accelerators toggle a checkable command exactly
+once before `app_wnd::on_menu` emits its ID. Modal-blocked input must neither
+toggle nor emit; native widgets that already toggled must restore the model.
+Backend marks are synchronized before application notification, without
+rebuilding the menu. Destruction/recreation preserves the model. Native
+menu state/indicator APIs provide the mark where available; painted menus
+reserve a gutter so marks do not overlap labels or shortcuts.
+
 Window Maker application menus are click-persistent context-style popups, not
 press-drag WINGs selector buttons. Portable menu text supplies a mnemonic with
 `&`, a literal ampersand with `&&`, and an accelerator label after a tab. The

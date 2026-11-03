@@ -82,6 +82,24 @@ endif()
 add_test(NAME native_window_api_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
 
+add_executable(native_menu_runtime_tests native_menu_runtime_tests.cpp)
+target_include_directories(native_menu_runtime_tests PRIVATE
+    $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
+target_link_libraries(native_menu_runtime_tests PRIVATE native native_developer_options)
+if(APPLE)
+    set_source_files_properties(native_menu_runtime_tests.cpp PROPERTIES LANGUAGE OBJCXX)
+    target_link_libraries(native_menu_runtime_tests PRIVATE "-framework AppKit")
+elseif(NOT WIN32 AND NOT HAIKU)
+    target_compile_definitions(native_menu_runtime_tests PRIVATE MENU_TEST_${TOOLKIT})
+    if(TOOLKIT STREQUAL "WAYLAND" OR TOOLKIT STREQUAL "ELEMENTARY")
+        target_link_libraries(native_menu_runtime_tests PRIVATE PkgConfig::GTK4)
+    endif()
+endif()
+add_test(NAME native_menu_runtime_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_menu_runtime_tests>)
+set_tests_properties(native_menu_runtime_tests PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-menu.fb;GEM_RASTA_PORT=5024")
+
 add_executable(native_inspector_tests native_inspector_tests.cpp)
 target_link_libraries(native_inspector_tests PRIVATE native native_developer_options)
 add_test(NAME native_inspector_tests

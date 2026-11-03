@@ -12,6 +12,7 @@ writing code. Read only the chapters needed for the requested interface.
 
 | Interface task | Read |
 | --- | --- |
+| Menus, commands, checked options | [3](../../manuals/programming-native/03-MENUS-AND-COMMANDS.md) |
 | Inputs, selection, read-only help | Chapters [8](../../manuals/programming-native/08-SELECTION-CONTROLS.md), [11](../../manuals/programming-native/11-CLIPBOARD-AND-TEXT-EDITING.md), [17](../../manuals/programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md) |
 | Trees, images, collapsible sections | [13](../../manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md) |
 | Multiple columns, multiselection, virtual rows | [14](../../manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) |
@@ -39,6 +40,9 @@ Keep these composition rules visible in generated code:
 - Setters are normally silent. Connect the declared user-action signal;
   don't invoke `on_native_*` to simulate a normal property assignment.
   Source-edit commands have their documented edit/undo notifications.
+- Declare on/off menu options with `menu_check_item`. Read `get_checked(id)`
+  in `on_menu`: user activation has already toggled it. Restore state with
+  silent `set_checked(id, value)` instead of toggling again in the handler.
 - Configure availability on `date_picker` and `time_picker`, including both
   typing and popup input. Rule changes preserve the current value; check
   `get_valid()`. Holidays are supplied by the application, not inferred from

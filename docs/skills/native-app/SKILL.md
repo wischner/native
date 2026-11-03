@@ -36,8 +36,11 @@ same `docs/` paths against that checkout.
 6. Link the CMake target `native`; include `<native.h>` and standard C++
    headers, with no toolkit types or private `lib/native` headers. Follow
    [consumer integration](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#native-as-a-cmake-dependency)
-   and build in the chosen Docker SDK. macOS uses the documented remote
-   AppleClang/Apple SDK workflow. Do not assume an installed CMake package.
+   and use [native-build](../native-build/SKILL.md) for the selected target's
+   SDK, dependency checks and distribution payload. SDL2 stock fonts need
+   SDL2_ttf and Fontconfig detected at build time plus runtime font data.
+   macOS uses the documented remote AppleClang/Apple SDK workflow.
+   Do not assume an installed CMake package.
 7. Exercise the requested interactions and resizing/close lifecycle. Report
    build, runtime, and visual evidence separately. Refresh affected project
    docs and use the [handoff template](../../ai/REQUEST-TEMPLATE.md).

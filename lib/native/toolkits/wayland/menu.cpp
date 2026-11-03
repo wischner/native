@@ -24,6 +24,19 @@ namespace
 #include <cctype>
 namespace native
 {
+    void main_menu::apply_checked(int command) {
+        if (!_owner) return;
+        auto *peer = detail::peer_state<linux::wayland::widget_state>(
+            *_owner);
+        if (!peer || !peer->menu_actions) return;
+        const auto name = "command" + std::to_string(command);
+        auto *action = g_action_map_lookup_action(
+            G_ACTION_MAP(peer->menu_actions), name.c_str());
+        if (action)
+            g_simple_action_set_state(G_SIMPLE_ACTION(action),
+                g_variant_new_boolean(get_checked(command)));
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -35,6 +48,9 @@ namespace native
             if (peer && peer->widget && peer->menu) {
                 gtk_box_remove(GTK_BOX(peer->box), peer->menu);
                 peer->menu = nullptr;
+                gtk_widget_insert_action_group(peer->widget, "native",
+                                               nullptr);
+                peer->menu_actions = nullptr;
                 if (peer->shortcuts && peer->widget) {
                     gtk_widget_remove_controller(peer->widget,
                                                  peer->shortcuts);
@@ -104,8 +120,10 @@ namespace native
                                     ("native." + name).c_str())));
                 }
 
-                auto *action =
-                    g_simple_action_new(name.c_str(), nullptr);
+                auto *action = entry.checkable
+                    ? g_simple_action_new_stateful(name.c_str(), nullptr,
+                          g_variant_new_boolean(entry.checked))
+                    : g_simple_action_new(name.c_str(), nullptr);
                 g_object_set_data(G_OBJECT(action),
                                   "native-id",
                                   GINT_TO_POINTER(entry.id));
@@ -141,6 +159,7 @@ namespace native
         }
         gtk_widget_insert_action_group(
             peer.widget, "native", G_ACTION_GROUP(actions));
+        peer.menu_actions = actions;
         g_object_unref(actions);
         peer.menu =
             gtk_popover_menu_bar_new_from_model(G_MENU_MODEL(model));

@@ -21,6 +21,15 @@ namespace native
     struct menu_separator_t {};
     inline constexpr menu_separator_t menu_separator{};
 
+    // Declares a command that toggles before on_menu is emitted.
+    // Zero selects an automatic ID; checked is the initial state.
+    struct menu_check_item
+    {
+        int id = 0;
+        std::string label;
+        bool checked = false;
+    };
+
     // Stores one parsed command or structural separator.
     struct menu_entry
     {
@@ -29,6 +38,8 @@ namespace native
         std::size_t mnemonic_index = std::string::npos;
         std::string shortcut;
         bool separator = false;
+        bool checkable = false;
+        bool checked = false;
     };
 
     // Collects menu items for one top-level menu in the builder API.
@@ -47,6 +58,9 @@ namespace native
         // Append a caller-supplied command ID and label.
         menu_items_proxy &operator<<(std::pair<int, std::string> item);
 
+        // Append a checkable command with its initial state.
+        menu_items_proxy &operator<<(menu_check_item item);
+
         // Append a native menu separator.
         menu_items_proxy &operator<<(menu_separator_t);
     };
@@ -58,6 +72,9 @@ namespace native
     //      A proxy that accepts more items through operator<<().
     //
     menu_items_proxy menu_items(const std::string &first);
+
+    // Begin an item list with a checkable command.
+    menu_items_proxy menu_items(menu_check_item first);
 
     // Owns the backend-neutral description of an application menu bar.
     class main_menu
@@ -77,6 +94,13 @@ namespace native
 
         // Attach this model after its owner window has been created.
         void attach(app_wnd &owner);
+
+        // Silently update a checkable command before or after attachment.
+        // Unknown IDs, separators and ordinary commands are unchanged.
+        main_menu &set_checked(int command, bool checked);
+
+        // Return a checkable command's state; otherwise return false.
+        bool get_checked(int command) const;
 
         // Completes alternating title and item-list insertion.
         class builder
@@ -119,6 +143,12 @@ namespace native
         // Release the backend resource but preserve the portable model.
         void detach();
 
+        // Apply one cached check state to an attached backend resource.
+        void apply_checked(int command);
+
+        // Toggle a checkable command before application notification.
+        void activate(int command);
+
         // Add a new top-level menu to the model.
         void add_top(const std::string &title);
 
@@ -129,7 +159,9 @@ namespace native
         void add_item(int id,
                       const std::string &label,
                       std::size_t mnemonic_index,
-                      const std::string &shortcut);
+                      const std::string &shortcut,
+                      bool checkable,
+                      bool checked);
 
         // Add a non-command separator to the most recent top-level menu.
         void add_separator();

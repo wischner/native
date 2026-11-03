@@ -19,6 +19,39 @@ Legend:
 - `WIP` = still under development
 
 
+## Checkable menu options (2026-11-03)
+
+Every supported selection implements `menu_check_item`, silent
+`main_menu::set_checked`/`get_checked`, automatic toggling before `on_menu`,
+blocked-input restoration and persistent state across window recreation.
+Ordinary commands remain momentary. Native marks are updated without
+rebuilding the menu; SDL2 and Window Maker reserve a painted tick gutter.
+
+The focused `native_window_api_tests` and `native_menu_runtime_tests` results
+are:
+
+| Target | Build and runtime evidence |
+| --- | --- |
+| SDL2 | Docker SDK build; both tests pass with dummy/software video, including shortcut/pointer activation and changed tick pixels |
+| X11/Athena | Docker SDK build; both tests pass under Xvfb, including native SmeBSB bitmap marks and callbacks |
+| OpenMotif | Docker SDK build; both tests pass under Xvfb, including XmToggleButton state and non-notifying restoration |
+| OPEN LOOK | Docker SDK build; both tests pass under Xvfb, including native toggle-menu selection and callbacks |
+| Window Maker | Docker SDK build; model test and menu functional assertions pass under Xvfb; menu process fails LeakSanitizer at exit with 28,082 bytes in Fontconfig allocations, retaining the existing external-runtime limitation |
+| GTK Wayland / elementary | Both Docker SDK builds and both tests per selection pass under headless Weston; boolean GAction state and activation checked |
+| GEMix direct / gemd | Both Docker SDK builds and both tests per transport pass; AES check-state updates checked, with the proxy test using its private gemd session |
+| Windows | Docker MinGW/WinUI build; both executables return zero in a temporary interactive-desktop task on `whiskey` |
+| Haiku | Docker cross-build; both executables return zero on `hotel`, including BMenuItem marks and window recreation |
+| macOS | Remote AppleClang Debug build; both CTests pass on `mike` in the isolated `native-menu-checks-20261103` checkout |
+
+The fixture checks initial states, live silent setters, state before command
+notification, two successive activations, blocked input, recreation, and a
+handler destroying its own window/menu. It invokes native callbacks on
+Windows, macOS, Athena, Motif, XView and GTK; SDL additionally exercises its
+keyboard/pointer adapters and renderer. Haiku, GEM and Window Maker exercise
+the shared command bridge and inspect the resulting backend state. These
+runs do not claim a manual desktop menu-navigation pass on every platform.
+No new sanitizer suppression was added for Window Maker.
+
 ## Input height and footer ordering (2026-10-22)
 
 All maintained backends compile the shared geometry and footer changes.

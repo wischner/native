@@ -40,6 +40,12 @@ const std::string &app_wnd::get_title() const {
 This gives getters the same cost and semantics on every backend. It also makes
 properties available before native resources exist.
 
+Menu options follow the same rule: `main_menu::get_checked(id)` reads the
+portable checkable entry, and `set_checked(id, value)` silently synchronizes
+its attached backend mark. The model survives menu detachment and window
+recreation. Ordinary commands, separators and unknown IDs read as false and
+are ignored by the setter.
+
 ## Setter sequence
 
 A setter follows the same sequence everywhere:

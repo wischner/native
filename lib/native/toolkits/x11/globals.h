@@ -74,12 +74,14 @@ namespace linux::x11
     {
         native::app_wnd *owner = nullptr;
         int item_id = 0;
+        Widget item = nullptr;
     };
 
     struct xaw_menu
     {
         Widget menu_bar = nullptr;
         Widget event_widget = nullptr;
+        Pixmap check_mark = None;
         native::app_wnd *owner = nullptr;
         std::vector<xaw_menu_callback *> callbacks;
     };

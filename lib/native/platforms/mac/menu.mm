@@ -40,6 +40,17 @@ namespace
 namespace native
 {
 
+    void main_menu::apply_checked(int command) {
+        auto *menu = mac::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (NSMenuItem *top in [menu->ns_menu itemArray]) {
+            NSMenuItem *item = [[top submenu] itemWithTag:command];
+            if (item)
+                [item setState:get_checked(command)
+                    ? NSControlStateValueOn : NSControlStateValueOff];
+        }
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -106,6 +117,9 @@ namespace native
                 if (parsed.shift) modifiers |= NSEventModifierFlagShift;
                 if (parsed.command) modifiers |= NSEventModifierFlagCommand;
                 [mi setKeyEquivalentModifierMask:modifiers];
+                [mi setTag:item.id];
+                [mi setState:item.checked
+                    ? NSControlStateValueOn : NSControlStateValueOff];
                 [mi setTarget:target];
                 [mi setRepresentedObject:target]; // keep alive
                 [target release];

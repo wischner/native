@@ -7,6 +7,7 @@ They describe tasks, not backend implementations. Start from the
 | Skill | Activate for |
 | --- | --- |
 | [native-app](native-app/SKILL.md) | Creating or extending a C++ Native application, lifecycle and build integration |
+| [native-build](native-build/SKILL.md) | Building and packaging for every supported platform/toolkit, SDK and runtime dependencies, SDL2 font readiness |
 | [native-controls](native-controls/SKILL.md) | Choosing and composing controls, settings, pickers, commands, tables, and editors |
 | [native-verify](native-verify/SKILL.md) | Building, reviewing, and checking a generated application's observable behavior |
 
@@ -19,5 +20,8 @@ context and resolve `docs/` and `include/` there. Keep that checkout/version
 consistent with the library being compiled. A copied skill is not a substitute
 for the referenced headers and examples.
 
-All three skills use the same [control index](../manuals/PROGRAMMING-NATIVE.md#find-every-control).
-They deliberately avoid copied method catalogs that would drift from the API.
+Application and verification skills use the same
+[control index](../manuals/PROGRAMMING-NATIVE.md#find-every-control).
+The build skill routes every target to the maintained
+[build and distribution chapter](../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md).
+They avoid copied API and dependency catalogs that would drift from the code.

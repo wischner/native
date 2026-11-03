@@ -92,7 +92,7 @@ that are not separate controls.
 | Need | Public control or object | Step-by-step lesson |
 | --- | --- | --- |
 | Main window | `app_wnd` | [First application](programming-native/01-FIRST-APPLICATION.md) |
-| Menu bar and commands | `main_menu`, `menu_entry` | [Menus](programming-native/03-MENUS-AND-COMMANDS.md) |
+| Menu bar, commands and checked options | `main_menu`, `menu_entry`, `menu_check_item` | [Menus](programming-native/03-MENUS-AND-COMMANDS.md) |
 | Push button | `button` | [Buttons](programming-native/04-BUTTONS.md) |
 | Boolean and exclusive choices | `check`, `radio` | [Selection](programming-native/08-SELECTION-CONTROLS.md#a-complete-selection-example) |
 | Text list | `list`, alias `list_box` | [Selection](programming-native/08-SELECTION-CONTROLS.md#a-complete-selection-example), [choices](programming-native/17-INPUT-DIALOGS-AND-WINDOW-CHROME.md#build-choices-and-standard-dialogs-step-by-step) |

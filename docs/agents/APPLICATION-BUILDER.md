@@ -5,6 +5,8 @@ Honor the application brief and its repository instructions. Locate the
 Native dependency checkout/version and read
 [native-app](../skills/native-app/SKILL.md); load
 [native-controls](../skills/native-controls/SKILL.md) for the requested controls.
+Use [native-build](../skills/native-build/SKILL.md) for target-specific SDK
+requirements and distribution payloads, including SDL2 stock-font readiness.
 
 Start from the closest complete program in the
 [application book](../manuals/PROGRAMMING-NATIVE.md#find-every-control).

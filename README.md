@@ -29,6 +29,9 @@ If you are looking for a straightforward, understandable UI library, or if you w
   OPEN LOOK/XView, Window Maker/WINGs, GEMix, GTK Wayland, and elementary OS), Windows (Win32/WinUI),
   Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
+- **Checkable menus**: Portable on/off commands on every backend, with silent
+  state setters and automatic toggling before command notification; see
+  [Menus and commands](docs/manuals/programming-native/03-MENUS-AND-COMMANDS.md)
 - **Settings and civil pickers**: Menu-style `settings_sidebar` page builders
   with optional images and search, plus native date/time pickers with date ranges,
   holiday/weekday exclusions, availability predicates and minute steps
@@ -82,6 +85,10 @@ remote Apple SDK workflow. The SDK dependency overview is:
   [Athena Widgets (Xaw)](https://xorg.freedesktop.org/releases/X11R7.7/doc/libXaw/libXaw.html).
 - SDL2 uses SDL2 and Xlib on Linux. Optional SDL2_ttf loads stock fonts;
   optional Fontconfig resolves stock families directly without a shell.
+  Include both in normal builds, with Fontconfig configuration and usable
+  fonts on the destination, to avoid bitmap stock-text fallback. See the
+  [font preflight](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#sdl2-font-preflight)
+  and [target build/packaging skill](docs/skills/native-build/SKILL.md).
   Missing either dependency falls back to bitmap stock text. Xlib supplies
   image clipboard formats missing from SDL2.
 - Haiku date/time editors use the SDK's private shared-kit headers and

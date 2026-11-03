@@ -69,6 +69,8 @@ namespace linux::openlook
     {
         native::app_wnd *owner = nullptr;
         int item_id = 0;
+        Menu_item item = XV_NULL;
+        bool checkable = false;
     };
 
     // Owns the native panel menu bar and command menus.
