@@ -1,5 +1,16 @@
 # Backend Open Issues
 
+## CPC integration review (2026-11-04)
+
+The [CPC acceptance record](CPC-UAT.md) supersedes earlier input/menu findings
+for the interactions it explicitly verifies. It records physical canvas-key,
+modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
+accelerator delivery, tested software OpenGL deployment, and exact suite scope.
+GEM physical key releases and WINGs external shutdown allocations remain
+unresolved; GTK splitter timing and one intermittent elementary paused frame
+remain observations requiring follow-up.
+
+
 The 2026-10-21 GEMix correction matches portable drawing to the pinned
 hosted SDK's physical palette and disables inversion across the 32-bit Rasta
 desktop. Full viewer screenshots verify AES menus/chrome and Native content

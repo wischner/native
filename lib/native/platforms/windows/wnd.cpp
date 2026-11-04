@@ -663,8 +663,8 @@ namespace windows
                         return 0;
                     }
                 }
-            } else if (HIWORD(wparam) == 0) {
-                // Menu item click (lparam == 0).
+            } else if (HIWORD(wparam) <= 1) {
+                // Menu clicks use zero; TranslateAccelerator uses one.
                 if (auto *aw = dynamic_cast<native::app_wnd *>(wnd)) {
                     aw->on_native_menu(
                         static_cast<int>(LOWORD(wparam)));

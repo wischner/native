@@ -69,7 +69,10 @@
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
     [[[notification object] contentView] setNeedsDisplay:YES];
-    if ([self ownerAlive]) _owner->on_native_focus(true);
+    if ([self ownerAlive]) {
+        mac::activate_menu(_owner);
+        _owner->on_native_focus(true);
+    }
 }
 - (void)windowDidResignKey:(NSNotification *)notification {
     [[[notification object] contentView] setNeedsDisplay:YES];

@@ -303,3 +303,7 @@ combo and selection-only combo with exactly two clicks on each arrow.
 Captures show pressed feedback while held/open and cleared feedback after
 the second click. The tested Vision is deployed to the regular run location
 with matching local and remote SHA-256 hashes.
+
+## CPC integration acceptance (2026-11-04)
+
+CPC acceptance on `hotel` verifies F10 from its canvas and visible CRT output with `GALLIUM_DRIVER=softpipe`. Collection views share physical key translation and modifier delivery follows the focused child. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.

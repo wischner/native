@@ -42,3 +42,26 @@ counts. Relative links here resolve in the Native checkout.
 Do not broaden a small application edit into a backend rewrite or repeat all
 backend suites once relevant checks pass. Missing target access limits the
 verification claim; it is not evidence that the UI works there.
+
+## Held-key and shader acceptance
+
+On each relevant backend, click the actual drawing surface before typing.
+Exercise letters, modifiers, function-menu shortcuts, held-key repeats,
+releases and focus loss. Open a modeless debugger, use its menu, then click
+the main window and verify its menu and shortcuts again. Test Unicode titles
+under the destination window manager. Xt tests need a real window manager
+for desktop focus/close acceptance; a bare Xvfb server is insufficient.
+
+Confirm shaders are `active` after rendering and inspect the resulting image;
+a checked menu or accepted package is insufficient. Test failure fallback and
+its checkmark, pause/resume, unchanged geometry, resize and shutdown. Measure
+Release builds separately from sanitizer builds. Do not infer audio acceptance
+from muted tests or input acceptance from programmatically emitted signals.
+Keep capability gaps (such as GEM physical keys), dependency/driver failures,
+and untested behavior explicit in the result.
+
+A guest frame counter or queued redraw does not establish that a shader has
+painted. Capture/exit automation must wait for render status to leave `pending`.
+XTest focus automation must wait for a viewable window; SDL may publish an
+intermediate or unmapped window title during initialization. Run test helpers
+with the SDK’s libraries rather than injecting a host bootstrap directory.

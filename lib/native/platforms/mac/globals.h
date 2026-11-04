@@ -63,6 +63,9 @@ namespace mac
         bool suppress = false;
     };
 
+    // Select the activated window menu, falling back through its owners.
+    void activate_menu(native::app_wnd *owner);
+
     extern NSApplication *global_app;
     extern native::bindings<NSWindow *, native::wnd *> wnd_bindings;
     struct mac_window_state

@@ -195,6 +195,11 @@ the cached value without exposing or querying native types. Use a separate
 backend notification to update cached state after native-originated changes and
 avoid sending the change back to the backend.
 
+`wnd::set_bounds()` with unchanged constrained geometry and
+`app_wnd::set_title()` with unchanged text are no-ops.
+`main_menu::set_checked()` also skips an unchanged check. Repeated layout updates
+must not discard shader history merely because the same bounds were assigned.
+
 ## 5. Windows
 
 `wnd` is the portable base class for top-level windows and controls. It contains

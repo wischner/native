@@ -18,6 +18,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "keyboard.h"
 #include "../../mouse_state.h"
 #include "table_scrollbars.h"
 
@@ -134,7 +135,15 @@ namespace
             _owner.on_native_focus(focused);
         }
 
+        void KeyUp(const char *bytes, int32 count) override {
+            if (!haiku::dispatch_key(_owner, Window()->CurrentMessage(),
+                                     native::key_action::release))
+                BView::KeyUp(bytes, count);
+        }
+
         void KeyDown(const char *bytes, int32 count) override {
+            if (haiku::dispatch_key(_owner, Window()->CurrentMessage(),
+                                    native::key_action::press)) return;
             if (!bytes || count <= 0)
                 return;
             const char key = bytes[0];

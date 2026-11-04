@@ -8,6 +8,7 @@
 #include "globals.h"
 
 #include <algorithm>
+#include <clocale>
 #include <functional>
 #include <stdexcept>
 
@@ -47,6 +48,7 @@ namespace linux::wmaker
         if (initialized)
             return;
 
+        std::setlocale(LC_CTYPE, "");
         int argc = native::app::argc;
         char **argv = native::app::argv;
         WMInitializeApplication("Native", &argc, argv);

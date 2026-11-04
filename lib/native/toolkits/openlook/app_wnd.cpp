@@ -27,6 +27,7 @@
 #include "panel_painting.h"
 #include "../../mouse_state.h"
 #include "../x_keyboard.h"
+#include "../x_window_title.h"
 #include "window_position.h"
 #include "xview_init.h"
 
@@ -406,6 +407,8 @@ namespace native
                FRAME_LABEL,
                _title.c_str(),
                nullptr);
+        detail::set_x_window_title(linux::openlook::cached_display,
+            static_cast<Window>(xv_get(state->frame, XV_XID)), _title);
     }
 
     void app_wnd::create_native() {
@@ -583,6 +586,7 @@ namespace native
                TRUE,
                WIN_FRONT,
                nullptr);
+        apply_title();
         self->on_native_move(position);
         linux::openlook::request_frame_extents(state->frame);
 

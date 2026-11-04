@@ -20,6 +20,7 @@
 
 #include "globals.h"
 #include "../x_keyboard.h"
+#include "../x_window_title.h"
 
 namespace
 {
@@ -231,6 +232,8 @@ namespace native
                 "Motif: Missing shell binding for app_wnd.");
 
         XtVaSetValues(shell, XtNtitle, _title.c_str(), nullptr);
+        if (XtIsRealized(shell))
+            detail::set_x_window_title(XtDisplay(shell), XtWindow(shell), _title);
     }
 
     void app_wnd::create_native() {
@@ -239,6 +242,7 @@ namespace native
         Display *probe_display = linux::openmotif::cached_display;
 
         if (!linux::openmotif::app_instance) {
+            XtSetLanguageProc(nullptr, nullptr, nullptr);
             int argc = app::argc;
             char **argv = app::argv;
 
@@ -379,6 +383,7 @@ namespace native
 
         const size requested = _bounds.d;
         XtRealizeWidget(shell);
+        apply_title();
         linux::openmotif::set_work_dimensions(this, requested);
         linux::openmotif::cached_display = XtDisplay(shell);
         // The public bounds already specify a position. CDE otherwise
@@ -425,6 +430,7 @@ namespace native
         if (!_created)
             return;
 
+        menu.detach();
         // Xt recursively destroys its widget tree. Portable peers must
         // release their child gadgets/pixmaps while those widgets are live.
         destroy_owned_windows();

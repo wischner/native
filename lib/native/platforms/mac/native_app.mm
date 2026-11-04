@@ -25,6 +25,8 @@ __attribute__((constructor)) static void init_mac_app() {
                    : nullptr;
         if (target && ([event type] == NSEventTypeKeyDown ||
                        [event type] == NSEventTypeKeyUp)) {
+            if (auto *focused = native::detail::input_target(*target))
+                target = focused;
             auto physical = mac::physical_key(event, [event type] == NSEventTypeKeyDown
                 ? native::key_action::press : native::key_action::release);
             if (native::detail::key_held(*target, physical.key)) {

@@ -26,9 +26,14 @@ namespace
     int _item_id;
 }
 - (void)menu_action:(id)sender;
+- (void)quit_action:(id)sender;
 @end
 
 @implementation native_menu_target
+- (void)quit_action:(id)sender {
+    (void)sender;
+    if (auto *owner = native::app::main_wnd()) owner->request_close();
+}
 - (void)menu_action:(id)sender {
     (void)sender;
     auto *owner = static_cast<native::app_wnd *>(_owner);
@@ -36,6 +41,20 @@ namespace
         owner->on_native_menu(_item_id);
 }
 @end
+
+namespace mac
+{
+    void activate_menu(native::app_wnd *owner) {
+        for (auto *window = owner; window; window = window->get_owner()) {
+            auto *menu = menu_bindings.object_from_handle(window->menu.id());
+            if (menu) {
+                [NSApp setMainMenu:menu->ns_menu];
+                return;
+            }
+        }
+        [NSApp setMainMenu:nil];
+    }
+}
 
 namespace native
 {
@@ -64,7 +83,7 @@ namespace native
         auto *m = mac::menu_bindings.object_from_handle(_id);
         if (m) {
             if ([NSApp mainMenu] == m->ns_menu)
-                [NSApp setMainMenu:nil];
+                mac::activate_menu(_owner ? _owner->get_owner() : nullptr);
             [m->ns_menu release];
             delete m;
         }
@@ -79,6 +98,26 @@ namespace native
         _owner = &owner;
 
         NSMenu *bar = [[NSMenu alloc] init];
+        // AppKit reserves the first submenu for the application menu.
+        // Supplying File there silently renames it to the application name.
+        NSMenuItem *application_item = [[NSMenuItem alloc] init];
+        NSMenu *application_menu = [[NSMenu alloc] initWithTitle:@""];
+        native_menu_target *quit_target = [[native_menu_target alloc] init];
+        NSString *name = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+        if (!name) name = [[NSProcessInfo processInfo] processName];
+        NSMenuItem *quit = [[NSMenuItem alloc]
+            initWithTitle:[@"Quit " stringByAppendingString:name]
+                   action:@selector(quit_action:) keyEquivalent:@"q"];
+        [quit setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+        [quit setTarget:quit_target];
+        [quit setRepresentedObject:quit_target];
+        [application_menu addItem:quit];
+        [application_item setSubmenu:application_menu];
+        [bar addItem:application_item];
+        [quit release];
+        [quit_target release];
+        [application_menu release];
+        [application_item release];
         for (const auto &top : _tops) {
             NSMenuItem *top_item = [[NSMenuItem alloc]
                 initWithTitle:[NSString
@@ -105,6 +144,22 @@ namespace native
                     ? [[NSString stringWithUTF8String:parsed.key.c_str()]
                           lowercaseString]
                     : @"";
+                if (parsed.key.size() >= 2 &&
+                    (parsed.key[0] == 'F' || parsed.key[0] == 'f')) {
+                    int number = 0;
+                    for (std::size_t i = 1; i < parsed.key.size(); ++i) {
+                        const char digit = parsed.key[i];
+                        if (digit < '0' || digit > '9' || number > 35) {
+                            number = 0;
+                            break;
+                        }
+                        number = number * 10 + digit - '0';
+                    }
+                    if (number >= 1 && number <= 35) {
+                        const unichar value = NSF1FunctionKey + number - 1;
+                        key = [NSString stringWithCharacters:&value length:1];
+                    }
+                }
                 NSMenuItem *mi = [[NSMenuItem alloc]
                     initWithTitle:[NSString
                                       stringWithUTF8String:item.label
@@ -131,13 +186,14 @@ namespace native
             [sub release];
             [top_item release];
         }
-        [NSApp setMainMenu:bar];
 
         auto *h = new mac::mac_menu();
         h->ns_menu = bar; // bar is retained by NSApp
         h->owner = &owner;
         _id = next_id();
         mac::menu_bindings.register_pair(_id, h);
+        if ([NSApp keyWindow] == mac::wnd_bindings.handle_from_object(&owner))
+            mac::activate_menu(&owner);
     }
 
 } // namespace native

@@ -726,3 +726,22 @@ and geometry are unchanged. WINGs forwards top-level native focus changes and
 restores its already-focused native child, preserving editor caret/input state.
 Its text views retain the configured I-beam even when created away from the
 pointer; pointer-dependent custom cursor resources remain peer-owned.
+
+## Repeated geometry and desktop activation
+
+`set_bounds()` compares constrained geometry with the cached bounds before
+applying native geometry or running bounds-change hooks. Repeating the same
+rectangle does not resize a shader surface or clear its history. Likewise,
+`app_wnd::set_title()` skips an unchanged title. Explicit invalidation remains
+the way to request a repaint without changing geometry.
+
+AppKit activation selects the key window's menu, walking its owner chain when
+it has no menu. Attaching a background modeless window does not take over the
+menu bar. The first AppKit submenu is the application menu with Cmd+Q; File
+and other application-defined menus follow it. Windows accelerator lookup
+uses the message's top-level window and its owner chain, and accepts both
+menu-click and accelerator `WM_COMMAND` notifications.
+
+X11-family adapters publish UTF-8 EWMH titles and converted ICCCM text for
+classic window managers. Xt/WINGs initialize their character locale before
+converting titles; the desktop's fonts still determine available glyphs.

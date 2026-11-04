@@ -59,23 +59,8 @@ namespace
             if (!deliver_key(native::key_action::release)) BView::KeyUp(bytes, count);
         }
         bool deliver_key(native::key_action action) {
-            if (!_owner || !_owner->get_input_enabled()) return false;
-            BMessage *message = Window()->CurrentMessage();
-            int32 raw = 0, flags = 0;
-            if (!message || message->FindInt32("key", &raw) != B_OK) return false;
-            message->FindInt32("modifiers", &flags);
-            unsigned mods = 0;
-            if (flags & B_SHIFT_KEY) mods |= 1;
-            if (flags & B_CONTROL_KEY) mods |= 2;
-            if (flags & B_COMMAND_KEY) mods |= 4;
-            if (flags & B_OPTION_KEY) mods |= 8;
-            if (flags & B_CAPS_LOCK) mods |= 16;
-            if (flags & B_NUM_LOCK) mods |= 32;
-            const auto code = haiku::physical_key(raw);
-            return _owner->on_native_key({code, action,
-                action == native::key_action::press &&
-                    (message->HasInt32("be:key_repeat") || native::detail::key_held(*_owner, code)),
-                static_cast<native::key_modifiers>(mods)});
+            return _owner && haiku::dispatch_key(
+                *_owner, Window()->CurrentMessage(), action);
         }
 
         void Draw(BRect update_rect) override {
@@ -205,8 +190,11 @@ namespace haiku
         }
         if (!destination.IsValid() || destination.Target(nullptr) != target) return;
         const native::detail::window_guard guard(*_owner);
-        if (message && message->what == B_MODIFIERS_CHANGED && _owner &&
-            _owner->get_input_enabled() && dynamic_cast<native_view *>(CurrentFocus())) {
+        auto *focused = native::detail::input_target(*_owner);
+        if (!focused && dynamic_cast<native_view *>(CurrentFocus())) focused = _owner;
+        if (message && message->what == B_MODIFIERS_CHANGED && focused &&
+            focused->get_input_enabled()) {
+            const native::detail::window_guard focus_guard(*focused);
             key_info info{};
             const void *states = nullptr;
             ssize_t size = 0;
@@ -230,11 +218,11 @@ namespace haiku
                                      0x5dU, 0x5fU, 0x66U, 0x67U}) {
                     const auto key = haiku::physical_key(raw);
                     const bool down = (info.key_states[raw / 8] & (0x80 >> (raw % 8))) != 0;
-                    if (down != native::detail::key_held(*_owner, key))
-                        _owner->on_native_key({key, down ? native::key_action::press :
+                    if (down != native::detail::key_held(*focused, key))
+                        focused->on_native_key({key, down ? native::key_action::press :
                             native::key_action::release, false,
                             static_cast<native::key_modifiers>(mods)});
-                    if (!guard.alive()) return;
+                    if (!guard.alive() || !focus_guard.alive()) return;
                 }
             }
         }

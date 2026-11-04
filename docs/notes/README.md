@@ -26,6 +26,7 @@ The normal maintained workflow belongs in `docs/manuals/book-of-native/`.
 The repository-wide review and adjustment worklist is [ADJUST.md](../ADJUST.md).
 It includes the measured Amiga runtime prerequisites; it is not a backend manual.
 
+- [CPC integration acceptance and remaining input/runtime limits](CPC-UAT.md)
 - [Native versus custom control audit](CUSTOM.md)
 - [Deferred theme-interface split review](REFACTOR.md)
 - [Infinity emulator: portable services, migration and remaining limits](INFINITY.md)

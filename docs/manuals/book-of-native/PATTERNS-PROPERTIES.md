@@ -46,6 +46,10 @@ its attached backend mark. The model survives menu detachment and window
 recreation. Ordinary commands, separators and unknown IDs read as false and
 are ignored by the setter.
 
+An unchanged menu check, title or constrained `set_bounds()` rectangle is a
+no-op. This avoids repainting menus or resetting shader history in applications
+that synchronize their UI on each frame. Use `invalidate()` to request paint.
+
 ## Setter sequence
 
 A setter follows the same sequence everywhere:
@@ -57,6 +61,7 @@ A setter follows the same sequence everywhere:
 
 ```cpp
 app_wnd &app_wnd::set_title(const std::string &title) {
+    if (_title == title) return *this;
     _title = title;
     if (_created)
         apply_title();

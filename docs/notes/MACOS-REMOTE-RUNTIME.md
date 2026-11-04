@@ -315,3 +315,7 @@ button fills the field's height so its image cell centers the symbol without
 relying on a taller host's fractional origin. Light/dark raster checks compare
 picker glyph rows with a stock text field and verify accessory centering.
 Status bars share the bottom-priority reservation tested by window API checks.
+
+## CPC integration acceptance (2026-11-04)
+
+CPC acceptance on `mike` verifies physical typing into a canvas and restoration of the main menu after clicking back from a modeless debugger. The AppKit submenu and activation fixes are covered by the remote menu regression. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.

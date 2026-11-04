@@ -346,3 +346,7 @@ a visible DesktopChildSiteBridge and native date/time text padding in addition
 to page recreation and native callbacks. Screenshots use the
 `build/windows-winui-navigation-*.png` prefix. Runtime execution uses the
 Windows desktop; Wine is only a build-time SDK generator dependency.
+
+## CPC integration acceptance (2026-11-04)
+
+CPC acceptance on `whiskey` found discarded accelerator-origin commands and repaired their dispatch. Microsoft Basic Display Adapter did not provide OpenGL 3.3; the tested application-local Mesa llvmpipe runtime renders CRT and passes context preservation without replacing system DLLs. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.

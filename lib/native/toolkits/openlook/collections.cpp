@@ -21,6 +21,7 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "panel_painting.h"
 #include "../../table_render.h"
 #include "../../mouse_state.h"
@@ -524,6 +525,11 @@ namespace
                 reinterpret_cast<Notify_event>(event),
                 argument,
                 type);
+        XEvent *physical = event_xevent(event);
+        if (physical &&
+            (physical->type == KeyPress || physical->type == KeyRelease) &&
+            native::detail::dispatch_x_keyboard(*owner, *physical))
+            return NOTIFY_DONE;
         const int action = event_action(event);
         if (action == LOC_WINEXIT)
             native::detail::pointer_leave(*owner, native::point(event_x(event), event_y(event)));

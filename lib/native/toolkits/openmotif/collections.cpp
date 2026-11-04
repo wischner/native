@@ -20,6 +20,7 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "../../table_render.h"
 
 namespace
@@ -496,6 +497,11 @@ namespace
         auto *owner = static_cast<native::wnd *>(data);
         if (!owner || !event)
             return;
+        if ((event->type == KeyPress || event->type == KeyRelease) &&
+            native::detail::dispatch_x_keyboard(*owner, *event)) {
+            if (continue_dispatch) *continue_dispatch = False;
+            return;
+        }
         switch (event->type) {
         case Expose:
             if (event->xexpose.count == 0)
@@ -727,7 +733,7 @@ namespace
                 "Motif: failed to create collection drawing area.");
         XtAddEventHandler(widget,
                           ExposureMask | StructureNotifyMask |
-                              FocusChangeMask | KeyPressMask |
+                              FocusChangeMask | KeyPressMask | KeyReleaseMask |
                               ButtonPressMask | ButtonReleaseMask |
                               PointerMotionMask,
                           False,

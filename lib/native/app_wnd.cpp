@@ -51,6 +51,7 @@ namespace native
     }
 
     app_wnd &app_wnd::set_title(const std::string &title) {
+        if (_title == title) return *this;
         _title = title;
         if (_created)
             apply_title();

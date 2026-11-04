@@ -181,3 +181,19 @@ handlers can destroy the next target, so the router checks its weak generation
 before sending enter. Relative motion has its own discriminated event and never
 emits the legacy absolute signal. Shader execution diagnostics likewise enter
 `shader_view::on_native_shader_error()` before `on_shader_error`.
+
+## Physical keys on drawing surfaces
+
+Physical keyboard delivery precedes collection/editor navigation on Athena,
+Motif, OPEN LOOK and WINGs drawing hosts. XKB key names are fetched explicitly
+after allocating the keyboard map; keysyms remain the text/menu boundary.
+Presses, repeats, releases and focus resets belong to the focused surface.
+WINGs mouse activation also updates its logical focus. AppKit canvas views
+forward key and modifier events, and repeat/release monitoring resolves the
+focused child. Haiku collection views use the same physical translation as
+root views, including modifier changes directed to the focused child.
+
+Menu accelerators are commands, not additional physical presses. Function-key
+accelerators work through AppKit, Athena and WINGs translations; Windows
+accepts the accelerator notification code as well as mouse menu selection.
+See the [CPC acceptance record](../../notes/CPC-UAT.md) for exercised scope.

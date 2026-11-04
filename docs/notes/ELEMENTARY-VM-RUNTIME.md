@@ -245,3 +245,7 @@ strip; portable ratio notifications run after GTK allocation. Tabs remain
 GtkNotebook, with padded native labels; Granite 7 supplies no separate tab
 widget in the pinned SDK. The property grid reserves its right frame outside
 the scrolling strip. Screenshots use `build/elementary-control-review-*.png`.
+
+## CPC integration acceptance (2026-11-04)
+
+CPC deployment to `echo` required a private GtkSourceView runtime and relocatable loader path. Startup, F10 and visible CRT output pass; an intermittent paused-frame observation and subsequent repeat checks are recorded separately. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.

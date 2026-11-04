@@ -517,7 +517,7 @@ namespace
             return std::tolower(static_cast<unsigned char>(key[0])) ==
                    std::tolower(static_cast<unsigned char>(name[0]));
         }
-        return key == "F4" && symbol == XK_F4;
+        return symbol != NoSymbol && XStringToKeysym(key.c_str()) == symbol;
     }
 
     linux::wmaker::native_menu *menu_for(native::app_wnd *owner) {

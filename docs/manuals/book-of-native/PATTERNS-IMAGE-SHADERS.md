@@ -238,3 +238,17 @@ tick leaves old history available for retry. Source replacement, explicit clear,
 resize and a gap longer than 250 ms start a fresh history generation.
 `native_glsl_renderer_tests` asserts real pixels for these cases and failed
 replacement; [ADJUST.md](../../ADJUST.md), A02/A06/A07/A08, records verification.
+
+## Runtime acceptance and repeated layout
+
+A successful `set_effect()` validates the package; confirm `shader_status::active`
+after a paint to establish that the destination graphics runtime can execute
+it. An unchanged `set_bounds()` preserves output and history. Repeated frame
+updates therefore do not force backend geometry changes merely to publish a
+new source image.
+
+A Windows VM using Microsoft Basic Display Adapter may have no OpenGL 3.3
+context. An application-local Mesa llvmpipe runtime was verified with CPC and
+the context-preservation regression; this is a deployment choice, not a
+system-driver installation or a guarantee of GPU performance. Keep its version,
+checksum and notices with the distribution. See [CPC UAT](../../notes/CPC-UAT.md).

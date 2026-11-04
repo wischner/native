@@ -217,6 +217,12 @@ namespace
         view.on_native_paint(wnd_paint_event(rect(0, 0, 2, 2), target.get_gpx()));
         require(view.get_shader_status() == shader_status::active && target.pixels()[0].r == 255,
             "Source pixels were borrowed or effect was not painted.");
+        auto *cached = detail::peer_state<detail::shader_view_state>(view);
+        const auto *output = cached->output.get();
+        require(!cached->dirty, "Successful shader frame remained dirty.");
+        view.set_bounds(view.get_bounds());
+        require(!cached->dirty && cached->output.get() == output,
+            "Unchanged bounds discarded cached shader output/history.");
         // Model a failed execution with an otherwise valid package. An
         // expose must keep fallback/status until a producer permits retry.
         view.set_animation(shader_animation::continuous);

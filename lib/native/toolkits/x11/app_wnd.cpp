@@ -21,6 +21,7 @@
 #include "globals.h"
 #include "scale.h"
 #include "../x_keyboard.h"
+#include "../x_window_title.h"
 #include "window_position.h"
 
 namespace
@@ -39,35 +40,8 @@ namespace
         if (!XtIsRealized(shell))
             return;
 
-        Display *display = XtDisplay(shell);
-        Window window = XtWindow(shell);
-        XStoreName(display, window, title.c_str());
-        XSetIconName(display, window, title.c_str());
-
-        Atom utf8_string = XInternAtom(display, "UTF8_STRING", False);
-        Atom net_wm_name = XInternAtom(display, "_NET_WM_NAME", False);
-        Atom net_wm_icon_name =
-            XInternAtom(display, "_NET_WM_ICON_NAME", False);
-        const auto *title_bytes =
-            reinterpret_cast<const unsigned char *>(title.data());
-        const int title_length = static_cast<int>(title.size());
-
-        XChangeProperty(display,
-                        window,
-                        net_wm_name,
-                        utf8_string,
-                        8,
-                        PropModeReplace,
-                        title_bytes,
-                        title_length);
-        XChangeProperty(display,
-                        window,
-                        net_wm_icon_name,
-                        utf8_string,
-                        8,
-                        PropModeReplace,
-                        title_bytes,
-                        title_length);
+        native::detail::set_x_window_title(
+            XtDisplay(shell), XtWindow(shell), title);
     }
 
     native::mouse_button decode_button(unsigned int button) {

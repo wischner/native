@@ -90,3 +90,11 @@ and font-dependent control metrics to different extents. These checks do not
 establish a complete shaping engine or identical stock text across systems.
 Vendored rasterizer provenance and its formatting exemption are recorded in
 [the third-party inventory](../../../lib/native/third_party/README.md).
+
+## SDL2 fixed-font discovery
+
+The SDL2 stock fixed role asks Fontconfig for the generic `monospace` family
+first. A missing named family such as Roboto Mono may resolve successfully to
+a proportional substitute, so it cannot precede that generic fixed-family
+request. Native detects Fontconfig through CMake's `FindFontconfig` with a
+pkg-config fallback; consumers do not need private compilation definitions.

@@ -37,6 +37,10 @@
 #include "../lib/native/toolkits/wayland/globals.h"
 #endif
 
+// Check native canvas input alongside window/menu activation.
+void check_canvas_keyboard(native::app_wnd &parent);
+void check_window_title(native::app_wnd &parent);
+
 namespace
 {
     using namespace native;
@@ -110,7 +114,7 @@ namespace
     void activate(app_wnd &owner, int command) {
 #if defined(_WIN32)
         SendMessageW(windows::wnd_bindings.handle_from_object(&owner),
-                     WM_COMMAND, command, 0);
+                     WM_COMMAND, MAKEWPARAM(command, command == 42 ? 1 : 0), 0);
 #elif defined(__APPLE__)
         auto *peer = mac::menu_bindings.object_from_handle(owner.menu.id());
         for (NSMenuItem *top in [peer->ns_menu itemArray]) {
@@ -208,6 +212,7 @@ namespace
         menu_window child{*this, "Checkable menus", 60, 60, 360, 240};
 
         fixture() : app_wnd("Menu test owner", 10, 10, 400, 300) {
+            menu << "&File" << menu_items("Main");
             child.menu << "&View" << (menu_items(
                 menu_check_item{42, "&Grid\tCtrl+G", true})
                 << menu_check_item{43, "&Rulers", false}
@@ -222,8 +227,42 @@ namespace
     private:
         void check() {
             try {
+                check_canvas_keyboard(*this);
+                check_window_title(*this);
                 child.create();
                 child.show();
+#if defined(__APPLE__)
+                auto *main_peer = mac::menu_bindings.object_from_handle(menu.id());
+                auto *child_peer = mac::menu_bindings.object_from_handle(child.menu.id());
+                expect([[main_peer->ns_menu itemAtIndex:1].title isEqualToString:@"File"],
+                       "File remains separate from the AppKit application menu");
+                NSWindow *main_window = mac::wnd_bindings.handle_from_object(this);
+                NSWindow *child_window = mac::wnd_bindings.handle_from_object(&child);
+                [child_window makeKeyAndOrderFront:nil];
+                // An inactive test process may not activate AppKit windows.
+                // Still exercise the real delegate notification path.
+                if (![child_window isKeyWindow])
+                    [[child_window delegate] windowDidBecomeKey:
+                        [NSNotification notificationWithName:NSWindowDidBecomeKeyNotification
+                                                      object:child_window]];
+                expect([NSApp mainMenu] == child_peer->ns_menu, "child menu activates");
+                [main_window makeKeyAndOrderFront:nil];
+                // A locked test desktop cannot activate AppKit windows.
+                // Still exercise the real delegate notification path.
+                if (![main_window isKeyWindow])
+                    [[main_window delegate] windowDidBecomeKey:
+                        [NSNotification notificationWithName:NSWindowDidBecomeKeyNotification
+                                                      object:main_window]];
+                expect([NSApp mainMenu] == main_peer->ns_menu, "main menu restores on activation");
+                [child_window makeKeyAndOrderFront:nil];
+                // A locked test desktop cannot activate AppKit windows.
+                // Still exercise the real delegate notification path.
+                if (![child_window isKeyWindow])
+                    [[child_window delegate] windowDidBecomeKey:
+                        [NSNotification notificationWithName:NSWindowDidBecomeKeyNotification
+                                                      object:child_window]];
+                expect([NSApp mainMenu] == child_peer->ns_menu, "child menu reactivates");
+#endif
                 expect(native_checked(child, 42), "initial native mark");
                 expect(!native_checked(child, 43), "initial unchecked item");
 #if defined(MENU_TEST_SDL2)

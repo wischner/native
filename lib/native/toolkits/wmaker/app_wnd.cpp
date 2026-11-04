@@ -19,6 +19,7 @@
 #include "globals.h"
 #include "dialog_position.h"
 #include "../x_keyboard.h"
+#include "../x_window_title.h"
 
 namespace
 {
@@ -123,6 +124,8 @@ namespace
         auto *state = linux::wmaker::state(owner);
         const int menu_height = state ? state->menu_height : 0;
 
+        if (event->type == ButtonPress && state && state->window)
+            WMSetFocusToWidget(state->window);
         XEvent keyboard_event = native_event;
         if (native::detail::dispatch_x_keyboard(*owner, keyboard_event)) return;
         switch (event->type) {
@@ -264,6 +267,8 @@ namespace native
                 "Window Maker/WINGs: missing window binding.");
         }
         WMSetWindowTitle(window_state->window, _title.c_str());
+        detail::set_x_window_title(linux::wmaker::display,
+            WMWidgetXID(window_state->window), _title);
     }
 
     void app_wnd::create_native() {
@@ -338,6 +343,7 @@ namespace native
             self);
 
         WMRealizeWidget(window);
+        apply_title();
         self->menu.attach(*self);
 
         self->on_native_move(position);

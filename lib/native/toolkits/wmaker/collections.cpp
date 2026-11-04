@@ -21,6 +21,7 @@
 
 #include "collection_host.h"
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "../../table_render.h"
 
 namespace
@@ -547,6 +548,10 @@ namespace
         auto *owner = static_cast<native::wnd *>(data);
         if (!owner || !event || !owner->get_created())
             return;
+        if ((event->type == KeyPress || event->type == KeyRelease) &&
+            native::detail::dispatch_x_keyboard(*owner, *event)) {
+            return;
+        }
         switch (event->type) {
         case Expose:
             if (event->xexpose.count == 0)
@@ -786,7 +791,7 @@ namespace
         WMCreateEventHandler(
             WMWidgetView(frame),
             ExposureMask | StructureNotifyMask | FocusChangeMask |
-                KeyPressMask | ButtonPressMask | ButtonReleaseMask |
+                KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask |
                 PointerMotionMask,
             handle_event,
             &owner);

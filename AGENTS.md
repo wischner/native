@@ -457,6 +457,7 @@ issues, and TODO inventories. Standard local and Docker build instructions do
 
 | Document | Contents |
 | --- | --- |
+| [CPC-UAT.md](docs/notes/CPC-UAT.md) | CPC consumer acceptance, input/menu/title repairs, destination packaging and graphics-driver findings, and remaining limits. |
 | [CUSTOM.md](docs/notes/CUSTOM.md) | Native-versus-custom control audit. Per backend, per public control: native (**N**), hybrid (**H**), library-painted (**C**), or external helper (**E**), plus applied native replacements and deliberately retained custom implementations with reasons. Carries an audit date. |
 | [REFACTOR.md](docs/notes/REFACTOR.md) | Deferred review of splitting the large theme interface; records the measured concern, proposed grouping, and evidence threshold for implementing it. |
 | [INFINITY.md](docs/notes/INFINITY.md) | Infinity/nemu migration, implemented input/audio/background/process contracts, manual acceptance entry point and outstanding GEM/macOS verification constraints. |

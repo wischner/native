@@ -358,3 +358,8 @@ creation and later geometry changes accumulate all portable ancestor offsets;
 a settings page restored after search must not jump to frame-local page
 coordinates and cover unrelated controls. Native Panel children still use
 their immediate host's local coordinates.
+
+Physical keyboard delivery belongs to the focused drawing host. The
+[signal chapter](PATTERNS-SIGNALS.md#physical-keys-on-drawing-surfaces) records
+the canvas adapters and their press/repeat/release/reset routing. Repeated
+identical `set_bounds()` calls do not invalidate a shader canvas’s history.

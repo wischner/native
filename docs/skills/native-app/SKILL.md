@@ -50,3 +50,27 @@ repository, Vision remains the single demonstration application; educational
 programs belong in the Programming Native book, not a new examples source tree.
 No step grants permission to publish, deploy to unrelated machines, or send
 messages outside the requested task.
+
+## Input and continuously refreshed views
+
+For emulators and other held-key clients, check
+`app::get_physical_keyboard_supported()` before promising keyboard operation.
+GEM's current AES transport does not provide the physical press/release
+contract; do not synthesize releases or pretend text input supplies it.
+Connect key/reset handlers to the actual focused canvas as appropriate, and
+release application-held input on focus loss. Keep menus and their commands
+owned by the corresponding main/modeless window.
+
+Use `shader_status::active` after painting to report an active effect. Keep
+checkmarks/settings consistent with `on_shader_error` and explicit fallback.
+A package that validates can still fail on the destination graphics driver.
+
+Fix reproducible adapter defects in Native and regression-test them there.
+Do not copy and patch Native implementation files in consumer CMake or add
+private dependency defines. Record the dependency revision and whether local
+changes were used; a clean upstream revision alone does not identify a dirty
+checkout's build.
+
+If the application disables CRT after an error, also clear the effect. Native
+permits retry after a new source/property update, so leaving a failed effect
+installed in a continuously updated emulator can retry it on every frame.

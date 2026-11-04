@@ -82,12 +82,14 @@ endif()
 add_test(NAME native_window_api_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
 
-add_executable(native_menu_runtime_tests native_menu_runtime_tests.cpp)
+add_executable(native_menu_runtime_tests native_menu_runtime_tests.cpp
+    native_canvas_keyboard_checks.cpp)
 target_include_directories(native_menu_runtime_tests PRIVATE
     $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
 target_link_libraries(native_menu_runtime_tests PRIVATE native native_developer_options)
 if(APPLE)
-    set_source_files_properties(native_menu_runtime_tests.cpp PROPERTIES LANGUAGE OBJCXX)
+    set_source_files_properties(native_menu_runtime_tests.cpp
+        native_canvas_keyboard_checks.cpp PROPERTIES LANGUAGE OBJCXX)
     target_link_libraries(native_menu_runtime_tests PRIVATE "-framework AppKit")
 elseif(NOT WIN32 AND NOT HAIKU)
     target_compile_definitions(native_menu_runtime_tests PRIVATE MENU_TEST_${TOOLKIT})

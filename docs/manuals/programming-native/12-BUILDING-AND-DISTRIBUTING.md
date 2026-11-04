@@ -870,3 +870,20 @@ GraniteTimePicker requires the `org.gnome.desktop.interface` GSettings
 schema from `gsettings-desktop-schemas`. Both the shared Wayland Docker SDK
 and an elementary desktop supply it. A minimal private runtime must preserve
 this installed schema; merely copying the Granite shared object is insufficient.
+
+## Destination checks for emulator-style applications
+
+A linked application still needs runtime dependency closure on its destination.
+For GTK/elementary, stage the required GtkSourceView runtime when it is absent
+from that desktop, use a relocatable loader path, include its notices, and
+verify its transitive dependencies. Do not copy the SDK's whole system library
+tree over the destination. Native's SDL2 CMake detection supports both
+`FindFontconfig` and pkg-config; private compile definitions in the consumer
+are unnecessary.
+
+Test shader activation after the first paint. Windows Basic Display Adapter
+alone does not provide the required OpenGL 3.3 context. If distributing an
+optional application-local Mesa runtime, pin and verify it, carry its licenses,
+and test that exact package. Do not replace the Windows system OpenGL DLL.
+The [CPC acceptance record](../../notes/CPC-UAT.md) distinguishes the VM runtime
+fix from library changes and records remaining coverage limits.

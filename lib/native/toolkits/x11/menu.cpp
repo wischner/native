@@ -53,8 +53,9 @@ namespace
                 std::tolower(static_cast<unsigned char>(name[0])) ==
                 std::tolower(static_cast<unsigned char>(shortcut.key[0]));
         }
-        return (shortcut.key == "F4" || shortcut.key == "f4") &&
-            symbol == XK_F4;
+        std::string name = shortcut.key;
+        if (!name.empty() && name.front() == 'f') name.front() = 'F';
+        return symbol != NoSymbol && XStringToKeysym(name.c_str()) == symbol;
     }
 
     void accelerator_event(Widget,

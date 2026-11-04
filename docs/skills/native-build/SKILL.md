@@ -122,3 +122,24 @@ payload and runtime dependency manifest, font checks, and separate build,
 runtime and visual results using the [handoff template](../../ai/REQUEST-TEMPLATE.md).
 Keep work within the requested build/package/deployment scope; preparing a
 distribution does not authorize publishing it.
+
+## Destination closure and graphics capability
+
+Inspect the final deployed directory, not only the SDK binary. GTK source
+editing needs GtkSourceView and its transitive runtime dependencies; when
+staging a private copy use a relocatable loader path and include its notices.
+Check ordinary and fixed-width stock text on that destination. Native's SDL2
+Fontconfig discovery uses CMake with pkg-config fallback; fix discovery in
+Native rather than injecting its private feature defines from a consumer.
+
+OpenGL 3.3 availability is a runtime check. Windows Basic Display Adapter may
+fail it even when every linked DLL is present. An optional application-local
+Mesa software driver must have a pinned source/version/checksum, appropriate
+notices and a tested architecture. Keep it beside the application; do not
+replace system DLLs. Report software rendering and measure performance with
+the requested effect enabled. Haiku GLSL requires its separately qualified
+OSMesa runtime and driver selection in the launch environment.
+
+Record a dirty Native checkout explicitly in the handoff. Preserve existing
+consumer work and compatibility requirements; do not claim that fixes tested
+from a local checkout are already present in a remote dependency pin.

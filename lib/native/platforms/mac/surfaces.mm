@@ -16,6 +16,8 @@
 #include <native/panel.h>
 
 #include "globals.h"
+#include "keyboard.h"
+#include "../../input_state.h"
 
 // A structural host draws no content of its own beyond the standard
 // container background, and never becomes first responder merely by
@@ -89,6 +91,30 @@
 @implementation native_canvas_view
 - (BOOL)isFlipped { return YES; }
 - (BOOL)acceptsFirstResponder { return YES; }
+
+- (BOOL)becomeFirstResponder {
+    if (_owner) _owner->on_native_focus(true);
+    return YES;
+}
+- (BOOL)resignFirstResponder {
+    if (_owner) _owner->on_native_focus(false);
+    return YES;
+}
+- (void)keyDown:(NSEvent *)event {
+    if (!_owner || !_owner->get_input_enabled()) return;
+    const native::detail::window_guard guard(*_owner);
+    if (!_owner->on_native_key(mac::physical_key(event, native::key_action::press)) &&
+        guard.alive())
+        [super keyDown:event];
+}
+- (void)keyUp:(NSEvent *)event {
+    if (_owner)
+        _owner->on_native_key(mac::physical_key(event, native::key_action::release));
+}
+- (void)flagsChanged:(NSEvent *)event {
+    if (_owner && _owner->get_input_enabled())
+        _owner->on_native_key(mac::physical_key(event, native::key_action::press));
+}
 
 - (void)drawRect:(NSRect)dirty {
     [super drawRect:dirty];

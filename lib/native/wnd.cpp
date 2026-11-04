@@ -219,10 +219,14 @@ namespace native
     }
 
     wnd &wnd::set_bounds(const rect &bounds) {
+        const rect constrained = constrain_bounds(bounds);
+        if (_bounds.p.x == constrained.p.x && _bounds.p.y == constrained.p.y &&
+            _bounds.d.w == constrained.d.w && _bounds.d.h == constrained.d.h)
+            return *this;
         const detail::window_guard guard(*this);
         {
             const scoped_flag pass(_layout_suspended, *this);
-            _bounds = constrain_bounds(bounds);
+            _bounds = constrained;
             if (_created && _peer)
                 _peer->apply_bounds(_bounds);
         }

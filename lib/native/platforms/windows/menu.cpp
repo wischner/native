@@ -82,11 +82,11 @@ namespace native
                             item.label, item.mnemonic_index);
                     if (!item.shortcut.empty())
                         display += "\t" + item.shortcut;
-                    AppendMenuA(sub,
+                    AppendMenuW(sub,
                                 MF_STRING | (item.checked
                                     ? MF_CHECKED : MF_UNCHECKED),
                                 (UINT_PTR)item.id,
-                                display.c_str());
+                                windows::utf8_to_wide(display).c_str());
                     const auto parsed = native::detail::parse_menu_shortcut(
                         item.shortcut);
                     WORD key = 0;
@@ -110,7 +110,8 @@ namespace native
             const std::string title =
                 native::detail::decorate_menu_mnemonic(
                     top.title, top.mnemonic_index);
-            AppendMenuA(hmenu, MF_POPUP, (UINT_PTR)sub, title.c_str());
+            AppendMenuW(hmenu, MF_POPUP, (UINT_PTR)sub,
+                        windows::utf8_to_wide(title).c_str());
         }
         SetMenu(hwnd, hmenu);
         DrawMenuBar(hwnd);

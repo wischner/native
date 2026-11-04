@@ -141,6 +141,7 @@ namespace native
                 if (item.id != command || !item.checkable ||
                     item.separator)
                     continue;
+                if (item.checked == checked) return *this;
                 item.checked = checked;
                 if (_id)
                     apply_checked(command);

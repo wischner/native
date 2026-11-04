@@ -20,6 +20,7 @@
 #include <native.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "scale.h"
 #include "scrollbars.h"
 #include "../../table_render.h"
@@ -357,10 +358,15 @@ namespace
     void route_event(Widget widget,
                      XtPointer client_data,
                      XEvent *event,
-                     Boolean *) {
+                     Boolean *continue_dispatch) {
         auto *owner = static_cast<native::wnd *>(client_data);
         if (!owner || !event)
             return;
+        if ((event->type == KeyPress || event->type == KeyRelease) &&
+            native::detail::dispatch_x_keyboard(*owner, *event)) {
+            if (continue_dispatch) *continue_dispatch = False;
+            return;
+        }
         switch (event->type) {
         case Expose:
             if (event->xexpose.count == 0) {
@@ -559,7 +565,7 @@ namespace linux::x11
                 "X11/Athena: failed to create collection host.");
         XtAddEventHandler(widget,
                           ExposureMask | StructureNotifyMask |
-                              FocusChangeMask | KeyPressMask |
+                              FocusChangeMask | KeyPressMask | KeyReleaseMask |
                               ButtonPressMask | ButtonReleaseMask |
                               PointerMotionMask,
                           False,

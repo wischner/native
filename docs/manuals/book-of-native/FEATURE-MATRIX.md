@@ -1,5 +1,16 @@
 # Feature Matrix
 
+## CPC integration review (2026-11-04)
+
+The [CPC acceptance record](../../notes/CPC-UAT.md) supersedes earlier input/menu findings
+for the interactions it explicitly verifies. It records physical canvas-key,
+modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
+accelerator delivery, tested software OpenGL deployment, and exact suite scope.
+GEM physical key releases and WINGs external shutdown allocations remain
+unresolved; GTK splitter timing and one intermittent elementary paused frame
+remain observations requiring follow-up.
+
+
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
 and all 19 CTests pass. CMake enables libc++ experimental threading support
 when the Apple SDK requires it. LLDB authorization is enabled; interactive breakpoint stops and automatic

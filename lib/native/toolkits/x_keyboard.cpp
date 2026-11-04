@@ -152,8 +152,9 @@ namespace native::detail
         if (!state->initialized) {
             Bool supported = False;
             XkbSetDetectableAutoRepeat(event.xkey.display, True, &supported);
-            XkbDescPtr keyboard = XkbGetKeyboard(event.xkey.display,
-                XkbNamesMask, XkbUseCoreKbd);
+            XkbDescPtr keyboard = XkbGetMap(event.xkey.display, 0, XkbUseCoreKbd);
+            if (keyboard)
+                XkbGetNames(event.xkey.display, XkbKeyNamesMask, keyboard);
             if (keyboard && keyboard->names && keyboard->names->keys) {
                 for (int i = keyboard->min_key_code; i <= keyboard->max_key_code; ++i)
                     for (const auto &entry : physical_keys)

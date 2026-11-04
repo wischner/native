@@ -76,8 +76,11 @@ namespace native
                 (GetKeyState(VK_CONTROL) & 0x8000) &&
                 (msg.wParam == 'A' || msg.wParam == 'C' || msg.wParam == 'X' ||
                  msg.wParam == 'V' || msg.wParam == 'Z' || msg.wParam == 'Y');
-            if (auto *window = app::main_wnd();
-                window && window->menu.id()) {
+            auto *window = dynamic_cast<app_wnd *>(
+                windows::wnd_bindings.object_from_handle(
+                    GetAncestor(msg.hwnd, GA_ROOT)));
+            while (window && !window->menu.id()) window = window->get_owner();
+            if (window && window->get_input_enabled() && window->menu.id()) {
                 auto *menu = windows::menu_bindings.object_from_handle(
                     window->menu.id());
                 HWND hwnd = windows::wnd_bindings.handle_from_object(window);

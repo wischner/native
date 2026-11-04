@@ -6,8 +6,36 @@
 //
 
 #include "keyboard.h"
+#include "../../input_state.h"
+#include <Message.h>
+#include <InterfaceDefs.h>
 namespace haiku
 {
+    bool dispatch_key(native::wnd &owner, BMessage *message,
+                      native::key_action action) {
+        if (!owner.get_input_enabled()) {
+            native::detail::reset_input(owner);
+            return true;
+        }
+        int32 raw = 0, flags = 0;
+        if (!message || message->FindInt32("key", &raw) != B_OK) return false;
+        message->FindInt32("modifiers", &flags);
+        unsigned mods = 0;
+        if (flags & B_SHIFT_KEY) mods |= 1;
+        if (flags & B_CONTROL_KEY) mods |= 2;
+        if (flags & B_COMMAND_KEY) mods |= 4;
+        if (flags & B_OPTION_KEY) mods |= 8;
+        if (flags & B_CAPS_LOCK) mods |= 16;
+        if (flags & B_NUM_LOCK) mods |= 32;
+        const auto code = physical_key(raw);
+        const native::detail::window_guard guard(owner);
+        const bool consumed = owner.on_native_key({code, action,
+            action == native::key_action::press &&
+                native::detail::key_held(owner, code),
+            static_cast<native::key_modifiers>(mods)});
+        return consumed || !guard.alive();
+    }
+
     native::key_code physical_key(int32 position) {
         switch (position) {
         case 1: return native::key_code::escape;

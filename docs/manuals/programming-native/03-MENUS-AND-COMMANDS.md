@@ -159,3 +159,12 @@ Window Maker application menus rather than the press-drag selection behavior
 of a WINGs `WMPopUpButton`.
 
 Next: [Buttons and control lifecycle](04-BUTTONS.md).
+
+## Window activation
+
+A modeless window can have its own menu. On macOS the key window selects the
+application menu bar; clicking the main window restores its menu. Native
+provides the reserved application submenu with Cmd+Q before your menus.
+Windows accelerators follow the active top-level window's menu. Keep command
+handlers on the window that owns the menu, including checkable function-key
+commands. Treat menu labels as UTF-8.
