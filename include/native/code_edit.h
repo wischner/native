@@ -337,6 +337,9 @@ namespace native
         // Select the complete source buffer.
         void select_all() override;
 
+        // Keep the inherited physical-key overload visible alongside editing.
+        using text_edit::on_native_key;
+
         // Apply a backend-originated editing/navigation command.
         virtual bool on_native_key(code_edit_key key,
                                    bool extend = false);

@@ -197,3 +197,17 @@ Menu accelerators are commands, not additional physical presses. Function-key
 accelerators work through AppKit, Athena and WINGs translations; Windows
 accepts the accelerator notification code as well as mouse menu selection.
 See the [CPC acceptance record](../../notes/CPC-UAT.md) for exercised scope.
+
+### Optional GEM physical keyboard SDK
+
+When `gem/input.h` is present, GEMix requests `GEM_MU_KEY` instead of
+`MU_KEYBD`. The matching library/server supplies USB usages, press/release
+flags and input-reset events. Native translates through its existing shared
+key table, peer-owned held-state bookkeeping and focused input target.
+Unconsumed presses continue through editor commands before menu shortcuts;
+releases never enter the text path. The public C++ input API is unchanged.
+An older AES-only SDK retains the unsupported capability result.
+
+Haiku window activation focuses the plain client view when no control already
+has BeAPI focus. Clicking the title tab can therefore resume keyboard input
+without a content click; an existing editor/control keeps its focus.

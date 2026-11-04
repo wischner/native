@@ -85,6 +85,7 @@ namespace native
         self->on_native_move(linux::gemix::outer_rect(handle).p);
         self->on_native_resize(linux::gemix::work_rect(handle).d);
         linux::gemix::active_window = self;
+        linux::gemix::activate_menu(self);
         wind_set(handle, WF_TOP, 0, 0, 0, 0);
         invalidate();
     }
@@ -128,6 +129,8 @@ namespace native
                        ? nullptr
                        : linux::gemix::windows.back());
         }
+
+        linux::gemix::activate_menu(linux::gemix::active_window);
 
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()

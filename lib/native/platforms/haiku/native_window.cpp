@@ -230,8 +230,13 @@ namespace haiku
     }
 
     void native_window::WindowActivated(bool active) {
-        if (_owner) _owner->on_native_focus(active);
         BWindow::WindowActivated(active);
+        // A title-bar activation does not select a BeAPI key target. Keep an
+        // existing editor/control focus, otherwise give the plain client the
+        // same keyboard route as a click inside the window.
+        if (active && !CurrentFocus())
+            if (auto *view = FindView("native_canvas")) view->MakeFocus(true);
+        if (_owner) _owner->on_native_focus(active);
     }
 
     void native_window::retire() {

@@ -289,9 +289,9 @@ explains ownership and cancellation. Run the selected Vision binary with
 
 Non-SDL Linux audio loads optional `libasound.so.2` at runtime; absence of
 ALSA/default output makes `audio_out::open()` fail explicitly. Windows uses
-WASAPI, macOS AudioToolbox and Haiku the media kit. GEMix currently reports
-physical held-key input unavailable because its pinned SDK/viewer path loses
-raw release information. Current build/runtime evidence is recorded in the
+WASAPI, macOS AudioToolbox and Haiku the media kit. GEMix reports physical held-key input unavailable with the published AES-only
+SDK. An SDK with `gem/input.h` and matching libraries/server enables the
+opt-in physical input adapter. Current build/runtime evidence is recorded in the
 feature matrix. A parent CMake project may link the `native` target through
 `add_subdirectory()` without building Vision or Native's test suite.
 
@@ -422,3 +422,8 @@ current VM test results, and remaining desktop acceptance limits.
 
 Vision’s settings navigation uses embedded [Font Awesome Free icons](src/assets/navigation/README.md),
 licensed separately under CC BY 4.0. No installed icon font is required.
+
+GEM physical input is available with the optional `gem/input.h` extension
+and matching GEM libraries/server; the published AES-only SDK remains
+unsupported for held keys. The C++ API and standard AES fallback are
+unchanged. See [CPC acceptance](docs/notes/CPC-UAT.md) for validation and limitations.

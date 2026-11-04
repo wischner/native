@@ -7,11 +7,13 @@
 
 #include "collection_view.h"
 
+#include <Bitmap.h>
 #include <InterfaceDefs.h>
 #include <Message.h>
 #include <View.h>
 #include <Window.h>
 
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -24,6 +26,20 @@
 
 namespace
 {
+    // Finish all offscreen commands before releasing the bitmap's view looper.
+    template <typename function_type>
+    bool with_locked_bitmap(BBitmap &bitmap, function_type &&function) {
+        if (!bitmap.Lock()) return false;
+        try {
+            function();
+        } catch (...) {
+            bitmap.Unlock();
+            throw;
+        }
+        bitmap.Unlock();
+        return true;
+    }
+
     class collection_view final : public BView
     {
     public:
@@ -34,34 +50,58 @@ namespace
                     B_WILL_DRAW | B_FRAME_EVENTS | B_NAVIGABLE |
                         B_FULL_UPDATE_ON_RESIZE)
             , _owner(owner) {
-            SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
-            SetLowColor(ViewColor());
-            SetHighColor(ViewColor());
+            // This view paints every damaged pixel itself. Prevent the
+            // app_server from exposing an erased surface before Draw().
+            SetViewColor(B_TRANSPARENT_COLOR);
+            SetLowColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+            SetHighColor(LowColor());
         }
 
         void Draw(BRect update) override {
+            // AddChild can schedule drawing before create registers the peer.
+            if (!_owner.get_created()) return;
+            const native::detail::window_guard guard(_owner);
             if (auto *table = dynamic_cast<native::table_view *>(&_owner))
                 haiku::refresh_table_scrollbars(*table);
+            const BRect bounds = Bounds();
+            BRect damage = update;
+            if (!_buffer || _buffer->Bounds() != bounds) {
+                auto buffer = std::make_shared<BBitmap>(
+                    bounds, B_BITMAP_ACCEPTS_VIEWS, B_RGB32);
+                if (buffer->InitCheck() != B_OK)
+                    throw std::runtime_error("Haiku: cannot allocate paint buffer.");
+                if (!with_locked_bitmap(*buffer, [&] {
+                        buffer->AddChild(new BView(bounds, "paint_buffer",
+                                                  B_FOLLOW_NONE, B_WILL_DRAW));
+                    })) return;
+                _buffer = std::move(buffer);
+                damage = bounds;
+            }
+            // A paint callback can destroy this control. Keep its offscreen
+            // storage alive until the callback and graphics redirection end.
+            auto buffer = _buffer;
+            if (!with_locked_bitmap(*buffer, [&] {
+                    auto *target = buffer->ChildAt(0);
+                    const haiku::scoped_gpx_target redirect(_owner, target);
+                    native::rect invalid(
+                        static_cast<native::coord>(damage.left),
+                        static_cast<native::coord>(damage.top),
+                        static_cast<native::dim>(damage.Width() + 1),
+                        static_cast<native::dim>(damage.Height() + 1));
+                    auto &graphics = _owner.get_gpx().set_clip(invalid);
+                    const auto background = ui_color(B_PANEL_BACKGROUND_COLOR);
+                    graphics.clear(native::rgba(background.red, background.green,
+                                                background.blue, background.alpha));
+                    _owner.on_native_paint(native::wnd_paint_event(invalid, graphics));
+                    target->Sync();
+                })) return;
+            if (!guard.alive()) return;
+            // Neither the background clear nor intermediate drawing reaches
+            // the window. Present only the completed damaged rectangle.
             PushState();
             SetDrawingMode(B_OP_COPY);
-            SetHighColor(ViewColor());
-            FillRect(update);
+            DrawBitmap(buffer.get(), update, update);
             PopState();
-            // AddChild may schedule the first draw before the portable
-            // create path has registered its backend binding. The next
-            // invalidation after creation paints through the complete
-            // lifecycle state.
-            if (!_owner.get_created()) {
-                return;
-            }
-            native::rect invalid(
-                static_cast<native::coord>(update.left),
-                static_cast<native::coord>(update.top),
-                static_cast<native::dim>(update.Width() + 1),
-                static_cast<native::dim>(update.Height() + 1));
-            auto &graphics = _owner.get_gpx().set_clip(invalid);
-            native::wnd_paint_event event(invalid, graphics);
-            _owner.on_native_paint(event);
         }
 
         void MouseDown(BPoint where) override {
@@ -324,6 +364,7 @@ namespace
 
     private:
         native::wnd &_owner;
+        std::shared_ptr<BBitmap> _buffer;
     };
 } // namespace
 

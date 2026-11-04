@@ -53,9 +53,12 @@ namespace
         event.xexpose.y = area.p.y;
         event.xexpose.width = area.d.w;
         event.xexpose.height = area.d.h;
-        // Dispatch through Xt so native widgets retain their own expose
-        // methods and buffered hosts present complete frames.
-        XtDispatchEvent(&event);
+        // Queue the expose behind pending input/native exposes. Dispatching
+        // directly from a zero-timeout lets animated views monopolize Xt's
+        // timer priority and starve menu painting and keyboard delivery.
+        XSendEvent(XtDisplay(widget), XtWindow(widget), False,
+                   ExposureMask, &event);
+        XFlush(XtDisplay(widget));
     }
 
     void schedule_repaint(native::wnd &owner, native::rect area) {

@@ -45,6 +45,15 @@ namespace
                    : 0.0f;
     }
 
+    // Portable top-level dimensions describe content, excluding the menu bar.
+    void resize_client(BWindow *window, native::size dimensions) {
+        const BRect frame = window->Bounds();
+        const BView *content = haiku::content_view(window);
+        const BRect client = content ? content->Bounds() : frame;
+        window->ResizeTo(native_extent(dimensions.w) + frame.Width() - client.Width(),
+                         native_extent(dimensions.h) + frame.Height() - client.Height());
+    }
+
     void resize_portable_tab_pages(native::wnd &owner) {
         auto *tabs = dynamic_cast<native::tab_view *>(&owner);
         if (!tabs)
@@ -120,8 +129,7 @@ namespace native
 
         BWindow *window = haiku::wnd_bindings.handle_from_object(this);
         with_locked_window(window, [&](BWindow *locked) {
-            locked->ResizeTo(native_extent(_bounds.d.w),
-                             native_extent(_bounds.d.h));
+            resize_client(locked, _bounds.d);
         });
     }
 
@@ -139,8 +147,7 @@ namespace native
         BWindow *window = haiku::wnd_bindings.handle_from_object(this);
         with_locked_window(window, [&](BWindow *locked) {
             locked->MoveTo(_bounds.p.x, _bounds.p.y);
-            locked->ResizeTo(native_extent(_bounds.d.w),
-                             native_extent(_bounds.d.h));
+            resize_client(locked, _bounds.d);
         });
     }
 

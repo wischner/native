@@ -6,7 +6,7 @@ The [CPC acceptance record](CPC-UAT.md) supersedes earlier input/menu findings
 for the interactions it explicitly verifies. It records physical canvas-key,
 modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
 accelerator delivery, tested software OpenGL deployment, and exact suite scope.
-GEM physical key releases and WINGs external shutdown allocations remain
+Published-SDK GEM physical key releases and WINGs external shutdown allocations remain
 unresolved; GTK splitter timing and one intermittent elementary paused frame
 remain observations requiring follow-up.
 
@@ -286,12 +286,11 @@ have not been compiled or run on macOS. See the
 
 ## Current open issues
 
-- The Infinity physical-key extension cannot yet deliver held keys on either
-  GEMix transport: the pinned SDK converts physical positions and AES drops
-  key releases. A supported SDK/viewer raw-input and focus hook is required;
-  `app::get_physical_keyboard_supported()` returns false. See
-  [INFINITY.md](INFINITY.md). Audio, scoped UI delivery and child processes
-  are available independently.
+- Standard AES-only GEM SDKs still cannot deliver physical releases. With
+  `gem/input.h` and matching libraries/gemd, Native opts into real press/release
+  packets, focus/overflow resets and client-owned keyboard shortcut routing.
+  The published SDK does not yet contain this extension. See [CPC UAT](CPC-UAT.md)
+  for the local SDK validation scope; host-viewer focus loss still needs coverage.
 - The macOS verification gap from 2026-10-06 was superseded after source sync
   was explicitly authorized: the 2026-10-15 build and all 17 registered tests
   pass on `leia`, including the real CGL test. This does not establish

@@ -211,3 +211,8 @@ and narrow SDK sanitizer exceptions are in [ADJUST.md](../ADJUST.md).
 Passing regressions do not establish exhaustive standards conformance.
 `docker-amiga-check` qualifies runtime prerequisites only and currently fails;
 AmigaOS is not an implemented backend.
+
+GEM physical input is available with the optional `gem/input.h` extension
+and matching GEM libraries/server; the published AES-only SDK remains
+unsupported for held keys. The C++ API and standard AES fallback are
+unchanged. See [CPC acceptance](../notes/CPC-UAT.md) for validation and limitations.

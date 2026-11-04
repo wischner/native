@@ -292,6 +292,7 @@ namespace linux::gemix
                                 native::mouse_button button) {
         if (auto *surface =
                 region_at<native::canvas>(parent, position)) {
+            if (pressed) surface->on_native_focus(true);
             surface->on_native_mouse_click(native::mouse_event(
                 button,
                 pressed ? native::mouse_action::press

@@ -16,6 +16,7 @@
 
 #include "globals.h"
 #include "../../menu_shortcut.h"
+#include "../../input_state.h"
 
 namespace
 {
@@ -294,10 +295,9 @@ namespace native
             return;
         }
 
-        menu_state &state = build_menu(*this, owner);
-        menu_click(1, 1);
-        menu_bar(state.tree.data(), 1);
-        state.installed = true;
+        build_menu(*this, owner);
+        if (linux::gemix::active_window == &owner)
+            linux::gemix::activate_menu(&owner);
     }
 } // namespace native
 
@@ -324,8 +324,11 @@ namespace linux::gemix
                 if (parsed.key.size() == 1) {
                     matches = std::tolower(static_cast<unsigned char>(
                         parsed.key[0])) == std::tolower(ascii);
-                } else if (parsed.key == "F4" || parsed.key == "f4") {
-                    matches = scan == 0x3e;
+                } else if (parsed.key.size() >= 2 &&
+                           (parsed.key[0] == 'F' || parsed.key[0] == 'f')) {
+                    for (int number = 1; number <= 12; ++number)
+                        if (parsed.key.substr(1) == std::to_string(number))
+                            matches = scan == 57 + number;
                 }
                 if (matches) {
                     owner->on_native_menu(item.id);
@@ -339,6 +342,31 @@ namespace linux::gemix
 
 namespace linux::gemix
 {
+    native::app_wnd *menu_owner() {
+        for (const auto &[owner, state] : menu_states)
+            if (state.installed) return owner;
+        return nullptr;
+    }
+
+    void activate_menu(native::app_wnd *owner) {
+        while (owner && !menu_tree_for(owner))
+            owner = owner->get_owner();
+        auto *previous = menu_owner();
+        if (previous == owner) return;
+        if (previous) {
+            native::detail::reset_input(*previous);
+            auto &state = menu_states.at(previous);
+            menu_bar(state.tree.data(), 0);
+            state.installed = false;
+        }
+        if (owner) {
+            auto &state = menu_states.at(owner);
+            menu_click(1, 1);
+            menu_bar(state.tree.data(), 1);
+            state.installed = true;
+        }
+    }
+
     OBJECT *menu_tree_for(native::app_wnd *owner) {
         auto it = menu_states.find(owner);
         if (it == menu_states.end() || it->second.tree.empty()) {

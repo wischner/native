@@ -50,7 +50,8 @@ namespace haiku
         file_dialog_bindings;
 
     scoped_gpx_target::scoped_gpx_target(native::wnd &owner,
-                                         BView *target) {
+                                         BView *target)
+        : _guard(owner) {
         // Construct the owner's cache before replacing its normal host.
         owner.get_gpx();
         _cache = wnd_gpx_bindings.object_from_handle(&owner);
@@ -65,7 +66,7 @@ namespace haiku
     }
 
     scoped_gpx_target::~scoped_gpx_target() {
-        if (!_cache)
+        if (!_guard.alive() || !_cache)
             return;
         _cache->view = _previous;
         _cache->current_fg_valid = false;

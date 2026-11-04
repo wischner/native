@@ -231,6 +231,31 @@ namespace
                 check_window_title(*this);
                 child.create();
                 child.show();
+#if defined(MENU_TEST_GEMIX)
+                expect(linux::gemix::menu_owner() == &child,
+                       "shown child installs its menu");
+                linux::gemix::activate_menu(this);
+                expect(linux::gemix::menu_owner() == this,
+                       "main menu restores on activation");
+                linux::gemix::activate_menu(&child);
+                expect(linux::gemix::menu_owner() == &child,
+                       "child menu reactivates");
+                if (app::get_physical_keyboard_supported()) {
+                    std::vector<key_event> keys;
+                    const int key_connection = child.on_key.connect([&](key_event event) {
+                        keys.push_back(event); return true;
+                    });
+                    child.on_native_focus(true);
+                    linux::gemix::dispatch_physical_key(child, 0, 4 << 8, 1);
+                    linux::gemix::dispatch_physical_key(child, 0, 4 << 8, 1);
+                    linux::gemix::dispatch_physical_key(child, 0, 4 << 8, 0);
+                    expect(keys.size() == 3 && keys[0].key == key_code::a &&
+                           !keys[0].repeat && keys[1].repeat &&
+                           keys[2].action == key_action::release,
+                           "GEM preserves physical press/repeat/release");
+                    child.on_key.disconnect(key_connection);
+                }
+#endif
 #if defined(__APPLE__)
                 auto *main_peer = mac::menu_bindings.object_from_handle(menu.id());
                 auto *child_peer = mac::menu_bindings.object_from_handle(child.menu.id());
@@ -292,6 +317,10 @@ namespace
                 child.menu.set_checked(42, true);
                 child.destroy();
                 expect(child.menu.get_checked(42), "destroy retains model");
+#if defined(MENU_TEST_GEMIX)
+                expect(linux::gemix::menu_owner() == this,
+                       "closing child restores main menu");
+#endif
                 child.create();
                 child.show();
                 expect(native_checked(child, 42) && native_checked(child, 43),

@@ -71,14 +71,13 @@ Haiku uses the per-message modifier bitmap and repeat marker produced by
 [its keyboard input server](https://github.com/haiku/haiku/blob/master/src/add-ons/input_server/devices/keyboard/KeyboardInputDevice.cpp),
 preserving event order instead of reading only the latest global key state.
 
-**GEMix limitation:** the pinned GEM SDK transforms raw HID positions into
-layout-oriented key values and AES discards releases. Both direct and gemd
-transport are affected. The viewer's raw UDP stream has one subscriber and no
-complete focus contract; registering another subscriber would interfere with
-GEM input. A supported SDK/viewer raw-input hook carrying physical positions,
-press/release, focus and cancellation is required. Native does not guess releases
-with timers or steal the viewer connection. `app::get_physical_keyboard_supported()`
-reports false for GEMix; Vision and nemu-gui report that limitation explicitly.
+**GEMix SDK boundary:** the published AES-only SDK discards releases and
+reports physical input unsupported. With `gem/input.h` and matching GEM
+libraries/server, Native requests USB-position press/release and input resets
+through the existing event transport. It does not synthesize releases or open
+another viewer subscriber. Rasta typing, F10 and Native editor shortcuts have
+been exercised; host-viewer focus-loss and every keyboard layout remain
+outside that qualification. See [CPC UAT](CPC-UAT.md).
 
 ### Bounded PCM output
 
@@ -243,3 +242,8 @@ The new APIs do not automatically update nemu's UI adapter or installed Native
 headers/archive. Its guest mouse still owns sensitivity, fractional accumulation,
 Y inversion and eight-bit wrapping; effects must not alter those values.
 Native capability/desktop evidence is recorded separately in the feature matrix.
+
+GEM physical input is available with the optional `gem/input.h` extension
+and matching GEM libraries/server; the published AES-only SDK remains
+unsupported for held keys. The C++ API and standard AES fallback are
+unchanged. See [CPC acceptance](CPC-UAT.md) for validation and limitations.

@@ -6,7 +6,7 @@ The [CPC acceptance record](../../notes/CPC-UAT.md) supersedes earlier input/men
 for the interactions it explicitly verifies. It records physical canvas-key,
 modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
 accelerator delivery, tested software OpenGL deployment, and exact suite scope.
-GEM physical key releases and WINGs external shutdown allocations remain
+Published-SDK GEM physical key releases and WINGs external shutdown allocations remain
 unresolved; GTK splitter timing and one intermittent elementary paused frame
 remain observations requiring follow-up.
 
@@ -1689,3 +1689,18 @@ all classic-control functional assertions pass, with the existing
 Fontconfig/Pango shutdown allocation reports still present. The full WINGs
 suite remains 20/22; the repaint and classic-control executables fail only
 their existing shutdown leak checks.
+
+GEM physical input is available with the optional `gem/input.h` extension
+and matching GEM libraries/server; the published AES-only SDK remains
+unsupported for held keys. The C++ API and standard AES fallback are
+unchanged. See [CPC acceptance](../../notes/CPC-UAT.md) for validation and limitations.
+
+CPC follow-up (2026-11-04): Haiku dispatch regression passes on `hotel`,
+including activation focus, retention of an existing control's focus, and
+repeated client sizing with a menu attached. CPC accepts physical VM keyboard
+input after title-tab activation. These repairs change no public APIs.
+
+Haiku repaint follow-up: canvases and collection views compose offscreen,
+preventing the background-clear flash during updates and window movement.
+The dispatch test samples the actual screen inside the next paint callback
+to check that the previously presented frame has not been erased.

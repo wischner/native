@@ -13,6 +13,9 @@
 #include <vector>
 
 #include <gem.h>
+#ifdef NATIVE_GEM_PHYSICAL_KEYBOARD
+#include <gem/input.h>
+#endif
 
 #include <native.h>
 #include <bindings.h>
@@ -23,6 +26,10 @@
 
 namespace linux::gemix
 {
+    // Deliver opted-in physical events before text/navigation handling.
+    bool dispatch_physical_key(native::app_wnd &owner, WORD modifiers,
+                               WORD key, WORD state);
+
     // GEM callbacks expose numeric handles, so shared runtime state and
     // registries provide the object context needed for dispatch.
     struct runtime_state
@@ -229,6 +236,12 @@ namespace linux::gemix
     // Request repainting for a native window.
     void request_repaint(native::wnd *target,
                          const native::rect *area = nullptr);
+
+    // Select the active window's menu, falling back through its owners.
+    void activate_menu(native::app_wnd *owner);
+
+    // Return the window whose menu is currently installed in AES.
+    native::app_wnd *menu_owner();
 
     // Return the object tree attached to an application window.
     OBJECT *menu_tree_for(native::app_wnd *owner);

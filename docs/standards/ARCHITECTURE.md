@@ -167,9 +167,11 @@ Focused editor text and composition paths remain separate. Unclaimed keys
 go to their actual input target, without automatic parent bubbling.
 
 `app::get_physical_keyboard_supported()` reports adapter availability.
-GEMix currently returns false: the pinned AES interface discards raw key
-releases and some physical distinctions. Do not synthesize timed releases
-or claim emulator held-key parity from AES key-down packets.
+GEMix enables this adapter only with the optional `gem/input.h` SDK extension
+and matching GEM libraries/server. It requests real USB-position press/release
+packets and resets held input on queue overflow or focus transfer. Standard
+AES-only SDKs still report false. Never synthesize timed releases or infer
+held-key parity from AES key-down packets.
 
 Haiku uses several native loopers within one serialized UI domain. Its common
 recursive gate protects portable state and signals across window callbacks and

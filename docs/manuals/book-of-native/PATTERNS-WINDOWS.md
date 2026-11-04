@@ -745,3 +745,17 @@ menu-click and accelerator `WM_COMMAND` notifications.
 X11-family adapters publish UTF-8 EWMH titles and converted ICCCM text for
 classic window managers. Xt/WINGs initialize their character locale before
 converting titles; the desktop's fonts still determine available glyphs.
+
+### GEM modeless menu ownership
+
+GEM's desktop menu follows the active application window. Showing or topping
+a modeless window installs its menu; returning to the main window restores
+that menu. A window without its own menu inherits its owner's menu. Building
+a background window's menu does not take desktop ownership. Menu selections
+route through the installed owner rather than always through `app::main_wnd()`.
+Closing the active child restores the remaining window's menu and clears
+held input through the existing peer reset path.
+
+Haiku top-level `set_dimensions()` and `set_bounds()` preserve the requested
+client size by adding the current BeAPI menu extent to the native frame.
+Repeated size requests do not shrink the client by one menu height each time.

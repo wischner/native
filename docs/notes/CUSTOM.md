@@ -5,7 +5,11 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-03.
+Audit date: 2026-11-04.
+
+CPC follow-up: GEM menu activation/input routing and Motif repaint fairness
+change no control kind marks. AES remains the menu implementation; the
+optional GEM input extension stays inside the toolkit adapter.
 
 Menu check-state review (2026-11-03): all existing kind marks remain.
 Checkable commands retain portable state and update native marks silently.
@@ -999,3 +1003,11 @@ and flat native glyphs so their visible silhouettes match.
 Inspector text, numeric, boolean, choice and arbitrary-dropdown values use
 one control font and black ink with matching entry paper. Ordinary native
 toggle fonts outside the property grid are unchanged.
+
+Haiku follow-up (2026-11-04): BeAPI owns activation focus and menu geometry.
+The plain client receives focus only when none exists, and native frame size
+includes the menu outside the requested client. All control kind marks remain.
+
+Haiku painting follow-up (2026-11-04): collection hosts now use a reusable
+BeAPI bitmap for composition and present completed damage in one copy.
+Native widgets remain native, and no control kind marks or public APIs change.

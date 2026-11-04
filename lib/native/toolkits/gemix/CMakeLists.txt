@@ -13,6 +13,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/painting.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
@@ -57,4 +58,8 @@ else()
     message(STATUS "GEMix calls use in-process AES/VDI.")
 endif()
 
-target_compile_definitions(native PRIVATE NATIVE_NO_PHYSICAL_KEYBOARD)
+if(EXISTS "${GEMIX_AES_INCLUDEDIR}/gem/input.h")
+    target_compile_definitions(native PRIVATE NATIVE_GEM_PHYSICAL_KEYBOARD)
+else()
+    target_compile_definitions(native PRIVATE NATIVE_NO_PHYSICAL_KEYBOARD)
+endif()

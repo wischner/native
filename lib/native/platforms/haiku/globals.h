@@ -73,8 +73,8 @@ namespace haiku
         bool dirty_clip = true;
     };
 
-    // Temporarily route a portable control's graphics operations into the
-    // native child view currently asking it to paint a row or cell.
+    // Temporarily route portable graphics into a native row/cell or offscreen
+    // view; restore the cache only while the owner's peer remains alive.
     class scoped_gpx_target
     {
     public:
@@ -85,6 +85,7 @@ namespace haiku
         scoped_gpx_target &operator=(const scoped_gpx_target &) = delete;
 
     private:
+        native::detail::window_guard _guard;
         haiku_gpx *_cache = nullptr;
         BView *_previous = nullptr;
     };

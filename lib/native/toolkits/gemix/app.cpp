@@ -22,6 +22,12 @@
 
 namespace
 {
+#ifdef NATIVE_GEM_PHYSICAL_KEYBOARD
+    constexpr UWORD keyboard_events = GEM_MU_KEY;
+#else
+    constexpr UWORD keyboard_events = MU_KEYBD;
+#endif
+
     using linux::gemix::root_bounds;
     using linux::gemix::root_of;
 
@@ -132,6 +138,7 @@ namespace
         if (auto *pressed = linux::gemix::runtime.pressed_button)
             pressed->invalidate();
         linux::gemix::active_window = pointer_window;
+        linux::gemix::activate_menu(pointer_window);
         linux::gemix::focus_text_edit(pointer_window, local);
         if (!linux::gemix::dispatch_drag_click(
                 pointer_window, local, true) &&
@@ -234,7 +241,7 @@ namespace native
 
         detail::drain_posted_work();
         while (!linux::gemix::runtime.shutdown_requested) {
-            WORD events = evnt_multi(MU_MESAG | MU_KEYBD | MU_BUTTON |
+            WORD events = evnt_multi(MU_MESAG | keyboard_events | MU_BUTTON |
                                          MU_TIMER,
                                      1,
                                      1,
@@ -351,12 +358,15 @@ namespace native
             prev_my = my;
             prev_mb = mb;
 
-            if ((events & MU_KEYBD) != 0) {
+            if ((events & keyboard_events) != 0) {
                 app_wnd *top = linux::gemix::active_window
                                    ? linux::gemix::active_window
                                    : app::main_wnd();
                 if (top && !top->get_input_enabled()) {
                     raise_active_modal(top);
+                } else if (top && linux::gemix::dispatch_physical_key(
+                                      *top, ks, kr, br)) {
+                    // Consumed keys and releases never enter the text path.
                 } else if (top && linux::gemix::handle_text_edit_key(
                                       top, ks, kr)) {
                     // A focused editor owns its selection/clipboard commands.
@@ -432,6 +442,7 @@ namespace native
                             pointer_window == target && (mb & 1) == 0;
                         wind_set(msg[3], WF_TOP, 0, 0, 0, 0);
                         linux::gemix::active_window = target;
+                        linux::gemix::activate_menu(target);
                         const auto work =
                             linux::gemix::work_rect(msg[3]);
                         const point local(mx - work.x1(),
@@ -472,7 +483,7 @@ namespace native
                 }
 
                 case MN_SELECTED: {
-                    app_wnd *menu_owner = app::main_wnd();
+                    app_wnd *menu_owner = linux::gemix::menu_owner();
                     if (menu_owner &&
                         !menu_owner->get_input_enabled()) {
                         raise_active_modal(menu_owner);

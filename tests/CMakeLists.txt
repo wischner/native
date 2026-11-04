@@ -538,6 +538,8 @@ if(HAIKU)
         PROPERTIES ENVIRONMENT "GALLIUM_DRIVER=softpipe")
 
     add_executable(native_haiku_dispatch_tests native_haiku_dispatch_tests.cpp)
+    target_include_directories(native_haiku_dispatch_tests PRIVATE
+        "${PROJECT_SOURCE_DIR}/lib/native")
     target_link_libraries(native_haiku_dispatch_tests PRIVATE native native_developer_options)
     add_test(NAME native_haiku_dispatch_tests COMMAND native_haiku_dispatch_tests)
     set_tests_properties(native_haiku_dispatch_tests PROPERTIES TIMEOUT 30)

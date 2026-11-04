@@ -629,7 +629,7 @@ selection to the library.
 | `native_worker_shutdown_tests` | Retire a blocked worker without blocking its caller; join independently of UI turns |
 | `native_close_runtime_tests` | Actual native close cancellation then acceptance on every existing backend |
 | `native_haiku_glsl_context_tests` | Real OSMesa core contexts, binding order, retired outer peers, viewport preservation and untouched foreign bindings; explicit skip when the runtime is unavailable |
-| `native_haiku_dispatch_tests` | Native two-window paint/resize with 100 posted updates, callback serialization and shutdown |
+| `native_haiku_dispatch_tests` | Haiku visible-frame preservation during repaint, activation/control focus, menu-aware client sizing, two-window paint/resize with 100 posted updates, callback serialization and shutdown |
 
 Motif runtime/allocation tests use full allocation unwinding and only the
 independently reproduced `XtOwnSelection`, `XtDisownSelection` and

@@ -457,3 +457,19 @@ remain on screen while rulers or other portable backgrounds update; native
 item invalidation uses `PANEL_NO_CLEAR`. Native XView clear/expose callbacks
 can still restore background under an item; affected live native items are then
 repainted, allowing shorter text replacements to remove the old characters.
+
+### Xt repaint fairness
+
+OpenMotif's deferred repaint callback queues an Expose through X rather than
+calling `XtDispatchEvent` recursively from a zero-delay timer. Continuous
+shader invalidation therefore shares normal event ordering with mapping,
+menu, keyboard and window-manager events. Repaint coalescing remains owned
+by the existing window peer.
+
+Haiku collection hosts, including canvases and shader views, disable the
+app_server's automatic background erase with `B_TRANSPARENT_COLOR`. Each host
+owns an offscreen `BBitmap` and drawing view. Background clearing and portable
+painting finish there before one damaged-rectangle bitmap copy reaches the
+window. The buffer is reused until the view size changes; resizing initializes
+the complete replacement. Graphics redirection retains the owner lifetime guard
+and leaves native widgets and public painting APIs unchanged.
