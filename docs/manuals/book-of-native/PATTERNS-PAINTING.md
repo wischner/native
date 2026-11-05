@@ -473,3 +473,12 @@ painting finish there before one damaged-rectangle bitmap copy reaches the
 window. The buffer is reused until the view size changes; resizing initializes
 the complete replacement. Graphics redirection retains the owner lifetime guard
 and leaves native widgets and public painting APIs unchanged.
+
+### Queued redraws on classic X toolkits
+
+Motif retains one pending repaint until Xt dispatches its synthetic expose,
+merging damage that arrives after the timeout has sent that event. Destroying
+or recreating a peer discards its pending repaint state. WINGs backing pixmaps
+are complete copy sources, so their presentation GC disables graphics-exposure
+replies; ordinary window exposes still repaint normally. Both policies belong
+to the backend and require no application-specific refresh workaround.

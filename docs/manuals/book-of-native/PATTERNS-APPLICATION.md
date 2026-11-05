@@ -191,3 +191,13 @@ they do not call `Quit()` from the window looper without the application lock.
 Peer-owned cursor resources are released while app-server communication is
 still available. The CRT terminal exercises both posted closure and native
 window closure.
+
+### WINGs notification fairness
+
+The outer WINGs loop consumes up to 64 pending X events before dispatching
+one deferred-work batch and posted UI work. This keeps property/configuration
+bursts from forcing an expensive refreshed frame after each notification,
+while the bound still gives worker delivery and painting regular turns.
+The first event waits through `WMNextEvent`; subsequent events are consumed
+only while X input is already pending. Private WINGs modal loops retain their
+existing idle-dispatch path.

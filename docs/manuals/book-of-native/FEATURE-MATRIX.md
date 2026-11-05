@@ -1,5 +1,15 @@
 # Feature Matrix
 
+## Live debugger windows (2026-11-05)
+
+Motif coalesces invalidations through queued expose delivery. Window Maker
+processes bounded batches of native events before deferred paints and posted
+refresh; backing-pixmap presentation omits GraphicsExpose/NoExpose replies.
+OPEN LOOK applies text display-width changes after creation and aligns
+choice-stack text with adjacent controls. These fixes live in Native; consumers
+use ordinary bounds, invalidation, and UI-dispatch APIs. See the
+[CPC acceptance record](../../notes/CPC-UAT.md) for verification scope.
+
 ## CPC integration review (2026-11-04)
 
 The [CPC acceptance record](../../notes/CPC-UAT.md) supersedes earlier input/menu findings
@@ -1704,3 +1714,24 @@ Haiku repaint follow-up: canvases and collection views compose offscreen,
 preventing the background-clear flash during updates and window movement.
 The dispatch test samples the actual screen inside the next paint callback
 to check that the previously presented frame has not been erased.
+
+
+GEM debugger follow-up (2026-11-05): shared source-editor rendering protects
+its outer frame from first-row highlights. GEM's updated AES supplies thin
+resize frames for windows without scroll controls; Native continues to
+request `NAME | CLOSER | FULLER | MOVER | SIZER` through its existing backend.
+No application-specific layout or control-kind changes are involved.
+
+
+GTK scroll follow-up (2026-11-05): Wayland/Elementary convert wheel clicks
+to canvas pixels while preserving smooth pixel distances and per-axis
+fractions. Control implementation kinds and the public API are unchanged.
+
+
+### Haiku wheel direction (2026-11-05)
+
+Haiku collection hosts invert BeAPI wheel deltas to Native's up/left-positive
+convention, preserving the 24-pixel step for canvases and one-line code-editor
+scrolling. Both axes are delivered independently and zero deltas emit no
+movement. Top-level window wheel events use the same direction convention.
+The public API and control implementation classifications are unchanged.

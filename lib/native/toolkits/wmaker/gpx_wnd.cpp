@@ -108,6 +108,10 @@ namespace native
             cache = new linux::wmaker::window_graphics;
             cache->gc = XCreateGC(
                 linux::wmaker::display, target, 0, nullptr);
+            // The source is a complete backing pixmap; presentation does
+            // not need GraphicsExpose/NoExpose replies for every frame.
+            XSetGraphicsExposures(
+                linux::wmaker::display, cache->gc, False);
             cache->width = dimensions.w;
             cache->height = dimensions.h;
             cache->backbuffer = XCreatePixmap(

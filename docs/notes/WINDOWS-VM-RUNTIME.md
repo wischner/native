@@ -71,6 +71,14 @@ Select **Windows 11, VM**:
    other applications running. The scheduled task
    and deployed files remain available for subsequent launches.
 
+The launcher sets GDB's remote reply timeout to 15 seconds before connecting.
+With the default two seconds, a busy VM can cause a handshake retransmission:
+the duplicate `vCont?` response is then read as the reply to `vMustReplyEmpty`,
+and GDB rejects the connection. A delayed-protocol fixture with the SDK's
+MinGW GDB reproduces that exact error at two seconds and passes the probe
+with the 15-second setting. This changes debugger transport configuration;
+the application and UI backend are unchanged.
+
 Session diagnostics use stderr, preserving GDB/MI stdout. The scripts do not
 store a Windows password, change autologon, reboot the guest, or alter Windows
 Update. The full local executable retains debug information; the staging executable

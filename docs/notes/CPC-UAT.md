@@ -123,10 +123,9 @@ activation delegate directly when the desktop does not grant key status.
   game sessions, every chooser, clipboard path and every host keyboard layout
   are not qualified by this pass. Software-renderer throughput and maximum
   emulation speed have not been benchmarked against hardware rendering.
-- The consumer retains its pre-existing build-copy compatibility adapters for
-  older Native overrides. The Motif and fixed-font replacements do not activate
-  against the repaired source. Its dependency catalog is advanced to the repair
-  commit when publishing these changes.
+- The consumer no longer rewrites Native sources during configuration.
+  Backend repairs live in the Native checkout; dependency catalog updates must
+  point to the published Native revision containing those repairs.
 
 Final payloads were refreshed in the existing Haiku/Windows deployment folders
 and the separate `charlie-papa-charlie-uat` elementary folder. The Windows
@@ -207,3 +206,101 @@ during a subsequent repaint. A 100-capture CPC title-drag run retained visible
 content and exited normally; ordinary repaint checks alone did not reproduce
 the original reported flash. CPC's updated binary is deployed to `hotel`, and
 its CRT default stays off. Consumer evidence is under `build/uat3/`.
+
+
+## Debugger backend repairs (2026-11-05)
+
+CPC now builds Native directly, without consumer-side source rewriting.
+Motif keeps invalidations coalesced until its queued Expose is consumed;
+Window Maker drains bounded batches of pending X events before refreshing
+and disables unnecessary backing-pixmap copy replies. OPEN LOOK updates
+live text-field display widths and aligns choice-stack text in the backend.
+Application layout and event handling remain shared across toolkits.
+
+Direct SDK Debug builds pass for Window Maker, Motif, OPEN LOOK and SDL2.
+In a real Window Maker session, startup F10 responds in 153 ms and repeated
+pause/resume with disassembly, registers and memory open takes 155–156 ms.
+Motif passes sustained refresh, stepping, resizing and reopening of all three
+debuggers with CRT enabled. OPEN LOOK screenshots confirm compact address
+entry and aligned toolbar text before and after resizing. SDL2 passes the
+memory-browser navigation, banks, selection, scrolling and lifecycle checks.
+
+Native's Motif repaint/menu and OPEN LOOK runtime/menu tests pass with
+ASan/UBSan. Window Maker's new
+repaint/event-fairness and existing menu assertions pass with ASan/UBSan when
+leak detection is disabled; its close test passes with the existing leak
+suppressions. Leak-enabled menu/repaint runs still report about 10 KiB in
+Fontconfig/Pango allocations after shutdown, beyond the existing WINGs
+suppressions. These runs do not establish leak-clean Window Maker shutdown.
+The published dependency pin still needs a revision containing these changes;
+this evidence uses the sibling Native working tree.
+
+
+## GEM debugger frame follow-up (2026-11-05)
+
+The sibling GEM's scrollbar-free `SIZER` windows now have a thin resize frame;
+Native still requests the same standard AES flags. Rasta verification shows
+compact memory/register/disassembly windows, working bottom-right resizing,
+and memory scrolling without an unused outer scrollbar gutter. The shared
+source renderer protects enabled borders from row backgrounds, fixing the
+intermittent line below the disassembly header. Emulator UI code is unchanged.
+
+The focused GEM editor-frame mode passes with ASan/UBSan; the full Native GEM
+runtime run reaches its existing final menu-strip assertion and fails there
+with both previous and repaired GEM SDKs. SDL2 disassembly interaction passes.
+GEM's sanitizer geometry/hit checks pass, and its complete suite is 96/101,
+retaining the same five prior failures after review of six updated frame
+reference sets. Compact frames require the repaired GEM SDK/server; the CPC
+build already layers the sibling GEM checkout into its local SDK.
+
+
+## GTK trackball scrolling (2026-11-05)
+
+The shared Wayland/Elementary input adapter previously collapsed every GTK
+scroll delta to its sign. Canvas consumes pixel distances, so this moved the
+memory browser by one pixel per event. Native now converts wheel units at
+24 pixels per click, retains event magnitude, and passes surface-pixel
+movement without amplification. Fractional pixels accumulate per axis;
+zero-distance events no longer invent movement. CPC UI code is unchanged.
+
+The real GTK controller regression checks wheel clicks, fractional clicks,
+horizontal motion and reversal; the same dispatcher is checked with smooth
+pixel units and independent subpixel remainders. Debug ASan/UBSan checks pass
+for Wayland and Elementary under Weston, and the Elementary CPC build passes
+without warnings. Elementary's full control test first hit the existing
+splitter allocation timing assertion and passed on rerun; no splitter code
+was changed.
+
+
+## Haiku debugger scrolling (2026-11-05)
+
+CPC's memory-browser wheel direction was reversed because the collection
+host passed BeAPI's down/right-positive values through to Native unchanged.
+The adapter now negates both axes, retains its 24-pixel step, and ignores
+zero motion. The top-level window bridge uses the same sign correction.
+The Docker Debug build and `native_haiku_dispatch_tests` pass on `hotel`:
+checks cover both directions/axes, fractional wheel input, zero events,
+80,000-pixel canvas navigation, code-editor wheel movement and caret reveal,
+plus existing repaint/looper serialization assertions.
+
+The rebuilt CPC was deployed and checked with QEMU mouse-wheel events:
+down advances the displayed addresses and up restores them. A paused PC
+of 1CE3 is visible in the first row, 1CE0, after explicit address navigation.
+The previous reveal behavior put the correct row at the bottom; CPC now
+positions explicit address jumps at the top on every backend, clamped near
+the end of memory. No Haiku-specific application logic was introduced.
+
+
+## Haiku code-border verification (2026-11-05)
+
+The reported blinking disassembly top edge was not reproduced in the current
+CPC deployment, which includes the shared code-renderer border clipping added
+for GEM. Paused and stepped views retain their frame; eight screenshots during
+continuous execution each retain all 698 sampled top-edge pixels.
+`native_haiku_dispatch_tests` now checks the actual Haiku window graphics
+adapter against a bitmap target across first/second-row caret changes, focus
+changes, full paints and two-pixel-high partial paints. All/top/no-border
+configurations are exercised. The Debug cross-build and runtime test under
+batch GDB on `hotel` pass. This adds regression coverage; no new production
+repair is claimed for an unreproduced blink. Further reproduction needs the
+specific window and action that triggers it.

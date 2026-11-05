@@ -35,5 +35,7 @@ if [[ -f ${cache}/version.txt ]]; then
         -iex "set sysroot ${cache}"
         -iex "set solib-search-path ${vm_workspace}/build/windows-mingw-w64/src:${cache}")
 fi
+# Allow a busy guest to reply before GDB retransmits a handshake packet.
+# Retransmission at the default two seconds can leave replies out of sequence.
 "${vm_workspace}/scripts/linux/docker-debug.sh" "${vm_image}" \
-    /usr/bin/x86_64-w64-mingw32-gdb "${symbols[@]}" "$@"
+    /usr/bin/x86_64-w64-mingw32-gdb -iex "set remotetimeout 15" "${symbols[@]}" "$@"

@@ -305,7 +305,7 @@ namespace haiku
                     native::mouse_wheel_event(
                     native::point(static_cast<native::coord>(where.x),
                                   static_cast<native::coord>(where.y)),
-                    static_cast<native::coord>(dx * 120.0f),
+                    static_cast<native::coord>(-dx * 120.0f),
                     native::wheel_direction::horizontal));
             }
 
@@ -315,7 +315,7 @@ namespace haiku
                     native::mouse_wheel_event(
                     native::point(static_cast<native::coord>(where.x),
                                   static_cast<native::coord>(where.y)),
-                    static_cast<native::coord>(dy * 120.0f),
+                    static_cast<native::coord>(-dy * 120.0f),
                     native::wheel_direction::vertical));
             }
             return;

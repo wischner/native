@@ -29,6 +29,7 @@ namespace
     struct pending_repaint {
         Widget widget = nullptr;
         XtIntervalId timer = 0;
+        bool expose_queued = false;
         native::rect area;
 
         ~pending_repaint() {
@@ -37,6 +38,21 @@ namespace
         }
     };
 
+    void consume_repaint(Widget, XtPointer data, XEvent *event, Boolean *) {
+        auto &owner = *static_cast<native::wnd *>(data);
+        auto *pending = native::detail::peer_state<pending_repaint>(owner);
+        if (!pending || !pending->expose_queued ||
+            event->type != Expose || !event->xexpose.send_event)
+            return;
+        // Include damage accumulated since this event was sent. Run before
+        // the widget's painter so invalidation during paint queues a new frame.
+        event->xexpose.x = pending->area.p.x;
+        event->xexpose.y = pending->area.p.y;
+        event->xexpose.width = pending->area.d.w;
+        event->xexpose.height = pending->area.d.h;
+        pending->expose_queued = false;
+    }
+
     void deliver_repaint(XtPointer data, XtIntervalId *) {
         auto *pending = static_cast<pending_repaint *>(data);
         Widget widget = pending->widget;
@@ -44,6 +60,7 @@ namespace
         pending->timer = 0;
         if (!widget || !XtIsRealized(widget))
             return;
+        pending->expose_queued = true;
         XEvent event{};
         event.xexpose.type = Expose;
         event.xexpose.display = XtDisplay(widget);
@@ -108,8 +125,10 @@ namespace
         if (!pending) {
             pending = new pending_repaint;
             native::detail::assign_peer_state(owner, pending);
+            XtInsertEventHandler(widget, ExposureMask, False, consume_repaint,
+                                 &owner, XtListHead);
         }
-        if (pending->timer) {
+        if (pending->timer || pending->expose_queued) {
             const int x = std::min(int(pending->area.p.x), left);
             const int y = std::min(int(pending->area.p.y), top);
             pending->area = native::rect(x, y,

@@ -363,3 +363,23 @@ Physical keyboard delivery belongs to the focused drawing host. The
 [signal chapter](PATTERNS-SIGNALS.md#physical-keys-on-drawing-surfaces) records
 the canvas adapters and their press/repeat/release/reset routing. Repeated
 identical `set_bounds()` calls do not invalidate a shader canvas’s history.
+
+
+### GTK wheel units
+
+Wayland and Elementary translate GTK wheel clicks to 24 canvas pixels per
+click, matching the SDL and classic X canvas adapters. They preserve the
+reported click magnitude. GTK surface-pixel events retain their distance
+without that multiplier; fractional pixels accumulate independently on each
+axis until representable by the integer wheel event. Zero-distance events
+produce no scrolling. This conversion belongs to Native, so applications
+use the same canvas behavior across desktops.
+
+
+### Haiku wheel direction (2026-11-05)
+
+Haiku collection hosts invert BeAPI wheel deltas to Native's up/left-positive
+convention, preserving the 24-pixel step for canvases and one-line code-editor
+scrolling. Both axes are delivered independently and zero deltas emit no
+movement. Top-level window wheel events use the same direction convention.
+The public API and control implementation classifications are unchanged.

@@ -57,6 +57,66 @@ namespace
         if (!condition)
             throw std::runtime_error(message);
     }
+    // Exercise the actual GTK callback, then the smooth-pixel translation.
+    void check_canvas_scroll(native::wnd &parent) {
+        using namespace native;
+        using namespace linux::wayland;
+        canvas surface(0, 0, 160, 100);
+        surface.set_parent(&parent);
+        surface.set_content_bounds({0, 0, 2000, 2000});
+        surface.create();
+        surface.show();
+        surface.set_scroll_position({100, 100});
+        int events = 0;
+        surface.on_mouse_wheel.connect([&](mouse_wheel_event) {
+            ++events;
+            return false;
+        });
+        auto *controllers = gtk_widget_observe_controllers(state(surface).content);
+        bool found = false;
+        for (guint i = 0; i < g_list_model_get_n_items(controllers); ++i) {
+            auto *controller = G_OBJECT(g_list_model_get_item(controllers, i));
+            if (GTK_IS_EVENT_CONTROLLER_SCROLL(controller)) {
+                found = true;
+                gboolean handled = false;
+                g_signal_emit_by_name(controller, "scroll", 0., 1., &handled);
+                expect(handled && surface.get_scroll_position().y == 124,
+                       "GTK wheel click scrolls a canvas by 24 pixels");
+                g_signal_emit_by_name(controller, "scroll", 0., 2.5, &handled);
+                expect(surface.get_scroll_position().y == 184,
+                       "GTK wheel magnitude and fractional clicks are retained");
+                g_signal_emit_by_name(controller, "scroll", 1., 0., &handled);
+                expect(surface.get_scroll_position().x == 124,
+                       "GTK horizontal wheel uses the same pixel scale");
+            }
+            g_object_unref(controller);
+        }
+        g_object_unref(controllers);
+        expect(found && events == 3, "canvas has one wheel dispatch per axis event");
+        dispatch_scroll(surface, 0, 12.5, GDK_SCROLL_UNIT_SURFACE);
+        dispatch_scroll(surface, 0, 12.5, GDK_SCROLL_UNIT_SURFACE);
+        expect(surface.get_scroll_position().y == 209,
+               "smooth scrolling retains pixels without wheel amplification");
+        dispatch_scroll(surface, 0, -1, GDK_SCROLL_UNIT_WHEEL);
+        expect(surface.get_scroll_position().y == 185,
+               "reversing the wheel moves the viewport up");
+        const int before = events;
+        expect(!dispatch_scroll(surface, 0, 0, GDK_SCROLL_UNIT_WHEEL) &&
+                   events == before, "zero scroll does not invent movement");
+        for (int i = 0; i < 3; ++i)
+            dispatch_scroll(surface, 0, .25, GDK_SCROLL_UNIT_SURFACE);
+        dispatch_scroll(surface, .5, 0, GDK_SCROLL_UNIT_SURFACE);
+        expect(surface.get_scroll_position().y == 185 &&
+                   surface.get_scroll_position().x == 124 && events == before,
+               "subpixel movement accumulates separately on each axis");
+        dispatch_scroll(surface, 0, .25, GDK_SCROLL_UNIT_SURFACE);
+        dispatch_scroll(surface, .5, 0, GDK_SCROLL_UNIT_SURFACE);
+        expect(surface.get_scroll_position().y == 186 &&
+                   surface.get_scroll_position().x == 125 && events == before + 2,
+               "accumulated fractions eventually move each axis one pixel");
+        surface.destroy();
+    }
+
     class lazy_rows final : public native::table_model
     {
     public:
@@ -156,6 +216,7 @@ int program(int, char **) {
                 },
                 new std::function<void()>([&] {
                     try {
+                        check_canvas_scroll(host);
                         {
                             modeless_wnd inspector(window, "Inspector");
                             inspector.create();

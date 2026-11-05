@@ -263,7 +263,10 @@ namespace
         // its origin after that layout, including the abbreviated mark.
         if (!editable)
             xv_set(choice, XV_X, bounds.p.x, XV_Y, bounds.p.y,
-                   PANEL_VALUE_X, bounds.p.x, nullptr);
+                   PANEL_VALUE_X, bounds.p.x,
+                   XV_Y, bounds.p.y - 1 - std::max(0,
+                       (int(xv_get(choice, XV_HEIGHT)) -
+                        native::font_t::stock(native::font_role::control).get_metrics().height) / 2), nullptr);
         return choice;
     }
 }

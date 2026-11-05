@@ -158,13 +158,24 @@ namespace
 
         void MessageReceived(BMessage *message) override {
             if (message && message->what == B_MOUSE_WHEEL_CHANGED) {
-                float delta = 0.0f;
-                message->FindFloat("be:wheel_delta_y", &delta);
-                _owner.on_native_mouse_wheel(
-                    native::mouse_wheel_event(
-                    native::point(),
-                    static_cast<native::coord>(delta * 24.0f),
-                    native::wheel_direction::vertical));
+                if (!_owner.get_input_enabled()) return;
+                const native::detail::window_guard guard(_owner);
+                float dx = 0.0f, dy = 0.0f;
+                message->FindFloat("be:wheel_delta_x", &dx);
+                message->FindFloat("be:wheel_delta_y", &dy);
+                // BeAPI uses positive deltas for down/right; Native uses
+                // positive deltas for up/left. Canvas distances are pixels.
+                if (dx != 0.0f)
+                    _owner.on_native_mouse_wheel(native::mouse_wheel_event(
+                        native::point(),
+                        static_cast<native::coord>(-dx * 24.0f),
+                        native::wheel_direction::horizontal));
+                if (!guard.alive()) return;
+                if (dy != 0.0f)
+                    _owner.on_native_mouse_wheel(native::mouse_wheel_event(
+                        native::point(),
+                        static_cast<native::coord>(-dy * 24.0f),
+                        native::wheel_direction::vertical));
                 return;
             }
             BView::MessageReceived(message);

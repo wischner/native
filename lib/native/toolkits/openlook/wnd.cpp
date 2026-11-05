@@ -92,7 +92,10 @@ namespace
                    XV_HEIGHT, bounds.d.h,
                    nullptr);
         if (state->choice && !editable)
-            xv_set(state->choice, PANEL_VALUE_X, bounds.p.x, nullptr);
+            xv_set(state->choice, PANEL_VALUE_X, bounds.p.x,
+                   XV_Y, bounds.p.y - 1 - std::max(0,
+                       (int(xv_get(state->choice, XV_HEIGHT)) -
+                        native::font_t::stock(native::font_role::control).get_metrics().height) / 2), nullptr);
     }
 
     void fit_list_height(Panel_item item, int requested_height) {
@@ -267,6 +270,11 @@ namespace native
                    XV_HEIGHT,
                    _bounds.d.h,
                    nullptr);
+            // XView ignores XV_WIDTH for the editable value. Update its
+            // display width as well, including after native creation.
+            if (dynamic_cast<text_edit *>(this))
+                xv_set(item, PANEL_VALUE_DISPLAY_WIDTH,
+                       _bounds.d.w, nullptr);
             // PANEL_LABEL_WIDTH is a button attribute in the XView
             // implementations we support.  Applying it to check, radio,
             // list, or text items emits a bad-attribute warning and can

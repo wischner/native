@@ -37,6 +37,8 @@ namespace linux::wayland
         bool dragging_scrollbar = false;
         bool horizontal_scrollbar = false;
         int scrollbar_grab = 0;
+        double scroll_remainder_x = 0;
+        double scroll_remainder_y = 0;
         guint position_source = 0;
         float position_ratio = 0;
         std::function<void()> synchronize;
@@ -87,6 +89,9 @@ namespace linux::wayland
     // Translate physical input while preserving native GTK text
     // handling.
     void install_keyboard(native::wnd &owner, GtkWidget *widget);
+    // Translate GTK scroll units into the portable control's scroll model.
+    bool dispatch_scroll(native::wnd &owner, double dx, double dy,
+                         GdkScrollUnit unit);
     // Add pointer, keyboard and focus controllers to a drawing region.
     void install_input(native::wnd &owner, GtkWidget *widget);
     // Render stock text using Pango at a top-left position.

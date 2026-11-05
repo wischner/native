@@ -247,6 +247,21 @@ void check_openlook_controls(native::app_wnd &owner) {
     const auto multi_item =
         ol::text_edit_bindings.object_from_handle(&multi)->item;
     const auto single_font = xv_get(single_item, PANEL_VALUE_FONT);
+    const auto *width_metrics = reinterpret_cast<XFontStruct *>(
+        xv_get(single_font, FONT_INFO));
+    expect(width_metrics, "text field has native font metrics");
+    // Width changes after create must resize the real editable value,
+    // not merely the portable cache or the Panel item's outer allocation.
+    for (unsigned width : {56u, 120u, 330u}) {
+        single.set_dimensions(native::size(width, 24));
+        pump();
+        const auto actual = xv_get(single_item,
+                                   PANEL_VALUE_DISPLAY_WIDTH);
+        // XView rounds the display width down to whole characters.
+        expect(actual <= width &&
+                   width - actual < unsigned(width_metrics->max_bounds.width),
+               "live text field width matches the portable allocation");
+    }
     const auto multi_view =
         xv_get(multi_item, PANEL_ITEM_NTH_WINDOW, 0);
     expect(multi_view, "native multiline editor has a text view");

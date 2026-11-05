@@ -307,3 +307,37 @@ with matching local and remote SHA-256 hashes.
 ## CPC integration acceptance (2026-11-04)
 
 CPC acceptance on `hotel` verifies F10 from its canvas and visible CRT output with `GALLIUM_DRIVER=softpipe`. Collection views share physical key translation and modifier delivery follows the focused child. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.
+
+
+## Haiku debugger scrolling (2026-11-05)
+
+CPC's memory-browser wheel direction was reversed because the collection
+host passed BeAPI's down/right-positive values through to Native unchanged.
+The adapter now negates both axes, retains its 24-pixel step, and ignores
+zero motion. The top-level window bridge uses the same sign correction.
+The Docker Debug build and `native_haiku_dispatch_tests` pass on `hotel`:
+checks cover both directions/axes, fractional wheel input, zero events,
+80,000-pixel canvas navigation, code-editor wheel movement and caret reveal,
+plus existing repaint/looper serialization assertions.
+
+The rebuilt CPC was deployed and checked with QEMU mouse-wheel events:
+down advances the displayed addresses and up restores them. A paused PC
+of 1CE3 is visible in the first row, 1CE0, after explicit address navigation.
+The previous reveal behavior put the correct row at the bottom; CPC now
+positions explicit address jumps at the top on every backend, clamped near
+the end of memory. No Haiku-specific application logic was introduced.
+
+
+## Haiku code-border verification (2026-11-05)
+
+The reported blinking disassembly top edge was not reproduced in the current
+CPC deployment, which includes the shared code-renderer border clipping added
+for GEM. Paused and stepped views retain their frame; eight screenshots during
+continuous execution each retain all 698 sampled top-edge pixels.
+`native_haiku_dispatch_tests` now checks the actual Haiku window graphics
+adapter against a bitmap target across first/second-row caret changes, focus
+changes, full paints and two-pixel-high partial paints. All/top/no-border
+configurations are exercised. The Debug cross-build and runtime test under
+batch GDB on `hotel` pass. This adds regression coverage; no new production
+repair is claimed for an unreproduced blink. Further reproduction needs the
+specific window and action that triggers it.

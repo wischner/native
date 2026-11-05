@@ -199,6 +199,21 @@ namespace
                "invalidation preserves pixels until the next frame");
         pump();
         expect(paints == 1, "a burst of invalidations paints only once");
+        paints = 0;
+        // Advance timer delivery but leave Expose queued. Later animation
+        // ticks must merge damage into that outstanding frame as well.
+        for (int index = 0; index < 20; ++index) {
+            surface.invalidate();
+            int timers = 0;
+            while (XtAppPending(motif::app_instance) & XtIMTimer) {
+                expect(++timers < 100, "bounded repaint timer delivery");
+                XtAppProcessEvent(motif::app_instance, XtIMTimer);
+            }
+            XSync(motif::cached_display, False);
+        }
+        expect(paints == 0, "queued exposes remain asynchronous");
+        pump();
+        expect(paints == 1, "in-flight expose coalesces later invalidations");
         surface.invalidate();
         surface.destroy();
         pump();

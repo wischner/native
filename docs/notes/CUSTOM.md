@@ -5,7 +5,13 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-04.
+Audit date: 2026-11-05.
+
+CPC debugger follow-up: OPEN LOOK entries now apply live display-width
+changes, and choice stacks align their text with adjacent entries and buttons.
+Motif keeps repaint coalescing active until queued expose delivery; WINGs
+batches native notifications before refresh and omits redundant presentation
+replies. These backend repairs change no native/hybrid/custom kind marks.
 
 CPC follow-up: GEM menu activation/input routing and Motif repaint fairness
 change no control kind marks. AES remains the menu implementation; the
@@ -1011,3 +1017,24 @@ includes the menu outside the requested client. All control kind marks remain.
 Haiku painting follow-up (2026-11-04): collection hosts now use a reusable
 BeAPI bitmap for composition and present completed damage in one copy.
 Native widgets remain native, and no control kind marks or public APIs change.
+
+
+GEM debugger follow-up (2026-11-05): shared source-editor rendering protects
+its outer frame from first-row highlights. GEM's updated AES supplies thin
+resize frames for windows without scroll controls; Native continues to
+request `NAME | CLOSER | FULLER | MOVER | SIZER` through its existing backend.
+No application-specific layout or control-kind changes are involved.
+
+
+GTK scroll follow-up (2026-11-05): Wayland/Elementary convert wheel clicks
+to canvas pixels while preserving smooth pixel distances and per-axis
+fractions. Control implementation kinds and the public API are unchanged.
+
+
+### Haiku wheel direction (2026-11-05)
+
+Haiku collection hosts invert BeAPI wheel deltas to Native's up/left-positive
+convention, preserving the 24-pixel step for canvases and one-line code-editor
+scrolling. Both axes are delivered independently and zero deltas emit no
+movement. Top-level window wheel events use the same direction convention.
+The public API and control implementation classifications are unchanged.

@@ -313,6 +313,17 @@ namespace native
         editor_state.disabled = editor._read_only;
         editor.draw_editor_background(
             graphics, *painter, outer, editor_state);
+        // Row backgrounds and the gutter must not erase the outer frame.
+        // Otherwise the top border appears only when the caret leaves row 0.
+        const auto sides = editor.get_border_sides();
+        const int left = has_border(sides, border_sides::left) ? 1 : 0;
+        const int top = has_border(sides, border_sides::top) ? 1 : 0;
+        const int right = has_border(sides, border_sides::right) ? 1 : 0;
+        const int bottom = has_border(sides, border_sides::bottom) ? 1 : 0;
+        graphics.set_clip(graphics.get_clip().intersect(rect(
+            outer.x1() + left, outer.y1() + top,
+            std::max(0, int(outer.w()) - left - right),
+            std::max(0, int(outer.h()) - top - bottom))));
         editor.draw_gutter(
             graphics,
             *painter,

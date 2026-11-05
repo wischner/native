@@ -18,6 +18,7 @@
 #include "../lib/native/toolkits/gemix/globals.h"
 #include "../lib/native/toolkits/gemix/stock_text.h"
 #include "../lib/native/gpx_wnd.h"
+#include "../lib/native/code_render.h"
 
 namespace
 {
@@ -32,6 +33,7 @@ namespace
     }
 
     bool colors_only = false;
+    bool editor_frame_only = false;
 
     // Read a packed physical bit or the darkness of an RGBA pixel.
     bool raw_pixel(const std::vector<unsigned char> &frame, int x, int y) {
@@ -112,6 +114,33 @@ namespace
                 expect(pixel(frame, 640 + x, 600 + y) ==
                     (reference.pixels()[y * 32 + x].r == 0),
                     "GEM window text and toolbar image cells share a vertical origin");
+    }
+
+    // A first-row highlight must preserve the same frame as later rows.
+    void check_code_editor_frame(native::wnd &owner) {
+        native::code_edit editor("FIRST\nSECOND", 0, 0, 160, 64);
+        editor.set_show_line_numbers(false);
+        native::code_theme colors;
+        colors.current_line = native::rgba(255, 255, 255, 255);
+        editor.set_code_theme(colors);
+        native::gpx_wnd graphics(&owner, {640, 600});
+        for (auto sides : {native::border_sides::all,
+                           native::border_sides::none,
+                           native::border_sides::top}) {
+            editor.set_border_sides(sides);
+            for (int row : {0, 1, 0}) {
+                editor.go_to_line(row);
+                graphics.set_clip({0, 0, 160, 64});
+                native::draw_code_edit(editor, graphics, {});
+                WORD attributes[6]{};
+                vqt_attributes(linux::gemix::runtime.vdi_handle, attributes);
+                const auto frame = framebuffer();
+                for (int x = 24; x < 159; ++x)
+                    expect(pixel(frame, 640 + x, 600) ==
+                               native::has_border(sides, native::border_sides::top),
+                           "editor top border is stable when caret changes row");
+            }
+        }
     }
 
     // Compare image painting to VDI's original system-font arrow glyphs.
@@ -254,6 +283,12 @@ namespace
                     destroy();
                     return;
                 }
+                if (editor_frame_only) {
+                    check_code_editor_frame(*this);
+                    std::cout << "GEM editor frame checks passed\n";
+                    destroy();
+                    return;
+                }
                 const auto initial = framebuffer();
                 for (int y = 800; y < 808; ++y) {
                     for (int x = 600; x < 608; ++x) {
@@ -264,6 +299,7 @@ namespace
                 }
                 check_scrollbar_arrows();
                 check_text_origin(*this);
+                check_code_editor_frame(*this);
                 auto *tree = menu_tree_for(this);
                 expect(tree && tree[tree[ROOT].ob_head].ob_next == tree[ROOT].ob_tail,
                        "menu bar and popups are root siblings");
@@ -539,6 +575,8 @@ namespace
 
 int program(int argc, char **argv) {
     colors_only = argc > 1 && std::string(argv[1]) == "--colors-only";
+    editor_frame_only = argc > 1 &&
+        std::string(argv[1]) == "--editor-frame-only";
     test_window window;
     const int result = native::app::run(window);
     return result ? result : window.failures;

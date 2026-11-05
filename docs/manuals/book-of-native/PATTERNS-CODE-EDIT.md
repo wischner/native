@@ -101,3 +101,14 @@ The WINGs code-editor host takes keyboard focus after its first mapping,
 with a generation guard on the deferred callback. Completion is not needed
 to establish focus. Mouse clicks and completion posting still use the same
 native focus routing.
+
+
+## Stable editor borders
+
+The shared source renderer clips row backgrounds, gutter and text inside
+its enabled one-pixel borders after painting the editor background. Moving
+the caret onto the first visible row therefore cannot erase the top frame,
+and moving away cannot make a separator suddenly appear below a sibling
+header. Borderless and individual-side borders retain their public meaning.
+The GEM runtime regression compares the top edge across caret changes for
+all, top-only and absent borders.

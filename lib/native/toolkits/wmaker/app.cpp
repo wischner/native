@@ -105,10 +105,17 @@ namespace native
             const posted_session posted(linux::wmaker::display);
             detail::drain_posted_work();
             while (!linux::wmaker::exit_requested) {
-                XEvent event = {};
-                WMNextEvent(linux::wmaker::display, &event);
-                if (!posted.get_wake(event) && !linux::wmaker::handle_menu_event(event))
-                    WMHandleEvent(&event);
+                // Drain notification bursts before rendering again. One
+                // refreshed frame per X event can otherwise grow the queue
+                // faster than keyboard and pointer input are consumed.
+                unsigned pending_events = 0;
+                do {
+                    XEvent event = {};
+                    WMNextEvent(linux::wmaker::display, &event);
+                    if (!posted.get_wake(event) && !linux::wmaker::handle_menu_event(event))
+                        WMHandleEvent(&event);
+                } while (!linux::wmaker::exit_requested && ++pending_events < 64 &&
+                         XPending(linux::wmaker::display));
                 linux::wmaker::dispatch_deferred();
                 detail::drain_posted_work();
             }

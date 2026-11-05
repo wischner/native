@@ -7,10 +7,25 @@
 #include "globals.h"
 #include "../../collection_render.h"
 #include "../../table_render.h"
+#include <algorithm>
 #include <cmath>
+#include <limits>
 namespace
 {
     using namespace native;
+    // Canvas wheel deltas are pixels. Retain high-resolution fractions
+    // independently on each axis instead of rounding every event away.
+    coord pixel_scroll_delta(double value, double &remainder,
+                             GdkScrollUnit unit) {
+        const double scale = unit == GDK_SCROLL_UNIT_WHEEL ? 24.0 : 1.0;
+        const double limit = std::numeric_limits<coord>::max();
+        const double pixels = std::clamp(remainder - value * scale,
+                                         -limit, limit);
+        const auto delta = static_cast<coord>(pixels);
+        remainder = pixels - delta;
+        return delta;
+    }
+
     point position(double x, double y) {
         return point(static_cast<coord>(x), static_cast<coord>(y));
     }
@@ -168,6 +183,33 @@ namespace
 } // namespace
 namespace linux::wayland
 {
+    bool dispatch_scroll(native::wnd &owner, double dx, double dy,
+                         GdkScrollUnit unit) {
+        if (!owner.get_input_enabled() || (!dx && !dy) ||
+            !std::isfinite(dx) || !std::isfinite(dy))
+            return false;
+        const int step = dy ? (dy > 0 ? -1 : 1) : (dx > 0 ? -1 : 1);
+        if (auto *icons = dynamic_cast<native::icon_view *>(&owner))
+            icons->on_native_scroll(step);
+        else if (auto *table = dynamic_cast<native::table_view *>(&owner))
+            table->on_native_scroll(
+                static_cast<std::size_t>(std::max<std::int64_t>(
+                    0, static_cast<std::int64_t>(
+                        table->get_vertical_scroll_row()) - step * 3)),
+                table->get_horizontal_scroll_offset());
+        else {
+            auto &peer = state(owner);
+            const auto delta = pixel_scroll_delta(dy ? dy : dx,
+                dy ? peer.scroll_remainder_y : peer.scroll_remainder_x, unit);
+            if (delta)
+                owner.on_native_mouse_wheel(native::mouse_wheel_event(
+                    native::point(), delta,
+                    dy ? native::wheel_direction::vertical
+                       : native::wheel_direction::horizontal));
+        }
+        return true;
+    }
+
     bool table_key(native::table_view &owner,
                    guint key,
                    GdkModifierType modifiers) {
@@ -307,35 +349,12 @@ namespace linux::wayland
         g_signal_connect(
             scroll,
             "scroll",
-            G_CALLBACK(+[](GtkEventControllerScroll *,
+            G_CALLBACK(+[](GtkEventControllerScroll *controller,
                            double dx,
                            double dy,
                            gpointer data) -> gboolean {
-                auto &owner = *static_cast<native::wnd *>(data);
-                if (!owner.get_input_enabled())
-                    return false;
-                const int delta =
-                    dy ? (dy > 0 ? -1 : 1) : (dx > 0 ? -1 : 1);
-                if (auto *icons =
-                        dynamic_cast<native::icon_view *>(&owner))
-                    icons->on_native_scroll(delta);
-                else if (auto *table =
-                             dynamic_cast<native::table_view *>(&owner))
-                    table->on_native_scroll(
-                        static_cast<std::size_t>(std::max<std::int64_t>(
-                            0,
-                            static_cast<std::int64_t>(
-                                table->get_vertical_scroll_row()) -
-                                delta * 3)),
-                        table->get_horizontal_scroll_offset());
-                else
-                    owner.on_native_mouse_wheel(
-                        native::mouse_wheel_event(
-                            native::point(),
-                            delta,
-                            dy ? native::wheel_direction::vertical
-                               : native::wheel_direction::horizontal));
-                return true;
+                return dispatch_scroll(*static_cast<native::wnd *>(data),
+                    dx, dy, gtk_event_controller_scroll_get_unit(controller));
             }),
             &owner);
         gtk_widget_add_controller(widget, scroll);
