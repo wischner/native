@@ -176,9 +176,10 @@ the actual WinUI 3 NavigationView. Deploy its bootstrap DLL beside the
 executable and install x64 Windows App Runtime 1.8 on the guest; the normal
 VM preparation script stages the DLL and checks that prerequisite.
 
-Each build contains the `native` static library and the single `vision`
-application. Library implementation lives in `lib/native/`; application code
-lives in `src/`.
+Each build contains the `native` static library, the `vision` UI application,
+and the `native_rc` developer-tool target (`tools/rc/rc` under the backend
+build directory). Library implementation lives in `lib/native/`; application
+code lives in `src/`, and command-line tools live in `tools/`.
 
 Current exercised runtime paths are:
 
@@ -427,3 +428,18 @@ GEM physical input is available with the optional `gem/input.h` extension
 and matching GEM libraries/server; the published AES-only SDK remains
 unsupported for held keys. The C++ API and standard AES fallback are
 unchanged. See [CPC acceptance](docs/notes/CPC-UAT.md) for validation and limitations.
+
+
+## Resource packs
+
+`native::resources` reads and writes portable `.resources` packs containing
+named, typed byte assets with platform/toolkit/color/theme/size variants.
+Named lookup selects a matching representation or its closest fallback.
+`tools/rc/` compiles strict JSON manifests through the same public API and can
+emit C++ bytes for executable embedding. X11/GEMix automatic profiles prefer
+monochrome artwork; v1 does not detect live window theme or DPI.
+
+Normal Docker backend builds include the compiler, without an additional JSON
+or archive dependency. See [resource compiler commands](docs/manuals/book-of-native/BUILD-SYSTEM.md#resource-compiler),
+[application usage](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#resource-packs),
+and the [format and selection contract](docs/manuals/book-of-native/RESOURCES.md).

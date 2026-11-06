@@ -2,6 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build Resource Compiler (Docker X11)",
+            "detail": "Build rc and Native through the reproducible X11 SDK target.",
+            "type": "process",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-x11"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "Deploy Vision Debug (Elementary VM)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/linux/elementary-vm/deploy.sh",

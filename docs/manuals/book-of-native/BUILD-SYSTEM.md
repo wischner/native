@@ -41,7 +41,7 @@ The project uses CMake as its build entry point.
 At the root, CMake does three things:
 
 - sets the project language and C++ standard
-- builds the `native` library and the `vision` program
+- builds the `native` library, the `vision` application and the `native_rc` resource compiler
 - exposes Docker-backed backend targets
 
 The top-level build flow is:
@@ -165,6 +165,9 @@ executables:
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
 | `native_wayland_runtime_tests` | Real GTK/Granite widgets; wheel-click/pixel conversion, horizontal scrolling and fractional accumulation; 120 generic-GTK live-control/theme pixel comparisons including toolbar states, equal folder/leaf row heights, retained-widget callbacks after split close, all sixteen native button edge masks, primary press/release and Ctrl/Shift/group table routing, editable-combo caret and active-row synchronization, repeated native split allocation/destruction, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
+| `native_resources_tests` | Pack round trips, defaults/ranking, ownership, bounded binary and strict JSON rejection; no display | Every backend build |
+| `native_resources_embed_tests` | Runs rc during the build, compiles generated C++, compares embedded bytes with the file | Hosted builds only |
+| `native_rc_help`, `native_rc_bad_arguments` | CLI help and usage exit status | Hosted builds only |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
 | `native_mac_runtime_tests` | Stock AppKit painting, all 16 native button bezel masks and borderless corner removal, 16–48 px toolbar highlight bounds on both axes, selected Vision navigation icon contrast, retained-view shutdown guards, text/split hover cursors, ruler motion, composed property-dialog toolbars, native button/check/radio/toolbar theme parity in light/dark and disabled states, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `mike` |
 | `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels and continuous multi-selection, property foregrounds and native/custom combo and checkbox-indicator pixel parity, checkbox label alignment, settings margins/indentation, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and the CDE Xephyr session |
@@ -773,3 +776,38 @@ sources are not new executable targets. Syntax checks establish public API
 compatibility, not interactive behavior; use the chapter's interaction steps
 and the relevant runtime fixture for that evidence. These checks also cover
 links from AI skills and agent-role instructions to their maintained lessons.
+
+
+## Resource compiler
+
+`tools/CMakeLists.txt` adds `tools/rc/`. Target `native_rc` links `native` and
+produces `build/<backend>/tools/rc/rc`. It has a console `main`; it does not
+start a Native application or require a display. Normal Docker targets build
+it alongside Vision. A hosted GCC SDK can compile a pack for every target:
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-x11
+
+docker run --rm -u "$(id -u):$(id -g)" \
+  -v "$PWD:$PWD" -w "$PWD" wischner/gcc-x86_64-linux-x11 \
+  build/linux-x11/tools/rc/rc tests/data/resources/manifest.json \
+  -o build/example.resources --cpp build/example_resources.cpp
+
+docker run --rm -u "$(id -u):$(id -g)" \
+  -v "$PWD:$PWD" -w "$PWD" wischner/gcc-x86_64-linux-x11 \
+  ctest --test-dir build/linux-x11 --output-on-failure \
+  -R '^(native_resources_.*|native_rc_.*)$'
+```
+
+The example fixture contains text assets so compilation and round trips need
+no codec or GUI initialization. Applications can use PNGs with type `icon`.
+See [Resource packs](RESOURCES.md) for the manifest, format and selection
+contract. `.vscode/tasks.json` exposes **Build Resource Compiler (Docker X11)**
+through the same backend target; UI launch profiles remain attached to Vision.
+
+Cross-built `rc.exe`/Haiku tools run on their target, not inside a Linux build
+step. Use a hosted compiler to produce the platform-independent pack or C++
+source before cross-compilation. The embedding CMake test is therefore enabled
+only when `CMAKE_CROSSCOMPILING` is false. Its custom command lists the manifest
+and each input asset as dependencies; changing either rebuilds the pack.

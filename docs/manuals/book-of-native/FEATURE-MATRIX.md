@@ -1,5 +1,21 @@
 # Feature Matrix
 
+## Portable resource packs (2026-11-06)
+
+The shared `native::resources` API and `tools/rc/` compiler provide typed named
+variants, deterministic backend/color/theme/size fallback, strict JSON source
+manifests, v1 binary file/memory read-write, and generated C++ embedding.
+Automatic X11/GEMix profiles reflect their monochrome drawing policy; other
+profiles use color. Live theme/DPI/depth detection, control icon rebinding,
+image conversion and migration of Vision's existing artwork are not included.
+
+The Docker X11 Debug build passes with GCC; all four focused CTests pass with
+ASan/UBSan: container/manifest validation, compiled embedding, CLI help and
+bad-argument status. Tests exercise explicit foreign-platform profiles without
+claiming a native runtime run on those platforms. No additional backend or
+visual icon acceptance run was performed for this feature. See
+[Resource packs](RESOURCES.md) for the format and limits.
+
 ## Canvas text input and rich mouse events (2026-11-06)
 
 `canvas::on_text_input` delivers composed UTF-8 on every backend, for presses

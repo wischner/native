@@ -52,6 +52,7 @@
 #include "native/property_grid.h"
 #include "native/toolbar.h"
 #include "native/radio.h"
+#include "native/resources.h"
 #include "native/ruler.h"
 #include "native/screen.h"
 #include "native/shader.h"

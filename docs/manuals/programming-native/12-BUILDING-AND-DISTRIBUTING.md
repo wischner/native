@@ -887,3 +887,117 @@ optional application-local Mesa runtime, pin and verify it, carry its licenses,
 and test that exact package. Do not replace the Windows system OpenGL DLL.
 The [CPC acceptance record](../../notes/CPC-UAT.md) distinguishes the VM runtime
 fix from library changes and records remaining coverage limits.
+
+## Resource packs
+
+`native::resources` loads named, typed assets and selects variants using the
+compiled Native backend profile. Applications can request an icon without
+knowing their platform. Create a UTF-8 JSON manifest beside your artwork:
+
+```json
+{
+  "version": 1,
+  "resources": [
+    {
+      "name": "assets.icons.platform-icon",
+      "type": "icon",
+      "variants": [
+        { "file": "icons/generic.png" },
+        { "file": "icons/mono-16.png", "when": {
+          "color": "monochrome", "size": 16
+        } },
+        { "file": "icons/gem-16.png", "when": {
+          "toolkit": "gemix", "color": "monochrome", "size": 16
+        } },
+        { "file": "icons/windows-32.png", "when": {
+          "platform": "windows", "color": "color", "size": 32
+        } }
+      ]
+    }
+  ]
+}
+```
+
+Each name has one type and an unqualified default. Source paths are relative
+to the manifest, irrespective of the compiler's working directory. The icon
+type is metadata, not inferred from its name. Payloads are copied unchanged:
+supply deliberate monochrome artwork instead of expecting the pack compiler
+to convert full-color icons.
+
+Build and run `tools/rc` using the
+[Docker resource compiler commands](../book-of-native/BUILD-SYSTEM.md#resource-compiler).
+Its command-line form is:
+
+```text
+rc assets/manifest.json -o build/application.resources --cpp build/application_resources.cpp
+```
+
+Use `.resources` consistently for compiled files. `.resource` is also accepted
+because the reader recognizes the contents rather than the extension.
+Load and decode an icon through the public API:
+
+```cpp
+auto assets = native::resources::load("application.resources");
+const auto &entry = assets.get("assets.icons.platform-icon");
+if (entry.type != "icon")
+    throw std::runtime_error("Expected an icon resource");
+auto image = native::img::decode(entry.data.data(), entry.data.size());
+```
+
+Include `<stdexcept>` when using `std::runtime_error`. The returned entry is
+borrowed from `assets`; preserve that container until you finish reading the
+entry. Image decoding owns its pixels independently. Normal control image
+ownership rules still apply.
+
+For explicit size or theme selection, retain Native's platform profile:
+
+```cpp
+auto context = native::resources::current_context();
+context.size = 24;
+context.theme = "dark";
+const auto &entry = assets.get("assets.icons.platform-icon", context);
+```
+
+The v1 automatic profile covers platform, toolkit and Native's drawing color
+policy; it does not detect window DPI or live theme changes. Query again when
+an explicit context changes. There is no automatic icon rebinding in controls.
+The [resource chapter](../book-of-native/RESOURCES.md) defines exact ranking,
+limits and exceptions.
+
+To embed, compile the generated `application_resources.cpp` into the
+application, then declare and call its accessor:
+
+```cpp
+#include <native.h>
+#include <span>
+
+namespace native_embedded {
+    std::span<const std::uint8_t> resource_data();
+}
+
+// Inside application initialization:
+auto assets = native::resources::decode(native_embedded::resource_data());
+```
+
+This copies the pack into an owning container; no extraction or external file
+is needed. Combine assets into one manifest because v1 emits a single fixed
+accessor name. For cross-builds, use a hosted SDK's `rc` to generate the C++
+first, then compile that file with the destination compiler. Generated outputs
+belong under `build/`. When integrating generation into CMake, list the manifest
+and **every source asset** in `DEPENDS` so changing artwork triggers rebuilding.
+The repository's embedding test in `tests/CMakeLists.txt` demonstrates this.
+
+Programs can also create, modify by copying entries into a new container,
+and save packs directly. No CLI or JSON parsing is needed to write:
+
+```cpp
+native::resources output;
+output.add({"assets.message", "text", {}, {'H', 'i', '\n'}});
+output.save("application.resources");
+auto bytes = output.encode(); // Same pack, for memory transport.
+```
+
+`save` validates the complete pack, then overwrites the file. Writes are not
+atomic; parent directories must already exist. `resources::from_manifest(path)`
+exposes the same JSON compilation used by `rc`. The API does not export JSON
+manifests or unpack assets into directories.

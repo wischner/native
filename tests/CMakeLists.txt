@@ -613,3 +613,30 @@ if(UNIX AND NOT APPLE AND TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$")
             "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-motif-suppressions.txt")
     endif()
 endif()
+
+# Resource storage and selection need no display server.
+add_executable(native_resources_tests native_resources_tests.cpp)
+target_link_libraries(native_resources_tests PRIVATE native)
+add_test(NAME native_resources_tests COMMAND native_resources_tests
+    ${CMAKE_CURRENT_BINARY_DIR}/resource-tests)
+
+# A target-built rc can execute during a build only on hosted toolchains.
+if(NOT CMAKE_CROSSCOMPILING)
+    set(resource_fixture ${CMAKE_CURRENT_SOURCE_DIR}/data/resources)
+    set(resource_generated ${CMAKE_CURRENT_BINARY_DIR}/embedded_resources)
+    add_custom_command(
+        OUTPUT ${resource_generated}.cpp ${resource_generated}.resources
+        COMMAND $<TARGET_FILE:native_rc> ${resource_fixture}/manifest.json
+            -o ${resource_generated}.resources --cpp ${resource_generated}.cpp
+        DEPENDS native_rc ${resource_fixture}/manifest.json
+            ${resource_fixture}/hello.txt ${resource_fixture}/mono.txt
+        VERBATIM)
+    add_executable(native_resources_embed_tests
+        native_resources_embed_tests.cpp ${resource_generated}.cpp)
+    target_link_libraries(native_resources_embed_tests PRIVATE native)
+    add_test(NAME native_resources_embed_tests COMMAND native_resources_embed_tests
+        ${resource_generated}.resources)
+    add_test(NAME native_rc_help COMMAND native_rc --help)
+    add_test(NAME native_rc_bad_arguments COMMAND native_rc)
+    set_tests_properties(native_rc_bad_arguments PROPERTIES WILL_FAIL TRUE)
+endif()

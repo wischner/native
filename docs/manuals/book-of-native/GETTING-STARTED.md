@@ -369,3 +369,14 @@ The GTK/elementary SDK includes `gsettings-desktop-schemas`, required by
 GraniteTimePicker; keep that package installed on a native deployment too.
 Haiku's Docker SDK supplies the shared-kit headers and static libraries for
 its native date/time editors. No new F5 profile is needed.
+
+
+## Resource compiler
+
+Backend builds also produce `tools/rc/rc` (`rc.exe` on Windows) beneath their
+build directory. CMake names this developer-tool target `native_rc`; Vision
+remains the UI application. The compiler in `tools/rc/` uses `native::resources`
+to turn JSON manifests into `.resources` packs and optional embedded C++.
+Run it inside the hosted SDK as shown in the
+[build chapter](BUILD-SYSTEM.md#resource-compiler). No display is needed.
+The existing Vision F5 launch configurations continue to start Vision.

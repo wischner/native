@@ -187,6 +187,10 @@ limits are recorded in the [feature matrix](book-of-native/FEATURE-MATRIX.md).
     Bounded CPU image programs, canvas composition, temporal history and
     coalesced generation-safe scheduling. Expands Architecture Section 21.
 
+24. [Resource packs](book-of-native/RESOURCES.md)
+    Typed assets, backend profiles, fallback ranking, JSON manifests, binary
+    file/memory round trips and C++ embedding. Expands Architecture Section 17.
+
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).
 

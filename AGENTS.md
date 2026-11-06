@@ -53,6 +53,8 @@ The library implementation is organized into three layers:
 The `src/` directory contains the `vision` application. It is a consumer of
 the public library API and must not contain private library implementation.
 Tests live in `tests/`, and developer automation in `scripts/`.
+Command-line developer tools live in `tools/`; `tools/rc/` compiles JSON
+resource manifests using the public `native::resources` reader/writer.
 
 Library-owned path manipulation, traversal, metadata, and file publication
 use the C++20 `std::filesystem` library; file contents use standard C++
@@ -315,7 +317,10 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ## Vision program
 
-- `vision` is the single program built by the repository.
+- `vision` is the UI application built by the repository.
+- `native_rc` is the developer-tool CMake target, producing
+  `build/<backend>/tools/rc/rc` (or `rc.exe`). Normal backend builds include
+  it. Run hosted tools inside their SDK; cross-built tools run on their target.
 - Its source lives in `src/` and it links against `native` through the public API.
 - VS Code launch configurations should point to `vision` for each active backend.
 - Educational programs belong in
@@ -387,6 +392,7 @@ contents.
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [PATTERNS-BACKGROUND-SERVICES.md](docs/manuals/book-of-native/PATTERNS-BACKGROUND-SERVICES.md) | Scoped UI delivery, bounded PCM peers, child ownership and shutdown. Expands Architecture 20. |
 | [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
+| [RESOURCES.md](docs/manuals/book-of-native/RESOURCES.md) | Resource ownership, automatic backend profiles, variant ranking, strict JSON manifest, v1 binary format and embedding. Expands Architecture 17. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
 Architecture Sections 10 (Fonts) and 15 (Classic trees) now have matching
@@ -416,7 +422,7 @@ control index, and build instructions.
 | [09-OWNED-WINDOWS-AND-DIALOGS.md](docs/manuals/programming-native/09-OWNED-WINDOWS-AND-DIALOGS.md) | Owned/modeless/modal windows and standard file dialogs. |
 | [10-GRAPHICS-IMAGES-FONTS-THEMES.md](docs/manuals/programming-native/10-GRAPHICS-IMAGES-FONTS-THEMES.md) | The `gpx` drawing interface, images, fonts, themes. |
 | [11-CLIPBOARD-AND-TEXT-EDITING.md](docs/manuals/programming-native/11-CLIPBOARD-AND-TEXT-EDITING.md) | UTF-8 encoding boundary, clipboard, text controls. |
-| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The eleven build selections (eight Linux toolkits plus Windows, Haiku, macOS), linking, distribution. |
+| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The eleven build selections (eight Linux toolkits plus Windows, Haiku, macOS), linking, distribution, resource compilation, loading, writing and embedding. |
 | [13-COLLECTION-AND-DISCLOSURE-CONTROLS.md](docs/manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md) | `accordion`, `icon_view`, `tree_view`. |
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |

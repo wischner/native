@@ -793,3 +793,9 @@ native. Tests compare both button geometry and the visible glyph extents.
 OPEN LOOK time stepping guards the picker's resource generation while
 committing typed text. If an application time-change callback destroys the
 window, the button callback returns before touching the released picker state.
+
+## Application resource packs
+
+Named application assets use `native::resources`, independently of the OS
+`file_icon` service. See [Resource packs](RESOURCES.md) for types, profiles,
+fallback ranking, manifest compilation and binary file/memory ownership.

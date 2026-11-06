@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "resources": [
+    {
+      "name": "assets.greeting",
+      "type": "text",
+      "variants": [
+        { "file": "hello.txt" },
+        { "file": "mono.txt", "when": { "color": "monochrome" } }
+      ]
+    }
+  ]
+}

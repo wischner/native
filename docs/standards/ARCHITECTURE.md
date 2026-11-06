@@ -1431,6 +1431,29 @@ orientation, programmatic silence, user event counts, and native
 create/show/destroy transitions.
 ## 17. Input controls, standard dialogs, and non-client chrome
 
+### Portable resource packs
+
+`resources` owns named, explicitly typed byte variants. The type is metadata,
+never inferred from a dotted name. Shared core code reads/writes versioned,
+bounded, little-endian binary packs and compiles strict UTF-8 JSON manifests.
+`tools/rc` uses this public API; it contains no private duplicate pack writer.
+File paths use `std::filesystem::path` and contents use standard streams.
+Embedded spans decode to owned entries without extraction. Native handles
+and toolkit types remain outside the public resource interface.
+
+Every serialized resource name has exactly one unqualified default; duplicate
+selectors and mixed types are errors. Lookup excludes foreign platform/toolkit
+selectors, then ranks color, toolkit, platform, theme and pixel size, with
+stable insertion-order ties. CMake supplies platform/toolkit identity and the
+current drawing policy (monochrome on X11/GEMix); v1 does not probe live theme,
+DPI or display depth. An explicit portable context supports those caller
+choices. Unknown names fail explicitly. Returned entries are borrowed from
+the owning container. The v1 API stores bytes; image decoding and control
+lifecycle remain separate. Full format and ranking details are maintained in
+[Resource packs](../manuals/book-of-native/RESOURCES.md).
+
+### Controls, dialogs and chrome
+
 The public input, filesystem-resource, and chrome API consists of `combo_box`,
 the `list_box` alias, `file_icon`, `special_directory`, `directory_dialog`,
 `message_box`, `non_client`, `ruler`, and `status_bar`.
