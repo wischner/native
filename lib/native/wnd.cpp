@@ -615,9 +615,6 @@ namespace native
 
     void wnd::on_native_focus(bool focused) {
         wnd *focus_root = detail::root_of(this);
-        if (auto *mouse = detail::peer_state<detail::mouse_state>(*focus_root)) {
-            if (focused || focus_root == this) mouse->active = focused;
-        }
         if (focused) {
             wnd *root = this;
             while (root->get_parent()) root = root->get_parent();
@@ -629,6 +626,11 @@ namespace native
                 const auto lifetime = weak.lock();
                 if (tracked && (!lifetime || !lifetime->alive)) return;
             }
+        }
+        // Cancelling the old root focus can mark it inactive. Publish the
+        // destination's activation after that cancellation has completed.
+        if (auto *mouse = detail::peer_state<detail::mouse_state>(*focus_root)) {
+            if (focused || focus_root == this) mouse->active = focused;
         }
         if (auto *state = detail::peer_state<detail::input_state>(*this))
             state->focused = focused;

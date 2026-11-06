@@ -304,3 +304,24 @@ configurations are exercised. The Debug cross-build and runtime test under
 batch GDB on `hotel` pass. This adds regression coverage; no new production
 repair is claimed for an unreproduced blink. Further reproduction needs the
 specific window and action that triggers it.
+
+## Alto mouse follow-up — 2026-11-06
+
+Moving focus from Charlie's root window to its emulated display cancelled the
+old root focus after marking the root active. That cancellation left the root
+inactive: capture and clicks worked, but shared `on_native_mouse_motion`
+discarded every relative movement. Root activation now follows old-focus
+cancellation. The existing mouse/shader regression checks root-to-child
+motion, real deactivation and reactivation; it failed before this repair.
+
+The consumer check boots Alto with Charlie's `--run ALTO`, captures with a
+left click, moves the host pointer, clicks Notepad and types through real X11
+host input. Alto's own driver tests separately cover Kempston counter wraps,
+clamping and full-width cursor coordinates. This is SDL2 acceptance of the
+shared repair; it is not a new all-backend runtime qualification.
+
+The isolated Docker/GCC Debug build at `build/cpc-focus-regression` passed
+`native_mouse_shader_tests` and `native_keyboard_runtime_tests` with address
+and undefined-behavior sanitizers. Unrelated in-progress Native changes were
+preserved; this follow-up changes only shared focus ordering, its regression
+and the matching documentation.

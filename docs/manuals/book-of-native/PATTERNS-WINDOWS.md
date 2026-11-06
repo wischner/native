@@ -444,6 +444,9 @@ Keyboard focus is also a window-level native notification. A backend calls
 `on_native_focus()` on the `wnd` it already recovered from the event instead
 of enumerating focusable subclasses. Plain windows cache input focus and cancel pointer/keyboard sessions on loss;
 painted controls additionally repaint the transition through `custom_control`.
+When focus moves from the root to a child, cancellation of the old focus runs
+before the root pointer state is reactivated. This preserves relative motion
+for the newly focused child; actual root deactivation still suppresses it.
 
 Windows distinguishes top-level activation (`WM_ACTIVATE`) from keyboard-focus
 transfers (`WM_KILLFOCUS`) into stock child controls. A child focus transfer

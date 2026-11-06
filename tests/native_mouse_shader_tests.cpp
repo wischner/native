@@ -131,7 +131,25 @@ namespace
             require(reason == mouse_cancel_reason::focus_lost, "Wrong focus cancellation reason.");
             ++cancelled; return false;
         });
+        // The root initially owns keyboard focus. Giving it to a child must
+        // not leave the root inactive when the old root focus is cancelled.
+        root.on_native_focus(true);
         first.on_native_focus(true);
+        float moved = 0;
+        first.on_mouse_motion.connect([&](mouse_motion_event event) {
+            moved += event.dx; return false;
+        });
+        mouse_motion_event relative;
+        relative.kind = mouse_motion_kind::relative;
+        relative.dx = 7;
+        first.on_native_mouse_motion(relative);
+        require(moved == 7, "Root-to-child focus transfer dropped relative motion.");
+        root.on_native_focus(false);
+        first.on_native_mouse_motion(relative);
+        require(moved == 7, "Inactive root accepted relative motion.");
+        first.on_native_focus(true);
+        first.on_native_mouse_motion(relative);
+        require(moved == 14, "Child focus did not reactivate root motion.");
         first.on_native_mouse_move(point(1, 1));
         first.on_native_mouse_click(mouse_event(mouse_button::left, mouse_action::press, point(1, 1)));
         second.on_native_focus(true);
