@@ -69,6 +69,8 @@ namespace native
 
         // Return the ordered tool descriptors.
         const std::vector<tool_item> &get_items() const;
+        // Return a tool's strip-relative rectangle, or throw for an unknown ID.
+        rect get_item_bounds(const std::string &id) const;
 
         // Set the image box, including 16x16, 24x24, or 32x32 pixels.
         // Grow or shrink the strip while retaining at least four pixels of padding.

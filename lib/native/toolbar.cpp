@@ -231,6 +231,10 @@ namespace native
                     else length = item.text.empty() ? _icon_size.w + 4 : length + _icon_size.w + 4;
                 }
                 length = std::max(length, 20);
+                // An icon-only tool is as long as the strip is thick.
+                if (item.icon && item.text.empty())
+                    length = std::max(length,
+                        int(vertical ? bounds.w() : bounds.h()) - 4);
             }
             const int available = (vertical ? bounds.h() : bounds.w()) - 2 - offset;
             const int visible = std::max(0, std::min(length, available));
@@ -241,6 +245,10 @@ namespace native
             offset = std::min(32767, offset + length);
         }
         return result;
+    }
+
+    rect toolbar::get_item_bounds(const std::string &id) const {
+        return item_bounds()[find_item(id)];
     }
 
     int toolbar::item_at(point position) const {

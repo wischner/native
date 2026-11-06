@@ -9,6 +9,7 @@
 #include <native.h>
 #include <native/canvas.h>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -73,6 +74,12 @@ namespace
                 threw = true;
             }
             expect(threw, "a control tool needs a control");
+            tool_item icon_tool{"icon", "", tool_kind::button};
+            icon_tool.icon = std::make_shared<img>(16, 16);
+            bar_.add_item(icon_tool);
+            const rect tool = bar_.get_item_bounds("icon");
+            expect(tool.w() > 0 && tool.w() == tool.h(),
+                   "an icon-only tool is square");
         }
 
         void check_ruler() {

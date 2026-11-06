@@ -120,6 +120,8 @@ title and status rather than expecting user-change signals.
 A `tool_item::icon` is a `std::shared_ptr<const img>`. Load a PNG once and share
 it between tools. Transparent image pixels retain the toolbar background.
 `set_icon_size({24, 24})` changes the image box and the toolbar's thickness.
+A tool with an icon and no text is square, as long as the strip is thick;
+`get_item_bounds(id)` returns where a tool sits on the strip.
 Use `tool_kind::exclusive` and a common nonempty group string for mutually
 exclusive tools on one bar. A separator has no command and may use an empty ID.
 
