@@ -227,6 +227,24 @@ after the callback either — the pixels are yours.
 
 ## Scrolling a canvas
 
+To associate a document canvas with its top-level frame, configure it before
+creating the window:
+
+```cpp
+document.set_parent(&window);
+window.set_scroll_content(&document);
+```
+
+Size the document from `window.get_client_bounds()` as usual. This is one
+portable path; do not branch on toolkit names in the application. GEM supplies
+actual AES frame scrollbars and reserves their space outside the canvas.
+Other backends retain the existing canvas controls. The optional status bar
+therefore meets the GEM work-area edge without a second scrollbar strip.
+Set axis policies before window creation; GEM keeps each enabled frame axis
+visible even when its thumb fills the track. Painting and `on_scroll` handlers
+do not change. `get_window_scrollbars()` reports which geometry is active.
+
+
 Describe your content once, in your own coordinates, and read the scroll
 position back when you paint:
 

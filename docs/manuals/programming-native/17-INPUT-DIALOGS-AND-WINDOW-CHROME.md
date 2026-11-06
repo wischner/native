@@ -309,7 +309,8 @@ SDL window is delivered to the control under it.
 For a status strip that matches the current backend's chrome, set its extent
 after window creation to `theme::create(get_gpx())->get_status_bar_height()`.
 Vision's Input and window chrome gallery uses this rule. GEMix matches the
-AES title/menu height, including clearance between text and the top separator.
+application band used by Gemscape and Ted: `max(12, char_h + 4, box_h - 2)`.
+The pinned SDK therefore uses 20 pixels, rather than the 22-pixel AES title.
 
 Rulers and status bars are non-client objects. Constructing one attaches it to
 its window edge and removes that extent from the rectangle passed to the
@@ -392,3 +393,18 @@ For a complete toolbar/property inspector, typed changes, optional images,
 and arbitrary popup editors, see [Chapter 22](22-TOOLBARS-AND-PROPERTIES.md).
 The [implementation chapter](../book-of-native/PATTERNS-INPUT-DIALOGS-WINDOW-CHROME.md)
 explains native adapter details.
+
+For a scrolling document, construct `native::status_bar status(window, canvas)`
+after both objects. Native chooses the canvas host on GEM so the status strip
+is above/beside its scrollbars; other backends keep the outer window footer.
+Parent the canvas under the window and size it from the window's client area.
+In the window-create handler, call
+`status.set_extent(native::theme::create(window.get_gpx())->get_status_bar_height())`
+to use the native height. The owner-only constructor still docks on exactly
+the owner supplied.
+
+For a full document window, also call `window.set_scroll_content(&document)`
+before window creation. On GEM the real AES frame then owns the scrollbars;
+the document status strip ends exactly at its work-area boundary. No extra
+canvas scrollbar track or bottom padding is reserved. The same application
+call retains existing canvas controls on other backends.

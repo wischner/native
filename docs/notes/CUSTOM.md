@@ -7,6 +7,26 @@ implementations easy to find.
 
 Audit date: 2026-11-06.
 
+GEM document chrome review: the document-associated status-bar constructor
+selects the canvas host, putting its existing **C** status painting inside
+scrollbar edges. Other backends retain their existing host and kind. Toolbar
+icons now use a theme primitive; GEM's **C** toolbar applies the same binary
+disabled stipple as stock text so gray masks no longer disappear as white.
+That review is followed by the document-scroll association: GEM document
+canvases now use **N** AES frame scrollbars through the portable
+`app_wnd::set_scroll_content` API. Their application painting stays custom,
+so an associated GEM canvas is **H**; unassociated/nested canvases remain **C**.
+AES owns track sizing, arrow/page input and thumb tracking, removing duplicate
+canvas tracks and the compact-sizer gap. Other backend kinds are unchanged.
+
+GEM combo popup routing repair (2026-11-06): selection-only and editable
+combos retain their **C** classification and existing themed popup. Open
+popups receive both press and release before canvas capture, button dispatch
+or ordinary sibling controls. This makes hosted font/size fields usable over
+a document canvas. Outside dismissal consumes the gesture. The real Rasta/AES
+input test covers hosted font/size selection, change/dropdown notifications,
+no pointer leakage, and fresh document input after dismissal.
+
 Recent-feature audit: hosted-control bars use shared painted tool chrome plus
 ordinary child controls. Native-button-only Win32/AppKit/Haiku bars retain
 their **H** kinds. Switching between the two recreates the internal surface;
@@ -589,8 +609,9 @@ also applies to icon grids borrowed by an accordion in a modeless window.
 Shared tree painting now preserves manual scroll position when it reapplies
 unchanged row metrics, rather than returning to an offscreen selected row.
 Control classifications remain unchanged on every backend using that painter.
-The status height uses the same font-plus-six-pixel metric as AES title/menu
-chrome; the gallery requests that theme metric rather than a font-only height.
+The status height follows Gemscape and Ted's `gemctl_chrome_layout`:
+`max(12, char_h + 4, box_h - 2)`, or 20 pixels with the pinned SDK.
+It is slimmer than the AES title strip. The gallery requests that theme metric.
 Status parts retain their top rule and leading dividers, but omit bottom and
 right borders already supplied by the surrounding window.
 List selection explicitly invalidates its own region, including split panes.
@@ -628,7 +649,8 @@ the client inset with a canvas painting to its edges.
 | `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling; icon grids and trees share painted/hit geometry for arrow steps, trough paging, and captured thumb dragging, including nested accordion pages. |
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
-| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting through an offset context and root-relative hit testing are library-owned. |
+| `panel` | **C** | Nested emulated region with library-owned painting and root-relative hit testing. |
+| `canvas` | **H/C** | A document associated through `app_wnd::set_scroll_content` uses native AES frame scrollbars (**H**); nested/unassociated canvases keep library-painted internal bars (**C**). Application content painting stays library-routed through VDI. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |

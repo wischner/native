@@ -29,7 +29,8 @@ namespace
         window()
             : app_wnd("chrome", 30, 30, 480, 320),
               bar_(*this, window_edge::top, 32),
-              ruler_(surface_, window_edge::top, 22) {
+              ruler_(surface_, window_edge::top, 22),
+              status_(*this, surface_) {
             tool_item choice;
             choice.id = "choice";
             choice.kind = tool_kind::control;
@@ -55,6 +56,7 @@ namespace
                 check_toolbar();
                 check_ruler();
                 check_canvas();
+                check_status();
             } catch (const std::exception &error) {
                 std::cerr << "FAILED: " << error.what() << '\n';
                 failed = true;
@@ -206,10 +208,43 @@ namespace
                                     false, key_modifiers::none});
         }
 
+        void check_status() {
+            const bool inside = resources::current_context().toolkit == "gemix";
+            expect(status_.get_owner() == (inside ? static_cast<wnd *>(&surface_) : this),
+                   "document status follows backend docking convention");
+            status_.set_extent(theme::create(get_gpx())->get_status_bar_height());
+            for (auto policy : {scrollbar_policy::always, scrollbar_policy::never}) {
+                surface_.set_horizontal_scrollbar_policy(policy);
+                surface_.set_vertical_scrollbar_policy(policy);
+                for (const auto width : {400, 440}) {
+                    surface_.set_dimensions({dim(width), 240});
+                    const auto bounds = status_.get_bounds();
+                    if (inside) {
+                        const int edge = policy == scrollbar_policy::always
+                            ? theme::create(surface_.get_gpx())->defaults().scrollbar_extent : 0;
+                        const auto dimensions = surface_.get_dimensions();
+                        expect(bounds.y2() == dimensions.h - edge &&
+                               bounds.x2() == dimensions.w - edge,
+                               "GEM status stops before the bottom and right scrollbars");
+                        expect(surface_.get_client_bounds().y2() == bounds.y1(),
+                               "GEM document stops above its status bar");
+                        if (policy == scrollbar_policy::always)
+                            expect(bounds.y2() < surface_.get_dimensions().h &&
+                                   bounds.x2() < surface_.get_dimensions().w,
+                                   "GEM scrollbar space remains outside the status bar");
+                    } else {
+                        expect(bounds.y2() == get_chrome_bounds().y2(),
+                               "other backends retain the outer window footer");
+                    }
+                }
+            }
+        }
+
         canvas surface_{0, 0, 480, 240};
         combo_box box_{{"one", "two"}};
         toolbar bar_;
         ruler ruler_;
+        status_bar status_;
     };
 } // namespace
 

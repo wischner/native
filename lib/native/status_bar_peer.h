@@ -14,6 +14,8 @@
 namespace native
 {
     class status_bar;
+    class wnd;
+    class canvas;
 
     namespace detail
     {
@@ -27,5 +29,8 @@ namespace native
         };
 
         std::unique_ptr<status_bar_peer> create_status_bar_peer();
+
+        // Choose the native docking host for a scrolling document footer.
+        wnd &status_bar_host(wnd &owner, canvas &content);
     } // namespace detail
 } // namespace native

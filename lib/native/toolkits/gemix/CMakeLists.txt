@@ -12,6 +12,8 @@ target_compile_definitions(native PRIVATE NATIVE_NO_UNICODE_TEXT_INPUT)
 
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/canvas_scrollbars.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp

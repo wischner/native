@@ -314,9 +314,11 @@ namespace
 
                 const auto work = work_rect(wnd_bindings.handle_from_object(this));
                 const auto appearance = native::theme::create(get_gpx());
-                const auto outer = outer_rect(wnd_bindings.handle_from_object(this));
-                expect(appearance->get_status_bar_height() == work.y1() - outer.y1(),
-                       "status height matches AES title chrome including padding");
+                // The pinned SDK uses a 16-pixel font and a 20-pixel
+                // gemctl application band (Gemscape/Ted), not a title strip.
+                expect(runtime.char_h == 16 &&
+                       appearance->get_status_bar_height() == 20,
+                       "status height matches Gemscape and Ted's compact band");
                 native::img status_surface(40, 22);
                 auto status_theme = native::theme::create(status_surface.get_gpx());
                 status_theme->draw_surface(native::rect(0, 0, 40, 22),

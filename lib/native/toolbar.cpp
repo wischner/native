@@ -351,19 +351,7 @@ namespace native
             const int height = std::min(int(_icon_size.h), int(bounds.h()));
             const rect destination(left, bounds.y1() + (bounds.h() - height) / 2,
                                    std::max(0, width), height);
-            const auto *pixels = item.icon->pixels();
-            const auto count = std::size_t(item.icon->w()) * item.icon->h();
-            const bool mask = std::all_of(pixels, pixels + count,
-                [](rgba pixel) { return !pixel.a || (!pixel.r && !pixel.g && !pixel.b); });
-            if (mask) {
-                img tinted(item.icon->w(), item.icon->h());
-                const rgba ink =
-                    appearance.get_toolbar_text_color(state);
-                for (std::size_t index = 0; index < count; ++index)
-                    tinted.pixels()[index] = rgba(ink.r, ink.g, ink.b, pixels[index].a);
-                graphics.draw_img(tinted, destination);
-            } else
-                graphics.draw_img(*item.icon, destination);
+            appearance.draw_toolbar_icon(*item.icon, destination, state);
         }
         if (!item.text.empty()) {
             graphics.set_ink(appearance.get_toolbar_text_color(state))

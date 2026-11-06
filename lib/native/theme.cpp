@@ -398,6 +398,26 @@ namespace native
         return draw_menu_title(bounds, text, element_state);
     }
 
+    theme &theme::draw_toolbar_icon(const img &image, const rect &bounds,
+                                    const state &element_state) {
+        auto saved = _g.save_state();
+        const auto *pixels = image.pixels();
+        const auto count = std::size_t(image.w()) * image.h();
+        const bool mask = std::all_of(pixels, pixels + count,
+            [](rgba pixel) {
+                return !pixel.a || (!pixel.r && !pixel.g && !pixel.b);
+            });
+        if (mask) {
+            img tinted(image.w(), image.h());
+            const rgba ink = get_toolbar_text_color(element_state);
+            for (std::size_t index = 0; index < count; ++index)
+                tinted.pixels()[index] = rgba(ink.r, ink.g, ink.b, pixels[index].a);
+            _g.draw_img(tinted, bounds);
+        } else
+            _g.draw_img(image, bounds);
+        return *this;
+    }
+
     rgba
     theme::get_toolbar_text_color(const state &element_state) const {
         const auto colors = native_palette();

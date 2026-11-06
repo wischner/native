@@ -22,6 +22,22 @@ standard directory and message dialogs, and edge-attached rulers and status
 bars. Public objects keep their state in C++; each backend adapts that state to
 its native widget or to its existing native-theme renderer.
 
+In GEM, an open combo popup owns both halves of a pointer gesture before
+ordinary child hit testing or canvas capture. Selection is committed on
+release. A release outside dismisses the popup without activating the child
+underneath; the next fresh click resumes ordinary input. The backend closes
+its popup state before invoking user callbacks and guards control/window
+lifetime across selection and dropdown notifications.
+
+A document footer can be constructed with `status_bar(owner, content_canvas,
+height)`. The private backend adapter chooses the canvas on GEM, so its
+scrollbars remain outside the status strip, and chooses the window owner on
+other backends. The ordinary owner-only constructor retains its existing
+behavior. Host selection happens at construction; the canvas and owner must
+outlive the status bar. The public control, theme painting and normal
+non-client geometry are reused without application backend tests. Use the
+active theme's status-bar height once the window exists.
+
 Single-line editors, both combo styles and date/time pickers use the same
 active-theme input height with vertically centered content. A taller bounds
 allocation centers that standard-height field; multiline editors still fill
@@ -539,8 +555,9 @@ indicator; it does not represent this text-only multipart window strip.
 
 Vision exposes these APIs under **Window -> Input and window chrome**.
 Its status strip uses `theme::get_status_bar_height()` after window creation.
-GEMix reserves the stock font height plus six pixels, matching AES title/menu
-chrome and keeping centred glyphs clear of the top separator.
+GEMix follows Gemscape and Ted's `gemctl_chrome_layout` band metric:
+`max(12, char_h + 4, box_h - 2)` (20 pixels with the pinned SDK).
+This is the application status height, not the taller AES title strip.
 Its GEM status parts draw top and leading divider lines only: the surrounding
 window supplies the bottom/right enclosure.
 For automated desktop smoke tests, `vision --input-chrome` opens the same
@@ -825,3 +842,9 @@ accept/cancel handlers, including cancellation and exceptional exits. This
 releases the panel's observer hierarchy instead of retaining it until process
 shutdown. The patched SDK supplies matching font/text/browser resource cleanup;
 standard dialogs and controls remain native WINGs widgets.
+
+For a full document window, also call `window.set_scroll_content(&document)`
+before window creation. On GEM the real AES frame then owns the scrollbars;
+the document status strip ends exactly at its work-area boundary. No extra
+canvas scrollbar track or bottom padding is reserved. The same application
+call retains existing canvas controls on other backends.

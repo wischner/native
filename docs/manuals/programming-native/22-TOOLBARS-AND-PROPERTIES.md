@@ -28,6 +28,13 @@ its strip. Create ordinary client content in `on_wnd_create` and size it from
 below bottom toolbars. The following complete program uses a fixed-width grid
 for readability; a larger application can install a layout manager.
 
+For document windows, `status_bar(window, document_canvas)` lets Native choose
+GEM's placement inside the canvas scrollbars while retaining the outer footer
+on other platforms. Keep both objects alive until after the status bar. Obtain
+its height from `theme::get_status_bar_height()` on the created window.
+Toolbar icons delegate state painting to `theme::draw_toolbar_icon`; disabled
+monochrome icons on GEM remain visible with the backend's binary stipple.
+
 ## Step 3: Connect user actions
 
 ```cpp

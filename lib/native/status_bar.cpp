@@ -20,6 +20,9 @@ namespace native
         : non_client(owner, window_edge::bottom, height, true)
         , _native_peer(detail::create_status_bar_peer()) {}
 
+    status_bar::status_bar(wnd &owner, canvas &content, int height)
+        : status_bar(detail::status_bar_host(owner, content), height) {}
+
     status_bar::~status_bar() = default;
 
     const std::string &status_bar::get_text() const { return _text; }

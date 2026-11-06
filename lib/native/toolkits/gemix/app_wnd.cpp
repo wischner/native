@@ -33,9 +33,10 @@ namespace native
                 "GEMix: failed to initialize AES/VDI runtime.");
 
         rect desktop = linux::gemix::desktop_rect();
+        const WORD scroll_kind = linux::gemix::window_scroll_kind(*this);
         const WORD features =
             (get_modal() || !get_native_title_visible()) ? 0
-                        : NAME | CLOSER | FULLER | MOVER | SIZER;
+                : NAME | CLOSER | FULLER | MOVER | SIZER | scroll_kind;
         WORD handle =
             wind_create(features,
                         desktop.p.x,
@@ -51,6 +52,7 @@ namespace native
             this);
         linux::gemix::window_states.register_pair(
             this, new linux::gemix::gem_window);
+        linux::gemix::window_states.object_from_handle(this)->scroll_kind = scroll_kind;
         wind_set_str(handle, WF_NAME, _title.c_str());
 
         this->menu.attach(

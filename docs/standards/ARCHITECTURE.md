@@ -793,6 +793,12 @@ painted tool labels and monochrome images. Its default follows menu states;
 GTK overrides it with native button foregrounds for normal, hot, pressed,
 selected and disabled tools, matching its button-based background.
 
+`theme::draw_toolbar_icon(image, bounds, state)` owns toolbar artwork state
+painting. The default tints black/transparent masks with toolbar foreground
+and preserves color artwork. GEM uses binary black/transparent stippling for
+disabled masks, matching disabled stock text; gray image ink would threshold
+to white and disappear. Enabled and selected masks retain normal theme ink.
+
 ## 8. Application
 
 Input capabilities are queried through the portable `app` interface.
@@ -1678,6 +1684,15 @@ including both lower corners, while side non-client strips stop above them.
 Status bars precede all other bottom strips in edge reservation, independent
 of attachment order, so bottom toolbars sit above them. Changing a status bar
 to another edge is invalid; toolbars retain their four-edge docking contract.
+`status_bar(owner, content_canvas, height)` associates a document footer with
+its scrolling content. GEM chooses the canvas as the docking host, placing
+the strip above the horizontal scrollbar and before the vertical scrollbar.
+Other backends choose the outer owner. The existing owner-only constructor
+keeps its original host everywhere. Both objects must outlive the bar and the
+application parents the canvas under owner; `get_owner()` reports the selected
+host. Use `theme::get_status_bar_height()` after window creation to size the
+bar from native metrics, rather than an application constant.
+
 Status bars divide their width into fixed parts and equal shares of remaining
 flexible parts. Painted status strips and their parts use the panel/chrome
 surface rather than the white editable-content surface; part edges remain
@@ -1824,6 +1839,29 @@ Inheritance must not be used to merge their roles: a panel hosts controls and a
 canvas draws application content.
 
 ## 19. Paintable child surfaces
+
+`app_wnd::set_scroll_content(canvas *)` associates one direct-child document
+canvas before window creation. The association is non-owning and is cleared
+when either object is destroyed; pass null before creation to remove it.
+Applications use this same call on every platform. Backend adapters choose
+frame scrollbars or the existing canvas implementation.
+
+GEM creates real AES window arrows and sliders for enabled axes. `automatic`
+and `always` both retain those frame axes; `never` omits an axis. Configure
+policies before creating the window. AES determines their dimensions and
+handles mouse tracking; Native maps `WM_ARROWED`, `WM_HSLID` and `WM_VSLID`
+to the canvas range and `on_scroll`. Programmatic changes remain silent and
+publish slider sizes/positions using the 0..1000 AES protocol. The canvas
+reserves no duplicate track or corner space. Its status bar ends at the AES
+work-area edge, directly above the native bottom track. Nested/unassociated
+canvases retain their internal scrollbars. Other backends retain their
+existing canvas controls and geometry through the default adapter.
+
+`canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
+The axis visibility getters include frame bars; `get_client_bounds()` always
+excludes only chrome inside the canvas. Drawers continue using the same
+content bounds, scroll position, paint and input API.
+
 
 `canvas` is a concrete child `wnd` whose entire client viewport is owned by
 application painting, together with optional horizontal and vertical

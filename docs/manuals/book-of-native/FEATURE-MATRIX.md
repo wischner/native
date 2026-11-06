@@ -1,5 +1,41 @@
 # Feature Matrix
 
+## Document window scrollbars (2026-11-06)
+
+One portable `app_wnd::set_scroll_content` association lets GEM use actual
+AES frame arrows, tracks and thumbs. The AES work rectangle determines their
+size and removes both the duplicate 16-pixel canvas bars and the compact-sizer
+blank strip. The status band meets the native bottom track with no extra gap.
+Other backends retain their existing canvas implementation through the same
+API. Fyodor has no toolkit branch for this behavior.
+
+The real Rasta input regression verifies `WF_KIND`, native frame dimensions,
+arrow/page clicks, both thumb drags, slider sizing after content shrink,
+silent programmatic changes, resize and destroyed-canvas messages. The
+existing unassociated canvas/status geometry tests still pass on GEM/gemd.
+
+
+## Document status and disabled toolbar icons (2026-11-06)
+
+`status_bar(owner, content_canvas, height)` preserves GEM scrollbar space by
+docking inside the canvas; the default backend adapter keeps the outer footer.
+The GEM status metric now matches Gemscape/Ted's `gemctl_chrome_layout`
+application band: `max(12, char_h + 4, box_h - 2)`, 20 pixels in the pinned
+SDK. The GEM runtime test checks this instead of equating status and title
+heights. Shared geometry checks
+cover both scrollbar visibility policies and resizing on GEM and SDL2.
+`theme::draw_toolbar_icon` retains common tinting behavior and gives GEM's
+disabled monochrome masks visible binary stippling, including undo/redo.
+
+
+## GEM toolbar combo routing (2026-11-06)
+
+Open GEM combo popups now consume press/release before canvas drag capture
+and ordinary control dispatch. Row selection works over a document canvas;
+outside dismissal does not click through. The real Rasta/AES input regression
+reproduced the failure before the change and passes on both direct GEM and
+gemd. Both transports also pass their existing GEM runtime tests. The public combo API and control implementation kinds are unchanged.
+
 ## Cross-backend feature audit (2026-11-06)
 
 The audit covers the recent resources, composed canvas text, click/modifier

@@ -425,3 +425,9 @@ Flexible-toolbar parity checks draw a real native reference control into a
 sibling canvas, preserving the primitive's destination context. Directly caching
 the button changes its native fill tone and idle text; matching drawing contexts
 retains strict state and color comparisons.
+
+Toolbar icons are painted by `theme::draw_toolbar_icon`, which receives their
+enabled/selected/disabled state. The common implementation tints binary masks
+and preserves color artwork. GEM overrides disabled mask painting with a
+black/transparent checkerboard like its disabled stock text, keeping undo/redo
+visible without a gray tint that would become white in one-bit image output.

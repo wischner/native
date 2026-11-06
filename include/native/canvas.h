@@ -17,6 +17,8 @@
 
 namespace native
 {
+    class app_wnd;
+
     // Stores a signed, large-range content-space scroll position.
     struct canvas_scroll_position
     {
@@ -79,7 +81,11 @@ namespace native
         // Return vertical scrollbar visibility policy.
         scrollbar_policy get_vertical_scrollbar_policy() const;
 
-        // Return whether each scrollbar currently reserves canvas space.
+        // Return whether the platform frame owns this canvas's scrollbars.
+        // Such bars live outside the canvas and reserve no canvas space.
+        bool get_window_scrollbars() const;
+
+        // Return whether each scrollbar is visible, in the canvas or frame.
         bool get_horizontal_scrollbar_visible() const;
         bool get_vertical_scrollbar_visible() const;
 
@@ -169,6 +175,9 @@ namespace native
                                     const theme::state &element_state);
 
     private:
+        friend class app_wnd;
+        app_wnd *_scroll_host = nullptr;
+
         // Stores one resolved scrollbar and viewport arrangement.
         struct scroll_geometry
         {
