@@ -13,6 +13,7 @@
 #include <windowsx.h>
 
 #include <native.h>
+#include <native/canvas.h>
 #include <native/wnd.h>
 
 #include "../../control_render_access.h"
@@ -408,37 +409,41 @@ namespace windows
 
 
 
-        case WM_CHAR:
-            if (auto *editor = dynamic_cast<native::code_edit *>(wnd)) {
-                if ((GetKeyState(VK_CONTROL) & 0x8000) == 0 &&
-                    wparam >= 0x20 && wparam != 0x7f) {
-                    const wchar_t unit =
-                        static_cast<wchar_t>(wparam);
-                    if (unit >= 0xd800 && unit <= 0xdbff) {
-                        code_edit_high_surrogates[editor] = unit;
-                        return 0;
-                    }
-                    std::wstring value;
-                    const auto pending =
-                        code_edit_high_surrogates.find(editor);
-                    if (unit >= 0xdc00 && unit <= 0xdfff) {
-                        if (pending ==
-                            code_edit_high_surrogates.end()) {
-                            return 0;
-                        }
-                        value.push_back(pending->second);
-                        value.push_back(unit);
-                    } else {
-                        value.push_back(unit);
-                    }
-                    code_edit_high_surrogates.erase(editor);
-                    const std::string utf8 = wide_to_utf8(value);
-                    if (!utf8.empty())
-                        editor->on_native_text_input(utf8);
+        case WM_CHAR: {
+            auto *editor = dynamic_cast<native::code_edit *>(wnd);
+            auto *surface = dynamic_cast<native::canvas *>(wnd);
+            if (!editor && !surface)
+                break;
+            // AltGr reports Ctrl+Alt, so only plain Ctrl is a command.
+            const bool command = (GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
+                                 (GetKeyState(VK_MENU) & 0x8000) == 0;
+            if (!command && wparam >= 0x20 && wparam != 0x7f) {
+                const wchar_t unit = static_cast<wchar_t>(wparam);
+                if (unit >= 0xd800 && unit <= 0xdbff) {
+                    code_edit_high_surrogates[wnd] = unit;
+                    return 0;
                 }
-                return 0;
+                std::wstring value;
+                const auto pending = code_edit_high_surrogates.find(wnd);
+                if (unit >= 0xdc00 && unit <= 0xdfff) {
+                    if (pending == code_edit_high_surrogates.end())
+                        return 0;
+                    value.push_back(pending->second);
+                    value.push_back(unit);
+                } else {
+                    value.push_back(unit);
+                }
+                code_edit_high_surrogates.erase(wnd);
+                const std::string utf8 = wide_to_utf8(value);
+                if (!utf8.empty()) {
+                    if (editor)
+                        editor->on_native_text_input(utf8);
+                    else
+                        surface->on_native_text_input(utf8);
+                }
             }
-            break;
+            return 0;
+        }
 
         case WM_MOUSEWHEEL:
 #ifdef WM_MOUSEHWHEEL

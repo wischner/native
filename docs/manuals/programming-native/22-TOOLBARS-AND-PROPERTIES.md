@@ -17,6 +17,11 @@ matching translated labels.
 
 ## Step 2: Attach chrome and create the grid
 
+A `tool_kind::control` item hosts any control, such as a font `combo_box`, with
+`control` and `length` set. The toolbar parents, creates and places it. Declare
+the control before the toolbar. A bar with hosted controls uses Native's portable
+painting on every backend; a bar of plain tools keeps its OS peer.
+
 Declare chrome after its owner. Constructing a toolbar or status bar reserves
 its strip. Create ordinary client content in `on_wnd_create` and size it from
 `get_client_bounds()` so it clears the strips. A status bar occupies the bottom

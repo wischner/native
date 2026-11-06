@@ -18,6 +18,7 @@
 #include <native/panel.h>
 
 #include "../../collection_render.h"
+#include "../../input_state.h"
 #include "globals.h"
 
 namespace
@@ -205,6 +206,9 @@ namespace linux::sdl2
         if (pressed) {
             surface->on_native_focus(true);
             state->pressed_buttons |= mask;
+            // An edit field may have stopped text input when it lost
+            // focus; a canvas never owns that state, it only needs it.
+            SDL_StartTextInput();
         }
         else
             state->pressed_buttons &= ~mask;
@@ -214,6 +218,10 @@ namespace linux::sdl2
                     : native::mouse_action::release,
             local_point(*surface, x, y)));
         return true;
+    }
+
+    bool handle_canvas_text(native::wnd *owner, const char *text) {
+        return text && native::detail::deliver_canvas_text(*owner, text);
     }
 
     bool handle_canvas_motion(native::wnd *owner, int x, int y,
@@ -343,6 +351,9 @@ namespace native
         self->synchronize_theme_metrics();
         self->relayout_children();
     }
+
+    // SDL has no per-control focus; input_target decides.
+    void canvas::focus_native() {}
 
     void canvas::show_native() {
         auto *state = linux::sdl2::canvas_bindings.object_from_handle(

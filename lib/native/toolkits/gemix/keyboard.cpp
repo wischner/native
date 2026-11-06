@@ -8,8 +8,18 @@
 #include "globals.h"
 #include "../../input_state.h"
 
+#include <string>
+
 namespace linux::gemix
 {
+    bool handle_canvas_key(native::app_wnd *parent, WORD modifiers, WORD key) {
+        const char ascii = static_cast<char>(key & 0xff);
+        if ((modifiers & 12) != 0 || ascii < 32 || ascii > 126)
+            return false;
+        return native::detail::deliver_canvas_text(*parent,
+                                                   std::string(1, ascii));
+    }
+
     bool dispatch_physical_key(native::app_wnd &owner, WORD modifiers,
                                WORD key, WORD state) {
 #ifdef NATIVE_GEM_PHYSICAL_KEYBOARD

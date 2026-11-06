@@ -60,6 +60,10 @@ namespace native
         std::set<std::string> ids, selected_groups;
         for (const auto &item : items) {
             if (item.kind == tool_kind::separator) continue;
+            if (item.kind == tool_kind::control &&
+                (!item.control || item.length <= 0))
+                throw std::invalid_argument(
+                    "A control tool needs a control and a length.");
             if (item.id.empty() || !ids.insert(item.id).second)
                 throw std::invalid_argument("Toolbar tools need unique nonempty IDs.");
             if (item.kind == tool_kind::button && item.checked)
@@ -147,7 +151,37 @@ namespace native
             _surface->create();
             _surface->show();
         }
-        detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
+        place_controls();
+        if (!has_controls())
+            detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
+    }
+
+    bool toolbar::has_controls() const {
+        return std::any_of(_items.begin(), _items.end(),
+                           [](const tool_item &item) {
+                               return item.kind == tool_kind::control;
+                           });
+    }
+
+    void toolbar::place_controls() {
+        if (!_surface->get_created()) return;
+        const auto bounds = item_bounds();
+        for (std::size_t index = 0; index < _items.size(); ++index) {
+            wnd *control = _items[index].control;
+            if (!control) continue;
+            const int height = std::min<int>(control->get_dimensions().h,
+                                             bounds[index].h());
+            control->set_bounds(rect(
+                bounds[index].p.x,
+                static_cast<coord>(bounds[index].y1() +
+                                   (bounds[index].h() - height) / 2),
+                bounds[index].d.w, static_cast<dim>(height)));
+            if (!control->get_created()) {
+                control->set_parent(_surface.get());
+                control->create();
+                control->show();
+            }
+        }
     }
 
     void toolbar::on_configuration_changed() {
@@ -168,7 +202,8 @@ namespace native
 
     void toolbar::repaint() {
         if (_surface) {
-            if (_surface->get_created()) detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
+            if (_surface->get_created() && !has_controls())
+                detail::refresh_toolbar_peer(*this, *_surface, item_bounds());
             _surface->invalidate();
         }
         invalidate();
@@ -182,7 +217,9 @@ namespace native
         int offset = 2;
         for (const auto &item : _items) {
             int length = 8;
-            if (item.kind != tool_kind::separator) {
+            if (item.kind == tool_kind::control) {
+                length = item.length;
+            } else if (item.kind != tool_kind::separator) {
                 length = vertical ? 24 : 12 + static_cast<int>(item.text.size()) * 8;
                 if (_surface->get_created()) {
                     const auto &font = font_t::stock(font_role::control);
@@ -210,6 +247,7 @@ namespace native
         const auto bounds = item_bounds();
         for (std::size_t index = 0; index < bounds.size(); ++index)
             if (_items[index].kind != tool_kind::separator &&
+                _items[index].kind != tool_kind::control &&
                 _items[index].enabled && bounds[index].contains(position))
                 return static_cast<int>(index);
         return -1;
@@ -245,10 +283,12 @@ namespace native
         event.g.set_pen(1).set_ink(appearance->native_palette().menu_bar_bg)
             .draw_border(rect(0, 0, dimensions.w, dimensions.h),
                 static_cast<border_sides>(unsigned(border_sides::all) ^ unsigned(get_border_sides())));
-        if (detail::toolbar_peer_active(*this, *_surface)) return;
+        if (!has_controls() && detail::toolbar_peer_active(*this, *_surface))
+            return;
         const auto bounds = item_bounds();
         for (std::size_t index = 0; index < _items.size(); ++index) {
             if (!bounds[index].w() || !bounds[index].h()) continue;
+            if (_items[index].kind == tool_kind::control) continue;
             theme::state state;
             state.disabled = !_items[index].enabled;
             state.pressed = _hot == static_cast<int>(index) &&

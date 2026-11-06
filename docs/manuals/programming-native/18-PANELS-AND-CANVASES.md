@@ -94,6 +94,29 @@ above. `scrollbar_policy` is an enum, not a standalone scrollbar widget.
 start application drawing from the concrete `canvas` unless you need to
 implement a new control's semantic input behavior.
 
+## Typing into a canvas
+
+A canvas that is an editor needs text, not physical keys. Connect
+`on_text_input` for composed UTF-8 and `on_key` for commands such as the arrow
+keys; a focused canvas receives both. `mouse_event::modifiers` and
+`mouse_event::clicks` carry Shift-click and double-click. Text arrives only for
+presses your `on_key` handler left unconsumed, so return `false` for keys that
+should type. Call `focus()` to take the keyboard without a click, for instance
+when a document window opens.
+
+A `ruler` on a canvas can show `set_active_range()` as the highlighted text area
+and `set_markers()` as draggable positions. `on_marker_move` reports each drag,
+and `finished` is true on release. A strip takes button events through
+`non_client::pointer_click`, so a marker press never reaches the client.
+
+```cpp
+surface.on_text_input.connect([&](const std::string &utf8) {
+    document.insert(utf8);
+    surface.invalidate();
+    return true;
+});
+```
+
 ## Grouping controls with a panel
 
 A panel is an empty child window. It adds no border, caption, focus ring, or

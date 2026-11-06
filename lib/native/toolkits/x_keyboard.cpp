@@ -9,12 +9,16 @@
 #include "../input_state.h"
 #include "../menu_shortcut.h"
 #include <native/app_wnd.h>
+#include <native/canvas.h>
 #include <X11/XKBlib.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <array>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <optional>
 #include <string>
 
 namespace
@@ -131,6 +135,92 @@ namespace
         {"KP9", native::key_code::keypad_9},
     };
 }
+namespace
+{
+    // One input context per display. Its root client window outlives every
+    // Native window, and the focus window moves with each key.
+    XIC input_context(Display *display) {
+        static Display *owner = nullptr;
+        static XIC context = nullptr;
+        if (owner == display)
+            return context;
+        owner = display;
+        context = nullptr;
+        XSetLocaleModifiers("");
+        if (XIM method = XOpenIM(display, nullptr, nullptr, nullptr)) {
+            context = XCreateIC(
+                method, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                XNClientWindow, DefaultRootWindow(display), nullptr);
+        }
+        return context;
+    }
+
+    // Convert XLookupString's Latin-1 bytes for a display without an IM.
+    std::string latin1_to_utf8(const char *bytes, int count) {
+        std::string result;
+        for (int index = 0; index < count; ++index) {
+            const auto byte = static_cast<unsigned char>(bytes[index]);
+            if (byte < 0x80) {
+                result.push_back(static_cast<char>(byte));
+            } else {
+                result.push_back(static_cast<char>(0xc0 | (byte >> 6)));
+                result.push_back(static_cast<char>(0x80 | (byte & 0x3f)));
+            }
+        }
+        return result;
+    }
+
+    // Return the menu command a key press with modifiers triggers.
+    std::optional<int> menu_shortcut_for(native::app_wnd &window,
+                                         XEvent &event, unsigned mods) {
+        const char *name = XKeysymToString(XLookupKeysym(&event.xkey, 0));
+        std::string key = name ? name : "";
+        std::transform(key.begin(), key.end(), key.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        for (const auto &top : window.menu.tops()) {
+            for (const auto &item : top.items) {
+                if (item.separator || item.shortcut.empty()) continue;
+                auto shortcut = native::detail::parse_menu_shortcut(item.shortcut);
+                std::transform(shortcut.key.begin(), shortcut.key.end(), shortcut.key.begin(),
+                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                if (shortcut.key == key && shortcut.shift == bool(mods & 1) &&
+                    shortcut.control == bool(mods & 2) && shortcut.alt == bool(mods & 4) &&
+                    shortcut.command == bool(mods & 8))
+                    return item.id;
+            }
+        }
+        return std::nullopt;
+    }
+
+    // Compose a key press into text and hand it to the focused canvas.
+    bool deliver_x_text(native::wnd &owner, XEvent &event) {
+        if (event.xkey.state & (ControlMask | Mod1Mask))
+            return false;
+        XIC context = input_context(event.xkey.display);
+        char text[64]{};
+        KeySym symbol = NoSymbol;
+        std::string composed;
+        if (context) {
+            XSetICValues(context, XNFocusWindow, event.xkey.window, nullptr);
+            // A dead key or compose sequence in progress: no text yet.
+            if (XFilterEvent(&event, event.xkey.window))
+                return true;
+            Status status = 0;
+            const int count = Xutf8LookupString(context, &event.xkey, text,
+                                                sizeof text - 1, &symbol,
+                                                &status);
+            if (status == XLookupChars || status == XLookupBoth)
+                composed.assign(text, static_cast<std::size_t>(count));
+        } else {
+            const int count = XLookupString(&event.xkey, text, sizeof text,
+                                            &symbol, nullptr);
+            composed = latin1_to_utf8(text, count);
+        }
+        return !composed.empty() &&
+               native::detail::deliver_canvas_text(owner, composed);
+    }
+}
+
 namespace native::detail
 {
     bool dispatch_x_keyboard(wnd &owner, XEvent &event) {
@@ -202,26 +292,32 @@ namespace native::detail
         // Menu accelerators retain their toolkit handler; only skip physical
         // delivery here. Previously delivered repeats/releases remain paired.
         if (press && !key_held(owner, code)) {
-            if (auto *window = dynamic_cast<app_wnd *>(&owner)) {
-                const char *name = XKeysymToString(XLookupKeysym(&event.xkey, 0));
-                std::string key = name ? name : "";
-                std::transform(key.begin(), key.end(), key.begin(),
-                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-                for (const auto &top : window->menu.tops()) {
-                    for (const auto &item : top.items) {
-                        if (item.separator || item.shortcut.empty()) continue;
-                        auto shortcut = parse_menu_shortcut(item.shortcut);
-                        std::transform(shortcut.key.begin(), shortcut.key.end(), shortcut.key.begin(),
-                            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-                        if (shortcut.key == key && shortcut.shift == bool(mods & 1) &&
-                            shortcut.control == bool(mods & 2) && shortcut.alt == bool(mods & 4) &&
-                            shortcut.command == bool(mods & 8)) return false;
-                    }
-                }
-            }
+            if (auto *window = dynamic_cast<app_wnd *>(&owner);
+                window && menu_shortcut_for(*window, event, mods))
+                return false;
         }
-        const bool consumed = owner.on_native_key({code, press ? key_action::press : key_action::release,
-            press && key_held(owner, code), static_cast<key_modifiers>(mods)});
-        return consumed || !guard.alive();
+        // Without toolkit focus on a canvas, keys arrive at its top-level
+        // window. A focused canvas owns them, as on the other backends.
+        wnd *receiver = &owner;
+        if (dynamic_cast<app_wnd *>(&owner)) {
+            if (auto *target = dynamic_cast<canvas *>(input_target(owner)))
+                receiver = target;
+        }
+        const bool consumed = receiver->on_native_key({code, press ? key_action::press : key_action::release,
+            press && key_held(*receiver, code), static_cast<key_modifiers>(mods)});
+        if (consumed || !guard.alive()) return true;
+        if (!press) return false;
+        // Keys taken by a focused canvas never reach the toolkit's menu
+        // accelerators, so its shortcuts are honored here.
+        if (dynamic_cast<canvas *>(receiver)) {
+            wnd *root = receiver;
+            while (root->get_parent()) root = root->get_parent();
+            if (auto *window = dynamic_cast<app_wnd *>(root))
+                if (const auto id = menu_shortcut_for(*window, event, mods)) {
+                    window->on_native_menu(*id);
+                    return true;
+                }
+        }
+        return deliver_x_text(*receiver, event);
     }
 }

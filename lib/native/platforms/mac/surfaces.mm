@@ -103,9 +103,22 @@
 - (void)keyDown:(NSEvent *)event {
     if (!_owner || !_owner->get_input_enabled()) return;
     const native::detail::window_guard guard(*_owner);
+    // AppKit's text system composes dead keys and calls insertText: below.
     if (!_owner->on_native_key(mac::physical_key(event, native::key_action::press)) &&
         guard.alive())
-        [super keyDown:event];
+        [self interpretKeyEvents:@[ event ]];
+}
+- (void)insertText:(id)text {
+    if (!_owner) return;
+    NSString *value = [text isKindOfClass:[NSAttributedString class]]
+                          ? [(NSAttributedString *)text string]
+                          : (NSString *)text;
+    if (const char *utf8 = [value UTF8String])
+        _owner->on_native_text_input(utf8);
+}
+- (void)doCommandBySelector:(SEL)selector {
+    // Commands were already reported through on_key.
+    (void)selector;
 }
 - (void)keyUp:(NSEvent *)event {
     if (_owner)
@@ -252,6 +265,11 @@ namespace native
         mac::canvas_bindings.register_pair(self, binding);
         self->synchronize_theme_metrics();
         self->relayout_children();
+    }
+
+    void canvas::focus_native() {
+        NSView *view = mac::canvas_bindings.object_from_handle(this)->view;
+        [[view window] makeFirstResponder:view];
     }
 
     void canvas::show_native() {

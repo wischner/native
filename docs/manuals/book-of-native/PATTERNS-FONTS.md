@@ -29,7 +29,11 @@ backend and is distinct from portable byte-backed font loading.
 `font_t::from_file()` reads the entire selected resource through a C++ stream;
 `from_memory()` copies the supplied byte span. Both delegate registration to
 `lib/native/portable_font.cpp`, selecting an explicit face index and pixel
-size. The implementation bounds font data to 128 MiB and accepts portable
+size. `font_size_basis::line_height`, the default, spans ascent plus descent
+with the size. `font_size_basis::em` spans one em instead, which is how a
+document's point size is defined, so a word processor's 12pt text keeps its
+printed proportions. Both are shared code and behave alike on every backend.
+The implementation bounds font data to 128 MiB and accepts portable
 pixel sizes from 1 through 4096. Invalid data, an invalid face or invalid size
 returns an invalid font rather than substituting a stock face. A successfully
 loaded file font records its filesystem path; a memory font owns its copied

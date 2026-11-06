@@ -78,6 +78,11 @@ namespace native
     void canvas::create_native() {
         linux::wayland::create_surface(*this);
     }
+    void canvas::focus_native() {
+        auto &peer = linux::wayland::state(*this);
+        gtk_widget_grab_focus(peer.content ? peer.content : peer.widget);
+    }
+
     void canvas::show_native() {
         gtk_widget_set_visible(linux::wayland::state(*this).widget,
                                true);

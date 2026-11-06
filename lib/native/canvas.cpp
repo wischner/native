@@ -11,16 +11,22 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 
 #include <native.h>
 #include <native/canvas.h>
+#include "input_state.h"
 #include "wnd_peer.h"
 
 #include "classic_scrollbar.h"
 
 namespace
 {
+    // Presses this close together in time and space count as one gesture.
+    constexpr auto multi_click_interval = std::chrono::milliseconds(500);
+    constexpr int multi_click_distance = 4;
+
     using native::canvas_scroll_position;
 
     constexpr std::int32_t int32_min =
@@ -595,7 +601,36 @@ namespace native
         wnd::on_native_mouse_move(position);
     }
 
+    void canvas::focus() {
+        on_native_focus(true);
+        focus_native();
+    }
+
+    bool canvas::on_native_text_input(const std::string &utf8) {
+        return !utf8.empty() && on_text_input.emit_consumed(utf8);
+    }
+
+    void canvas::annotate_click(mouse_event &event) {
+        if (const auto *input = detail::peer_state<detail::input_state>(*this))
+            event.modifiers = event.modifiers | input->modifiers;
+        if (event.action == mouse_action::press) {
+            const auto now = std::chrono::steady_clock::now();
+            const bool repeated = event.button == _last_press_button &&
+                now - _last_press <= multi_click_interval &&
+                std::abs(event.position.x - _last_press_position.x) <=
+                    multi_click_distance &&
+                std::abs(event.position.y - _last_press_position.y) <=
+                    multi_click_distance;
+            _click_count = repeated ? _click_count + 1 : 1;
+            _last_press = now;
+            _last_press_position = event.position;
+            _last_press_button = event.button;
+        }
+        event.clicks = std::max(_click_count, 1);
+    }
+
     void canvas::on_native_mouse_click(mouse_event event) {
+        annotate_click(event);
         const scroll_geometry geometry = resolve_geometry();
 
         if (event.action == mouse_action::release) {

@@ -166,6 +166,24 @@ resource destruction cancel held input. Derived focus hooks call the base.
 Focused editor text and composition paths remain separate. Unclaimed keys
 go to their actual input target, without automatic parent bubbling.
 
+`canvas::on_text_input` and `canvas::on_native_text_input()` are the composed
+text path for application-drawn editors: shift state, dead keys and the
+keyboard layout are already resolved, and the value is UTF-8. It never replaces
+`on_key`, which keeps reporting positions, and a canvas receives both.
+Every backend routes unconsumed presses here. X11-family backends share
+`dispatch_x_keyboard`, which composes through an input context with
+`Xutf8LookupString`, so dead keys and non-Latin-1 layouts work. GEM key packets
+carry translated ASCII only, so GEM text is limited to ASCII until the SDK
+reports more.
+
+`canvas::focus()` gives a canvas the keyboard programmatically, as a click would.
+On backends where keys arrive at the top-level window, a focused canvas receives
+them through `input_target`.
+
+`canvas` fills `mouse_event::clicks` and `mouse_event::modifiers` in shared code
+for every backend: presses within 500ms and 4 pixels count as one gesture, and
+modifiers come from the canvas's held keys.
+
 `app::get_physical_keyboard_supported()` reports adapter availability.
 GEMix enables this adapter only with the optional `gem/input.h` SDK extension
 and matching GEM libraries/server. It requests real USB-position press/release

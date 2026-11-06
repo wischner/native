@@ -683,6 +683,13 @@ namespace native
     }
 
     void wnd::on_native_mouse_click(mouse_event event) {
+        for (non_client *element : _non_client) {
+            if (element && element->_visible &&
+                (element->get_pointer_held() ||
+                 element->get_bounds().contains(event.position)) &&
+                element->pointer_click(event))
+                return;
+        }
         if (event.action == mouse_action::press &&
             !get_client_bounds().contains(event.position) &&
             detail::pointer_capture(*this) != this) return;

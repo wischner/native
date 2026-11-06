@@ -379,6 +379,9 @@ namespace native
                 } else if (top && linux::gemix::handle_menu_key(
                                       top, ks, kr)) {
                     // Unhandled accelerators remain available to the menu.
+                } else if (top && linux::gemix::handle_canvas_key(
+                                      top, ks, kr)) {
+                    // A focused canvas takes what nothing else claimed.
                 } else if (top && (kr & 0xff) == 27) {
                     top->destroy();
                 }

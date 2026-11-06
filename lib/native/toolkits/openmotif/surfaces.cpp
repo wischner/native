@@ -147,6 +147,9 @@ namespace native
         self->relayout_children();
     }
 
+    // Top-level key events reach the focused canvas through input_target.
+    void canvas::focus_native() {}
+
     void canvas::show_native() {
         auto *state = linux::openmotif::canvas_bindings
                           .object_from_handle(

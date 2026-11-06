@@ -285,8 +285,10 @@ namespace native
                     if (!linux::sdl2::handle_combo_text(
                             wnd, event.text.text) &&
                         !linux::sdl2::handle_text_edit_input(
+                            wnd, event.text.text) &&
+                        !linux::sdl2::handle_collection_text(
                             wnd, event.text.text)) {
-                        linux::sdl2::handle_collection_text(
+                        linux::sdl2::handle_canvas_text(
                             wnd, event.text.text);
                     }
                     break;

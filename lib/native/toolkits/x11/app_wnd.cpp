@@ -561,6 +561,11 @@ namespace native
             linux::x11::shell_bindings.handle_from_object(self);
         app_wnd *owner = get_owner();
 
+        // Children go first. Outside an Xt dispatch XtDestroyWidget frees
+        // a shell's whole tree at once, and a child destroyed afterwards
+        // would touch freed widgets.
+        destroy_children();
+
         // Detach while Xt widgets and their callback lists are still live.
         menu.detach();
         linux::x11::wnd_bindings.unregister_by_object(self);

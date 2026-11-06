@@ -179,6 +179,10 @@ namespace linux::gemix
                              WORD modifiers = 0);
 
     // Route one AES key packet to the focused collection control.
+    // Deliver a key's translated character to the focused canvas. The
+    // AES and physical key packets carry ASCII only.
+    bool handle_canvas_key(native::app_wnd *parent, WORD modifiers, WORD key);
+
     bool handle_collection_key(native::app_wnd *parent,
                                WORD modifiers,
                                WORD key);

@@ -1,5 +1,14 @@
 # Feature Matrix
 
+## Canvas text input and rich mouse events (2026-11-06)
+
+`canvas::on_text_input` delivers composed UTF-8 on every backend, for presses
+`on_key` left unconsumed. X11, Motif, OPEN LOOK and Window Maker share one
+input-context path, which `native_menu_runtime_tests` checks with real key
+events, including non-Latin-1 text. GEM delivers ASCII only, because its key
+packets carry nothing more. `mouse_event::clicks` and `modifiers` are filled by
+shared `canvas` code. Em-based `font_size_basis` is shared portable-font code.
+
 ## Live debugger windows (2026-11-05)
 
 Motif coalesces invalidations through queued expose delivery. Window Maker

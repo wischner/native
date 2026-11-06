@@ -102,6 +102,20 @@ add_test(NAME native_menu_runtime_tests
 set_tests_properties(native_menu_runtime_tests PROPERTIES TIMEOUT 30
     ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-menu.fb;GEM_RASTA_PORT=5024")
 
+add_executable(native_ruler_toolbar_tests native_ruler_toolbar_tests.cpp)
+target_link_libraries(native_ruler_toolbar_tests PRIVATE native native_developer_options)
+add_test(NAME native_ruler_toolbar_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_ruler_toolbar_tests>)
+set_tests_properties(native_ruler_toolbar_tests PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
+add_executable(native_owned_teardown_tests native_owned_teardown_tests.cpp)
+target_link_libraries(native_owned_teardown_tests PRIVATE native native_developer_options)
+add_test(NAME native_owned_teardown_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_owned_teardown_tests>)
+set_tests_properties(native_owned_teardown_tests PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
 add_executable(native_inspector_tests native_inspector_tests.cpp)
 target_link_libraries(native_inspector_tests PRIVATE native native_developer_options)
 add_test(NAME native_inspector_tests
@@ -265,6 +279,18 @@ if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
         native native_developer_options)
     add_test(NAME native_canvas_input_tests COMMAND native_canvas_input_tests)
     set_tests_properties(native_canvas_input_tests PROPERTIES
+        TIMEOUT 20 ENVIRONMENT
+        "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
+    add_executable(native_sdl_canvas_input_tests
+        native_sdl_canvas_input_tests.cpp)
+    target_include_directories(native_sdl_canvas_input_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/native)
+    target_link_libraries(native_sdl_canvas_input_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_sdl_canvas_input_tests
+        COMMAND native_sdl_canvas_input_tests)
+    set_tests_properties(native_sdl_canvas_input_tests PROPERTIES
         TIMEOUT 20 ENVIRONMENT
         "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
 

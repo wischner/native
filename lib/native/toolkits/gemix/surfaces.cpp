@@ -155,6 +155,7 @@ namespace linux::gemix
             return true;
         }
         if (auto *surface = dynamic_cast<native::canvas *>(control)) {
+            surface->on_native_focus(true);
             state->capture = surface;
             surface->on_native_mouse_click(native::mouse_event(
                 native::mouse_button::left, native::mouse_action::press,
@@ -369,6 +370,9 @@ namespace native
         self->synchronize_theme_metrics();
         self->relayout_children();
     }
+
+    // GEM has no per-control focus; input_target decides.
+    void canvas::focus_native() {}
 
     void canvas::show_native() {
         if (!_created)

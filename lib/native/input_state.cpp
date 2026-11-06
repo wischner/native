@@ -7,6 +7,8 @@
 
 #include "input_state.h"
 
+#include <native/canvas.h>
+
 namespace native::detail
 {
     wnd *input_target(wnd &root) {
@@ -17,6 +19,25 @@ namespace native::detail
         }
         auto *state = peer_state<input_state>(root);
         return state && state->focused ? &root : nullptr;
+    }
+
+    bool deliver_canvas_text(wnd &window, const std::string &utf8) {
+        wnd *root = &window;
+        while (root->get_parent())
+            root = root->get_parent();
+        auto *target = dynamic_cast<canvas *>(input_target(*root));
+        if (!target)
+            return false;
+        // Control characters are commands, which on_key already reported.
+        std::string text;
+        for (const char c : utf8) {
+            const auto byte = static_cast<unsigned char>(c);
+            if (byte >= 0x20 && byte != 0x7f)
+                text.push_back(c);
+        }
+        if (!text.empty())
+            target->on_native_text_input(text);
+        return !text.empty();
     }
 
     void reset_input(wnd &root) {

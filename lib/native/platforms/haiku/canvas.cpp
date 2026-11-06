@@ -30,6 +30,14 @@ namespace native
         self->relayout_children();
     }
 
+    void canvas::focus_native() {
+        auto *binding = haiku::canvas_bindings.object_from_handle(this);
+        if (binding && binding->view && binding->view->LockLooper()) {
+            binding->view->MakeFocus(true);
+            binding->view->UnlockLooper();
+        }
+    }
+
     void canvas::show_native() {
         auto *binding = haiku::canvas_bindings.object_from_handle(
             this);

@@ -19,6 +19,12 @@
 #elif defined(MENU_TEST_WMAKER)
 #include "../lib/native/toolkits/wmaker/globals.h"
 #include <X11/keysym.h>
+#elif defined(MENU_TEST_OPENLOOK)
+#include "../lib/native/toolkits/openlook/globals.h"
+#include <X11/keysym.h>
+#include "../lib/native/toolkits/x_keyboard.h"
+#elif defined(MENU_TEST_GEMIX)
+#include "../lib/native/toolkits/gemix/globals.h"
 #endif
 
 // Round-trip classic-manager text as UTF-8, including non-Latin-1 punctuation.
@@ -57,13 +63,38 @@ void check_window_title(native::app_wnd &parent) {
 
 // Exercise the actual view/widget callback rather than on_native_key itself.
 void check_canvas_keyboard(native::app_wnd &parent) {
-#if defined(__APPLE__) || defined(MENU_TEST_X11) || \
-    defined(MENU_TEST_MOTIF) || defined(MENU_TEST_WMAKER)
+#if defined(MENU_TEST_GEMIX)
+    native::canvas writer(10, 10, 100, 80);
+    writer.set_parent(&parent).create();
+    writer.show();
+    std::string written;
+    writer.on_text_input.connect([&](const std::string &utf8) {
+        written += utf8;
+        return true;
+    });
+    writer.on_native_focus(true);
+    if (!linux::gemix::handle_canvas_key(&parent, 0, 'a') ||
+        !linux::gemix::handle_canvas_key(&parent, 3, 'A') || written != "aA")
+        throw std::runtime_error("GEM canvas text: '" + written + "'");
+    if (linux::gemix::handle_canvas_key(&parent, 4, 'a'))
+        throw std::runtime_error("A Ctrl chord must not type");
+    writer.destroy();
+#elif defined(__APPLE__) || defined(MENU_TEST_X11) || \
+    defined(MENU_TEST_MOTIF) || defined(MENU_TEST_WMAKER) || \
+    defined(MENU_TEST_OPENLOOK)
     native::canvas surface(10, 10, 100, 80);
     surface.set_parent(&parent).create();
     surface.show();
     int presses = 0, releases = 0, repeats = 0, resets = 0;
+    bool consume_keys = true;
+    std::string typed;
+    surface.on_text_input.connect([&](const std::string &utf8) {
+        typed += utf8;
+        return true;
+    });
     surface.on_key.connect([&](native::key_event event) {
+        if (!consume_keys)
+            return false;
         if (event.key != native::key_code::a)
             throw std::runtime_error("Canvas lost physical key identity");
         if (event.action == native::key_action::press) {
@@ -93,6 +124,12 @@ void check_canvas_keyboard(native::app_wnd &parent) {
     Widget widget = linux::openmotif::wnd_bindings.handle_from_object(&surface);
     Display *display = XtDisplay(widget);
     Window window = XtWindow(widget);
+#elif defined(MENU_TEST_OPENLOOK)
+    Display *display = linux::openlook::cached_display;
+    const Window window = xv_get(
+        linux::openlook::canvas_bindings.object_from_handle(&surface)
+            ->paint_window,
+        XV_XID);
 #else
     auto *widget = linux::wmaker::wnd_bindings.handle_from_object(&surface);
     Display *display = linux::wmaker::display;
@@ -102,19 +139,38 @@ void check_canvas_keyboard(native::app_wnd &parent) {
     auto dispatch = [&](XEvent &event) {
 #if defined(MENU_TEST_WMAKER)
         WMHandleEvent(&event);
-#else
+#elif !defined(MENU_TEST_OPENLOOK)
         XtDispatchEvent(&event);
 #endif
     };
-    auto key = [&](bool down) {
+#if defined(MENU_TEST_OPENLOOK)
+    // XView drops synthetic keys, so they enter where its handler does.
+    auto send_key = [&](bool down, unsigned keycode, unsigned state) {
         XEvent event{};
         event.xkey.type = down ? KeyPress : KeyRelease;
         event.xkey.display = display;
         event.xkey.window = window;
         event.xkey.root = DefaultRootWindow(display);
-        event.xkey.keycode = XKeysymToKeycode(display, XK_a);
+        event.xkey.keycode = keycode;
+        event.xkey.state = state;
+        event.xkey.same_screen = True;
+        native::detail::dispatch_x_keyboard(surface, event);
+    };
+#else
+    auto send_key = [&](bool down, unsigned keycode, unsigned state) {
+        XEvent event{};
+        event.xkey.type = down ? KeyPress : KeyRelease;
+        event.xkey.display = display;
+        event.xkey.window = window;
+        event.xkey.root = DefaultRootWindow(display);
+        event.xkey.keycode = keycode;
+        event.xkey.state = state;
         event.xkey.same_screen = True;
         dispatch(event);
+    };
+#endif
+    auto key = [&](bool down) {
+        send_key(down, XKeysymToKeycode(display, XK_a), 0);
     };
     auto blur = [&] {
         XEvent event{};
@@ -126,16 +182,66 @@ void check_canvas_keyboard(native::app_wnd &parent) {
         dispatch(event);
     };
 #endif
+#if defined(MENU_TEST_OPENLOOK)
+    (void)blur;
+    (void)dispatch;
+    consume_keys = false;
+#else
     key(true);
     key(true);
     key(false);
     key(true);
     blur();
     key(false);
+#endif
+#if !defined(MENU_TEST_OPENLOOK)
     if (presses != 3 || repeats != 1 || releases != 1 || resets != 1)
         throw std::runtime_error("Canvas backend key counts: " +
             std::to_string(presses) + "/" + std::to_string(repeats) + "/" +
             std::to_string(releases) + "/" + std::to_string(resets));
+#endif
+    if (!typed.empty())
+        throw std::runtime_error("A consumed key must not also type");
+#if !defined(__APPLE__)
+    // Unconsumed presses compose to text: plain, shifted, and a character
+    // outside Latin-1, which proves the path is UTF-8.
+    consume_keys = false;
+    surface.on_native_focus(true);
+    const unsigned letter = XKeysymToKeycode(display, XK_a);
+    send_key(true, letter, 0);
+    send_key(false, letter, 0);
+    send_key(true, letter, ShiftMask);
+    send_key(false, letter, ShiftMask);
+    if (typed != "aA")
+        throw std::runtime_error("Canvas text: '" + typed + "'");
+    int first = 0, last = 0, per_key = 0;
+    XDisplayKeycodes(display, &first, &last);
+    KeySym *map = XGetKeyboardMapping(display, last, 1, &per_key);
+    const KeySym saved = map[0];
+    XFree(map);
+    KeySym zcaron = XK_zcaron;
+    XChangeKeyboardMapping(display, last, 1, &zcaron, 1);
+    XSync(display, False);
+    XMappingEvent changed{};
+    changed.type = MappingNotify;
+    changed.display = display;
+    changed.request = MappingKeyboard;
+    changed.first_keycode = last;
+    changed.count = 1;
+    XRefreshKeyboardMapping(&changed);
+    typed.clear();
+    send_key(true, static_cast<unsigned>(last), 0);
+    send_key(false, static_cast<unsigned>(last), 0);
+    KeySym restore = saved;
+    XChangeKeyboardMapping(display, last, 1, &restore, 1);
+    XSync(display, False);
+    if (typed != "\xc5\xbe")
+        throw std::runtime_error("Canvas UTF-8 text: '" + typed + "'");
+    send_key(true, letter, ControlMask);
+    send_key(false, letter, ControlMask);
+    if (typed != "\xc5\xbe")
+        throw std::runtime_error("A Ctrl chord must not type");
+#endif
     surface.destroy();
 #else
     (void)parent;

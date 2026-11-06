@@ -60,7 +60,7 @@ namespace windows
     native::bindings<HWND, native::wnd *> wnd_bindings;
     native::bindings<uint32_t, win_font *> font_bindings;
     native::bindings<uint32_t, win_menu *> menu_bindings;
-    std::unordered_map<native::code_edit *, wchar_t>
+    std::unordered_map<native::wnd *, wchar_t>
         code_edit_high_surrogates;
 
     native::rgba rgba_from_sys_color(int idx) {

@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
+#include <string>
 
 #include "custom_control.h"
 #include "scrollbar.h"
@@ -53,6 +55,9 @@ namespace native
         // Set the scrollable bounds in application content pixels.
         canvas &set_content_bounds(canvas_content_bounds bounds);
 
+        // Give this canvas the keyboard, as a click on it would.
+        void focus();
+
         // Return the configured scrollable content bounds.
         canvas_content_bounds get_content_bounds() const;
 
@@ -84,6 +89,20 @@ namespace native
         // Paint the client viewport, non-client strips, and scrollbars.
         void on_native_paint(wnd_paint_event event) override;
 
+        //
+        // Accept composed UTF-8 text typed into the focused canvas.
+        //
+        // Notes:
+        //      Composition, shift state, dead keys and the keyboard
+        //      layout are already resolved. This is the path for text;
+        //      on_key stays the path for physical positions. Backends
+        //      deliver text only for presses on_key left unconsumed.
+        //
+        // Returns:
+        //      Whether a connected handler consumed the text.
+        //
+        virtual bool on_native_text_input(const std::string &utf8);
+
         // End a scrollbar gesture before dispatching pointer cancellation.
         void on_native_mouse_cancel(mouse_cancel_reason reason) override;
 
@@ -102,10 +121,16 @@ namespace native
         // Show an already-created canvas.
         void show_native() override;
 
+        // Move toolkit keyboard focus here, where the backend tracks it.
+        virtual void focus_native();
+
     public:
 
         // Emits the effective position after a user-originated scroll.
         signal<canvas_scroll_position> on_scroll;
+
+        // Emits composed UTF-8 text typed while this canvas has focus.
+        signal<std::string> on_text_input;
 
         //
         // Return the client cursor inside the viewport, else an arrow.
@@ -203,5 +228,13 @@ namespace native
         hit_part _hot = hit_part::none;
         hit_part _pressed = hit_part::none;
         int _drag_offset = 0;
+
+        // Add the click count and held modifiers to a client event.
+        void annotate_click(mouse_event &event);
+
+        std::chrono::steady_clock::time_point _last_press;
+        point _last_press_position;
+        mouse_button _last_press_button = mouse_button::none;
+        int _click_count = 0;
     };
 } // namespace native

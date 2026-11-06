@@ -37,7 +37,8 @@ namespace native::detail
         std::vector<std::uint8_t> bytes,
         int size,
         std::uint32_t face_index,
-        font_spec &description);
+        font_spec &description,
+        font_size_basis basis = font_size_basis::line_height);
 
     // Determine whether an identifier belongs to the portable registry.
     bool is_portable_font(std::uint32_t id);

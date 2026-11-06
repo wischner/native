@@ -87,6 +87,14 @@ namespace native
 
     void non_client::track_pointer(const point &) {}
 
+    bool non_client::pointer_click(const mouse_event &) {
+        return false;
+    }
+
+    bool non_client::get_pointer_held() const {
+        return false;
+    }
+
     non_client &non_client::set_border_sides(border_sides sides) {
         if ((unsigned(sides) & ~unsigned(border_sides::all)) != 0)
             throw std::invalid_argument("Invalid border sides.");
