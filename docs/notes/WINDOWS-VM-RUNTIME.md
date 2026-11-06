@@ -358,3 +358,23 @@ Windows desktop; Wine is only a build-time SDK generator dependency.
 ## CPC integration acceptance (2026-11-04)
 
 CPC acceptance on `whiskey` found discarded accelerator-origin commands and repaired their dispatch. Microsoft Basic Display Adapter did not provide OpenGL 3.3; the tested application-local Mesa llvmpipe runtime renders CRT and passes context preservation without replacing system DLLs. See the [CPC UAT record](CPC-UAT.md) for exact scope and remaining limits.
+
+## Feature parity follow-up (2026-11-06)
+
+The isolated native desktop suite deploys all registered test executables,
+their runtime DLLs, shader fixtures and retro-terminal assets. Shader/terminal
+fixtures receive explicit guest-relative paths rather than compiled Linux
+source paths. The basic display adapter lacks OpenGL 3.3; the application-local
+Mesa DLL qualified in [CPC UAT](CPC-UAT.md) supplies the optional GLSL checks.
+
+A repeatable `native_window_api_tests` exit hang was traced with the Docker SDK
+GDB through the protected SSH tunnel. Its main thread waited in static
+`GdiplusShutdown` while the GDI+ background window thread waited during
+MSCTF/CRT DLL initialization. Image codec sessions now end inside each
+encode/decode call, after their bitmap and stream objects, before CRT shutdown.
+This follows Microsoft's [GDI+ lifetime requirement](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusinit/nf-gdiplusinit-gdiplusstartup).
+All 24 registered tests pass with this repair and the local Mesa runtime.
+Three additional fresh-process window API runs also exit zero. The temporary
+interactive task and diagnostic debugger session are removed after testing.
+The [feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md) records
+suite scope and capability limits.

@@ -58,12 +58,21 @@ namespace native
 
     toolbar &toolbar::set_items(std::vector<tool_item> items) {
         std::set<std::string> ids, selected_groups;
+        std::set<wnd *> controls;
         for (const auto &item : items) {
             if (item.kind == tool_kind::separator) continue;
             if (item.kind == tool_kind::control &&
                 (!item.control || item.length <= 0))
                 throw std::invalid_argument(
                     "A control tool needs a control and a length.");
+            if (item.kind == tool_kind::control &&
+                (!controls.insert(item.control).second ||
+                 (item.control->get_created() &&
+                  item.control->get_parent() != _surface.get())))
+                throw std::invalid_argument(
+                    "Hosted controls must be unique and uncreated or already hosted here.");
+            if (item.kind != tool_kind::control && item.control)
+                throw std::invalid_argument("Only control tools may hold a control.");
             if (item.id.empty() || !ids.insert(item.id).second)
                 throw std::invalid_argument("Toolbar tools need unique nonempty IDs.");
             if (item.kind == tool_kind::button && item.checked)
@@ -72,6 +81,16 @@ namespace native
                 !selected_groups.insert(item.group).second)
                 throw std::invalid_argument("Only one tool per group can be selected.");
         }
+        // Removing a descriptor must also remove its visible child. Keep
+        // C++ ownership with the caller and preserve the control's values.
+        for (const auto &old : _items) {
+            if (old.kind == tool_kind::control && !controls.contains(old.control)) {
+                old.control->destroy();
+                old.control->set_parent(nullptr);
+            }
+        }
+        const bool changed_host = has_controls() != !controls.empty();
+        if (changed_host) _surface->destroy();
         _items = std::move(items);
         _pressed.clear();
         _hot = -1;
@@ -106,7 +125,7 @@ namespace native
 
     toolbar &toolbar::set_checked(const std::string &id, bool checked) {
         auto &item = _items[find_item(id)];
-        if (item.kind == tool_kind::button)
+        if (item.kind != tool_kind::toggle && item.kind != tool_kind::exclusive)
             throw std::invalid_argument("Only sticky toolbar tools can be checked.");
         if (checked && item.kind == tool_kind::exclusive)
             for (auto &peer : _items)
@@ -123,7 +142,8 @@ namespace native
 
     bool toolbar::on_native_command(const std::string &id) {
         const auto item = _items[find_item(id)];
-        if (!item.enabled) return false;
+        if (!item.enabled || item.kind == tool_kind::control ||
+            item.kind == tool_kind::separator) return false;
         if (item.kind == tool_kind::exclusive && item.checked) return false;
         if (item.kind != tool_kind::button)
             set_checked(id, item.kind == tool_kind::exclusive || !item.checked);
@@ -168,7 +188,7 @@ namespace native
         const auto bounds = item_bounds();
         for (std::size_t index = 0; index < _items.size(); ++index) {
             wnd *control = _items[index].control;
-            if (!control) continue;
+            if (_items[index].kind != tool_kind::control) continue;
             const int height = std::min<int>(control->get_dimensions().h,
                                              bounds[index].h());
             control->set_bounds(rect(

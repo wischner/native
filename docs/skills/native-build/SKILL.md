@@ -29,7 +29,7 @@ Read only the selected target's section in the build chapter:
 | Linux X11/Athena | `docker-x11`, `TOOLKIT=X11` | [X11](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-x11-with-athena-widgets) |
 | Linux OpenMotif | `docker-openmotif`, `TOOLKIT=MOTIF` | [Motif](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-openmotif) |
 | Linux OPEN LOOK | `docker-openlook`, `TOOLKIT=OPENLOOK` | [XView](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-open-look-with-xview) |
-| Linux Window Maker | `docker-wmaker`, `TOOLKIT=WMAKER` | [WINGs](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-window-maker-with-wings) |
+| Linux Window Maker | `docker-wmaker` (builds `docker-wmaker-sdk`, image `native-wmaker-sdk:1`), `TOOLKIT=WMAKER` | [WINGs](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-window-maker-with-wings) |
 | Linux GEMix | `docker-gemix`, `TOOLKIT=GEMIX`; `docker-gemix-gemd` also sets `GEMIX_USE_GEMD=ON` | [GEMix](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-gemix), including client/server resources |
 | Linux GTK Wayland | `docker-wayland`, `TOOLKIT=WAYLAND` | [GTK Wayland](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#gtk-414-wayland-and-elementary-os) |
 | elementary OS | `docker-elementary`, `TOOLKIT=ELEMENTARY` | [GTK/Granite](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#gtk-414-wayland-and-elementary-os) and [picker schemas](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#picker-dependencies) |

@@ -799,3 +799,29 @@ window, the button callback returns before touching the released picker state.
 Named application assets use `native::resources`, independently of the OS
 `file_icon` service. See [Resource packs](RESOURCES.md) for types, profiles,
 fallback ranking, manifest compilation and binary file/memory ownership.
+
+
+## Hosted toolbar lifecycle and ruler gestures
+
+`tool_kind::control` borrows a unique control pointer; its C++ object must
+outlive the toolbar. An already-created control must already belong to that
+bar's internal surface. Removing it destroys and detaches the native child,
+while hide/show recreates its resource with cached C++ values intact. Changing
+between native tool buttons and hosted controls recreates the internal
+surface so old native controls cannot cover the new layout. Hosted controls
+do not emit sticky toolbar commands. Native Win32/AppKit/Haiku buttons remain
+active for bars without hosted controls; mixed bars paint tools and host the
+ordinary native child controls.
+
+Ruler release commits the final snapped value even without a final motion
+event. Focus/capture cancellation, hiding, edge changes and owner teardown
+silently clear pending gestures. The inherited `pointer_cancel()` hook is a
+silent state reset, not a user callback.
+
+
+WINGs file dialogs own a native panel for each modal transaction. The adapter
+calls `WMFreeFilePanel` after collecting its result, before notifying portable
+accept/cancel handlers, including cancellation and exceptional exits. This
+releases the panel's observer hierarchy instead of retaining it until process
+shutdown. The patched SDK supplies matching font/text/browser resource cleanup;
+standard dialogs and controls remain native WINGs widgets.

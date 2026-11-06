@@ -123,7 +123,7 @@ namespace
             write(manifest, text);
             rejects<std::invalid_argument>([&] { (void)resources::from_manifest(manifest); });
         }
-        write(directory / std::filesystem::u8path("\xc3\xa9\xf0\x9f\x98\x80.txt"), "unicode");
+        write(directory / std::filesystem::path(u8"\u00e9\U0001f600.txt"), "unicode");
         auto unicode = valid;
         unicode.replace(unicode.find("asset.txt"), 9, R"(\u00e9\ud83d\ude00.txt)");
         write(manifest, unicode);

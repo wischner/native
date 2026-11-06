@@ -8,6 +8,7 @@
 #include "mouse_state.h"
 #include "emulated_tree.h"
 #include <native/canvas.h>
+#include <native/non_client.h>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
@@ -268,6 +269,8 @@ namespace native
         }
     }
     void wnd::on_native_mouse_cancel(mouse_cancel_reason reason) {
+        for (auto *element : _non_client)
+            if (element) element->pointer_cancel();
         auto *state = detail::peer_state<detail::mouse_state>(*this);
         const bool notify = state && (state->cancel_pending ||
             state->buttons != mouse_buttons::none || state->inside);

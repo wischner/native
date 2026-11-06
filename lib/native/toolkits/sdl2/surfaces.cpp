@@ -352,8 +352,9 @@ namespace native
         self->relayout_children();
     }
 
-    // SDL has no per-control focus; input_target decides.
-    void canvas::focus_native() {}
+    // SDL has no per-control focus; input_target decides. Text input must
+    // be restarted after an editor relinquishes it, including focus().
+    void canvas::focus_native() { SDL_StartTextInput(); }
 
     void canvas::show_native() {
         auto *state = linux::sdl2::canvas_bindings.object_from_handle(

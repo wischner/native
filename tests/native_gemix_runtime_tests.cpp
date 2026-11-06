@@ -558,10 +558,24 @@ namespace
                        "offscreen text loads the stock GEM font resource");
                 destroy();
                 const auto without_menu = framebuffer();
-                for (int y = 2; y < 12; ++y)
-                    for (int x = 64; x < 128; ++x)
-                        expect(pixel(without_menu, x, y) != pixel(without_menu, x + 1, y),
-                               "detaching the menu restores its desktop strip");
+                expect(!menu_owner() && !menu_tree_for(this),
+                       "destroying the window releases its installed menu");
+                // AES retains its desktop system menu on current SDKs.
+                // Compare Native's detach with an explicit native hide,
+                // rather than requiring the OS-owned strip to disappear.
+                menu_bar(nullptr, 0);
+                WORD desktop_x, desktop_y, desktop_w, desktop_h;
+                wind_get(0, WF_WORKXYWH, &desktop_x, &desktop_y,
+                         &desktop_w, &desktop_h); // also fences gemd drawing
+                const auto desktop = framebuffer();
+                for (int y = 0; y < std::max(32, int(desktop_y)); ++y)
+                    for (int x = 0; x < 904; ++x)
+                        expect(pixel(without_menu, x, y) == pixel(desktop, x, y),
+                               "Native menu detach matches AES desktop restoration");
+                for (int y = 800; y < 808; ++y)
+                    for (int x = 600; x < 608; ++x)
+                        expect(pixel(desktop, x, y) != pixel(desktop, x + 1, y),
+                               "menu detach preserves the desktop below its system strip");
                 std::cout << "GEM runtime regression checks passed\n";
             } catch (const std::exception &error) {
                 std::cerr << "FAILED: " << error.what() << '\n';

@@ -140,7 +140,11 @@ namespace native
 
         // Convert host pointer motion into a logical ruler value.
         void track_pointer(const point &position) override;
+        // Route presses/releases to movable markers.
         bool pointer_click(const mouse_event &event) override;
+        // Clear an interrupted drag without emitting a completed move.
+        void pointer_cancel() override;
+        // Report whether this strip is dragging a marker.
         bool get_pointer_held() const override;
 
         // Draw one marker at an axis position.

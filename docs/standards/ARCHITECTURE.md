@@ -795,6 +795,15 @@ selected and disabled tools, matching its button-based background.
 
 ## 8. Application
 
+Input capabilities are queried through the portable `app` interface.
+`get_physical_keyboard_supported()` describes press/release packets;
+`get_unicode_text_input_supported()` independently describes native keyboard
+text beyond ASCII. A false Unicode capability does not change signal encoding:
+`canvas::on_text_input` still carries UTF-8, limited to the transport's subset.
+Applications must query capabilities rather than inspect toolkit/platform names.
+Native editors hosted inside a canvas retain keyboard priority over the host's
+text composition; unused canvas handlers must not swallow an editor's input.
+
 Application code must define `program()` instead of an operating-system entry
 point. Not every target starts through a conventional `main()`; a backend may
 require `WinMain`, `main`, or another native launcher. The backend owns that
@@ -1758,6 +1767,26 @@ without a stepper; times retain the native editor/stepper within that bezel.
 Native toolbar feedback must grow with configured icon sizes.
 A stock button with no border sides disables its complete native bezel rather
 than retaining rounded corner fragments from a partial-edge clip.
+
+
+### Recent input and chrome acceptance (2026-11-06)
+
+Canvas text delivered separately from a physical press must respect that
+press's consumed result. Focus/reset clears pending text suppression; SDL
+programmatic canvas focus starts text input, and Windows dispatches a canvas
+press before deciding whether to translate it into WM_CHAR.
+
+Non-client strips receive silent `pointer_cancel()` on owner cancellation,
+owner native destruction, hiding or edge changes. Rulers end pending drags
+without a completion notification on cancellation. A normal release commits
+its final snapped value before emitting the finished marker event.
+
+A toolbar borrows hosted controls, which must outlive the toolbar. Removing a
+control descriptor destroys and detaches its native child while preserving
+its C++ values. Changing between native-button and hosted-control layouts
+recreates the internal canvas, retiring obsolete native buttons. Duplicate
+control pointers and controls already created under another parent are
+rejected. Hosted controls never act as sticky toolbar commands.
 
 ## 18. Structural containers
 

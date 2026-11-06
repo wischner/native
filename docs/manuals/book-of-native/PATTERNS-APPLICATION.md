@@ -201,3 +201,15 @@ while the bound still gives worker delivery and painting regular turns.
 The first event waits through `WMNextEvent`; subsequent events are consumed
 only while X input is already pending. Private WINGs modal loops retain their
 existing idle-dispatch path.
+
+
+## Keyboard capability queries
+
+`app::get_physical_keyboard_supported()` and
+`app::get_unicode_text_input_supported()` are independent. The current GEM
+SDK provides physical press/release packets, but its text payload is still an
+ASCII byte. All other maintained adapters report Unicode keyboard text. Both
+queries are available through `<native.h>` on every backend and require no
+platform headers or platform-name tests. They describe the native input path,
+not the strings an application may load or pass through portable text hooks;
+those remain UTF-8.

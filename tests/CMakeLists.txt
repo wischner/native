@@ -640,3 +640,9 @@ if(NOT CMAKE_CROSSCOMPILING)
     add_test(NAME native_rc_bad_arguments COMMAND native_rc)
     set_tests_properties(native_rc_bad_arguments PROPERTIES WILL_FAIL TRUE)
 endif()
+
+# A public-API acceptance window also offers a deterministic smoke mode.
+add_test(NAME native_new_features_smoke
+    COMMAND ${gemd_runner} $<TARGET_FILE:vision> --new-features --features-smoke)
+set_tests_properties(native_new_features_smoke PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-features.fb;GEM_RASTA_PORT=5026")

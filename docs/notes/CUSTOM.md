@@ -5,7 +5,18 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-05.
+Audit date: 2026-11-06.
+
+Recent-feature audit: hosted-control bars use shared painted tool chrome plus
+ordinary child controls. Native-button-only Win32/AppKit/Haiku bars retain
+their **H** kinds. Switching between the two recreates the internal surface;
+removed controls are destroyed/detached, and ruler cancellation is shared.
+These repairs do not change the per-control kind marks. The parity follow-up
+also preserves XView editor priority inside canvas hosts, synchronizes Athena's
+initial client geometry, and fixes WINGs resource ownership through a small
+SDK patch and native file-panel teardown. GTK retains native GtkPaned handles
+with stable minima across orientation changes. No control is replaced with a painted
+emulation to obtain matching behavior.
 
 CPC debugger follow-up: OPEN LOOK entries now apply live display-width
 changes, and choice stacks align their text with adjacent entries and buttons.

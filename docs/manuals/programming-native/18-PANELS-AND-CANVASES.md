@@ -353,3 +353,19 @@ The library checks the original generation before later paint/presentation
 stages. Modal close notification runs after native teardown and peer release,
 so its handler may safely create a new dialog generation. Backend test evidence
 for these paths is recorded in the feature matrix and ADJUST.md.
+
+
+The [new-feature acceptance window](22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window)
+lets you type composed text into a focused canvas and inspect click counts
+and modifier flags. Consuming a physical press prevents its separate text
+event from reaching `on_text_input`; an unconsumed press resumes delivery.
+SDL programmatic focus also restarts text input after leaving an editor.
+
+
+Use `native::app::get_unicode_text_input_supported()` to discover whether the
+native keyboard path can commit text beyond ASCII. The same query exists on
+every backend; do not switch on OS/toolkit names. The current GEM transport
+returns false, independently of its physical-key support. `on_text_input` always
+uses UTF-8, and programmatic text/resource data can contain Unicode regardless
+of the keyboard capability. Native text editors inside a canvas receive their
+own typing before the canvas host considers composition.

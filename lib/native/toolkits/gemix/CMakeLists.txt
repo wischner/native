@@ -7,6 +7,9 @@ pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi>=1.0.0)
 
 option(GEMIX_USE_GEMD "Link libgem instead of in-process AES/VDI" OFF)
 
+# Both AES keyboard transports carry an ASCII byte, not a Unicode commit.
+target_compile_definitions(native PRIVATE NATIVE_NO_UNICODE_TEXT_INPUT)
+
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp

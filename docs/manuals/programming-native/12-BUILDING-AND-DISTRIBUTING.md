@@ -88,7 +88,7 @@ outputs are:
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
 | `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
-| `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
+| `docker-wmaker` | `native-wmaker-sdk:1` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
 | `docker-win` | `native-windows-winui-sdk:24.04` (built by `docker-win-sdk`) | `build/windows-mingw-w64/src/vision.exe` |
@@ -455,6 +455,8 @@ wraster headers and shared libraries, and the Pango/Xft font stack used by
 that WINGs build. It is the reproducible environment when a host distribution
 does not package the WINGs development files separately.
 
+The `docker-wmaker-sdk` prerequisite builds the pinned WINGs lifetime fixes
+into `native-wmaker-sdk:1`; `docker-wmaker` builds it automatically.
 The **Linux Window Maker, Xephyr** F5 profile builds with `docker-wmaker`
 and starts GDB in the same image using `window-maker-xephyr`. The image
 supplies Xephyr and Window Maker. Run the compiled program directly with:
@@ -504,8 +506,8 @@ Zenity and KDialog are not required.
 ## Linux GEMix
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;

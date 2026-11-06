@@ -131,6 +131,7 @@ The top-level CMake project provides:
 - `docker-elementary` (GTK 4.14 + Granite 7 C interface)
 - `docker-wayland-sdk` (builds the shared local SDK image)
 - `docker-win-sdk` (builds the pinned GNU/WinUI SDK image)
+- `docker-wmaker-sdk` (builds the WINGs SDK with resource-lifetime fixes)
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
@@ -149,13 +150,13 @@ These targets use the following Docker images:
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
-- Window Maker: `wischner/gcc-x86_64-linux-window-maker`
+- Window Maker: `native-wmaker-sdk:1`
 - Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -240,8 +241,14 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ### Window Maker backend
 
+- `docker-wmaker` first builds `native-wmaker-sdk:1` through
+  `docker-wmaker-sdk`. The Dockerfile and pinned-source lifetime patch live in
+  `scripts/linux/wmaker/`; builds, F5 and standalone sessions use that image.
+  Keep the narrow WINGs allocation suppressions unchanged unless their
+  underlying native-only fixture proves they are no longer needed.
+
 - Build with `docker-wmaker`. F5 and standalone execution use
-  `wischner/gcc-x86_64-linux-window-maker:latest` and its
+  `native-wmaker-sdk:1` and its
   `window-maker-xephyr` helper for Xephyr and Window Maker.
 - Use `scripts/linux/docker-debug.sh` for F5 and
   `scripts/linux/toolkit-session-run.sh wmaker` for standalone execution.
@@ -318,6 +325,9 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ## Vision program
 
 - `vision` is the UI application built by the repository.
+- `vision --new-features` is the recent-feature acceptance window;
+  `--features-smoke` runs its CTest checks and exits. Keep its existing
+  `retro-terminal/` font payload beside the executable.
 - `native_rc` is the developer-tool CMake target, producing
   `build/<backend>/tools/rc/rc` (or `rc.exe`). Normal backend builds include
   it. Run hosted tools inside their SDK; cross-built tools run on their target.

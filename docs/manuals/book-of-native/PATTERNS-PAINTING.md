@@ -482,3 +482,18 @@ or recreating a peer discards its pending repaint state. WINGs backing pixmaps
 are complete copy sources, so their presentation GC disables graphics-exposure
 replies; ordinary window exposes still repaint normally. Both policies belong
 to the backend and require no application-specific refresh workaround.
+
+
+## Mixed toolbar composition
+
+When a toolbar switches between native buttons and hosted controls, it
+recreates its private surface so obsolete native children cannot obscure
+shared painting. Rulers invalidate after committing the final release value;
+cancelled gestures do not resume painting new positions on later motion.
+
+Windows image encoding and decoding own a GDI+ startup token for the operation.
+All native bitmap and stream objects die before its matching shutdown. The
+codec keeps no static shutdown hook: MinGW CRT exit cleanup can otherwise
+wait for a GDI+ worker that is itself entering DLL initialization. Repeated
+image I/O and process-exit checks exercise this lifetime without requiring an
+application event loop.

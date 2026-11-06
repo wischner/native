@@ -1,5 +1,78 @@
 # Feature Matrix
 
+## Cross-backend feature audit (2026-11-06)
+
+The audit covers the recent resources, composed canvas text, click/modifier
+annotations, em font sizing, hosted toolbar controls, square icon tools and
+ruler marker additions. All eleven maintained platform/toolkit selections
+build; GEMix's separate libgem/gemd transport also builds. This establishes
+availability, not identical native presentation or complete feature parity.
+Amiga remains an unqualified toolchain, not a supported backend.
+
+| Selection | Current verification |
+| --- | --- |
+| X11/Athena | Docker Debug; 29/29 CTests pass under Xvfb |
+| SDL2 | Docker Debug; 36/36 pass with dummy/software video |
+| GTK Wayland | Docker Debug; 28/28 pass under headless Weston |
+| elementary | Docker Debug; 28/28 pass under headless Weston |
+| OpenMotif | Docker Debug; 33/33 pass under Xvfb |
+| OPEN LOOK | Docker Debug; 33/33 pass under Xvfb, including native property editing |
+| Window Maker | Patched Docker SDK; 30/30 pass, including the classic-control leak check with existing narrow font-cache suppressions |
+| GEMix direct | Docker Debug; 29/29 pass |
+| GEMix libgem/gemd | Docker Debug; 30/30 pass |
+| Windows | Docker MinGW build; all 24 registered tests pass on the Windows 11 desktop, including GLSL with application-local Mesa |
+| Haiku | Docker cross-build; all 24 registered tests pass in the native VM, including softpipe GLSL |
+| macOS | Remote AppleClang Debug build; 27/27 CTests pass on the logged-in VM desktop |
+
+Windows and Haiku tests run as native executables on their VM desktops, with
+shader fixtures and terminal assets deployed and their paths supplied explicitly.
+Windows uses the previously qualified application-local Mesa DLL for its basic
+display adapter; Haiku uses `GALLIUM_DRIVER=softpipe`. All 351 registered test
+instances across the twelve configurations (including both GEM transports)
+pass; no tests are skipped in these final runs.
+X-family functional runs disable LeakSanitizer exit checks (Xt/XView/WINGs
+dependencies); the Window Maker classic fixture explicitly enables its own
+leak check with the existing narrow font-cache suppressions. GTK uses the
+maintained headless helper's leak policy. Passing functional counts do not
+claim leak-free third-party shutdown. SDL2 runs with its normal sanitizer
+configuration.
+
+`native_new_features_smoke` passes on every runtime-qualified selection above.
+The [acceptance window](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window)
+provides manual text, mouse, marker and toolbar checks. X11 layout and automatic
+monochrome artwork were inspected in a captured window; the initial status-bar
+clipping is repaired and its native allocation has regression coverage. The
+smoke calls portable text hooks; full IME, physical input and visual acceptance
+on every desktop remain outside this run. Native menu/keyboard tests cover
+additional event paths, including Windows character/surrogate and macOS
+keyDown assertions.
+
+Corrections made during this audit: removed hosted controls are destroyed and
+detached; native/shared toolbar transitions rebuild their host; consumed
+physical keys suppress subsequent canvas text; SDL focus restarts text input;
+ruler releases store their final snapped value and cancellation stops dragging.
+OPEN LOOK preserves native editor keyboard ownership inside canvas containers;
+Athena fits the client below the menu from initial management; GTK keeps both
+splitter minima stable across orientation changes (five repeated focused runs
+and both complete GTK suites pass). WINGs font/text/browser allocations are
+released by a pinned SDK patch, and Native owns each modal file panel through
+teardown. Windows image codecs end their GDI+ session inside each operation,
+preventing a background-thread deadlock during CRT exit cleanup. Resource manifest parsing also builds cleanly with older SDK GCC.
+
+The GEM menu regression now compares detachment against the SDK's own
+`menu_bar(nullptr, 0)` result and checks the exposed desktop. The previous
+checkerboard assertion contradicted AES's reserved system menu strip; Native
+must not paint over it. Current SDK 1.4.1 exposes physical key releases, and
+both transports pass their keyboard checks.
+
+Known differences remain: GEM text packets support ASCII only, reported by
+`app::get_unicode_text_input_supported()`; automatic resource profiles describe
+backend policy rather than live display/theme/DPI; not every backend uses native
+widgets for every control (see the [native-control audit](../../notes/CUSTOM.md)).
+Uniform public interfaces do not imply identical native presentation or support
+for capabilities absent from the underlying transport. See
+[Backend open issues](../../notes/BACKEND-OPEN-ISSUES.md).
+
 ## Portable resource packs (2026-11-06)
 
 The shared `native::resources` API and `tools/rc/` compiler provide typed named
@@ -9,12 +82,11 @@ Automatic X11/GEMix profiles reflect their monochrome drawing policy; other
 profiles use color. Live theme/DPI/depth detection, control icon rebinding,
 image conversion and migration of Vision's existing artwork are not included.
 
-The Docker X11 Debug build passes with GCC; all four focused CTests pass with
-ASan/UBSan: container/manifest validation, compiled embedding, CLI help and
-bad-argument status. Tests exercise explicit foreign-platform profiles without
-claiming a native runtime run on those platforms. No additional backend or
-visual icon acceptance run was performed for this feature. See
-[Resource packs](RESOURCES.md) for the format and limits.
+The cross-backend audit above supersedes the original X11-only verification.
+All Linux selections pass the four resource/CLI CTests; macOS also passes all
+four. Windows and Haiku pass the resource unit executable and CLI help on
+their native desktops. See [Resource packs](RESOURCES.md) for the format and
+limits.
 
 ## Canvas text input and rich mouse events (2026-11-06)
 
@@ -41,9 +113,9 @@ The [CPC acceptance record](../../notes/CPC-UAT.md) supersedes earlier input/men
 for the interactions it explicitly verifies. It records physical canvas-key,
 modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
 accelerator delivery, tested software OpenGL deployment, and exact suite scope.
-Published-SDK GEM physical key releases and WINGs external shutdown allocations remain
-unresolved; GTK splitter timing and one intermittent elementary paused frame
-remain observations requiring follow-up.
+The November 6 audit above supersedes its GEM physical-key, WINGs ownership
+and GTK splitter findings. The intermittent elementary paused-frame observation
+remains outside this feature audit.
 
 
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17

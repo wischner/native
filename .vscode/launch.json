@@ -135,7 +135,7 @@
                 "pipeArgs": [
                     "--session",
                     "window-maker-xephyr",
-                    "wischner/gcc-x86_64-linux-window-maker:latest"
+                    "native-wmaker-sdk:1"
                 ],
                 "debuggerPath": "/usr/bin/gdb"
             },

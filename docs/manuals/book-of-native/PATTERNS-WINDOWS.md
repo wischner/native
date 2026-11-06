@@ -762,3 +762,23 @@ held input through the existing peer reset path.
 Haiku top-level `set_dimensions()` and `set_bounds()` preserve the requested
 client size by adding the current BeAPI menu extent to the native frame.
 Repeated size requests do not shrink the client by one menu height each time.
+
+
+## Non-client gesture cancellation
+
+`wnd` forwards mouse cancellation and native destruction to each attached
+strip's silent `pointer_cancel()` hook. Hiding a strip or moving it to a
+different edge also cancels its gesture. This prevents a ruler drag from
+resuming after focus loss or recreation. Ordinary marker release stores the
+final snapped position before emitting completion. These shared contracts are
+exercised by `native_ruler_toolbar_tests` on the selected backend.
+
+
+Athena publishes its actual drawing-widget size immediately after realization,
+because an initially correct native allocation may generate no ConfigureNotify.
+The top-level Form also fits the drawing child below the menu during initial
+management and constraint changes, not only resize callbacks.
+This accounts for the menu before the first child/chrome arrangement and keeps
+bottom status text inside the visible client area. The menu runtime fixture
+compares reported dimensions with the realized native widget and checks that
+its lower edge stays inside the parent.

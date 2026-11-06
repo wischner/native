@@ -64,7 +64,9 @@ namespace native
         // Append a tool using construction syntax.
         toolbar &operator<<(tool_item item);
 
-        // Replace all tools after validating IDs and exclusive groups.
+        // Replace tools after validating IDs, groups and unique controls.
+        // Removed controls are destroyed and detached, never deleted.
+        // Borrowed control objects must outlive this toolbar.
         toolbar &set_items(std::vector<tool_item> items);
 
         // Return the ordered tool descriptors.

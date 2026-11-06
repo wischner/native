@@ -11,6 +11,7 @@
 #include "infinity_window.h"
 #include "vision_mouse_shaders.h"
 #include "vision_retro_terminal.h"
+#include "vision_new_features.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -39,6 +40,9 @@ int program(int argc, char **argv) {
     for (int i = 1; i < argc; ++i)
         if (std::string_view(argv[i]) == "--retro-terminal")
             return vision::run_retro_terminal(argc, argv);
+    for (int i = 1; i < argc; ++i)
+        if (std::string_view(argv[i]) == "--new-features")
+            return vision::run_new_features(argc, argv);
     bool open_splitter = false;
     bool open_input_chrome = false;
     bool open_properties = false;

@@ -341,3 +341,12 @@ configurations are exercised. The Debug cross-build and runtime test under
 batch GDB on `hotel` pass. This adds regression coverage; no new production
 repair is claimed for an unreproduced blink. Further reproduction needs the
 specific window and action that triggers it.
+
+## Feature parity follow-up (2026-11-06)
+
+All 24 registered test executables pass on `hotel`, including resources, hosted
+toolbar/ruler contracts, native menu/keyboard paths, the new-feature window
+smoke, shader lifecycle and OSMesa context checks. Deploy `tests/data/` and the
+retro-terminal assets, and supply their guest paths to the shader and terminal
+fixtures. GLSL qualification uses `GALLIUM_DRIVER=softpipe`. These automated
+checks do not replace a complete manual IME/visual walkthrough.

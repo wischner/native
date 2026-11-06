@@ -80,6 +80,16 @@ namespace
             expect(linux::sdl2::handle_canvas_text(this, "é"),
                    "the focused canvas receives composed text");
             expect(text == "é", "UTF-8 is delivered unchanged");
+            SDL_StopTextInput();
+            surface_.focus();
+            expect(SDL_IsTextInputActive(), "focus() restarts SDL text input");
+            surface_.on_key.connect([](key_event event) {
+                return event.key == key_code::a;
+            });
+            surface_.on_native_key({key_code::a, key_action::press,
+                                    false, key_modifiers::none});
+            linux::sdl2::handle_canvas_text(this, "a");
+            expect(text == "é", "consumed presses suppress separate SDL text");
         }
 
         canvas surface_{10, 10, 200, 150};

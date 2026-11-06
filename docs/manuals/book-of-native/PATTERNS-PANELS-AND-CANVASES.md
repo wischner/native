@@ -383,3 +383,14 @@ convention, preserving the 24-pixel step for canvases and one-line code-editor
 scrolling. Both axes are delivered independently and zero deltas emit no
 movement. Top-level window wheel events use the same direction convention.
 The public API and control implementation classifications are unchanged.
+
+
+## Text and chrome acceptance
+
+Canvas composed text respects the preceding physical press's consumed result,
+including separately delivered SDL/Windows text messages. Focus/reset clears
+that pending state. SDL `canvas::focus()` also restarts native text input after
+an editor relinquishes it. Windows decides whether to queue translated text
+after dispatching the canvas press. The `vision --new-features` acceptance
+window combines typed canvas text with hosted toolbar controls and interactive
+ruler markers; see the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).

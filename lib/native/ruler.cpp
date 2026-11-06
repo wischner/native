@@ -267,6 +267,10 @@ namespace native
         return *this;
     }
 
+    void ruler::pointer_cancel() {
+        _dragged_marker = -1;
+    }
+
     bool ruler::get_pointer_held() const {
         return _dragged_marker >= 0;
     }
@@ -279,8 +283,11 @@ namespace native
                 return false;
             const int id = _dragged_marker;
             _dragged_marker = -1;
-            on_marker_move.emit(
-                {id, value_at(axis_at(event.position)), true});
+            const double value = value_at(axis_at(event.position));
+            for (auto &marker : _markers)
+                if (marker.id == id) marker.value = value;
+            invalidate();
+            on_marker_move.emit({id, value, true});
             return true;
         }
         const int axis = axis_at(event.position);

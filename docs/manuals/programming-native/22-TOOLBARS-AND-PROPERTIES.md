@@ -188,3 +188,49 @@ Motif property values use the same control font across text, number, boolean,
 choice and custom-dropdown rows. Normal values have black ink and matching
 light entry backgrounds; their labels also use black ink. Ordinary controls
 outside the inspector retain the desktop's native resources.
+
+
+## New-feature acceptance window
+
+Run `vision --new-features` from any backend build (through its documented
+SDK session or native desktop). This public-API window exercises the recent
+resource, document-input and chrome additions together:
+
+1. Read the resource profile at the top. X11/GEMix choose monochrome artwork;
+   color backends choose the default blue artwork. The keyboard capability
+   is also shown using `app::get_unicode_text_input_supported()`. Both icons come from one named
+   `assets.icons.platform-icon` resource with explicit `icon` metadata.
+2. Type text into the canvas, including accented text where the backend
+   supports composition. Escape consumes its physical key and clears the text.
+   GEM's current text path remains ASCII-only.
+3. Choose an item in the hosted combo. Use **Test → Focus canvas** or Ctrl+F,
+   then type again. Check Shift-click and double-click counts in the status bar
+   and the mirrored canvas feedback.
+4. Drag the ruler triangles and tab marker. The block is fixed. Values snap
+   to 0.1; release commits the final value. Switching focus during a drag must
+   stop it, with no jump when the pointer returns.
+5. Toggle hosted controls from the Test menu twice. The combo disappears and
+   returns with its selection retained, without old toolbar buttons covering it.
+   The icon-only tool stays square and returns keyboard focus to the canvas.
+6. Compare 24-pixel line-height and em text. Some fonts, including the bundled
+   terminal face, legitimately have equal metrics for these conventions.
+
+The font fixture is the existing attributed `retro-terminal/terminal.ttf`,
+which normal builds and deployment scripts copy beside Vision. Keep its
+license files with it. The window constructs and round-trips its own small
+PNG resource pack in memory; it needs no extra icon files.
+
+`vision --new-features --features-smoke` creates the real window, checks
+resource decode, font availability/measurement, native control creation,
+removal/recreation and retained selection, canvas focus/UTF-8 dispatch and
+square icon geometry, then exits with a nonzero status on failure. CTest
+registers this as `native_new_features_smoke`. This smoke mode calls portable
+input hooks; it is not proof of physical keyboard, IME or pointer delivery.
+The backend keyboard/menu tests and the manual steps above cover those
+separate paths. See the [feature matrix](../book-of-native/FEATURE-MATRIX.md)
+for the actual target results.
+
+Hosted control objects must outlive their toolbar. Removing their descriptors
+destroys and detaches native children but does not delete C++ objects. A live
+control from another parent cannot be adopted; destroy its native resource
+first. A control cannot occupy two slots in the same toolbar.

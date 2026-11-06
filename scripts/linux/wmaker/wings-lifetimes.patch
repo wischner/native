@@ -1,0 +1,62 @@
+--- a/lib/WINGs/wfont.c
++++ b/lib/WINGs/wfont.c
+@@ -185,6 +185,9 @@
+ 		pango_font_description_set_absolute_size(description, size * PANGO_SCALE);
+ 
+ 	pango_layout_set_font_description(layout, description);
++	pango_font_description_free(description);
++	FcPatternDestroy(pattern);
++	g_object_unref(context);
+ 
+ 	font->layout = layout;
+ #endif
+@@ -209,6 +212,9 @@
+ 
+ 	font->refCount--;
+ 	if (font->refCount < 1) {
++#ifdef USE_PANGO
++		g_object_unref(font->layout);
++#endif
+ 		XftFontClose(font->screen->display, font->font);
+ 		if (font->name) {
+ 			WMHashRemove(font->screen->fontCache, font->name);
+--- a/lib/WINGs/wtext.c
++++ b/lib/WINGs/wtext.c
+@@ -2623,10 +2623,18 @@
+ 
+ 	case DestroyNotify:
+ 		clearText(tPtr);
++		XFreeGC(tPtr->view->screen->display, tPtr->stippledGC);
++		WMReleaseColor(tPtr->fgColor);
++		WMReleaseColor(tPtr->bgColor);
++		if (tPtr->dBulletPix)
++			WMReleasePixmap(tPtr->dBulletPix);
++		if (tPtr->bgPixmap)
++			WMReleasePixmap(tPtr->bgPixmap);
++		wfree(tPtr->margins);
+ 		if (tPtr->db)
+ 			XFreePixmap(tPtr->view->screen->display, tPtr->db);
+ 		if (tPtr->gfxItems)
+-			WMEmptyArray(tPtr->gfxItems);
++			WMFreeArray(tPtr->gfxItems);
+ #if DO_BLINK
+ 		if (tPtr->timerID)
+ 			WMDeleteTimerHandler(tPtr->timerID);
+@@ -3007,6 +3015,7 @@
+ 	tPtr->stippledGC = XCreateGC(dpy, W_DRAWABLE(scr),
+ 				     GCForeground | GCBackground | GCStipple
+ 				     | GCFillStyle | GCGraphicsExposures, &gcv);
++	XFreePixmap(dpy, gcv.stipple);
+ 
+ 	tPtr->ruler = NULL;
+ 	tPtr->vS = NULL;
+--- a/lib/WINGs/wbrowser.c
++++ b/lib/WINGs/wbrowser.c
+@@ -1109,6 +1109,7 @@
+ 			wfree(bPtr->titles[i]);
+ 	}
+ 	wfree(bPtr->titles);
++	wfree(bPtr->columns);
+ 
+ 	wfree(bPtr->pathSeparator);
+ 

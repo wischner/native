@@ -77,6 +77,9 @@ namespace native
         //
         virtual bool pointer_click(const mouse_event &event);
 
+        // Silently clear a gesture on cancellation, hiding or teardown.
+        virtual void pointer_cancel();
+
         // Report whether a gesture holds the pointer, even off the strip.
         virtual bool get_pointer_held() const;
 

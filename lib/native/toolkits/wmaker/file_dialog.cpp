@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -82,6 +83,10 @@ namespace linux::wmaker
             dialog.on_native_cancel();
             return;
         }
+        // The toolkit caches panels by default. This modal transaction
+        // owns its panel and releases the complete native child hierarchy.
+        std::unique_ptr<WMFilePanel, decltype(&WMFreeFilePanel)>
+            owned_panel(panel, WMFreeFilePanel);
         auto *panel_prefix =
             reinterpret_cast<file_panel_prefix *>(panel);
         WMSetWindowTitle(panel_prefix->window,
@@ -110,6 +115,7 @@ namespace linux::wmaker
         XFlush(display);
         owner->invalidate();
         if (!accepted) {
+            owned_panel.reset();
             dialog.on_native_cancel();
             return;
         }
@@ -118,6 +124,7 @@ namespace linux::wmaker
         std::string result = selected ? selected : "";
         if (selected)
             std::free(selected);
+        owned_panel.reset();
         if (save) {
             auto *save_dialog =
                 dynamic_cast<native::save_file_dialog *>(&dialog);

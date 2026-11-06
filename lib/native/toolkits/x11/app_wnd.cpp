@@ -549,6 +549,14 @@ namespace native
         else
             XMapRaised(linux::x11::cached_display, XtWindow(shell));
         XFlush(linux::x11::cached_display);
+        // Realization need not send ConfigureNotify when the initial
+        // widget size already matches. Publish the actual drawing area
+        // now, including the space taken by the menu, before first paint.
+        Dimension width = 1, height = 1;
+        XtVaGetValues(canvas, XtNwidth, &width, XtNheight, &height, nullptr);
+        const detail::window_guard guard(*this);
+        on_native_resize(linux::x11::size_to_logical(width, height));
+        if (!guard.alive()) return;
         invalidate();
     }
 

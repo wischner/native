@@ -182,3 +182,8 @@ resize cursor automatically.
 SDL tab and accordion containers consume pointer events only on their
 headers. Their client regions pass input to nested lists, editors and other
 leaf controls; repainting still follows parent-first structural order.
+
+GTK/Granite keeps both CSS separator minima at the requested splitter size.
+Changing GtkPaned orientation therefore never transitions from a zero minimum
+on the new drag axis. Repeated orientation/allocation checks verify that the
+native handle retains the requested usable width.

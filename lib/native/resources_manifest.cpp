@@ -53,14 +53,16 @@ namespace native
             invalid("unsupported version");
         resources result;
         std::size_t payload_size = 0;
-        for (const auto &item : as<json::array>(required(root, "resources"))) {
+        const auto &resource_values = required(root, "resources");
+        for (const auto &item : as<json::array>(resource_values)) {
             const auto &object = as<json::object>(item);
             keys(object, {"name", "type", "variants"});
             const auto name = as<std::string>(required(object, "name"));
             const auto type = as<std::string>(required(object, "type"));
             for (const auto &entry : result.entries())
                 if (entry.name == name) invalid("duplicate resource " + name);
-            const auto &variants = as<json::array>(required(object, "variants"));
+            const auto &variant_values = required(object, "variants");
+            const auto &variants = as<json::array>(variant_values);
             if (variants.empty()) invalid("empty variants for " + name);
             for (const auto &variant : variants) {
                 const auto &fields = as<json::object>(variant);
@@ -80,7 +82,7 @@ namespace native
                 if (file.empty() || file.find('\0') != std::string::npos)
                     invalid("empty or NUL-containing asset path");
                 value.data = detail::read_resource_file(
-                    path.parent_path() / std::filesystem::u8path(file),
+                    path.parent_path() / std::filesystem::path(std::u8string(file.begin(), file.end())),
                     detail::resource_limit - payload_size);
                 payload_size += value.data.size();
                 result.add(std::move(value));

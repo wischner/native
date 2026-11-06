@@ -56,6 +56,13 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Educational**: Open development process, detailed documentation in chapters
 - **Consistent lowercase API**: Naming inspired by the C++ standard library
 
+The [November 6 feature audit](docs/manuals/book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
+builds all maintained backends and passes all 351 registered test instances
+on Linux, macOS, Windows and Haiku with the documented runtimes. The interface follow-up repairs native editing, toolbar
+ownership, input consumption, ruler cancellation, initial layout and toolkit
+resource cleanup. Use the matrix for exact verification scope and capability
+limits, including GEM's ASCII keyboard transport.
+
 ## Minimal working native app
 
 ```cpp
@@ -137,8 +144,8 @@ cmake --build build/cmake --target docker-haiku
 ```
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -207,9 +214,9 @@ Current exercised runtime paths are:
   composition and right/middle canvas button identity. The viewer uses 32-bit
   output with inversion off; Native drawing matches AES's white paper and
   black ink. The full-desktop screenshot and live GDB/MI viewer-close test
-  pass. Closing Rasta also stops GDB, Vision and gemd. Complete suites pass
-  20/21 direct and 21/22 proxy tests in the 2026-10-22 run; the final menu-strip restoration
-  assertion remains failing on the pinned SDK.
+  pass. Closing Rasta also stops GDB, Vision and gemd. The November 6 suites
+  pass 29/29 direct and 30/30 proxy tests. Menu detachment is checked against
+  AES's native reserved-strip behavior.
 - Windows MinGW binaries run natively in the Windows 11 VM; select
   **Windows 11, VM** for F5 through `ssh whiskey`. Changed-file deployment
   and a local VM DLL cache reduce repeat startup work (host Python 3.11+). See the
@@ -290,9 +297,11 @@ explains ownership and cancellation. Run the selected Vision binary with
 
 Non-SDL Linux audio loads optional `libasound.so.2` at runtime; absence of
 ALSA/default output makes `audio_out::open()` fail explicitly. Windows uses
-WASAPI, macOS AudioToolbox and Haiku the media kit. GEMix reports physical held-key input unavailable with the published AES-only
-SDK. An SDK with `gem/input.h` and matching libraries/server enables the
-opt-in physical input adapter. Current build/runtime evidence is recorded in the
+WASAPI, macOS AudioToolbox and Haiku the media kit. The current GEMix SDK
+provides `gem/input.h` and matching libraries/server, enabling physical held-key
+input. Older AES-only SDKs report that capability unavailable. GEM keyboard
+text remains ASCII-only; `app::get_unicode_text_input_supported()` reports
+that separate limit. Current build/runtime evidence is recorded in the
 feature matrix. A parent CMake project may link the `native` target through
 `add_subdirectory()` without building Vision or Native's test suite.
 
@@ -443,3 +452,10 @@ Normal Docker backend builds include the compiler, without an additional JSON
 or archive dependency. See [resource compiler commands](docs/manuals/book-of-native/BUILD-SYSTEM.md#resource-compiler),
 [application usage](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#resource-packs),
 and the [format and selection contract](docs/manuals/book-of-native/RESOURCES.md).
+
+
+Run `vision --new-features` for the combined resource/icon, canvas text and
+mouse, hosted toolbar, ruler marker and em-font acceptance window. Add
+`--features-smoke` for automated checks and exit. The
+[walkthrough](docs/manuals/programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window)
+distinguishes smoke checks from physical input acceptance.

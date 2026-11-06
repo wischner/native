@@ -607,6 +607,8 @@ namespace native
     }
 
     bool canvas::on_native_text_input(const std::string &utf8) {
+        if (const auto *input = detail::peer_state<detail::input_state>(*this);
+            input && input->text_consumed) return false;
         return !utf8.empty() && on_text_input.emit_consumed(utf8);
     }
 

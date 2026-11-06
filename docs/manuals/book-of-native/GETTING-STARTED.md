@@ -139,7 +139,8 @@ Note:
 - `docker-openlook` produces the reproducible XView-linked binary in
   `build/linux-openlook/`. The maintained graphical debug/runtime path runs
   that binary inside the same image using Xephyr and olwm.
-- `docker-wmaker` produces the reproducible WINGs-linked binary in
+- `docker-wmaker` first builds the patched `native-wmaker-sdk:1` image through
+  `docker-wmaker-sdk`, then produces the reproducible WINGs-linked binary in
   `build/linux-wmaker/`. The maintained graphical debug/runtime path runs
   that binary in the same image using Xephyr and Window Maker.
 - `docker-haiku` is part of the current verified workflow.
@@ -380,3 +381,9 @@ to turn JSON manifests into `.resources` packs and optional embedded C++.
 Run it inside the hosted SDK as shown in the
 [build chapter](BUILD-SYSTEM.md#resource-compiler). No display is needed.
 The existing Vision F5 launch configurations continue to start Vision.
+
+
+`vision --new-features` opens the recent-feature acceptance window;
+`vision --new-features --features-smoke` checks it and exits. Run it in the
+backend's normal session and retain its sibling `retro-terminal/` font assets.
+See the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).

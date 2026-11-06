@@ -31,12 +31,11 @@ namespace
         gtk_widget_set_name(widget, name.c_str());
         auto *provider = gtk_css_provider_new();
         const auto size = std::to_string(owner.get_splitter_size());
-        const auto css =
-            "#" + name + " > separator { margin: 0; } #" + name +
-            ".horizontal > separator { min-width: " + size +
-            "px; min-height: 0; } #" + name +
-            ".vertical > separator { min-height: " + size +
-            "px; min-width: 0; }";
+        // Keep both minima stable while orientation classes change.
+        // Interpolating a zero minimum from the previous orientation can
+        // temporarily collapse the native grab area to one pixel.
+        const auto css = "#" + name + " > separator { margin: 0; "
+            "min-width: " + size + "px; min-height: " + size + "px; }";
         gtk_css_provider_load_from_string(provider, css.c_str());
         auto *display = gtk_widget_get_display(widget);
         auto *style = new splitter_style{

@@ -116,6 +116,14 @@ namespace native
 #endif
     }
 
+    bool app::get_unicode_text_input_supported() {
+#ifdef NATIVE_NO_UNICODE_TEXT_INPUT
+        return false;
+#else
+        return true;
+#endif
+    }
+
     app_wnd *app::main_wnd() {
         return _main_wnd;
     }

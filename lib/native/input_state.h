@@ -19,6 +19,8 @@ namespace native::detail
     {
         std::bitset<static_cast<unsigned>(key_code::count)> held;
         bool focused = false;
+        // Suppress separately delivered text for the last consumed press.
+        bool text_consumed = false;
         key_modifiers modifiers = key_modifiers::none;
     };
 

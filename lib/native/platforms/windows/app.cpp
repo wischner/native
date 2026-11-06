@@ -88,8 +88,20 @@ namespace native
                     TranslateAcceleratorW(hwnd, menu->accelerators, &msg);
             }
             if (!translated) {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
+                if (dynamic_cast<canvas *>(target) &&
+                    (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN)) {
+                    // TranslateMessage queues WM_CHAR. Decide whether this
+                    // press was consumed before producing that text.
+                    const detail::window_guard guard(*target);
+                    DispatchMessage(&msg);
+                    if (guard.alive()) {
+                        const auto *input = detail::peer_state<detail::input_state>(*target);
+                        if (!input || !input->text_consumed) TranslateMessage(&msg);
+                    }
+                } else {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
             }
             detail::drain_posted_work();
         }

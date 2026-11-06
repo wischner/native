@@ -9,8 +9,8 @@ control tree and backend-specific build trees.
 ### GEMix transport selection
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -118,7 +118,8 @@ toolchain and system headers.
 - `docker-sdl2`
 - `docker-openmotif`
 - `docker-openlook`
-- `docker-wmaker`
+- `docker-wmaker` (depends on `docker-wmaker-sdk`)
+- `docker-wmaker-sdk`
 - `docker-win`
 - `docker-haiku`
 
@@ -129,7 +130,7 @@ The images are:
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-openlook`
-- `wischner/gcc-x86_64-linux-window-maker`
+- `native-wmaker-sdk:1`
 - `native-windows-winui-sdk:24.04` (local `docker-win-sdk` dependency)
 - `wischner/gcc-x86_64-haiku`
 
@@ -183,6 +184,7 @@ executables:
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_mouse_shader_tests` | Generation-safe pointer transitions/cancellation, rich deltas, package validation, orientation/color/alpha, multipass/history, transaction rollback, copied source and recreation | All backends; inert window hooks, image drawing; no desktop cursor/raw-input claim |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
+| `native_new_features_smoke` | Public-API acceptance window: resource icons, portable fonts, hosted-control transitions, focus/text and icon geometry | Each backend desktop/session; SDL dummy/software |
 | `native_ruler_toolbar_tests` | Ruler markers drag through the pointer, active ranges, controls hosted in a toolbar, composed text and click counting on a canvas | Every backend with a display |
 | `native_owned_teardown_tests` | An owned window with child controls destroys cleanly from posted work, outside any toolkit dispatch | Every backend with a display |
 | `native_sdl_canvas_input_tests` | Composed text and rich mouse transitions reach a focused SDL2 canvas | SDL2 dummy video in CTest |
@@ -431,7 +433,7 @@ LeakSanitizer under ptrace. Standalone execution uses:
 Select **Linux Window Maker, Xephyr**. F5 builds `docker-wmaker` into
 `build/linux-wmaker/` and starts the image's GDB through
 `scripts/linux/docker-debug.sh --session window-maker-xephyr`.
-`wischner/gcc-x86_64-linux-window-maker:latest` supplies the compiler,
+`native-wmaker-sdk:1` supplies the compiler,
 WINGs/wraster libraries, font stack, Xephyr, Window Maker and GDB.
 
 The pipe forwards the X11 socket and active Xauthority file, choosing free
@@ -811,3 +813,27 @@ step. Use a hosted compiler to produce the platform-independent pack or C++
 source before cross-compilation. The embedding CMake test is therefore enabled
 only when `CMAKE_CROSSCOMPILING` is false. Its custom command lists the manifest
 and each input asset as dependencies; changing either rebuilds the pack.
+
+`vision --new-features` opens the interactive recent-feature acceptance window;
+`--features-smoke` adds automated checks and closes it. Its CTest uses the
+existing backend session and GEM proxy runner. See the
+[walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
+
+
+### Window Maker SDK lifetime repair
+
+`docker-wmaker-sdk` builds `native-wmaker-sdk:1` from the digest-pinned
+published WINGs SDK in `scripts/linux/wmaker/Dockerfile`. The small
+`wings-lifetimes.patch` releases Pango layouts, contexts, descriptions and
+patterns, text-widget graphics/pixmap/color/margin resources, and browser
+column arrays. It rebuilds only the shared WINGs library; existing native
+widgets, toolchain and Xephyr/debug helpers remain available. The image retains
+the upstream source and its licenses. Native also frees each modal file panel
+through WINGs' own teardown API.
+
+`docker-wmaker` depends on this SDK target for the default image. F5 and
+`toolkit-session-run.sh wmaker` use the same image. An explicitly customized
+`DOCKER_IMAGE_WMAKER` remains supported; equivalent SDK fixes are then the
+caller's responsibility. The older default cache value migrates automatically.
+The existing narrow font-cache LSan suppressions are unchanged: the native-only
+allocation fixture still reports Xft/Fontconfig shutdown retention without them.

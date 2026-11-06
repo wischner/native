@@ -129,8 +129,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         "wischner/gcc-x86_64-linux-openlook:${DOCKER_TAG}"
         CACHE STRING
         "Docker image for OpenLook/XView builds")
+    if(DOCKER_IMAGE_WMAKER STREQUAL "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}")
+        unset(DOCKER_IMAGE_WMAKER CACHE)
+    endif()
     set(DOCKER_IMAGE_WMAKER
-        "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}"
+        "native-wmaker-sdk:1"
         CACHE STRING
         "Docker image for Window Maker/WINGs builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "native-windows-winui-sdk:24.04" CACHE STRING "Docker image for Windows MinGW/WinUI builds")
@@ -222,6 +225,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                 -f ${CMAKE_SOURCE_DIR}/scripts/windows/winui/Dockerfile
                 ${CMAKE_SOURCE_DIR}/scripts/windows/winui
             USES_TERMINAL)
+        add_custom_target(docker-wmaker-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build -t native-wmaker-sdk:1
+                -f ${CMAKE_SOURCE_DIR}/scripts/linux/wmaker/Dockerfile
+                ${CMAKE_SOURCE_DIR}/scripts/linux/wmaker
+            USES_TERMINAL)
         add_docker_cmake_build_target(docker-wayland build/linux-wayland
             ${DOCKER_IMAGE_WAYLAND} -DTOOLKIT=WAYLAND)
         add_docker_cmake_build_target(docker-elementary build/linux-elementary
@@ -249,6 +257,9 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             build/linux-wmaker
             ${DOCKER_IMAGE_WMAKER}
             -DTOOLKIT=WMAKER)
+        if(DOCKER_IMAGE_WMAKER STREQUAL "native-wmaker-sdk:1")
+            add_dependencies(docker-wmaker docker-wmaker-sdk)
+        endif()
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-mingw.cmake)
         add_dependencies(docker-win docker-win-sdk)
