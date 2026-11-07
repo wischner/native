@@ -142,6 +142,8 @@ namespace native
 
     void app_wnd::on_native_menu(int command) {
         if (!get_input_enabled()) return;
+        // Every backend's pointer and shortcut paths converge here.
+        if (!menu.get_enabled(command)) return;
         const detail::window_guard guard(*this);
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::menu);
         if (!guard.alive()) return;

@@ -106,6 +106,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/non_client.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ruler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_strip.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/password_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp

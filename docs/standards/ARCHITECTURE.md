@@ -1471,7 +1471,7 @@ lifecycle remain separate. Full format and ranking details are maintained in
 
 The public input, filesystem-resource, and chrome API consists of `combo_box`,
 the `list_box` alias, `file_icon`, `special_directory`, `directory_dialog`,
-`message_box`, `non_client`, `ruler`, and `status_bar`.
+`message_box`, `non_client`, `ruler`, `status_bar`, and `tab_strip`.
 Headers remain pure C++ and are exported through `include/native.h`. Portable
 state and fallback behavior live in `lib/native/`; native widget creation,
 dialog presentation, and event routing remain in the matching platform or
@@ -1698,11 +1698,27 @@ flexible parts. Painted status strips and their parts use the panel/chrome
 surface rather than the white editable-content surface; part edges remain
 visually distinct through the active theme's highlight and shadow roles.
 
+A `tab_strip` is a labeled strip at any edge of any host that owns no pages:
+its tabs select what one content window shows, where `tab_view` would need a
+page window per tab. It is painted by shared code on every backend. A press
+selects a tab and emits `on_selection_change`; a double click on the selected
+tab emits `on_activate`; `set_items` and `set_selected_index` are silent and
+selecting scrolls the tab into view. Tabs past the strip's end are out of view,
+never clipped, so each visible label is whole.
+
+A `password_edit` is a single-line secret field painted by shared code on every
+backend, because toolkit fields differ in whether they can mask at all. It is a
+`canvas`, so typing reaches it through the path every backend already routes:
+`on_native_text_input` appends and refuses control characters, Backspace removes
+one character and Ctrl+V pastes without line ends. It offers no selection, copy
+or reveal, `on_change` fires for user edits only, `set_text` is silent, and the
+destructor overwrites the value.
+
 The complete default rendering must occur inside each protected virtual draw
 stage. Derived classes may replace a stage or call its base implementation and
 augment it; no owner-draw pass may repaint the default afterward. Rulers expose
 background, tick, label, and tracker stages. Status bars expose background and
-part stages. The painting uses the graphics context of the active paint event
+part stages. Tab strips expose background and tab stages. The painting uses the graphics context of the active paint event
 and the current backend theme.
 
 Vision exposes the combined demonstration through **Window -> Input and

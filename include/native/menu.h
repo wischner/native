@@ -40,6 +40,7 @@ namespace native
         bool separator = false;
         bool checkable = false;
         bool checked = false;
+        bool enabled = true;
     };
 
     // Collects menu items for one top-level menu in the builder API.
@@ -102,6 +103,14 @@ namespace native
         // Return a checkable command's state; otherwise return false.
         bool get_checked(int command) const;
 
+        // Silently enable or disable a command before or after attachment.
+        // A disabled command appears dimmed and ignores pointer, keyboard and
+        // shortcut activation. Unknown IDs and separators are unchanged.
+        main_menu &set_enabled(int command, bool enabled);
+
+        // Return false only for a known command that is disabled.
+        bool get_enabled(int command) const;
+
         // Completes alternating title and item-list insertion.
         class builder
         {
@@ -145,6 +154,9 @@ namespace native
 
         // Apply one cached check state to an attached backend resource.
         void apply_checked(int command);
+
+        // Apply one cached enabled state to an attached backend resource.
+        void apply_enabled(int command);
 
         // Toggle a checkable command before application notification.
         void activate(int command);

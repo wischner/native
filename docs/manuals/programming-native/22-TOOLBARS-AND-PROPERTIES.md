@@ -122,6 +122,40 @@ Edit Name and Width, select Outline, toggle Snap, and press Reset. The status
 reports user actions. Reset uses silent setters, so it explicitly updates the
 title and status rather than expecting user-change signals.
 
+## Choose content with a tab strip
+
+`tab_strip` is a labeled strip for when tabs select what one window shows, such
+as a spreadsheet's sheets. It owns no pages, unlike `tab_view`:
+
+```cpp
+native::tab_strip tabs(document, native::window_edge::bottom, 24);
+tabs.set_items({"Sheet1", "Sheet2"});
+tabs.on_selection_change.connect([&](int index) {
+    show_sheet(index);
+    return true;
+});
+```
+
+`set_items` and `set_selected_index` are silent. Double-clicking the selected
+tab emits `on_activate`.
+
+## Take a secret with a password field
+
+`text_edit` shows what it holds. `password_edit` shows one bullet per character
+and looks the same on every backend, because Native paints it:
+
+```cpp
+native::password_edit secret(120, 40, 220, 26);
+secret.set_parent(&dialog);
+secret.on_change.connect([&](std::string value) {
+    login.set_enabled(!value.empty());
+    return true;
+});
+```
+
+Read the value with `get_text()`. There is no selection, copy or reveal, and the
+destructor clears the value from memory.
+
 ## Add images and exclusive tools
 
 A `tool_item::icon` is a `std::shared_ptr<const img>`. Load a PNG once and share

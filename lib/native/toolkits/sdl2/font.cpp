@@ -45,10 +45,15 @@ namespace
     void release(uint32_t id) {
         auto *f = linux::sdl2::font_bindings.object_from_handle(id);
         if (f) {
-            for (auto &device : f->device_fonts)
-                if (device.second)
-                    TTF_CloseFont(device.second);
-            TTF_CloseFont(f->ttf_font);
+            // A stock font first asked for before TTF_Init is constructed
+            // before shutdown_ttf is registered, so it is destroyed after
+            // TTF_Quit, when its handles are already gone.
+            if (TTF_WasInit() != 0) {
+                for (auto &device : f->device_fonts)
+                    if (device.second)
+                        TTF_CloseFont(device.second);
+                TTF_CloseFont(f->ttf_font);
+            }
             delete f;
         }
         linux::sdl2::font_bindings.unregister_by_handle(id);
@@ -196,8 +201,11 @@ namespace native
         static font_t s[6];
         static bool initialized = false;
         if (!initialized) {
-            initialized = true;
 #ifdef HAVE_SDL2_TTF
+            // A control may ask for metrics before app::run initializes
+            // SDL2_ttf. Answer with the bitmap font but do not latch, or
+            // the whole process would keep it.
+            initialized = TTF_WasInit() != 0;
             static const stock_font_def defs[] = {
                 {font_role::system,
                  13,
@@ -256,6 +264,8 @@ namespace native
                   nullptr}},
             };
             for (const auto &d : defs) {
+                if (!initialized)
+                    break;
                 const char *chosen_pattern = nullptr;
                 std::string path;
                 TTF_Font *ttf = open_by_fallbacks(
@@ -269,6 +279,7 @@ namespace native
                 }
             }
 #else
+            initialized = true;
             for (int index = 0; index < 6; ++index) {
                 s[index]._id = static_cast<std::uint32_t>(index + 1);
             }

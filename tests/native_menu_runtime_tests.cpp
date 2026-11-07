@@ -202,6 +202,25 @@ namespace
         expect(linux::sdl2::handle_menu_click(peer, 35, 34, 300),
                "SDL pointer activates the checked row");
         expect(!owner.menu.get_checked(42), "SDL pointer clears the tick");
+        peer->open_idx = 0;
+        peer->popup_x = 0;
+        peer->popup_y = 24;
+        img enabled(300, 150), disabled(300, 150);
+        linux::sdl2::render_menu(peer, enabled.get_gpx(), 300, 150);
+        owner.menu.set_enabled(42, false);
+        linux::sdl2::render_menu(peer, disabled.get_gpx(), 300, 150);
+        int dimmed = 0;
+        for (int y = 27; y < 43; ++y)
+            for (int x = 17; x < 200; ++x)
+                if (enabled.pixels()[y * 300 + x] !=
+                    disabled.pixels()[y * 300 + x]) ++dimmed;
+        expect(dimmed > 0, "disabled SDL row paints differently");
+        expect(linux::sdl2::handle_menu_click(peer, 35, 34, 300) &&
+               peer->open_idx == 0 && !owner.menu.get_checked(42),
+               "disabled SDL row ignores the pointer and stays open");
+        owner.menu.set_enabled(42, true);
+        peer->open_idx = -1;
+        owner.menu.set_checked(42, true);
     }
 #endif
 
@@ -314,6 +333,26 @@ namespace
                 expect(commands == 2 && !child.menu.get_checked(42) &&
                        !native_checked(child, 42), "blocked input restores mark");
                 child.input_enabled = true;
+                expect(child.menu.get_enabled(42) &&
+                       child.menu.get_enabled(999), "commands start enabled");
+                child.menu.set_enabled(43, false);
+                expect(!child.menu.get_enabled(43), "disabled state is stored");
+                activate(child, 43);
+                expect(commands == 2 && child.menu.get_checked(43) &&
+                       native_checked(child, 43),
+                       "disabled command ignores activation");
+                child.menu.set_enabled(44, false);
+                child.destroy();
+                expect(!child.menu.get_enabled(44), "destroy retains disabled");
+                child.create();
+                child.show();
+                child.menu.set_enabled(43, true).set_enabled(44, true);
+                activate(child, 43);
+                expect(commands == 3 && !child.menu.get_checked(43),
+                       "re-enabled command activates");
+                activate(child, 43);
+                expect(commands == 4 && child.menu.get_checked(43),
+                       "re-enabled command toggles back");
                 child.menu.set_checked(42, true);
                 child.destroy();
                 expect(child.menu.get_checked(42), "destroy retains model");
@@ -326,7 +365,7 @@ namespace
                 expect(native_checked(child, 42) && native_checked(child, 43),
                        "recreated menu restores native marks");
                 activate(child, 42);
-                expect(commands == 3 && !observed, "recreated callback works");
+                expect(commands == 5 && !observed, "recreated callback works");
                 child.on_menu.connect([this](int) {
                     child.destroy();
                     return true;

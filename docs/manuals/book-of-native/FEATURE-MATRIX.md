@@ -173,6 +173,19 @@ Legend:
 - `WIP` = still under development
 
 
+## Disabled menu commands (2026-11-07)
+
+`main_menu::set_enabled`/`get_enabled` update commands silently without rebuilding
+the menu. `app_wnd::on_native_menu` rejects disabled commands, so every pointer and
+shortcut path shares one gate. Backends use `EnableMenuItem`, `BMenuItem::SetEnabled`,
+`NSMenuItem` with autoenabling off, `XtSetSensitive`, `MENU_INACTIVE`, GAction
+enabled state and `menu_ienable`; SDL2 and Window Maker dim their painted rows.
+Toolkits whose widgets flip their own mark (Motif, XView) restore it for a rejected
+command. `native_menu_runtime_tests` passes on SDL2, X11, Motif, OpenLook and Window
+Maker in their SDKs under Xvfb, covering the model, activation gate and recreation;
+SDL2 also checks dimmed pixels and pointer rejection. GTK, GEM, Windows and Haiku
+compile but this test has not run on them, and Cocoa has not been built.
+
 ## Checkable menu options (2026-11-03)
 
 Every supported selection implements `menu_check_item`, silent
@@ -730,6 +743,8 @@ passed in the preceding review after the shared tab-text contrast correction.
 | `list_box` compatibility name | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | WIP |
 | Selection-only/editable `combo_box` | Athena (build tested) | Themed (tested) | XmComboBox (build tested) | XView composite (build tested) | WINGs centered inset-arrow composite (tested) | Themed (tested) | COMBOBOX (build tested) | Native-control composite, below-field popup (tested) | NSComboBox (untested) | WIP |
 | Non-client rulers and status bars | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Non-client tab strips (shared painting) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
+| Shared painted `password_edit` secret field | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |
 | Structural `panel` container | Xaw `Form` child (build tested) | Emulated nested region (tested) | `XmForm` child (build tested) | XView Panel (build tested) | WINGs flat frame (build tested) | GEM themed region (build tested) | Child HWND, control-host brush (build tested) | Child `BView` container (build tested) | Child `NSView` container (build tested) | WIP |
 | Paintable `canvas` surface | Athena drawable host (build tested) | Emulated nested region (tested) | Motif `XmDrawingArea` (build tested) | XView Panel with paint window (build tested) | WINGs flat frame (build tested) | GEM offset region (build tested) | Child HWND (build tested) | Child `BView` (build tested) | Child `NSView` (build tested) | WIP |
 | Canvas 32-bit content bounds, clamping, and themed arrow/trough/thumb scrollbars | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (tested) | Portable (build tested) | WIP |

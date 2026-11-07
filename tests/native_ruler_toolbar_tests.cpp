@@ -30,7 +30,8 @@ namespace
             : app_wnd("chrome", 30, 30, 480, 320),
               bar_(*this, window_edge::top, 32),
               ruler_(surface_, window_edge::top, 22),
-              status_(*this, surface_) {
+              status_(*this, surface_),
+              tabs_(surface_, window_edge::bottom, 24) {
             tool_item choice;
             choice.id = "choice";
             choice.kind = tool_kind::control;
@@ -38,6 +39,7 @@ namespace
             choice.length = 120;
             bar_.add_item(choice);
             ruler_.set_units_per_pixel(0.01).set_marker_snap(0.25);
+            tabs_.set_visible(false);
             on_wnd_create.connect([this] {
                 surface_.set_parent(this);
                 surface_.create();
@@ -57,6 +59,8 @@ namespace
                 check_ruler();
                 check_canvas();
                 check_status();
+                check_tab_strip();
+                check_password_edit();
             } catch (const std::exception &error) {
                 std::cerr << "FAILED: " << error.what() << '\n';
                 failed = true;
@@ -208,6 +212,82 @@ namespace
                                     false, key_modifiers::none});
         }
 
+        // A press selects a tab, a second press on it activates, and
+        // programmatic selection stays silent.
+        void check_password_edit() {
+            password_edit secret(0, 0, 160, 26);
+            secret.set_parent(this);
+            secret.create();
+            std::string changed = "none";
+            const auto change = secret.on_change.connect(
+                [&](std::string value) { changed = value; return true; });
+            secret.set_text("ab");
+            expect(changed == "none", "set_text is silent");
+            expect(secret.get_length() == 2, "the field counts characters");
+            secret.on_native_text_input("c");
+            expect(changed == "abc", "typing reports the value");
+            secret.on_native_text_input("\xC4\x8D");
+            expect(secret.get_length() == 4, "multibyte is one character");
+            expect(secret.get_text() == "abc\xC4\x8D", "the value is exact");
+            key_event back;
+            back.key = key_code::backspace;
+            back.action = key_action::press;
+            secret.on_native_key(back);
+            expect(secret.get_text() == "abc", "backspace removes a character");
+            changed = "none";
+            expect(!secret.on_native_text_input("x\ny"),
+                   "control characters are refused");
+            expect(changed == "none", "a refusal changes nothing");
+            secret.on_change.disconnect(change);
+        }
+
+        void check_tab_strip() {
+            tabs_.set_visible(true);
+            int selected = -1;
+            int activated = -1;
+            const auto selection = tabs_.on_selection_change.connect(
+                [&](int index) { selected = index; return true; });
+            const auto activation = tabs_.on_activate.connect(
+                [&](int index) { activated = index; return true; });
+            tabs_.set_items({"First", "Second", "Third"});
+            expect(tabs_.get_selected_index() == 0 ||
+                   tabs_.get_selected_index() == -1, "items keep the selection");
+            tabs_.set_selected_index(0);
+            expect(selected == -1, "programmatic selection is silent");
+            const rect strip = tabs_.get_bounds();
+            expect(strip.d.h == 24, "the strip keeps its extent");
+            expect(surface_.get_client_bounds().y2() <= strip.y1(),
+                   "the client stops above the strip");
+            const rect second = tabs_.get_tab_bounds(1);
+            expect(second.d.w > 0, "a tab has a place on the strip");
+            const point inside(static_cast<coord>(strip.p.x + second.p.x + 4),
+                               static_cast<coord>(strip.p.y + 4));
+            mouse_event press(mouse_button::left, mouse_action::press, inside);
+            press.clicks = 1;
+            surface_.on_native_mouse_click(press);
+            expect(selected == 1, "a press selects a tab");
+            expect(tabs_.get_selected_index() == 1, "selection is stored");
+            surface_.on_native_mouse_click(
+                mouse_event(mouse_button::left, mouse_action::release, inside));
+            mouse_event twice = press;
+            twice.clicks = 2;
+            wnd &host = surface_;
+            host.wnd::on_native_mouse_click(twice);
+            expect(activated == 1, "a double click activates the selected tab");
+            tabs_.set_items({"Only"});
+            expect(tabs_.get_selected_index() == 0,
+                   "a shrinking list keeps the selection in range");
+            expect(!tabs_.get_tab_bounds(4).d.w, "unknown tabs have no place");
+            bool threw = false;
+            try {
+                tabs_.set_selected_index(9);
+            } catch (const std::out_of_range &) {
+                threw = true;
+            }
+            expect(threw, "selection outside the list is rejected");
+            tabs_.set_visible(false);
+        }
+
         void check_status() {
             const bool inside = resources::current_context().toolkit == "gemix";
             expect(status_.get_owner() == (inside ? static_cast<wnd *>(&surface_) : this),
@@ -245,6 +325,7 @@ namespace
         toolbar bar_;
         ruler ruler_;
         status_bar status_;
+        tab_strip tabs_;
     };
 } // namespace
 

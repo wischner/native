@@ -45,6 +45,16 @@ a tick in the existing painted menu. OPEN LOOK represents a group containing
 checkable items as an XView toggle menu; ordinary commands in the same group
 remain momentary. No platform headers are needed in application code.
 
+## Disabled commands
+
+Call `menu.set_enabled(id, false)` for a command that does not apply right now,
+and `menu.set_enabled(id, true)` to restore it. Both plain commands and checkable
+options qualify. A disabled command keeps its checked state, appears dimmed, and
+ignores the pointer, keyboard navigation and its shortcut, so `on_menu` does not
+run. Like `set_checked`, this setter emits no command, works before or after
+window creation and survives destruction/recreation. It ignores separators and
+unknown IDs. `get_enabled` returns false only for a known disabled command.
+
 The program below includes **View → Show command ID**, initially checked.
 Click it twice or press Ctrl+D twice to hide and restore the displayed ID.
 Reopening the menu must show the retained mark.

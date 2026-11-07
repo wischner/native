@@ -48,6 +48,9 @@ CPC follow-up: GEM menu activation/input routing and Motif repaint fairness
 change no control kind marks. AES remains the menu implementation; the
 optional GEM input extension stays inside the toolkit adapter.
 
+Menu enabled-state review (2026-11-07): all existing kind marks remain. Native
+menus use their toolkit's insensitive state; SDL2 and Window Maker dim painted rows.
+
 Menu check-state review (2026-11-03): all existing kind marks remain.
 Checkable commands retain portable state and update native marks silently.
 GTK/Granite uses boolean GActions, Motif uses native toggle menu items,
@@ -271,6 +274,13 @@ Granite navigation icons use centered native GtkImage widgets at 24 logical
 pixels. Search uses GtkSearchEntry on GTK, and native text editors with a
 small magnifier on Windows/Haiku; its width matches the navigation column.
 
+## X11 hosted-control teardown — 2026-11-07
+
+`canvas` destroys its children before its widget, as X11 shells and the OPEN LOOK
+and Wayland hosts already do. Outside an Xt dispatch `XtDestroyWidget` frees a
+tree at once, so hiding a toolbar with a hosted combo box crashed in the child's
+own destruction. `native_ruler_toolbar_tests` reproduces it.
+
 ## Input and footer consistency — 2026-10-22
 
 Control kinds remain unchanged. Shared geometry resolves single-line entries,
@@ -341,6 +351,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | --- | --- |
 | SDL2 `settings_sidebar`, `date_picker`, `time_picker` | Keep **C**. SDL supplies no desktop widgets. Navigation reuses the existing framed tree/search editor; pickers extend the editable combo with one themed calendar or paired time arrows, sharing input, height, paper and availability policy. |
 | GEMix `settings_sidebar`, `date_picker`, `time_picker` | Keep **C** through the existing themed tree and entry/choice controls; AES supplies no matching settings or date/time widget. |
+| All backends `tab_strip` | Keep **C**. No toolkit offers tabs that own no pages and dock on a non-client edge of an arbitrary host; `tab_view` remains the native page-owning control. Added 2026-11-07 for Isaac's sheet tabs. |
+| All backends `password_edit` | Keep **C**. Masking is not universal: Athena's `AsciiText` can only hide all echo, Motif's `XmTextField` needs modify-verify callbacks and SDL2 has no field. One painted canvas gives every backend the same behavior through the text path they already route. Added 2026-11-07 for Blaise's account passwords. |
 | Wayland/elementary `toolbar`, `ruler`, `status_bar` | Keep **C**. These are arbitrary-edge portable non-client strips with staged application painting. GTK 4 has no ruler or multipart in-client status-bar control, and removed the GTK 3 toolbar widget. Native editors are used inside the property grid. |
 | Wayland/elementary advanced source/table drawing | Keep **H**. Stock content uses GtkSourceView/GtkColumnView; application lexer overlays, markers, diagnostics, derived drawing and grouped/headerless/alternating tables retain the shared semantic painter because GTK widgets do not implement those portable staged hooks. |
 | Wayland/elementary `shader_view` | Keep **C**. GTK drawing areas host application-owned multipass/history image programs; no Granite widget provides that program contract. |

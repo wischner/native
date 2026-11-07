@@ -46,6 +46,9 @@ namespace native
         if (!_created)
             return;
 
+        // Outside an Xt dispatch a widget tree frees at once, so children
+        // such as a toolbar's hosted controls must go first.
+        destroy_children();
         auto *self = this;
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(self);

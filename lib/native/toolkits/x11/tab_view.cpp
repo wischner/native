@@ -64,6 +64,9 @@ namespace native
     void tab_view::destroy_native() {
         if (!_created)
             return;
+        // Outside an Xt dispatch a widget tree frees at once, so borrowed
+        // pages must go first.
+        destroy_children();
         auto *self = this;
         auto *state = linux::x11::tab_view_bindings.object_from_handle(self);
         if (state) {

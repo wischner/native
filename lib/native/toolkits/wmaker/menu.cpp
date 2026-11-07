@@ -56,13 +56,16 @@ namespace
                                  const std::string &text,
                                  std::size_t mnemonic,
                                  int x,
-                                 int y) {
+                                 int y,
+                                 bool enabled = true) {
         W_Screen *native_screen = wing_screen();
         if (!native_screen || !font || target == None)
             return;
+        WMColor *ink = enabled ? native_screen->black
+                               : native_screen->darkGray;
         WMDrawString(linux::wmaker::screen,
                      target,
-                     native_screen->black,
+                     ink,
                      font,
                      x,
                      y,
@@ -77,7 +80,7 @@ namespace
                                 static_cast<int>(WMFontHeight(font)) - 1;
         XDrawLine(linux::wmaker::display,
                   target,
-                  WMColorGC(native_screen->black),
+                  WMColorGC(ink),
                   underline_x,
                   underline_y,
                   underline_x + std::max(1, width_of(font, letter)) - 1,
@@ -145,7 +148,8 @@ namespace
                 ? (direction > 0 ? 0 : static_cast<int>(items.size())-1)
                 : (candidate + direction + static_cast<int>(items.size())) %
                       static_cast<int>(items.size());
-            if (!items[static_cast<std::size_t>(candidate)].separator)
+            const auto &item = items[static_cast<std::size_t>(candidate)];
+            if (!item.separator && item.enabled)
                 return candidate;
         }
         return -1;
@@ -232,7 +236,8 @@ namespace
                 y += row_height;
                 continue;
             }
-            if (static_cast<int>(index) == menu.hot_item) {
+            const bool enabled = items[index].enabled;
+            if (enabled && static_cast<int>(index) == menu.hot_item) {
                 XFillRectangle(linux::wmaker::display,
                                menu.popup,
                                WMColorGC(native_screen->white),
@@ -251,21 +256,24 @@ namespace
                                     items[index].label,
                                     items[index].mnemonic_index,
                                     26,
-                                    text_y);
+                                    text_y,
+                                    enabled);
+            WMColor *ink = enabled ? native_screen->black
+                                   : native_screen->darkGray;
             if (items[index].checked) {
                 const int center = y + row_height / 2;
                 XDrawLine(linux::wmaker::display, menu.popup,
-                          WMColorGC(native_screen->black),
+                          WMColorGC(ink),
                           8, center, 11, center + 3);
                 XDrawLine(linux::wmaker::display, menu.popup,
-                          WMColorGC(native_screen->black),
+                          WMColorGC(ink),
                           11, center + 3, 17, center - 4);
             }
             if (!items[index].shortcut.empty()) {
                 WMDrawString(
                     linux::wmaker::screen,
                     menu.popup,
-                    native_screen->black,
+                    ink,
                     font,
                     menu.popup_width - 10 -
                         width_of(font, items[index].shortcut),
@@ -333,7 +341,8 @@ namespace
         const auto &items = menu.tops[menu.open_top].items;
         if (item_index < 0 ||
             item_index >= static_cast<int>(items.size()) ||
-            items[static_cast<std::size_t>(item_index)].separator)
+            items[static_cast<std::size_t>(item_index)].separator ||
+            !items[static_cast<std::size_t>(item_index)].enabled)
             return;
         native::app_wnd *owner = menu.owner;
         const int command = items[static_cast<std::size_t>(item_index)].id;
@@ -558,7 +567,7 @@ namespace
                     static_cast<unsigned char>(name[0])));
                 const auto &items = menu.tops[menu.open_top].items;
                 for (std::size_t index = 0; index < items.size(); ++index) {
-                    if (!items[index].separator &&
+                    if (!items[index].separator && items[index].enabled &&
                         mnemonic_of(items[index].label,
                                     items[index].mnemonic_index) == key) {
                         invoke(menu, static_cast<int>(index));
@@ -580,6 +589,16 @@ namespace native
             for (auto &item : top.items)
                 if (item.id == command && item.checkable)
                     item.checked = get_checked(command);
+        paint_popup(*menu);
+    }
+
+    void main_menu::apply_enabled(int command) {
+        auto *menu = linux::wmaker::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto &top : menu->tops)
+            for (auto &item : top.items)
+                if (item.id == command && !item.separator)
+                    item.enabled = get_enabled(command);
         paint_popup(*menu);
     }
 
