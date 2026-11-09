@@ -174,7 +174,7 @@ executables:
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
 | `native_sdk_probe` | Full archive link, dependency discovery and relocated SDK consumer link | SDK release builds only; compiled/linked, never executed or packaged |
-| `native_sdk_package_tests` | Dependency cycles/missing files, filename collisions, self-contained symlink copies, Windows case folding, Haiku OS boundary and relocated link order | Host Python 3; also runs before the release matrix |
+| `native_sdk_package_tests` | Dependency cycles/missing files, ELF runtime search paths, filename collisions, self-contained symlink copies, Windows case folding, Haiku OS boundary and relocated link order | Host Python 3; also runs before the release matrix |
 | `native_wayland_runtime_tests` | Real GTK/Granite widgets; wheel-click/pixel conversion, horizontal scrolling and fractional accumulation; 120 generic-GTK live-control/theme pixel comparisons including toolbar states, equal folder/leaf row heights, retained-widget callbacks after split close, all sixteen native button edge masks, primary press/release and Ctrl/Shift/group table routing, editable-combo caret and active-row synchronization, repeated native split allocation/destruction, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
 | `native_resources_tests` | Pack round trips, defaults/ranking, ownership, bounded binary and strict JSON rejection; no display | Every backend build |
 | `native_resources_embed_tests` | Runs rc during the build, compiles generated C++, compares embedded bytes with the file | Hosted builds only |
@@ -268,10 +268,17 @@ The manuals in `docs/manuals/` are maintained as source documentation only.
 
 ## SDK releases
 
-[release-sdk.yml](../../../.github/workflows/release-sdk.yml) runs only on
+[release-sdk.yml](../../../.github/workflows/release-sdk.yml) runs on pushes of
 tags matching `v<number>.<number>.<number>`, for example `v1.2.3` or
-`v12.34.56`. Prerelease suffixes do not match. An anchored shell check also
-validates the tag before any builds start.
+`v12.34.56`, and manually through **Actions → Release SDKs → Run workflow**.
+For a manual run, enter an existing release tag in the `tag` input. The
+workflow must be on the repository's default branch for GitHub to offer the
+manual trigger. The selected tag supplies the source, regardless of the
+branch selected for the workflow. The initial job resolves its commit and
+both build matrices check out that same commit. Manual and automatic runs
+for the same tag share a concurrency group and publish to the same release.
+Prerelease suffixes do not match. An anchored shell check validates the tag
+before any builds start; a nonexistent tag fails checkout.
 
 Eleven Docker jobs cover Wayland, elementary, X11, SDL2, OpenMotif, OPEN LOOK,
 Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. Two GitHub
@@ -289,6 +296,8 @@ file API and creates `native_sdk_probe` and `native_sdk_package`.
 `scripts/release/package_sdk.py` reads the resolved consumer link line,
 preserves link order, and copies the public header tree, `libnative.a`, direct
 link dependencies and recursively discovered ELF/PE runtime libraries. The
+ELF scan follows each library's RPATH/RUNPATH, including `$ORIGIN`, to find
+private dependencies such as PulseAudio's common library. The
 GNU probe links the whole Native archive; Apple uses `-force_load`. Cross
 targets use their own objdump; no target executable runs on the build host.
 Missing dependencies or conflicting flattened library names fail packaging.
