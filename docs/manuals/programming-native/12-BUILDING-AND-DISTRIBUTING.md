@@ -42,13 +42,51 @@ source. Avoid linking `build/.../lib/native/libnative.a` by hand: a static
 archive does not contain libpng, X11, GDI+, or the other libraries it calls,
 and manual link order differs by toolchain.
 
-The repository does not currently install or export a standalone CMake
-package. Consumer executables are therefore built in-tree, like `vision`, or
-from a parent project that adds the Native source target.
+Consumer executables can be built in-tree, like `vision`, from a parent
+project that adds the Native source target, or against a tag-release SDK's
+standalone CMake package described below.
 
 Portable applications define `program(int, char **)`. The selected backend
 provides the actual process entry point and calls `program()` after its native
 startup work.
+
+## Prebuilt SDK packages
+
+Numeric tags such as `v1.2.3` produce one archive per target, including
+separate direct GEM/gemd and Intel/Apple Silicon macOS archives. Download the
+matching `native-<tag>-<target>-sdk.tar.gz` and verify its `.sha256` sidecar.
+Extract it and pass the extracted root as `CMAKE_PREFIX_PATH`:
+
+```cmake
+find_package(Native CONFIG REQUIRED)
+add_executable(my_application main.cpp)
+target_link_libraries(my_application PRIVATE Native::Native)
+```
+
+For a Haiku cross-build, pass `-DNative_DIR=<sdk>/lib/cmake/Native` instead;
+the toolchain restricts ordinary package searches to its target sysroot.
+
+The SDK contains Native's public headers, Release static library, direct
+dependency libraries and their non-OS runtime closure, a relocatable CMake
+package, notices and `manifest.json`. It propagates C++20 and the backend
+link requirements, including Windows Common Controls manifest resources.
+No demo, Vision, test executable, compiler or private toolkit header is
+packaged. Use a compatible C++ compiler/ABI and target SDK; the Windows
+package is MinGW-w64, not MSVC. `manifest.json` identifies the build compiler
+and target. Each archive is checked by linking a relocated consumer.
+
+For runtime deployment, put the packaged `lib/` on the target library search
+path (for example Linux `LD_LIBRARY_PATH`) or integrate it into your
+application's loader layout. Windows uses `bin/*.dll` beside the executable
+and requires x64 Windows App Runtime 1.8 for WinUI; its bootstrap is included.
+OS runtimes/frameworks, desktop/display services, graphics drivers, fonts,
+GTK schemas/themes/GtkSourceView data and GEM resources/server remain target
+prerequisites. Optional Haiku OSMesa is installed on the target. These are
+SDK archives, not complete desktop distributions. Follow the backend
+deployment sections below and the archive's `README.txt` and manifest.
+
+See [SDK releases](../book-of-native/BUILD-SYSTEM.md#sdk-releases) for the
+workflow matrix and packaging implementation.
 
 ## Reproducible Docker builds
 
@@ -761,7 +799,8 @@ A parent project can `add_subdirectory()` the Native checkout and link its
 Native tests or host Docker orchestration. The parent supplies its own
 application `program()` and backend selection/toolchain and runs its build
 inside the corresponding Docker image, mounting both source checkouts.
-No installed/exported package is provided. Do not reproduce Native's toolkit,
+Alternatively, use the [prebuilt SDK](#prebuilt-sdk-packages) and link
+`Native::Native`. Do not reproduce Native's toolkit,
 codec or audio link closure in the application. Non-SDL Linux sound loads
 `libasound.so.2` at runtime; missing ALSA/default output is reported by
 `audio_out::open() == false`. Windows uses WASAPI, macOS links AudioToolbox,

@@ -69,6 +69,9 @@ Haiku instead supplies all stages in `platforms/haiku/check.cpp`. The common
 
 ## Build directories
 
+SDK mode adds `sdk-stage/` and `sdk-check/` under each backend build tree.
+Final per-target archives and SHA-256 sidecars go in `build/release/`.
+
 The repository uses separate build directories per backend:
 
 - `build/cmake/`
@@ -105,6 +108,11 @@ These build trees are kept separate so backend-specific CMake cache data,
 dependencies, and generated files do not overwrite each other.
 
 ## Docker-backed targets
+
+The same targets accept `NATIVE_BUILD_SDK=ON` in the host control tree and
+forward the release version and package identity into Docker. They build
+with two compiler jobs in SDK mode. Ordinary developer targets retain their
+existing behavior. F5's configure tasks reset SDK mode to OFF.
 
 The backend builds are driven by custom targets in the top-level
 `CMakeLists.txt`.
@@ -165,6 +173,8 @@ executables:
 
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
+| `native_sdk_probe` | Full archive link, dependency discovery and relocated SDK consumer link | SDK release builds only; compiled/linked, never executed or packaged |
+| `native_sdk_package_tests` | Dependency cycles/missing files, filename collisions, self-contained symlink copies, Windows case folding, Haiku OS boundary and relocated link order | Host Python 3; also runs before the release matrix |
 | `native_wayland_runtime_tests` | Real GTK/Granite widgets; wheel-click/pixel conversion, horizontal scrolling and fractional accumulation; 120 generic-GTK live-control/theme pixel comparisons including toolbar states, equal folder/leaf row heights, retained-widget callbacks after split close, all sixteen native button edge masks, primary press/release and Ctrl/Shift/group table routing, editable-combo caret and active-row synchronization, repeated native split allocation/destruction, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
 | `native_resources_tests` | Pack round trips, defaults/ranking, ownership, bounded binary and strict JSON rejection; no display | Every backend build |
 | `native_resources_embed_tests` | Runs rc during the build, compiles generated C++, compares embedded bytes with the file | Hosted builds only |
@@ -255,6 +265,68 @@ debug mode, cleans up only that session's TWM and nested server.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.
+
+## SDK releases
+
+[release-sdk.yml](../../../.github/workflows/release-sdk.yml) runs only on
+tags matching `v<number>.<number>.<number>`, for example `v1.2.3` or
+`v12.34.56`. Prerelease suffixes do not match. An anchored shell check also
+validates the tag before any builds start.
+
+Eleven Docker jobs cover Wayland, elementary, X11, SDL2, OpenMotif, OPEN LOOK,
+Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. Two GitHub
+macOS jobs cover `macos-15-intel` (x86_64) and `macos-15` (arm64), using
+AppleClang and the Apple SDK. Amiga is excluded because it has no Native
+backend. Each job uploads its own archive and checksum as workflow artifacts.
+Only after all 13 jobs succeed does the release job verify checksums and
+attach all 13 separate archives to the tag's GitHub Release. A rerun updates
+assets with the same names. Only that final job has `contents: write`.
+
+`NATIVE_BUILD_SDK=ON` selects a library-only Release build with a link probe,
+instead of Vision, the resource compiler and desktop runtime tests. It does
+not change the public library. `scripts/release/sdk.cmake` requests CMake's
+file API and creates `native_sdk_probe` and `native_sdk_package`.
+`scripts/release/package_sdk.py` reads the resolved consumer link line,
+preserves link order, and copies the public header tree, `libnative.a`, direct
+link dependencies and recursively discovered ELF/PE runtime libraries. The
+GNU probe links the whole Native archive; Apple uses `-force_load`. Cross
+targets use their own objdump; no target executable runs on the build host.
+Missing dependencies or conflicting flattened library names fail packaging.
+
+The package includes a relocatable `lib/cmake/Native/NativeConfig.cmake`,
+Windows manifest resources/bootstrap DLL where applicable, available license
+notices, a dependency manifest and runtime guidance. No demos, Vision assets,
+test binaries, compiler or private toolkit headers are included. Toolkit
+headers are unnecessary for the pure C++ public API. OS components (glibc,
+Windows system DLLs, Apple frameworks and Haiku system runtimes) remain target
+prerequisites. Graphics drivers, desktop servers, GTK schemas/themes/language
+data, fonts and GEM resources/server also remain target environment data.
+Optional Linux ALSA/EGL/GLX libraries are included when available; optional
+Haiku OSMesa remains a target installation dependency.
+Haiku sysroot OS libraries are included for linking; their own runtime
+dependencies, such as ICU and the compiler runtime, come from Haiku. The
+cross SDK does not contain a complete Haiku installation.
+
+Before archiving, the packager moves the SDK and configures and links a fresh
+consumer using only `find_package(Native)` and `Native::Native`. This checks
+the package's headers, link interface and relocation. It is a compile/link
+check, not a desktop runtime acceptance test. `manifest.json` records compiler,
+target, dependency sources/hashes, OS requirements and missing optional
+services. Archives are named `native-v1.2.3-linux-x11-x86_64-sdk.tar.gz`, with
+an adjacent `.sha256` file; every target has its own archive.
+
+Reproduce one package through Docker:
+
+```bash
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release \
+  -DNATIVE_BUILD_SDK=ON -DNATIVE_SDK_VERSION=v1.2.3 \
+  -DNATIVE_SDK_ID=linux-x11-x86_64
+cmake --build build/cmake --target docker-x11
+```
+
+Return to normal development with `-DNATIVE_BUILD_SDK=OFF`. SDK mode suppresses
+runtime test creation without requiring changes to ordinary test sources.
+The workflow uses fresh checkouts, so each package contains only its target.
 
 ## Core library target
 

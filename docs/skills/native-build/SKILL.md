@@ -57,8 +57,10 @@ For a separate application, follow
 [consumer integration](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#native-as-a-cmake-dependency):
 mount both checkouts into the selected SDK, configure the parent project with
 the matching `TOOLKIT` or toolchain file, and link the CMake target `native`.
-Native's Docker targets build Vision, not an external consumer. There is no
-installed/exported Native CMake package. Keep target build trees separate;
+Native's ordinary Docker targets build Vision, not an external consumer.
+Tag-release SDKs provide a relocatable `Native::Native` CMake package; see
+[prebuilt SDK packages](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#prebuilt-sdk-packages).
+`NATIVE_BUILD_SDK=ON` selects packaging without Vision. Keep target build trees separate;
 do not replace SDK builds with an ad hoc host build.
 
 Validate shared C++ with GCC/Docker before the remote Apple SDK build. The

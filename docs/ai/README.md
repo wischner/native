@@ -2,8 +2,9 @@
 
 This is the entry point for AI tools generating C++ software with Native.
 It references the same maintained examples that human application authors use.
-Supply the source checkout that matches the application's Native dependency;
-these instructions do not provide a separate SDK or an installed CMake package.
+Supply the source checkout or tag-release SDK matching the application's
+Native dependency. The [prebuilt SDK instructions](../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#prebuilt-sdk-packages)
+describe the standalone CMake package; these guidance files contain no binaries.
 
 ## Load context in this order
 

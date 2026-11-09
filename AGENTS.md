@@ -102,6 +102,19 @@ has no equivalent.
   first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
+Tag releases use `.github/workflows/release-sdk.yml`: numeric
+`vMAJOR.MINOR.PATCH` tags produce one SDK per backend/architecture, including
+both GEM transports and separate macOS Intel/Apple Silicon packages. This
+release workflow builds macOS on GitHub macOS runners with AppleClang and
+the Apple SDK; local development continues to use the remote Mac workflow.
+`NATIVE_BUILD_SDK=ON` requires Release, `NATIVE_SDK_VERSION` and
+`NATIVE_SDK_ID`, omits Vision/tools/runtime tests, and builds the link-only
+`native_sdk_probe` and `native_sdk_package` targets. Packaging code lives in
+`scripts/release/`; archives/checksums go in `build/release/`. Public headers,
+Native and dependency libraries, a relocatable CMake package and notices are
+included; OS runtimes and desktop services remain target prerequisites.
+F5 configure tasks explicitly reset SDK mode to OFF.
+
 The macOS remote build checks Apple Command Line Tools and CMake before
 source synchronization, including `~/Applications/CMake.app` in its search
 path. CMake probes `std::jthread`/`std::stop_token` and enables libc++

@@ -84,6 +84,16 @@ int program(int, char **) {
 
 ## Building
 
+Numeric release tags such as `v1.2.3` trigger the
+[SDK release workflow](.github/workflows/release-sdk.yml). It publishes one
+SDK archive per backend/architecture, including both GEM transports and
+separate Intel/Apple Silicon macOS packages. Each contains `libnative.a`,
+all public headers, dependency libraries, notices, a dependency manifest,
+and a relocatable `Native::Native` CMake target. Vision and demos are excluded.
+Linux, Windows and Haiku use Docker; macOS uses GitHub macOS runners.
+See [SDK releases](docs/manuals/book-of-native/BUILD-SYSTEM.md#sdk-releases)
+for package boundaries, checks and local reproduction.
+
 The host needs CMake 3.20 or newer and Docker. Backend compilers and
 development packages come from the selected SDK image; macOS uses the
 remote Apple SDK workflow. The SDK dependency overview is:

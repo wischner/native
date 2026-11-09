@@ -9,6 +9,7 @@ We are writing modern C++ code.
 - Develop and verify shared C++ on Linux with GCC through Docker first.
 - Verify macOS through the configured remote CMake/AppleClang workflow with
   the Apple SDK; this is the explicit exception to Docker backend builds.
+  Tag-release SDK builds use GitHub macOS runners with the same Apple tools.
 - GCC builds must use full warnings and sanitizers while debugging.
 
 ## 1. Project Directory Structure

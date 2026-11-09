@@ -65,7 +65,9 @@
                 "build/cmake",
                 "-G",
                 "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DNATIVE_BUILD_SDK=OFF",
+                "-DBUILD_TESTING=ON"
             ],
             "problemMatcher": [],
             "group": "build"
@@ -146,7 +148,7 @@
             "label": "CMake Configure Debug (Windows VM)",
             "type": "process",
             "command": "cmake",
-            "args": ["-S", ".", "-B", "build/cmake", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
+            "args": ["-S", ".", "-B", "build/cmake", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug", "-DNATIVE_BUILD_SDK=OFF", "-DBUILD_TESTING=ON"],
             "problemMatcher": [],
             "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false}
         },

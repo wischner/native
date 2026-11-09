@@ -3,6 +3,10 @@ project(native LANGUAGES CXX)
 
 include(CTest)
 
+option(NATIVE_BUILD_SDK "Build release SDK packages without Vision or tools" OFF)
+set(NATIVE_SDK_VERSION "" CACHE STRING "SDK release tag (vMAJOR.MINOR.PATCH)")
+set(NATIVE_SDK_ID "" CACHE STRING "SDK target and architecture identifier")
+
 # build/cmake is the dependency-free host control tree for Docker targets.
 # Backend libraries and programs are configured in their own build trees
 # inside the selected images.
@@ -182,6 +186,16 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 
         function(add_docker_cmake_build_target target_name build_dir image)
             set(cmake_args ${ARGN})
+            set(build_args)
+            list(APPEND cmake_args -DNATIVE_BUILD_SDK=${NATIVE_BUILD_SDK}
+                -DBUILD_TESTING=${BUILD_TESTING})
+            if(NATIVE_BUILD_SDK)
+                set(build_args --parallel 2)
+                list(APPEND cmake_args
+                    -DNATIVE_SDK_VERSION=${NATIVE_SDK_VERSION}
+                    -DNATIVE_SDK_ID=${NATIVE_SDK_ID}
+                    -DBUILD_TESTING=OFF)
+            endif()
             set(has_explicit_build_type FALSE)
 
             foreach(cmake_arg IN LISTS cmake_args)
@@ -209,7 +223,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                     -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
                     -w ${CMAKE_SOURCE_DIR}
                     ${image}
-                    cmake --build ${CMAKE_SOURCE_DIR}/${build_dir}
+                    cmake --build ${CMAKE_SOURCE_DIR}/${build_dir} ${build_args}
                 USES_TERMINAL
                 COMMENT "Building ${target_name} with Docker image ${image}"
             )
@@ -275,9 +289,13 @@ endif()
 # Build the library before programs that consume it.
 add_subdirectory(lib/native)
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    add_subdirectory(src)
-    add_subdirectory(tools)
-    if(BUILD_TESTING)
-        add_subdirectory(tests)
+    if(NATIVE_BUILD_SDK)
+        include(scripts/release/sdk.cmake)
+    else()
+        add_subdirectory(src)
+        add_subdirectory(tools)
+        if(BUILD_TESTING)
+            add_subdirectory(tests)
+        endif()
     endif()
 endif()

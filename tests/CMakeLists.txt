@@ -1,6 +1,15 @@
 # Amiga runtime qualification is a standalone project in amiga_toolchain/,
 # invoked by docker-amiga-check before a Native backend can be configured.
 # It must not be registered as an existing backend's runtime test.
+# The SDK link probe is configured separately by scripts/release/sdk.cmake
+# when NATIVE_BUILD_SDK is ON; it must never execute on a cross-build host.
+find_program(NATIVE_TEST_PYTHON python3)
+if(NATIVE_TEST_PYTHON)
+    add_test(NAME native_sdk_package_tests
+        COMMAND ${NATIVE_TEST_PYTHON}
+            ${CMAKE_CURRENT_SOURCE_DIR}/native_sdk_package_tests.py)
+endif()
+
 add_executable(native_core_tests
     native_core_tests.cpp
     ${PROJECT_SOURCE_DIR}/lib/native/connection.cpp
