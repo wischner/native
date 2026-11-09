@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag to build and publish (for example v1.2.3)'
-        required: true
+        description: 'Optional existing release tag (for example v1.2.3). Leave blank to build the selected branch without publishing a release.'
+        required: false
         type: string
   push:
     tags:
@@ -23,21 +23,42 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      publish: ${{ steps.version.outputs.publish }}
       commit: ${{ steps.source.outputs.commit }}
     steps:
-      - name: Validate numeric release tag
+      - name: Select source and release mode
         id: version
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
+          PUBLISH=true
+          SOURCE_REF="$SOURCE_SHA"
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            if [[ -z "$INPUT_TAG" ]]; then
+              TAG=v0.0.0
+              PUBLISH=false
+            else
+              TAG="$INPUT_TAG"
+              SOURCE_REF="refs/tags/$TAG"
+            fi
+          else
+            TAG="$REF_NAME"
+          fi
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tag must have the form vMAJOR.MINOR.PATCH (numbers only)."
             exit 1
           fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          {
+            echo "tag=$TAG"
+            echo "publish=$PUBLISH"
+            echo "ref=$SOURCE_REF"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', steps.version.outputs.tag) || github.sha }}
+          ref: ${{ steps.version.outputs.ref }}
       - name: Pin release source commit
         id: source
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -139,6 +160,7 @@ jobs:
 
   release:
     needs: [version, docker, macos]
+    if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

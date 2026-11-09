@@ -86,8 +86,9 @@ int program(int, char **) {
 
 Numeric release tags such as `v1.2.3` trigger the
 [SDK release workflow](.github/workflows/release-sdk.yml). You can also use
-**Actions → Release SDKs → Run workflow** and enter an existing release tag.
-It publishes one
+**Actions → Release SDKs → Run workflow** with no inputs to build the selected
+branch and download SDKs from that run's artifacts. Enter an existing release
+tag only when you also want to publish a GitHub Release. There is one
 SDK archive per backend/architecture, including both GEM transports and
 separate Intel/Apple Silicon macOS packages. Each contains `libnative.a`,
 all public headers, dependency libraries, notices, a dependency manifest,

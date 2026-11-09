@@ -271,12 +271,15 @@ The manuals in `docs/manuals/` are maintained as source documentation only.
 [release-sdk.yml](../../../.github/workflows/release-sdk.yml) runs on pushes of
 tags matching `v<number>.<number>.<number>`, for example `v1.2.3` or
 `v12.34.56`, and manually through **Actions → Release SDKs → Run workflow**.
-For a manual run, enter an existing release tag in the `tag` input. The
-workflow must be on the repository's default branch for GitHub to offer the
-manual trigger. The selected tag supplies the source, regardless of the
-branch selected for the workflow. The initial job resolves its commit and
-both build matrices check out that same commit. Manual and automatic runs
-for the same tag share a concurrency group and publish to the same release.
+For a manual run, leave the optional `tag` input blank to build the selected
+branch and download SDKs from the run's artifacts. These builds use `v0.0.0`
+in package filenames and never create or update a GitHub Release. To publish
+a release manually, enter an existing numeric release tag instead; that tag
+supplies the source, regardless of the selected workflow branch. The workflow
+must be on the repository's default branch for GitHub to offer the manual
+trigger. The initial job resolves the selected source commit and both build
+matrices check out that same commit. Manual and automatic runs for the same
+tag share a concurrency group and publish to the same release.
 Prerelease suffixes do not match. An anchored shell check validates the tag
 before any builds start; a nonexistent tag fails checkout.
 
@@ -285,8 +288,9 @@ Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. Two GitHub
 macOS jobs cover `macos-15-intel` (x86_64) and `macos-15` (arm64), using
 AppleClang and the Apple SDK. Amiga is excluded because it has no Native
 backend. Each job uploads its own archive and checksum as workflow artifacts.
-Only after all 13 jobs succeed does the release job verify checksums and
-attach all 13 separate archives to the tag's GitHub Release. A rerun updates
+For tagged builds, only after all 13 jobs succeed does the release job verify
+checksums and attach all 13 separate archives to the tag's GitHub Release.
+Untagged manual builds skip this publication job. A tagged rerun updates
 assets with the same names. Only that final job has `contents: write`.
 
 `NATIVE_BUILD_SDK=ON` selects a library-only Release build with a link probe,

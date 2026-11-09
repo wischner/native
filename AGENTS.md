@@ -105,8 +105,10 @@ has no equivalent.
 Tag releases use `.github/workflows/release-sdk.yml`: numeric
 `vMAJOR.MINOR.PATCH` tags produce one SDK per backend/architecture, including
 both GEM transports and separate macOS Intel/Apple Silicon packages. This
-workflow also accepts manual dispatch with an existing numeric `tag`; all
-build jobs use the resolved tag commit and publish to that tag's release. The
+workflow also accepts manual dispatch: an optional existing numeric `tag`
+builds and publishes that tag; leaving it blank builds the selected branch,
+labels packages `v0.0.0`, uploads artifacts and skips release publication.
+All build jobs use the same resolved source commit. The
 release workflow builds macOS on GitHub macOS runners with AppleClang and
 the Apple SDK; local development continues to use the remote Mac workflow.
 `NATIVE_BUILD_SDK=ON` requires Release, `NATIVE_SDK_VERSION` and
