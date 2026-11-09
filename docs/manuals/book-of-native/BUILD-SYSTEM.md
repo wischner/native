@@ -9,8 +9,8 @@ control tree and backend-specific build trees.
 ### GEMix transport selection
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -41,7 +41,7 @@ The project uses CMake as its build entry point.
 At the root, CMake does three things:
 
 - sets the project language and C++ standard
-- builds the `native` library and the `vision` program
+- builds the `native` library, the `vision` application and the `native_rc` resource compiler
 - exposes Docker-backed backend targets
 
 The top-level build flow is:
@@ -68,6 +68,9 @@ Haiku instead supplies all stages in `platforms/haiku/check.cpp`. The common
 `check.cpp` contains only the portable property/event model.
 
 ## Build directories
+
+SDK mode adds `sdk-stage/` and `sdk-check/` under each backend build tree.
+Final per-target archives and SHA-256 sidecars go in `build/release/`.
 
 The repository uses separate build directories per backend:
 
@@ -106,6 +109,11 @@ dependencies, and generated files do not overwrite each other.
 
 ## Docker-backed targets
 
+The same targets accept `NATIVE_BUILD_SDK=ON` in the host control tree and
+forward the release version and package identity into Docker. They build
+with two compiler jobs in SDK mode. Ordinary developer targets retain their
+existing behavior. F5's configure tasks reset SDK mode to OFF.
+
 The backend builds are driven by custom targets in the top-level
 `CMakeLists.txt`.
 
@@ -118,7 +126,8 @@ toolchain and system headers.
 - `docker-sdl2`
 - `docker-openmotif`
 - `docker-openlook`
-- `docker-wmaker`
+- `docker-wmaker` (depends on `docker-wmaker-sdk`)
+- `docker-wmaker-sdk`
 - `docker-win`
 - `docker-haiku`
 
@@ -129,7 +138,7 @@ The images are:
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
 - `wischner/gcc-x86_64-linux-openlook`
-- `wischner/gcc-x86_64-linux-window-maker`
+- `native-wmaker-sdk:1`
 - `native-windows-winui-sdk:24.04` (local `docker-win-sdk` dependency)
 - `wischner/gcc-x86_64-haiku`
 
@@ -164,7 +173,12 @@ executables:
 
 | Executable | Scope | Where it runs |
 | --- | --- | --- |
+| `native_sdk_probe` | Full archive link, dependency discovery and relocated SDK consumer link | SDK release builds only; compiled/linked, never executed or packaged |
+| `native_sdk_package_tests` | Dependency cycles/missing files, filename collisions, self-contained symlink copies, Windows case folding, Haiku OS boundary and relocated link order | Host Python 3; also runs before the release matrix |
 | `native_wayland_runtime_tests` | Real GTK/Granite widgets; wheel-click/pixel conversion, horizontal scrolling and fractional accumulation; 120 generic-GTK live-control/theme pixel comparisons including toolbar states, equal folder/leaf row heights, retained-widget callbacks after split close, all sixteen native button edge masks, primary press/release and Ctrl/Shift/group table routing, editable-combo caret and active-row synchronization, repeated native split allocation/destruction, native signals, validation, source overlays, lazy rows, container ownership, reparenting and reentrant close lifetimes | WAYLAND and ELEMENTARY under headless Weston |
+| `native_resources_tests` | Pack round trips, defaults/ranking, ownership, bounded binary and strict JSON rejection; no display | Every backend build |
+| `native_resources_embed_tests` | Runs rc during the build, compiles generated C++, compares embedded bytes with the file | Hosted builds only |
+| `native_rc_help`, `native_rc_bad_arguments` | CLI help and usage exit status | Hosted builds only |
 | `native_core_tests` | Color, geometry, and signal behavior; no display access | Every hosted build |
 | `native_mac_runtime_tests` | Stock AppKit painting, all 16 native button bezel masks and borderless corner removal, 16–48 px toolbar highlight bounds on both axes, selected Vision navigation icon contrast, retained-view shutdown guards, text/split hover cursors, ruler motion, composed property-dialog toolbars, native button/check/radio/toolbar theme parity in light/dark and disabled states, derived button hook, native cells and image pixels, upright alpha-blended image text, group disclosure, icon selection, accordion scrollbar ownership, split pane geometry and minimums, all tab placements/resizing, million-row native grids, viewport state and light/dark row contrast | macOS login session on remote `mike` |
 | `native_motif_runtime_tests` | Pre-show graphics, editor focus/input isolation, native list metrics, accordion scrollbar containment, tree alignment, both table modes and native scrollbar dragging, grid pixels and continuous multi-selection, property foregrounds and native/custom combo and checkbox-indicator pixel parity, checkbox label alignment, settings margins/indentation, bounded repainting, code contrast, sash and divider dragging | Motif display; Docker Xvfb and the CDE Xephyr session |
@@ -180,6 +194,10 @@ executables:
 | `native_modal_runtime_tests` | SDL live nested modal sessions, synchronous file-dialog completion, message-box focus restoration, callback-safe control dispatch, and table/scrollbar/split pointer routing | Registered as a test on SDL2 |
 | `native_mouse_shader_tests` | Generation-safe pointer transitions/cancellation, rich deltas, package validation, orientation/color/alpha, multipass/history, transaction rollback, copied source and recreation | All backends; inert window hooks, image drawing; no desktop cursor/raw-input claim |
 | `native_surface_runtime_tests` | Live `panel` and `canvas` lifecycle: layout, nesting, scrollbar thresholds, scrolling, pointer routing, and destroy/recreate | Registered as a test on SDL2 |
+| `native_new_features_smoke` | Public-API acceptance window: resource icons, portable fonts, hosted-control transitions, focus/text and icon geometry | Each backend desktop/session; SDL dummy/software |
+| `native_ruler_toolbar_tests` | Ruler markers drag through the pointer, active ranges, controls hosted in a toolbar, composed text and click counting on a canvas | Every backend with a display |
+| `native_owned_teardown_tests` | An owned window with child controls destroys cleanly from posted work, outside any toolkit dispatch | Every backend with a display |
+| `native_sdl_canvas_input_tests` | Composed text and rich mouse transitions reach a focused SDL2 canvas | SDL2 dummy video in CTest |
 | `native_sdl_presentation_tests` | Accelerated renderer flags exclude a blocking vertical-refresh wait by default | SDL2 dummy video startup in CTest; policy assertion requires a desktop accelerated renderer |
 | `native_sdl_control_tests` | Queued SDL Ctrl/Shift table selection, text replacement and popup synchronization, tab child lists, completion keyboard/mouse, picker availability/toggling/time steps, compact picker widths and seconds resizing, square step-button geometry and mirrored glyph pixels, equal navigation margins/search gap, list primitive pixel parity and bounded repeated-frame text uploads | SDL2 dummy/software; earlier input coverage also verified through Docker/GDB on the host X11 desktop |
 | `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; desktop pixel readback also requires `SDL_RENDER_DRIVER=software` |
@@ -247,6 +265,68 @@ debug mode, cleans up only that session's TWM and nested server.
 
 The current top-level project does not build generated API documentation.
 The manuals in `docs/manuals/` are maintained as source documentation only.
+
+## SDK releases
+
+[release-sdk.yml](../../../.github/workflows/release-sdk.yml) runs only on
+tags matching `v<number>.<number>.<number>`, for example `v1.2.3` or
+`v12.34.56`. Prerelease suffixes do not match. An anchored shell check also
+validates the tag before any builds start.
+
+Eleven Docker jobs cover Wayland, elementary, X11, SDL2, OpenMotif, OPEN LOOK,
+Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. Two GitHub
+macOS jobs cover `macos-15-intel` (x86_64) and `macos-15` (arm64), using
+AppleClang and the Apple SDK. Amiga is excluded because it has no Native
+backend. Each job uploads its own archive and checksum as workflow artifacts.
+Only after all 13 jobs succeed does the release job verify checksums and
+attach all 13 separate archives to the tag's GitHub Release. A rerun updates
+assets with the same names. Only that final job has `contents: write`.
+
+`NATIVE_BUILD_SDK=ON` selects a library-only Release build with a link probe,
+instead of Vision, the resource compiler and desktop runtime tests. It does
+not change the public library. `scripts/release/sdk.cmake` requests CMake's
+file API and creates `native_sdk_probe` and `native_sdk_package`.
+`scripts/release/package_sdk.py` reads the resolved consumer link line,
+preserves link order, and copies the public header tree, `libnative.a`, direct
+link dependencies and recursively discovered ELF/PE runtime libraries. The
+GNU probe links the whole Native archive; Apple uses `-force_load`. Cross
+targets use their own objdump; no target executable runs on the build host.
+Missing dependencies or conflicting flattened library names fail packaging.
+
+The package includes a relocatable `lib/cmake/Native/NativeConfig.cmake`,
+Windows manifest resources/bootstrap DLL where applicable, available license
+notices, a dependency manifest and runtime guidance. No demos, Vision assets,
+test binaries, compiler or private toolkit headers are included. Toolkit
+headers are unnecessary for the pure C++ public API. OS components (glibc,
+Windows system DLLs, Apple frameworks and Haiku system runtimes) remain target
+prerequisites. Graphics drivers, desktop servers, GTK schemas/themes/language
+data, fonts and GEM resources/server also remain target environment data.
+Optional Linux ALSA/EGL/GLX libraries are included when available; optional
+Haiku OSMesa remains a target installation dependency.
+Haiku sysroot OS libraries are included for linking; their own runtime
+dependencies, such as ICU and the compiler runtime, come from Haiku. The
+cross SDK does not contain a complete Haiku installation.
+
+Before archiving, the packager moves the SDK and configures and links a fresh
+consumer using only `find_package(Native)` and `Native::Native`. This checks
+the package's headers, link interface and relocation. It is a compile/link
+check, not a desktop runtime acceptance test. `manifest.json` records compiler,
+target, dependency sources/hashes, OS requirements and missing optional
+services. Archives are named `native-v1.2.3-linux-x11-x86_64-sdk.tar.gz`, with
+an adjacent `.sha256` file; every target has its own archive.
+
+Reproduce one package through Docker:
+
+```bash
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release \
+  -DNATIVE_BUILD_SDK=ON -DNATIVE_SDK_VERSION=v1.2.3 \
+  -DNATIVE_SDK_ID=linux-x11-x86_64
+cmake --build build/cmake --target docker-x11
+```
+
+Return to normal development with `-DNATIVE_BUILD_SDK=OFF`. SDK mode suppresses
+runtime test creation without requiring changes to ordinary test sources.
+The workflow uses fresh checkouts, so each package contains only its target.
 
 ## Core library target
 
@@ -425,7 +505,7 @@ LeakSanitizer under ptrace. Standalone execution uses:
 Select **Linux Window Maker, Xephyr**. F5 builds `docker-wmaker` into
 `build/linux-wmaker/` and starts the image's GDB through
 `scripts/linux/docker-debug.sh --session window-maker-xephyr`.
-`wischner/gcc-x86_64-linux-window-maker:latest` supplies the compiler,
+`native-wmaker-sdk:1` supplies the compiler,
 WINGs/wraster libraries, font stack, Xephyr, Window Maker and GDB.
 
 The pipe forwards the X11 socket and active Xauthority file, choosing free
@@ -770,3 +850,62 @@ sources are not new executable targets. Syntax checks establish public API
 compatibility, not interactive behavior; use the chapter's interaction steps
 and the relevant runtime fixture for that evidence. These checks also cover
 links from AI skills and agent-role instructions to their maintained lessons.
+
+
+## Resource compiler
+
+`tools/CMakeLists.txt` adds `tools/rc/`. Target `native_rc` links `native` and
+produces `build/<backend>/tools/rc/rc`. It has a console `main`; it does not
+start a Native application or require a display. Normal Docker targets build
+it alongside Vision. A hosted GCC SDK can compile a pack for every target:
+
+```bash
+cmake -S . -B build/cmake
+cmake --build build/cmake --target docker-x11
+
+docker run --rm -u "$(id -u):$(id -g)" \
+  -v "$PWD:$PWD" -w "$PWD" wischner/gcc-x86_64-linux-x11 \
+  build/linux-x11/tools/rc/rc tests/data/resources/manifest.json \
+  -o build/example.resources --cpp build/example_resources.cpp
+
+docker run --rm -u "$(id -u):$(id -g)" \
+  -v "$PWD:$PWD" -w "$PWD" wischner/gcc-x86_64-linux-x11 \
+  ctest --test-dir build/linux-x11 --output-on-failure \
+  -R '^(native_resources_.*|native_rc_.*)$'
+```
+
+The example fixture contains text assets so compilation and round trips need
+no codec or GUI initialization. Applications can use PNGs with type `icon`.
+See [Resource packs](RESOURCES.md) for the manifest, format and selection
+contract. `.vscode/tasks.json` exposes **Build Resource Compiler (Docker X11)**
+through the same backend target; UI launch profiles remain attached to Vision.
+
+Cross-built `rc.exe`/Haiku tools run on their target, not inside a Linux build
+step. Use a hosted compiler to produce the platform-independent pack or C++
+source before cross-compilation. The embedding CMake test is therefore enabled
+only when `CMAKE_CROSSCOMPILING` is false. Its custom command lists the manifest
+and each input asset as dependencies; changing either rebuilds the pack.
+
+`vision --new-features` opens the interactive recent-feature acceptance window;
+`--features-smoke` adds automated checks and closes it. Its CTest uses the
+existing backend session and GEM proxy runner. See the
+[walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
+
+
+### Window Maker SDK lifetime repair
+
+`docker-wmaker-sdk` builds `native-wmaker-sdk:1` from the digest-pinned
+published WINGs SDK in `scripts/linux/wmaker/Dockerfile`. The small
+`wings-lifetimes.patch` releases Pango layouts, contexts, descriptions and
+patterns, text-widget graphics/pixmap/color/margin resources, and browser
+column arrays. It rebuilds only the shared WINGs library; existing native
+widgets, toolchain and Xephyr/debug helpers remain available. The image retains
+the upstream source and its licenses. Native also frees each modal file panel
+through WINGs' own teardown API.
+
+`docker-wmaker` depends on this SDK target for the default image. F5 and
+`toolkit-session-run.sh wmaker` use the same image. An explicitly customized
+`DOCKER_IMAGE_WMAKER` remains supported; equivalent SDK fixes are then the
+caller's responsibility. The older default cache value migrates automatically.
+The existing narrow font-cache LSan suppressions are unchanged: the native-only
+allocation fixture still reports Xft/Fontconfig shutdown retention without them.

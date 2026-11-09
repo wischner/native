@@ -2144,6 +2144,25 @@ namespace
         if (!from_file.valid())
             return;
 
+        // A face whose line height equals its em scales alike both ways,
+        // so look for one that tells the two apart.
+        bool bases_differ = false;
+        for (const native::font_description &description : installed) {
+            native::font_t em_sized = native::font_t::from_file(
+                description.path, 512, description.face_index,
+                native::font_size_basis::em);
+            native::font_t line_sized = native::font_t::from_file(
+                description.path, 512, description.face_index);
+            if (em_sized.valid() && line_sized.valid() &&
+                em_sized.measure_text("Hamburg").advance !=
+                    line_sized.measure_text("Hamburg").advance) {
+                bases_differ = true;
+                break;
+            }
+        }
+        expect(bases_differ,
+               "em and line-height sizing select different scales");
+
         native::font_t from_memory = native::font_t::from_memory(
             bytes.data(),
             bytes.size(),

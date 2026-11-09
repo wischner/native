@@ -21,7 +21,7 @@ namespace native
     class canvas;
     class img;
 
-    enum class tool_kind { button, toggle, exclusive, separator };
+    enum class tool_kind { button, toggle, exclusive, separator, control };
 
     struct tool_item
     {
@@ -32,6 +32,14 @@ namespace native
         bool checked = false;
         bool enabled = true;
         std::shared_ptr<const img> icon;
+
+        // A hosted control, for tool_kind::control. The toolbar parents,
+        // creates and places it; the caller keeps owning it and must
+        // declare it before the toolbar.
+        wnd *control = nullptr;
+
+        // Length along the bar of a hosted control.
+        int length = 0;
     };
 
     struct tool_command
@@ -56,11 +64,15 @@ namespace native
         // Append a tool using construction syntax.
         toolbar &operator<<(tool_item item);
 
-        // Replace all tools after validating IDs and exclusive groups.
+        // Replace tools after validating IDs, groups and unique controls.
+        // Removed controls are destroyed and detached, never deleted.
+        // Borrowed control objects must outlive this toolbar.
         toolbar &set_items(std::vector<tool_item> items);
 
         // Return the ordered tool descriptors.
         const std::vector<tool_item> &get_items() const;
+        // Return a tool's strip-relative rectangle, or throw for an unknown ID.
+        rect get_item_bounds(const std::string &id) const;
 
         // Set the image box, including 16x16, 24x24, or 32x32 pixels.
         // Grow or shrink the strip while retaining at least four pixels of padding.
@@ -105,6 +117,8 @@ namespace native
 
         // Create, relocate, or destroy the private input surface.
         void synchronize();
+        void place_controls();
+        bool has_controls() const;
         // Invalidate both the strip and its native child surface.
         void repaint();
         // Paint menu chrome and the visible tools.

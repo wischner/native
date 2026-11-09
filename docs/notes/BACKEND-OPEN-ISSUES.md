@@ -1,14 +1,47 @@
 # Backend Open Issues
 
+## Cross-backend audit (2026-11-06)
+
+Current suite counts and scope are in the
+[feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06).
+All maintained selections build and their complete registered suites pass
+(351 test instances, no skips), with the runtimes specified in the matrix.
+The November 6 interface follow-up repairs:
+
+- Athena initial menu/client allocation and clipped status text, with a native
+  geometry regression and inspected screenshot.
+- OPEN LOOK property editing: windowless native text items retain keyboard
+  ownership inside canvas containers. The unchanged typing assertion passes.
+- Window Maker font/text/browser ownership in a pinned WINGs SDK patch, plus
+  Native modal file-panel teardown. The strict classic-control fixture passes
+  with its existing narrow font-cache suppressions; this is not an unsuppressed
+  third-party leak-free claim.
+- Windows GDI+ shutdown: image codec sessions end inside their operations,
+  avoiding a static-destruction deadlock with the background window thread.
+- GTK splitter minimum width during orientation changes; five repeated focused
+  runs and both complete GTK suites pass.
+
+The GEM menu test previously expected the desktop checker to overwrite AES's
+reserved system strip. It now verifies Native detachment against the SDK's own
+menu-hide result and verifies the exposed desktop. Both full transport suites
+pass. SDK 1.4.1 supplies physical key releases, but its text transport remains
+ASCII-only. Applications query `app::get_unicode_text_input_supported()` through
+the common API. Live theme/DPI/depth resource selection and complete IME/visual
+acceptance on every desktop remain outside the implemented/verified scope.
+
+The macOS environment block is resolved: all 27 CTests pass on the logged-in VM.
+Before login, AppKit denied window-system access and produced 1x0 resize
+callbacks. Keep a logged-in desktop available for GUI qualification.
+
 ## CPC integration review (2026-11-04)
 
 The [CPC acceptance record](CPC-UAT.md) supersedes earlier input/menu findings
 for the interactions it explicitly verifies. It records physical canvas-key,
 modeless menu, Unicode title, unchanged-layout and SDL font repairs, Windows
 accelerator delivery, tested software OpenGL deployment, and exact suite scope.
-Published-SDK GEM physical key releases and WINGs external shutdown allocations remain
-unresolved; GTK splitter timing and one intermittent elementary paused frame
-remain observations requiring follow-up.
+The November 6 follow-up above supersedes its GEM physical-key, WINGs ownership
+and GTK splitter findings. The intermittent elementary paused-frame observation
+remains outside this feature audit.
 
 
 The 2026-10-21 GEMix correction matches portable drawing to the pinned
@@ -19,8 +52,8 @@ with MI stdin still open; command status and clean MI stdout are verified.
 The full suites pass 19/20 direct and 20/21 proxy tests. Their final
 menu-strip restoration assertion remains failing: a captured framebuffer
 shows that the pinned SDK removes application commands but retains a blank
-AES menu strip instead of restoring the desktop checker there. This remains
-a runtime qualification limit; the assertion has not been weakened.
+AES menu strip instead of restoring the desktop checker there. That historical assertion is superseded by the November 6 native AES contract
+check described above.
 
 The 2026-10-21 macOS VM (`mike`) Debug build succeeds with AppleClang 17
 and all 19 CTests pass. CMake enables libc++ experimental threading support

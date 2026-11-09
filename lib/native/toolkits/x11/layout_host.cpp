@@ -15,6 +15,8 @@
 
 namespace
 {
+    void resized(Widget host);
+
     Boolean layout(FormWidget host, unsigned int, unsigned int, Bool) {
         for (Cardinal i = 0; i < host->composite.num_children; ++i) {
             Widget child = host->composite.children[i];
@@ -28,6 +30,11 @@ namespace
                 y += base->core.y + base->core.height + 2 * base->core.border_width;
             XtMoveWidget(child, x, y);
         }
+        // A top-level drawing form fills the space below its native menu.
+        // Management/constraint changes also happen without a host resize.
+        if (linux::x11::main_wnd_bindings.object_from_handle(
+                reinterpret_cast<Widget>(host)))
+            resized(reinterpret_cast<Widget>(host));
         host->form.preferred_width = host->core.width;
         host->form.preferred_height = host->core.height;
         host->form.needs_relayout = False;
@@ -36,6 +43,10 @@ namespace
 
     void managed(Widget host) {
         auto *form = reinterpret_cast<FormWidget>(host);
+        if (linux::x11::main_wnd_bindings.object_from_handle(host)) {
+            layout(form, 0, 0, True);
+            return;
+        }
         // Only initial management enforces outer portable bounds here.
         // A SetValues geometry request must complete through Xt itself;
         // rewriting that child's size inside its constraint callback can

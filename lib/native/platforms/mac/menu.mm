@@ -70,6 +70,16 @@ namespace native
         }
     }
 
+    void main_menu::apply_enabled(int command) {
+        auto *menu = mac::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (NSMenuItem *top in [menu->ns_menu itemArray]) {
+            NSMenuItem *item = [[top submenu] itemWithTag:command];
+            if (item)
+                [item setEnabled:get_enabled(command) ? YES : NO];
+        }
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -129,6 +139,8 @@ namespace native
                 initWithTitle:[NSString
                                   stringWithUTF8String:top.title
                                                            .c_str()]];
+            // AppKit otherwise recomputes enabled state from each target.
+            [sub setAutoenablesItems:NO];
             for (const auto &item : top.items) {
                 if (item.separator) {
                     [sub addItem:[NSMenuItem separatorItem]];
@@ -175,6 +187,7 @@ namespace native
                 [mi setTag:item.id];
                 [mi setState:item.checked
                     ? NSControlStateValueOn : NSControlStateValueOff];
+                [mi setEnabled:item.enabled ? YES : NO];
                 [mi setTarget:target];
                 [mi setRepresentedObject:target]; // keep alive
                 [target release];

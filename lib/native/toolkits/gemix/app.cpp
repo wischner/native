@@ -51,22 +51,6 @@ namespace
             if (!control || !state || root_of(control) != owner)
                 continue;
             const native::rect combo_bounds = root_bounds(*control);
-            const int row_height =
-                native::theme::create(owner->get_gpx())
-                    ->get_list_item_height();
-            const native::rect popup(combo_bounds.x1() + 1,
-                combo_bounds.y2() + 1, std::max(0, int(combo_bounds.w()) - 2),
-                static_cast<native::dim>(
-                    control->get_items().size()*row_height));
-            if (state->open && popup.contains(p)) {
-                control->on_native_selection(
-                    (p.y-popup.y1())/row_height);
-                state->open = false;
-                state->focused = true;
-                control->on_native_drop_down(false);
-                owner->invalidate();
-                return;
-            }
             const auto *actions = native::detail::peer_state<
                 native::detail::combo_picker_actions>(*control);
             const auto *target = native::detail::deepest_at(*owner, p);
@@ -133,6 +117,9 @@ namespace
     // Activation clicks and ordinary AES button packets share dispatch.
     void press_at(native::app_wnd *pointer_window,
                   native::point local) {
+        if (linux::gemix::dispatch_combo_popup_click(
+                pointer_window, local, true))
+            return;
         linux::gemix::runtime.pressed_button =
             button_at(pointer_window, local);
         if (auto *pressed = linux::gemix::runtime.pressed_button)
@@ -154,6 +141,9 @@ namespace
     void release_at(native::app_wnd *pointer_window,
                     native::point local,
                     WORD ks) {
+        if (linux::gemix::dispatch_combo_popup_click(
+                pointer_window, local, false))
+            return;
         auto *pressed = linux::gemix::runtime.pressed_button;
         linux::gemix::runtime.pressed_button = nullptr;
         if (pressed) {
@@ -379,6 +369,9 @@ namespace native
                 } else if (top && linux::gemix::handle_menu_key(
                                       top, ks, kr)) {
                     // Unhandled accelerators remain available to the menu.
+                } else if (top && linux::gemix::handle_canvas_key(
+                                      top, ks, kr)) {
+                    // A focused canvas takes what nothing else claimed.
                 } else if (top && (kr & 0xff) == 27) {
                     top->destroy();
                 }
@@ -398,6 +391,15 @@ namespace native
                     }
                     break;
                 }
+
+                case WM_ARROWED:
+                case WM_HSLID:
+                case WM_VSLID:
+                    if (target && target->get_input_enabled())
+                        linux::gemix::dispatch_window_scroll(*target, msg[0], msg[4]);
+                    else if (target)
+                        raise_active_modal(target);
+                    break;
 
                 case WM_CLOSED:
                     if (target && target->get_input_enabled())

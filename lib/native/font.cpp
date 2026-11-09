@@ -67,7 +67,8 @@ namespace native
     font_t font_t::from_file(
         const std::filesystem::path &path,
         int size,
-        std::uint32_t face_index) {
+        std::uint32_t face_index,
+        font_size_basis basis) {
         std::ifstream stream(path, std::ios::binary);
         if (!stream)
             return {};
@@ -86,7 +87,7 @@ namespace native
             return {};
         font_t result;
         result._id = detail::register_portable_font(
-            std::move(bytes), size, face_index, result._spec);
+            std::move(bytes), size, face_index, result._spec, basis);
         if (result.valid()) {
             result._spec.source = font_source::file;
             result._spec.resource = path;
@@ -98,14 +99,15 @@ namespace native
         const std::uint8_t *data,
         std::size_t data_size,
         int size,
-        std::uint32_t face_index) {
+        std::uint32_t face_index,
+        font_size_basis basis) {
         font_t result;
         if (!data || data_size == 0 ||
             data_size > maximum_font_data_size)
             return result;
         std::vector<std::uint8_t> bytes(data, data + data_size);
         result._id = detail::register_portable_font(
-            std::move(bytes), size, face_index, result._spec);
+            std::move(bytes), size, face_index, result._spec, basis);
         return result;
     }
 

@@ -16,7 +16,18 @@ implementation should look like. This is not a roadmap or a wish list. When
 the architecture or code changes, the relevant chapter should be updated in
 the same commit.
 
-## Current scope (October 2026)
+## Current scope (November 2026)
+
+The [2026-11-06 feature audit](book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
+checks the recent resource, canvas-input, font, toolbar and ruler additions
+across every maintained build selection; all 351 registered test instances
+pass with the documented runtimes. The follow-up repairs native editing,
+input consumption, toolbar ownership, ruler cancellation, initial allocation,
+splitter sizing and toolkit resource cleanup. The matrix records native VM
+results and capability limits, including GEM's ASCII keyboard transport.
+Run `vision --new-features` for the
+[interactive acceptance window](programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
+The dated records below retain their original verification scope.
 
 Settings navigation and civil date/time pickers are implemented on every
 maintained backend. Granite, AppKit, Win32 and Haiku use dedicated native
@@ -186,6 +197,10 @@ limits are recorded in the [feature matrix](book-of-native/FEATURE-MATRIX.md).
 23. [Portable programmable image shaders](book-of-native/PATTERNS-IMAGE-SHADERS.md)
     Bounded CPU image programs, canvas composition, temporal history and
     coalesced generation-safe scheduling. Expands Architecture Section 21.
+
+24. [Resource packs](book-of-native/RESOURCES.md)
+    Typed assets, backend profiles, fallback ranking, JSON manifests, binary
+    file/memory round trips and C++ embedding. Expands Architecture Section 17.
 
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).

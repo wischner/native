@@ -1,0 +1,13 @@
+{
+  "source": "@PROJECT_SOURCE_DIR@",
+  "version": "@NATIVE_SDK_VERSION@",
+  "id": "@NATIVE_SDK_ID@",
+  "system": "@CMAKE_SYSTEM_NAME@",
+  "processor": "@CMAKE_SYSTEM_PROCESSOR@",
+  "compiler": "@CMAKE_CXX_COMPILER@",
+  "objdump": "@CMAKE_OBJDUMP@",
+  "sysroot": "@CMAKE_SYSROOT@",
+  "toolchain": "@CMAKE_TOOLCHAIN_FILE@",
+  "bootstrap": "@NATIVE_WINUI_BOOTSTRAP@",
+  "experimental_threads": "@NATIVE_HAS_EXPERIMENTAL_CXX20_THREADS@"
+}

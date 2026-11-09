@@ -469,6 +469,8 @@ namespace native
     }
 
     void wnd::on_native_destroy() {
+        for (auto *element : _non_client)
+            if (element) element->pointer_cancel();
         if (!_created) return;
         const detail::window_guard guard(*this);
         const bool destroying = _destroying;
@@ -659,13 +661,19 @@ namespace native
             event.repeat = state->held.test(key);
             state->held.set(key);
         }
-        return on_key.emit_consumed(event);
+        const detail::window_guard guard(*this);
+        const bool consumed = on_key.emit_consumed(event);
+        if (guard.alive() && event.action == key_action::press)
+            if (auto *current = detail::peer_state<detail::input_state>(*this))
+                current->text_consumed = consumed;
+        return consumed;
     }
 
     void wnd::on_native_key_reset() {
         auto *state = detail::peer_state<detail::input_state>(*this);
         if (!state) return;
         state->modifiers = key_modifiers::none;
+        state->text_consumed = false;
         if (state->held.none()) return;
         state->held.reset();
         on_key_reset.emit();
@@ -683,6 +691,13 @@ namespace native
     }
 
     void wnd::on_native_mouse_click(mouse_event event) {
+        for (non_client *element : _non_client) {
+            if (element && element->_visible &&
+                (element->get_pointer_held() ||
+                 element->get_bounds().contains(event.position)) &&
+                element->pointer_click(event))
+                return;
+        }
         if (event.action == mouse_action::press &&
             !get_client_bounds().contains(event.position) &&
             detail::pointer_capture(*this) != this) return;

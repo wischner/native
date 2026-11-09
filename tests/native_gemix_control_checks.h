@@ -19,3 +19,7 @@ struct gem_control_driver
 // Exercise fresh controls, modal paint and composed picker geometry.
 void check_gemix_controls(native::app_wnd &owner,
                           const gem_control_driver &driver);
+
+// Exercise AES frame scrollbars through real pointer packets and messages.
+void check_gemix_window_scrollbars(native::app_wnd &owner,
+                                   const gem_control_driver &driver);

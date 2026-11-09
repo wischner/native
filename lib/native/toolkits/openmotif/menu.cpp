@@ -34,7 +34,8 @@ namespace
         auto *d = static_cast<linux::openmotif::motif_menu_callback *>(
             client_data);
         if (!d || !d->owner) return;
-        if (d->owner->get_input_enabled())
+        if (d->owner->get_input_enabled() &&
+            d->owner->menu.get_enabled(d->item_id))
             d->owner->on_native_menu(d->item_id);
         else if (XmIsToggleButton(item))
             XmToggleButtonSetState(item,
@@ -53,6 +54,15 @@ namespace native
                 XmIsToggleButton(callback->item))
                 XmToggleButtonSetState(callback->item,
                     get_checked(command) ? True : False, False);
+    }
+
+    void main_menu::apply_enabled(int command) {
+        auto *menu = linux::openmotif::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command)
+                XtSetSensitive(callback->item,
+                               get_enabled(command) ? True : False);
     }
 
     main_menu::~main_menu() {
@@ -174,6 +184,8 @@ namespace native
                           const_cast<char *>(item.label.c_str()),
                           item_args, item_arg_count);
                 cbd->item = btn;
+                if (!item.enabled)
+                    XtSetSensitive(btn, False);
                 if (item.checkable)
                     XmToggleButtonSetState(btn, item.checked, False);
                 XmStringFree(item_label);

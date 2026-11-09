@@ -2,6 +2,21 @@
 
 This note records the current remote macOS workflow used from Linux.
 
+## Feature audit (2026-11-06)
+
+The isolated `native-feature-audit-20261106` checkout builds with the maintained
+remote AppleClang workflow. After desktop login, all 27 CTests pass, including
+native canvas key/text delivery, ruler gestures, hosted-toolbar transitions,
+resource packs and `native_new_features_smoke`. The full run takes 25.43 seconds.
+See the [feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
+for the cross-backend scope and remaining differences.
+
+SSH alone does not provide an AppKit desktop session. An earlier logged-out
+run reported denied window-system access and 1x0 resize callbacks, making GUI
+geometry results invalid. Confirm a desktop user with `stat -f %Su /dev/console`
+and an available `launchctl print gui/$(id -u)` domain before GUI tests. Full
+IME and manual pointer/visual acceptance are separate from these automated checks.
+
 ## Target
 
 - Host: `mike` (connect directly with password-free `ssh mike`)

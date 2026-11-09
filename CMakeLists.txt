@@ -3,6 +3,10 @@ project(native LANGUAGES CXX)
 
 include(CTest)
 
+option(NATIVE_BUILD_SDK "Build release SDK packages without Vision or tools" OFF)
+set(NATIVE_SDK_VERSION "" CACHE STRING "SDK release tag (vMAJOR.MINOR.PATCH)")
+set(NATIVE_SDK_ID "" CACHE STRING "SDK target and architecture identifier")
+
 # build/cmake is the dependency-free host control tree for Docker targets.
 # Backend libraries and programs are configured in their own build trees
 # inside the selected images.
@@ -129,8 +133,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         "wischner/gcc-x86_64-linux-openlook:${DOCKER_TAG}"
         CACHE STRING
         "Docker image for OpenLook/XView builds")
+    if(DOCKER_IMAGE_WMAKER STREQUAL "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}")
+        unset(DOCKER_IMAGE_WMAKER CACHE)
+    endif()
     set(DOCKER_IMAGE_WMAKER
-        "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}"
+        "native-wmaker-sdk:1"
         CACHE STRING
         "Docker image for Window Maker/WINGs builds")
     set(DOCKER_IMAGE_WINDOWS_MINGW "native-windows-winui-sdk:24.04" CACHE STRING "Docker image for Windows MinGW/WinUI builds")
@@ -179,6 +186,16 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 
         function(add_docker_cmake_build_target target_name build_dir image)
             set(cmake_args ${ARGN})
+            set(build_args)
+            list(APPEND cmake_args -DNATIVE_BUILD_SDK=${NATIVE_BUILD_SDK}
+                -DBUILD_TESTING=${BUILD_TESTING})
+            if(NATIVE_BUILD_SDK)
+                set(build_args --parallel 2)
+                list(APPEND cmake_args
+                    -DNATIVE_SDK_VERSION=${NATIVE_SDK_VERSION}
+                    -DNATIVE_SDK_ID=${NATIVE_SDK_ID}
+                    -DBUILD_TESTING=OFF)
+            endif()
             set(has_explicit_build_type FALSE)
 
             foreach(cmake_arg IN LISTS cmake_args)
@@ -206,7 +223,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                     -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
                     -w ${CMAKE_SOURCE_DIR}
                     ${image}
-                    cmake --build ${CMAKE_SOURCE_DIR}/${build_dir}
+                    cmake --build ${CMAKE_SOURCE_DIR}/${build_dir} ${build_args}
                 USES_TERMINAL
                 COMMENT "Building ${target_name} with Docker image ${image}"
             )
@@ -221,6 +238,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             COMMAND ${DOCKER_EXECUTABLE} build -t ${DOCKER_IMAGE_WINDOWS_MINGW}
                 -f ${CMAKE_SOURCE_DIR}/scripts/windows/winui/Dockerfile
                 ${CMAKE_SOURCE_DIR}/scripts/windows/winui
+            USES_TERMINAL)
+        add_custom_target(docker-wmaker-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build -t native-wmaker-sdk:1
+                -f ${CMAKE_SOURCE_DIR}/scripts/linux/wmaker/Dockerfile
+                ${CMAKE_SOURCE_DIR}/scripts/linux/wmaker
             USES_TERMINAL)
         add_docker_cmake_build_target(docker-wayland build/linux-wayland
             ${DOCKER_IMAGE_WAYLAND} -DTOOLKIT=WAYLAND)
@@ -249,6 +271,9 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             build/linux-wmaker
             ${DOCKER_IMAGE_WMAKER}
             -DTOOLKIT=WMAKER)
+        if(DOCKER_IMAGE_WMAKER STREQUAL "native-wmaker-sdk:1")
+            add_dependencies(docker-wmaker docker-wmaker-sdk)
+        endif()
         add_docker_cmake_build_target(docker-win build/windows-mingw-w64 ${DOCKER_IMAGE_WINDOWS_MINGW}
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/scripts/cmake/toolchain-mingw.cmake)
         add_dependencies(docker-win docker-win-sdk)
@@ -264,8 +289,13 @@ endif()
 # Build the library before programs that consume it.
 add_subdirectory(lib/native)
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    add_subdirectory(src)
-    if(BUILD_TESTING)
-        add_subdirectory(tests)
+    if(NATIVE_BUILD_SDK)
+        include(scripts/release/sdk.cmake)
+    else()
+        add_subdirectory(src)
+        add_subdirectory(tools)
+        if(BUILD_TESTING)
+            add_subdirectory(tests)
+        endif()
     endif()
 endif()

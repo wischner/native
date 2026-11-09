@@ -167,3 +167,9 @@ setup is followed by the allocated width/height. Otherwise native preferred
 size changes can shrink the editor while the portable bounds stay wide, leaving
 part of the visible input region with its parent's arrow cursor. Runtime
 checks compare the server's widget geometry and I-beam at the right edge.
+
+
+OPEN LOOK canvas hosts can contain windowless native Panel text items. A live
+caret item takes priority over canvas key/text dispatch, so property-grid typing
+reaches XView's insertion handler and then its normal complete-value validation.
+The inspector runtime test exercises both text and numeric edits through XTest.

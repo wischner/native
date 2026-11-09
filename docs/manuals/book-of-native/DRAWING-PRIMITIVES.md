@@ -498,3 +498,7 @@ margin and final frame painting. Menu-like toolbar strips orient their edge
 rules along the strip, including vertical toolbars. Window native-font text
 uses a renderer-owned bounded texture cache; this does not change image
 painting, source pixels or text metrics.
+
+Windows PNG/JPEG operations initialize and release their private GDI+ session
+inside each call. Images retain portable pixels, so encoding/decoding needs no
+application event loop and leaves no codec shutdown work for static destruction.

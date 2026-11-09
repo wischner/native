@@ -34,7 +34,8 @@ namespace
         if (callback && !callback->checkable)
             xv_set(item, MENU_SELECTED, FALSE, nullptr);
         if (callback &&
-            linux::openlook::permit_input(callback->owner)) {
+            linux::openlook::permit_input(callback->owner) &&
+            callback->owner->menu.get_enabled(callback->item_id)) {
             callback->owner->on_native_menu(callback->item_id);
         } else if (callback && callback->owner && callback->checkable) {
             xv_set(item, MENU_SELECTED,
@@ -57,6 +58,15 @@ namespace native
             if (callback->item_id == command && callback->checkable)
                 xv_set(callback->item, MENU_SELECTED,
                        get_checked(command) ? TRUE : FALSE, nullptr);
+    }
+
+    void main_menu::apply_enabled(int command) {
+        auto *menu = linux::openlook::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command)
+                xv_set(callback->item, MENU_INACTIVE,
+                       get_enabled(command) ? FALSE : TRUE, nullptr);
     }
 
     main_menu::~main_menu() {
@@ -149,6 +159,8 @@ namespace native
                     nullptr));
                 callback->item = item;
                 callback->checkable = entry.checkable;
+                if (!entry.enabled)
+                    xv_set(item, MENU_INACTIVE, TRUE, nullptr);
                 if (entry.checkable)
                     xv_set(item, MENU_SELECTED,
                            entry.checked ? TRUE : FALSE, nullptr);

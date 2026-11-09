@@ -71,9 +71,9 @@ Haiku uses the per-message modifier bitmap and repeat marker produced by
 [its keyboard input server](https://github.com/haiku/haiku/blob/master/src/add-ons/input_server/devices/keyboard/KeyboardInputDevice.cpp),
 preserving event order instead of reading only the latest global key state.
 
-**GEMix SDK boundary:** the published AES-only SDK discards releases and
-reports physical input unsupported. With `gem/input.h` and matching GEM
-libraries/server, Native requests USB-position press/release and input resets
+**GEMix SDK boundary:** older AES-only SDKs discard releases and report
+physical input unsupported. The November 6 published SDK 1.4.1 includes
+`gem/input.h` and matching libraries/server; Native requests USB-position press/release and input resets
 through the existing event transport. It does not synthesize releases or open
 another viewer subscriber. Rasta typing, F10 and Native editor shortcuts have
 been exercised; host-viewer focus-loss and every keyboard layout remain
@@ -244,6 +244,6 @@ Y inversion and eight-bit wrapping; effects must not alter those values.
 Native capability/desktop evidence is recorded separately in the feature matrix.
 
 GEM physical input is available with the optional `gem/input.h` extension
-and matching GEM libraries/server; the published AES-only SDK remains
-unsupported for held keys. The C++ API and standard AES fallback are
+and matching GEM libraries/server, present in the current published SDK.
+Older AES-only SDKs remain unsupported for held keys. The C++ API and standard AES fallback are
 unchanged. See [CPC acceptance](CPC-UAT.md) for validation and limitations.

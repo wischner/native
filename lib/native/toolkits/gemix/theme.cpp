@@ -35,8 +35,10 @@ namespace
             m.popup_width = character_width * 22;
             m.text_padding_x = character_width;
             m.header_height = character_height + 6;
-            // AES titles and menu chrome reserve six pixels around the font.
-            m.status_bar_height = character_height + 6;
+            // Match gemctl_chrome_layout, used by Gemscape and Ted.
+            // Application bands are slimmer than the AES title strip.
+            m.status_bar_height = std::max({12, character_height + 4,
+                static_cast<int>(linux::gemix::runtime.box_h) - 2});
             m.tab_height = m.header_height;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
             m.tree_indent_width = 9;
@@ -174,6 +176,33 @@ namespace
             if (kind == native::surface_kind::status && r.w() && r.h())
                 _g.set_ink(native_palette().button_border).draw_line(
                     r.p, native::point(r.x2() - 1, r.y1()));
+            return *this;
+        }
+
+        theme &draw_toolbar_icon(const native::img &image,
+                                 const native::rect &bounds,
+                                 const state &element_state) override {
+            const auto *pixels = image.pixels();
+            const auto count = std::size_t(image.w()) * image.h();
+            const bool mask = std::all_of(pixels, pixels + count,
+                [](native::rgba pixel) {
+                    return !pixel.a || (!pixel.r && !pixel.g && !pixel.b);
+                });
+            if (!element_state.disabled || !mask)
+                return theme::draw_toolbar_icon(image, bounds, element_state);
+            // Gray image ink thresholds to white in GEM. Match disabled
+            // stock text with a binary stipple instead of losing the icon.
+            auto saved = _g.save_state();
+            native::img stippled(image.w(), image.h());
+            const auto ink = native_palette().menu_text;
+            for (int y = 0; y < image.h(); ++y)
+                for (int x = 0; x < image.w(); ++x) {
+                    const auto index = y * image.w() + x;
+                    stippled.pixels()[index] = native::rgba(
+                        ink.r, ink.g, ink.b,
+                        (x + y) % 2 ? 0 : pixels[index].a);
+                }
+            _g.draw_img(stippled, bounds);
             return *this;
         }
 

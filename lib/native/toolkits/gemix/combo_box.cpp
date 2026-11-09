@@ -26,6 +26,40 @@ namespace linux::gemix
             1, 0, std::max(1, int(size.w) - column - 1), size.h);
     }
 
+    bool dispatch_combo_popup_click(native::app_wnd *owner,
+                                    native::point position,
+                                    bool pressed) {
+        for (auto *control : combo_boxes) {
+            auto *state = control
+                ? combo_box_bindings.object_from_handle(control)
+                : nullptr;
+            if (!state || !state->open || root_of(control) != owner ||
+                !visible_in_tree(*control) || !control->get_input_enabled())
+                continue;
+            // The overlay owns the entire gesture, including an outside
+            // dismissal. Do not let a canvas below it take press capture.
+            if (pressed) return true;
+            const auto bounds = root_bounds(*control);
+            const int row = native::theme::create(owner->get_gpx())
+                                ->get_list_item_height();
+            const native::rect popup(
+                bounds.x1() + 1, bounds.y2() + 1,
+                std::max(0, int(bounds.w()) - 2),
+                control->get_items().size() * row);
+            const int selected = popup.contains(position)
+                ? (position.y - popup.y1()) / row : -1;
+            const native::detail::window_guard owner_guard(*owner);
+            const native::detail::window_guard control_guard(*control);
+            state->open = false;
+            state->focused = true;
+            if (selected >= 0) control->on_native_selection(selected);
+            if (control_guard.alive()) control->on_native_drop_down(false);
+            if (owner_guard.alive()) owner->invalidate();
+            return true;
+        }
+        return false;
+    }
+
     bool handle_combo_key(native::app_wnd *parent, WORD, WORD key) {
         for (auto *control : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(control);

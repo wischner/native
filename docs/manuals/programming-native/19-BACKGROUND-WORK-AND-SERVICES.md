@@ -96,8 +96,8 @@ Vision bundle. The same public-API UI runs on every selected backend.
    should remain responsive. The helper waits two seconds, reports exit 7 and separate streams,
    and can be cancelled while painting remains responsive.
 5. Close during each operation and reopen the test executable; check shutdown
-   and resource lifetime. GEMix reports physical keys unavailable pending its
-   SDK/viewer integration; its other diagnostics remain usable.
+   and resource lifetime. GEMix supports physical keys with the current SDK
+   input extension; older AES-only SDKs report that capability unavailable.
 
 On cross-built Windows and Haiku targets, copy the three service test
 executables from the backend's `tests/` directory alongside their runtime

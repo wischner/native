@@ -9,6 +9,7 @@ We are writing modern C++ code.
 - Develop and verify shared C++ on Linux with GCC through Docker first.
 - Verify macOS through the configured remote CMake/AppleClang workflow with
   the Apple SDK; this is the explicit exception to Docker backend builds.
+  Tag-release SDK builds use GitHub macOS runners with the same Apple tools.
 - GCC builds must use full warnings and sanitizers while debugging.
 
 ## 1. Project Directory Structure
@@ -29,6 +30,8 @@ the tree.
 - `docs/` contains project notes and design documents.
 - `scripts/` contains toolchains and developer automation organized by
   purpose or target platform.
+- `tools/` contains command-line developer tools; `tools/rc/` is the
+  resource compiler and uses the public Native resource API.
 - `tests/` contains automated tests.
 - `tests/data/` contains data files used by tests.
 
@@ -36,7 +39,7 @@ Rules:
 
 - Public headers must live in `include/`.
 - Project source files may live in `src/` or in a library directory
-  under `lib/`.
+  under `lib/`, or in `tools/` for command-line developer tools.
 - Build artifacts must go only into the root `build/` directory.
 - No nested `build/` directories are allowed.
 - Nothing else should be created at the project root except normal
@@ -65,7 +68,7 @@ Every module must follow a classic C++ layout.
   - Public types
   - Public constants or macros
   - Documentation for every public function
-- A `.cpp` file in `src/` or `lib/<name>/` contains:
+- A `.cpp` file in `src/`, `lib/<name>/`, or `tools/<name>/` contains:
   - A file header comment
   - `#include "module.h"`
   - Private static helpers and state

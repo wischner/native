@@ -30,7 +30,7 @@ namespace linux::sdl2
             event.keysym.mod);
         for (const auto &top : menu->tops) {
             for (const auto &item : top.items) {
-                if (item.separator || item.shortcut.empty())
+                if (item.separator || !item.enabled || item.shortcut.empty())
                     continue;
                 const auto parsed = native::detail::parse_menu_shortcut(
                     item.shortcut);
@@ -187,8 +187,9 @@ namespace linux::sdl2
                     continue;
                 }
                 native::theme::state st;
-                st.selected = (m->hover_item == i);
-                st.hot = (m->hover_item == i);
+                st.disabled = !item.enabled;
+                st.selected = item.enabled && m->hover_item == i;
+                st.hot = st.selected;
                 painter->draw_menu_item(
                     native::rect(m->popup_x + 1, row_y,
                         static_cast<native::dim>(width - 2),
@@ -209,8 +210,9 @@ namespace linux::sdl2
                     const auto pen = g.get_pen();
                     const int x = m->popup_x + 6;
                     const int y = row_y + height / 2;
-                    g.set_ink(st.hot ? colors.menu_hot_text
-                                    : colors.menu_text).set_pen(2)
+                    g.set_ink(st.disabled ? colors.menu_disabled_text
+                              : st.hot ? colors.menu_hot_text
+                                       : colors.menu_text).set_pen(2)
                         .draw_line(native::point(x, y),
                                    native::point(x + 3, y + 3))
                         .draw_line(native::point(x + 3, y + 3),
@@ -288,6 +290,9 @@ namespace linux::sdl2
             const int item_idx = hit_popup_item_index(m, x, y);
             if (item_idx >= 0 &&
                 item_idx < static_cast<int>(top.items.size())) {
+                // A disabled row keeps the popup open, like a native menu.
+                if (!top.items[item_idx].enabled)
+                    return true;
                 int item_id = top.items[item_idx].id;
                 m->open_idx = -1;
                 m->hover_item = -1;
@@ -319,6 +324,16 @@ namespace native
             for (auto &item : top.items)
                 if (item.id == command && item.checkable)
                     item.checked = get_checked(command);
+        if (_owner) _owner->invalidate();
+    }
+
+    void main_menu::apply_enabled(int command) {
+        auto *menu = linux::sdl2::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto &top : menu->tops)
+            for (auto &item : top.items)
+                if (item.id == command && !item.separator)
+                    item.enabled = get_enabled(command);
         if (_owner) _owner->invalidate();
     }
 

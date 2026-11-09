@@ -40,7 +40,8 @@ same `docs/` paths against that checkout.
    SDK, dependency checks and distribution payload. SDL2 stock fonts need
    SDL2_ttf and Fontconfig detected at build time plus runtime font data.
    macOS uses the documented remote AppleClang/Apple SDK workflow.
-   Do not assume an installed CMake package.
+   A matching tag-release SDK also provides `Native::Native` through
+   `find_package(Native CONFIG REQUIRED)`; pass its root in `CMAKE_PREFIX_PATH`.
 7. Exercise the requested interactions and resizing/close lifecycle. Report
    build, runtime, and visual evidence separately. Refresh affected project
    docs and use the [handoff template](../../ai/REQUEST-TEMPLATE.md).

@@ -16,6 +16,8 @@
 
 namespace native
 {
+    class canvas;
+
     namespace detail
     {
         class status_bar_peer;
@@ -32,6 +34,10 @@ namespace native
     public:
         // Construct a bottom-edge status bar with a fixed height.
         explicit status_bar(wnd &owner, int height = 22);
+        // Associate a window footer with its scrolling document. GEM docks
+        // inside content's scrollbars; other backends dock on owner. The
+        // selected host must outlive the bar. Parent content under owner.
+        status_bar(wnd &owner, canvas &content, int height = 22);
         ~status_bar() override;
 
         // Return the single flexible status text.

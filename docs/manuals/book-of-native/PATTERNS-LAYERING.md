@@ -197,3 +197,11 @@ Both adapters are C++; GTK and Granite types stay inside private peers. GDK is
 restricted to Wayland before initialization and the optional image context skips
 GLX discovery. A process-wide GTK-widget binding is used only for callback
 object recovery; ordinary widget state belongs to each window's opaque peer.
+
+## Resource tooling
+
+The shared `resources` implementation owns pack serialization, JSON manifest
+compilation and variant selection. Private CMake metadata identifies the
+backend drawing profile. `tools/rc/` is a console consumer of that public API,
+separate from the Vision UI application in `src/`. See
+[Resource packs](RESOURCES.md) for the format and ownership contract.

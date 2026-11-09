@@ -94,6 +94,29 @@ above. `scrollbar_policy` is an enum, not a standalone scrollbar widget.
 start application drawing from the concrete `canvas` unless you need to
 implement a new control's semantic input behavior.
 
+## Typing into a canvas
+
+A canvas that is an editor needs text, not physical keys. Connect
+`on_text_input` for composed UTF-8 and `on_key` for commands such as the arrow
+keys; a focused canvas receives both. `mouse_event::modifiers` and
+`mouse_event::clicks` carry Shift-click and double-click. Text arrives only for
+presses your `on_key` handler left unconsumed, so return `false` for keys that
+should type. Call `focus()` to take the keyboard without a click, for instance
+when a document window opens.
+
+A `ruler` on a canvas can show `set_active_range()` as the highlighted text area
+and `set_markers()` as draggable positions. `on_marker_move` reports each drag,
+and `finished` is true on release. A strip takes button events through
+`non_client::pointer_click`, so a marker press never reaches the client.
+
+```cpp
+surface.on_text_input.connect([&](const std::string &utf8) {
+    document.insert(utf8);
+    surface.invalidate();
+    return true;
+});
+```
+
 ## Grouping controls with a panel
 
 A panel is an empty child window. It adds no border, caption, focus ring, or
@@ -203,6 +226,24 @@ scrollbar, a sibling control, or the parent window, even if you ignore
 after the callback either — the pixels are yours.
 
 ## Scrolling a canvas
+
+To associate a document canvas with its top-level frame, configure it before
+creating the window:
+
+```cpp
+document.set_parent(&window);
+window.set_scroll_content(&document);
+```
+
+Size the document from `window.get_client_bounds()` as usual. This is one
+portable path; do not branch on toolkit names in the application. GEM supplies
+actual AES frame scrollbars and reserves their space outside the canvas.
+Other backends retain the existing canvas controls. The optional status bar
+therefore meets the GEM work-area edge without a second scrollbar strip.
+Set axis policies before window creation; GEM keeps each enabled frame axis
+visible even when its thumb fills the track. Painting and `on_scroll` handlers
+do not change. `get_window_scrollbars()` reports which geometry is active.
+
 
 Describe your content once, in your own coordinates, and read the scroll
 position back when you paint:
@@ -330,3 +371,19 @@ The library checks the original generation before later paint/presentation
 stages. Modal close notification runs after native teardown and peer release,
 so its handler may safely create a new dialog generation. Backend test evidence
 for these paths is recorded in the feature matrix and ADJUST.md.
+
+
+The [new-feature acceptance window](22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window)
+lets you type composed text into a focused canvas and inspect click counts
+and modifier flags. Consuming a physical press prevents its separate text
+event from reaching `on_text_input`; an unconsumed press resumes delivery.
+SDL programmatic focus also restarts text input after leaving an editor.
+
+
+Use `native::app::get_unicode_text_input_supported()` to discover whether the
+native keyboard path can commit text beyond ASCII. The same query exists on
+every backend; do not switch on OS/toolkit names. The current GEM transport
+returns false, independently of its physical-key support. `on_text_input` always
+uses UTF-8, and programmatic text/resource data can contain Unicode regardless
+of the keyboard capability. Native text editors inside a canvas receive their
+own typing before the canvas host considers composition.

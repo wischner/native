@@ -244,7 +244,8 @@ namespace native::detail
         std::vector<std::uint8_t> bytes,
         int size,
         std::uint32_t face_index,
-        font_spec &description) {
+        font_spec &description,
+        font_size_basis basis) {
         if (bytes.empty() || size <= 0 || size > 4096)
             return 0;
         auto face = std::make_unique<portable_face>();
@@ -252,8 +253,11 @@ namespace native::detail
         face->pixel_size = size;
         if (!initialize_face(*face, face_index))
             return 0;
-        face->scale = stbtt_ScaleForPixelHeight(
-            &face->info, static_cast<float>(size));
+        face->scale = basis == font_size_basis::em
+            ? stbtt_ScaleForMappingEmToPixels(
+                  &face->info, static_cast<float>(size))
+            : stbtt_ScaleForPixelHeight(
+                  &face->info, static_cast<float>(size));
         if (!(face->scale > 0.0f))
             return 0;
         face->metrics = calculate_metrics(*face);

@@ -5,7 +5,38 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-05.
+Audit date: 2026-11-06.
+
+GEM document chrome review: the document-associated status-bar constructor
+selects the canvas host, putting its existing **C** status painting inside
+scrollbar edges. Other backends retain their existing host and kind. Toolbar
+icons now use a theme primitive; GEM's **C** toolbar applies the same binary
+disabled stipple as stock text so gray masks no longer disappear as white.
+That review is followed by the document-scroll association: GEM document
+canvases now use **N** AES frame scrollbars through the portable
+`app_wnd::set_scroll_content` API. Their application painting stays custom,
+so an associated GEM canvas is **H**; unassociated/nested canvases remain **C**.
+AES owns track sizing, arrow/page input and thumb tracking, removing duplicate
+canvas tracks and the compact-sizer gap. Other backend kinds are unchanged.
+
+GEM combo popup routing repair (2026-11-06): selection-only and editable
+combos retain their **C** classification and existing themed popup. Open
+popups receive both press and release before canvas capture, button dispatch
+or ordinary sibling controls. This makes hosted font/size fields usable over
+a document canvas. Outside dismissal consumes the gesture. The real Rasta/AES
+input test covers hosted font/size selection, change/dropdown notifications,
+no pointer leakage, and fresh document input after dismissal.
+
+Recent-feature audit: hosted-control bars use shared painted tool chrome plus
+ordinary child controls. Native-button-only Win32/AppKit/Haiku bars retain
+their **H** kinds. Switching between the two recreates the internal surface;
+removed controls are destroyed/detached, and ruler cancellation is shared.
+These repairs do not change the per-control kind marks. The parity follow-up
+also preserves XView editor priority inside canvas hosts, synchronizes Athena's
+initial client geometry, and fixes WINGs resource ownership through a small
+SDK patch and native file-panel teardown. GTK retains native GtkPaned handles
+with stable minima across orientation changes. No control is replaced with a painted
+emulation to obtain matching behavior.
 
 CPC debugger follow-up: OPEN LOOK entries now apply live display-width
 changes, and choice stacks align their text with adjacent entries and buttons.
@@ -16,6 +47,9 @@ replies. These backend repairs change no native/hybrid/custom kind marks.
 CPC follow-up: GEM menu activation/input routing and Motif repaint fairness
 change no control kind marks. AES remains the menu implementation; the
 optional GEM input extension stays inside the toolkit adapter.
+
+Menu enabled-state review (2026-11-07): all existing kind marks remain. Native
+menus use their toolkit's insensitive state; SDL2 and Window Maker dim painted rows.
 
 Menu check-state review (2026-11-03): all existing kind marks remain.
 Checkable commands retain portable state and update native marks silently.
@@ -240,6 +274,13 @@ Granite navigation icons use centered native GtkImage widgets at 24 logical
 pixels. Search uses GtkSearchEntry on GTK, and native text editors with a
 small magnifier on Windows/Haiku; its width matches the navigation column.
 
+## X11 hosted-control teardown — 2026-11-07
+
+`canvas` destroys its children before its widget, as X11 shells and the OPEN LOOK
+and Wayland hosts already do. Outside an Xt dispatch `XtDestroyWidget` frees a
+tree at once, so hiding a toolbar with a hosted combo box crashed in the child's
+own destruction. `native_ruler_toolbar_tests` reproduces it.
+
 ## Input and footer consistency — 2026-10-22
 
 Control kinds remain unchanged. Shared geometry resolves single-line entries,
@@ -310,6 +351,8 @@ behavior; adding its system cursor mapping does not change a control's **N**,
 | --- | --- |
 | SDL2 `settings_sidebar`, `date_picker`, `time_picker` | Keep **C**. SDL supplies no desktop widgets. Navigation reuses the existing framed tree/search editor; pickers extend the editable combo with one themed calendar or paired time arrows, sharing input, height, paper and availability policy. |
 | GEMix `settings_sidebar`, `date_picker`, `time_picker` | Keep **C** through the existing themed tree and entry/choice controls; AES supplies no matching settings or date/time widget. |
+| All backends `tab_strip` | Keep **C**. No toolkit offers tabs that own no pages and dock on a non-client edge of an arbitrary host; `tab_view` remains the native page-owning control. Added 2026-11-07 for Isaac's sheet tabs. |
+| All backends `password_edit` | Keep **C**. Masking is not universal: Athena's `AsciiText` can only hide all echo, Motif's `XmTextField` needs modify-verify callbacks and SDL2 has no field. One painted canvas gives every backend the same behavior through the text path they already route. Added 2026-11-07 for Blaise's account passwords. |
 | Wayland/elementary `toolbar`, `ruler`, `status_bar` | Keep **C**. These are arbitrary-edge portable non-client strips with staged application painting. GTK 4 has no ruler or multipart in-client status-bar control, and removed the GTK 3 toolbar widget. Native editors are used inside the property grid. |
 | Wayland/elementary advanced source/table drawing | Keep **H**. Stock content uses GtkSourceView/GtkColumnView; application lexer overlays, markers, diagnostics, derived drawing and grouped/headerless/alternating tables retain the shared semantic painter because GTK widgets do not implement those portable staged hooks. |
 | Wayland/elementary `shader_view` | Keep **C**. GTK drawing areas host application-owned multipass/history image programs; no Granite widget provides that program contract. |
@@ -578,8 +621,9 @@ also applies to icon grids borrowed by an accordion in a modeless window.
 Shared tree painting now preserves manual scroll position when it reapplies
 unchanged row metrics, rather than returning to an offscreen selected row.
 Control classifications remain unchanged on every backend using that painter.
-The status height uses the same font-plus-six-pixel metric as AES title/menu
-chrome; the gallery requests that theme metric rather than a font-only height.
+The status height follows Gemscape and Ted's `gemctl_chrome_layout`:
+`max(12, char_h + 4, box_h - 2)`, or 20 pixels with the pinned SDK.
+It is slimmer than the AES title strip. The gallery requests that theme metric.
 Status parts retain their top rule and leading dividers, but omit bottom and
 right borders already supplied by the surrounding window.
 List selection explicitly invalidates its own region, including split panes.
@@ -617,7 +661,8 @@ the client inset with a canvas painting to its edges.
 | `icon_view`, `tree_view`, `table_view` | **C** | Library-painted AES/VDI collection controls and virtual scrolling; icon grids and trees share painted/hit geometry for arrow steps, trough paging, and captured thumb dragging, including nested accordion pages. |
 | `code_edit` | **C** | Portable document/editor painted through VDI. |
 | `split_view` | **C** | Portable pane geometry and splitter dispatch. |
-| `panel`, `canvas` | **C** | Nested regions of the emulated-control tree; painting through an offset context and root-relative hit testing are library-owned. |
+| `panel` | **C** | Nested emulated region with library-owned painting and root-relative hit testing. |
+| `canvas` | **H/C** | A document associated through `app_wnd::set_scroll_content` uses native AES frame scrollbars (**H**); nested/unassociated canvases keep library-painted internal bars (**C**). Application content painting stays library-routed through VDI. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `property_grid` | **C** | Compact typed rows reusing the backend text/check/combo editors and canvas scrolling. |
 | `toolbar` | **C** | Menu-themed strips on any edge with momentary/toggle/exclusive tools and 16/24/32px images. |

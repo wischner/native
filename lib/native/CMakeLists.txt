@@ -57,6 +57,11 @@ configure_file(
 
 # Add backend-neutral native source files.
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources_io.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources_manifest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/resource_json.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/resource_context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/geometry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/border.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/events.cpp
@@ -101,6 +106,8 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/non_client.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ruler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_strip.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/password_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
@@ -155,6 +162,12 @@ if(NOT HAIKU)
     )
 endif()
 
+if(NOT TOOLKIT STREQUAL "GEMIX" OR WIN32 OR APPLE OR HAIKU)
+    target_sources(native PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/status_bar_host_default.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/canvas_scrollbars_default.cpp)
+endif()
+
 if(NOT WIN32)
     target_sources(native PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/status_bar_peer_default.cpp
@@ -201,3 +214,23 @@ endif()
 if(NOT TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$" OR WIN32 OR APPLE OR HAIKU)
     target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/combo_picker_default.cpp)
 endif()
+
+# Backend identity is private metadata, never a public preprocessor API.
+set(native_resource_toolkit "")
+set(native_resource_color "color")
+if(WIN32)
+    set(native_resource_platform "windows")
+elseif(APPLE)
+    set(native_resource_platform "macos")
+elseif(HAIKU)
+    set(native_resource_platform "haiku")
+else()
+    set(native_resource_platform "linux")
+    string(TOLOWER "${TOOLKIT}" native_resource_toolkit)
+    if(TOOLKIT MATCHES "^(X11|GEMIX)$")
+        set(native_resource_color "monochrome")
+    endif()
+endif()
+set_source_files_properties(resource_context.cpp PROPERTIES
+    COMPILE_DEFINITIONS
+    "NATIVE_RESOURCE_PLATFORM=\"${native_resource_platform}\";NATIVE_RESOURCE_TOOLKIT=\"${native_resource_toolkit}\";NATIVE_RESOURCE_COLOR=\"${native_resource_color}\"")

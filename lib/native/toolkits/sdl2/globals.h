@@ -333,6 +333,8 @@ namespace linux::sdl2
         bool captured_only = false);
     bool handle_canvas_motion(native::wnd *, int, int,
         bool captured_only = false);
+    // Deliver composed text to the focused canvas under this root.
+    bool handle_canvas_text(native::wnd *, const char *);
     // Finish captured gestures when their root loses keyboard focus.
     void release_canvas_capture(native::wnd *);
     bool handle_canvas_wheel(native::wnd *, int, int, int);

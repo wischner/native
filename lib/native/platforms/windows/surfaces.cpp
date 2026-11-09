@@ -137,6 +137,11 @@ namespace native
         self->relayout_children();
     }
 
+    void canvas::focus_native() {
+        if (HWND window = windows::wnd_bindings.handle_from_object(this))
+            SetFocus(window);
+    }
+
     void canvas::show_native() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(
             this);

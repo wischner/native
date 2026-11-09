@@ -11,16 +11,24 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 
 #include <native.h>
 #include <native/canvas.h>
+#include "input_state.h"
 #include "wnd_peer.h"
 
 #include "classic_scrollbar.h"
+#include "canvas_scrollbars.h"
+#include <stdexcept>
 
 namespace
 {
+    // Presses this close together in time and space count as one gesture.
+    constexpr auto multi_click_interval = std::chrono::milliseconds(500);
+    constexpr int multi_click_distance = 4;
+
     using native::canvas_scroll_position;
 
     constexpr std::int32_t int32_min =
@@ -123,6 +131,11 @@ namespace native
 
     canvas::~canvas() {
         destroy();
+        if (_scroll_host) _scroll_host->_scroll_content = nullptr;
+    }
+
+    bool canvas::get_window_scrollbars() const {
+        return detail::canvas_window_scrollbars(*this);
     }
 
     canvas &canvas::set_content_bounds(canvas_content_bounds bounds) {
@@ -151,6 +164,8 @@ namespace native
         scrollbar_policy policy) {
         if (_horizontal_policy == policy)
             return *this;
+        if (get_window_scrollbars())
+            throw std::logic_error("Configure frame scrollbar axes before create().");
         _horizontal_policy = policy;
         apply_scroll(_scroll);
         relayout_children();
@@ -166,6 +181,8 @@ namespace native
         scrollbar_policy policy) {
         if (_vertical_policy == policy)
             return *this;
+        if (get_window_scrollbars())
+            throw std::logic_error("Configure frame scrollbar axes before create().");
         _vertical_policy = policy;
         apply_scroll(_scroll);
         relayout_children();
@@ -193,6 +210,8 @@ namespace native
 
     rect canvas::get_chrome_bounds() const {
         const scroll_geometry geometry = resolve_geometry();
+        if (get_window_scrollbars())
+            return rect(0, 0, _bounds.d.w, _bounds.d.h);
         return reserve_edges(
             rect(0, 0, _bounds.d.w, _bounds.d.h),
             geometry.vertical_visible ? _scrollbar_extent : 0,
@@ -210,6 +229,12 @@ namespace native
     //
     canvas::scroll_geometry canvas::resolve_geometry() const {
         scroll_geometry geometry;
+        if (get_window_scrollbars()) {
+            geometry.horizontal_visible = _horizontal_policy != scrollbar_policy::never;
+            geometry.vertical_visible = _vertical_policy != scrollbar_policy::never;
+            geometry.viewport = reserve_non_client(rect(0, 0, _bounds.d.w, _bounds.d.h));
+            return geometry;
+        }
         geometry.horizontal_visible =
             _horizontal_policy == scrollbar_policy::always;
         geometry.vertical_visible =
@@ -429,10 +454,10 @@ namespace native
                        _content.height,
                        static_cast<int>(geometry.viewport.d.h),
                        position.y)};
-        if (clamped.x == _scroll.x && clamped.y == _scroll.y)
-            return false;
+        const bool changed = clamped.x != _scroll.x || clamped.y != _scroll.y;
         _scroll = clamped;
-        return true;
+        detail::synchronize_canvas_scrollbars(*this);
+        return changed;
     }
 
     void canvas::on_native_scroll(canvas_scroll_position position) {
@@ -513,6 +538,7 @@ namespace native
         if (!guard.alive()) return;
         draw_non_client(event.g);
         if (!guard.alive()) return;
+        if (get_window_scrollbars()) return;
 
         const auto chrome = event.g.save_state();
         event.g.set_clip(rect(0, 0, _bounds.d.w, _bounds.d.h));
@@ -595,7 +621,38 @@ namespace native
         wnd::on_native_mouse_move(position);
     }
 
+    void canvas::focus() {
+        on_native_focus(true);
+        focus_native();
+    }
+
+    bool canvas::on_native_text_input(const std::string &utf8) {
+        if (const auto *input = detail::peer_state<detail::input_state>(*this);
+            input && input->text_consumed) return false;
+        return !utf8.empty() && on_text_input.emit_consumed(utf8);
+    }
+
+    void canvas::annotate_click(mouse_event &event) {
+        if (const auto *input = detail::peer_state<detail::input_state>(*this))
+            event.modifiers = event.modifiers | input->modifiers;
+        if (event.action == mouse_action::press) {
+            const auto now = std::chrono::steady_clock::now();
+            const bool repeated = event.button == _last_press_button &&
+                now - _last_press <= multi_click_interval &&
+                std::abs(event.position.x - _last_press_position.x) <=
+                    multi_click_distance &&
+                std::abs(event.position.y - _last_press_position.y) <=
+                    multi_click_distance;
+            _click_count = repeated ? _click_count + 1 : 1;
+            _last_press = now;
+            _last_press_position = event.position;
+            _last_press_button = event.button;
+        }
+        event.clicks = std::max(_click_count, 1);
+    }
+
     void canvas::on_native_mouse_click(mouse_event event) {
+        annotate_click(event);
         const scroll_geometry geometry = resolve_geometry();
 
         if (event.action == mouse_action::release) {

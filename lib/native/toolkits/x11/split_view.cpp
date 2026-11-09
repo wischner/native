@@ -332,6 +332,9 @@ namespace native
     void split_view::destroy_native() {
         if (!_created)
             return;
+        // Outside an Xt dispatch a widget tree frees at once, so borrowed
+        // panes must go first.
+        destroy_children();
         auto *self = this;
         auto *state = binding(*self);
         if (state && state->paned) {

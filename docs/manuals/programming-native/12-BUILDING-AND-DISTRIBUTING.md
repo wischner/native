@@ -42,13 +42,51 @@ source. Avoid linking `build/.../lib/native/libnative.a` by hand: a static
 archive does not contain libpng, X11, GDI+, or the other libraries it calls,
 and manual link order differs by toolchain.
 
-The repository does not currently install or export a standalone CMake
-package. Consumer executables are therefore built in-tree, like `vision`, or
-from a parent project that adds the Native source target.
+Consumer executables can be built in-tree, like `vision`, from a parent
+project that adds the Native source target, or against a tag-release SDK's
+standalone CMake package described below.
 
 Portable applications define `program(int, char **)`. The selected backend
 provides the actual process entry point and calls `program()` after its native
 startup work.
+
+## Prebuilt SDK packages
+
+Numeric tags such as `v1.2.3` produce one archive per target, including
+separate direct GEM/gemd and Intel/Apple Silicon macOS archives. Download the
+matching `native-<tag>-<target>-sdk.tar.gz` and verify its `.sha256` sidecar.
+Extract it and pass the extracted root as `CMAKE_PREFIX_PATH`:
+
+```cmake
+find_package(Native CONFIG REQUIRED)
+add_executable(my_application main.cpp)
+target_link_libraries(my_application PRIVATE Native::Native)
+```
+
+For a Haiku cross-build, pass `-DNative_DIR=<sdk>/lib/cmake/Native` instead;
+the toolchain restricts ordinary package searches to its target sysroot.
+
+The SDK contains Native's public headers, Release static library, direct
+dependency libraries and their non-OS runtime closure, a relocatable CMake
+package, notices and `manifest.json`. It propagates C++20 and the backend
+link requirements, including Windows Common Controls manifest resources.
+No demo, Vision, test executable, compiler or private toolkit header is
+packaged. Use a compatible C++ compiler/ABI and target SDK; the Windows
+package is MinGW-w64, not MSVC. `manifest.json` identifies the build compiler
+and target. Each archive is checked by linking a relocated consumer.
+
+For runtime deployment, put the packaged `lib/` on the target library search
+path (for example Linux `LD_LIBRARY_PATH`) or integrate it into your
+application's loader layout. Windows uses `bin/*.dll` beside the executable
+and requires x64 Windows App Runtime 1.8 for WinUI; its bootstrap is included.
+OS runtimes/frameworks, desktop/display services, graphics drivers, fonts,
+GTK schemas/themes/GtkSourceView data and GEM resources/server remain target
+prerequisites. Optional Haiku OSMesa is installed on the target. These are
+SDK archives, not complete desktop distributions. Follow the backend
+deployment sections below and the archive's `README.txt` and manifest.
+
+See [SDK releases](../book-of-native/BUILD-SYSTEM.md#sdk-releases) for the
+workflow matrix and packaging implementation.
 
 ## Reproducible Docker builds
 
@@ -88,7 +126,7 @@ outputs are:
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
 | `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:latest` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
-| `docker-wmaker` | `wischner/gcc-x86_64-linux-window-maker:latest` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
+| `docker-wmaker` | `native-wmaker-sdk:1` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
 | `docker-win` | `native-windows-winui-sdk:24.04` (built by `docker-win-sdk`) | `build/windows-mingw-w64/src/vision.exe` |
@@ -455,6 +493,8 @@ wraster headers and shared libraries, and the Pango/Xft font stack used by
 that WINGs build. It is the reproducible environment when a host distribution
 does not package the WINGs development files separately.
 
+The `docker-wmaker-sdk` prerequisite builds the pinned WINGs lifetime fixes
+into `native-wmaker-sdk:1`; `docker-wmaker` builds it automatically.
 The **Linux Window Maker, Xephyr** F5 profile builds with `docker-wmaker`
 and starts GDB in the same image using `window-maker-xephyr`. The image
 supplies Xephyr and Window Maker. Run the compiled program directly with:
@@ -504,8 +544,8 @@ Zenity and KDialog are not required.
 ## Linux GEMix
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -759,7 +799,8 @@ A parent project can `add_subdirectory()` the Native checkout and link its
 Native tests or host Docker orchestration. The parent supplies its own
 application `program()` and backend selection/toolchain and runs its build
 inside the corresponding Docker image, mounting both source checkouts.
-No installed/exported package is provided. Do not reproduce Native's toolkit,
+Alternatively, use the [prebuilt SDK](#prebuilt-sdk-packages) and link
+`Native::Native`. Do not reproduce Native's toolkit,
 codec or audio link closure in the application. Non-SDL Linux sound loads
 `libasound.so.2` at runtime; missing ALSA/default output is reported by
 `audio_out::open() == false`. Windows uses WASAPI, macOS links AudioToolbox,
@@ -887,3 +928,117 @@ optional application-local Mesa runtime, pin and verify it, carry its licenses,
 and test that exact package. Do not replace the Windows system OpenGL DLL.
 The [CPC acceptance record](../../notes/CPC-UAT.md) distinguishes the VM runtime
 fix from library changes and records remaining coverage limits.
+
+## Resource packs
+
+`native::resources` loads named, typed assets and selects variants using the
+compiled Native backend profile. Applications can request an icon without
+knowing their platform. Create a UTF-8 JSON manifest beside your artwork:
+
+```json
+{
+  "version": 1,
+  "resources": [
+    {
+      "name": "assets.icons.platform-icon",
+      "type": "icon",
+      "variants": [
+        { "file": "icons/generic.png" },
+        { "file": "icons/mono-16.png", "when": {
+          "color": "monochrome", "size": 16
+        } },
+        { "file": "icons/gem-16.png", "when": {
+          "toolkit": "gemix", "color": "monochrome", "size": 16
+        } },
+        { "file": "icons/windows-32.png", "when": {
+          "platform": "windows", "color": "color", "size": 32
+        } }
+      ]
+    }
+  ]
+}
+```
+
+Each name has one type and an unqualified default. Source paths are relative
+to the manifest, irrespective of the compiler's working directory. The icon
+type is metadata, not inferred from its name. Payloads are copied unchanged:
+supply deliberate monochrome artwork instead of expecting the pack compiler
+to convert full-color icons.
+
+Build and run `tools/rc` using the
+[Docker resource compiler commands](../book-of-native/BUILD-SYSTEM.md#resource-compiler).
+Its command-line form is:
+
+```text
+rc assets/manifest.json -o build/application.resources --cpp build/application_resources.cpp
+```
+
+Use `.resources` consistently for compiled files. `.resource` is also accepted
+because the reader recognizes the contents rather than the extension.
+Load and decode an icon through the public API:
+
+```cpp
+auto assets = native::resources::load("application.resources");
+const auto &entry = assets.get("assets.icons.platform-icon");
+if (entry.type != "icon")
+    throw std::runtime_error("Expected an icon resource");
+auto image = native::img::decode(entry.data.data(), entry.data.size());
+```
+
+Include `<stdexcept>` when using `std::runtime_error`. The returned entry is
+borrowed from `assets`; preserve that container until you finish reading the
+entry. Image decoding owns its pixels independently. Normal control image
+ownership rules still apply.
+
+For explicit size or theme selection, retain Native's platform profile:
+
+```cpp
+auto context = native::resources::current_context();
+context.size = 24;
+context.theme = "dark";
+const auto &entry = assets.get("assets.icons.platform-icon", context);
+```
+
+The v1 automatic profile covers platform, toolkit and Native's drawing color
+policy; it does not detect window DPI or live theme changes. Query again when
+an explicit context changes. There is no automatic icon rebinding in controls.
+The [resource chapter](../book-of-native/RESOURCES.md) defines exact ranking,
+limits and exceptions.
+
+To embed, compile the generated `application_resources.cpp` into the
+application, then declare and call its accessor:
+
+```cpp
+#include <native.h>
+#include <span>
+
+namespace native_embedded {
+    std::span<const std::uint8_t> resource_data();
+}
+
+// Inside application initialization:
+auto assets = native::resources::decode(native_embedded::resource_data());
+```
+
+This copies the pack into an owning container; no extraction or external file
+is needed. Combine assets into one manifest because v1 emits a single fixed
+accessor name. For cross-builds, use a hosted SDK's `rc` to generate the C++
+first, then compile that file with the destination compiler. Generated outputs
+belong under `build/`. When integrating generation into CMake, list the manifest
+and **every source asset** in `DEPENDS` so changing artwork triggers rebuilding.
+The repository's embedding test in `tests/CMakeLists.txt` demonstrates this.
+
+Programs can also create, modify by copying entries into a new container,
+and save packs directly. No CLI or JSON parsing is needed to write:
+
+```cpp
+native::resources output;
+output.add({"assets.message", "text", {}, {'H', 'i', '\n'}});
+output.save("application.resources");
+auto bytes = output.encode(); // Same pack, for memory transport.
+```
+
+`save` validates the complete pack, then overwrites the file. Writes are not
+atomic; parent directories must already exist. `resources::from_manifest(path)`
+exposes the same JSON compilation used by `rc`. The API does not export JSON
+manifests or unpack assets into directories.

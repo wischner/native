@@ -19,11 +19,22 @@ namespace native::detail
     {
         std::bitset<static_cast<unsigned>(key_code::count)> held;
         bool focused = false;
+        // Suppress separately delivered text for the last consumed press.
+        bool text_consumed = false;
         key_modifiers modifiers = key_modifiers::none;
     };
 
     // Find focused descendants without a process-wide window registry.
     wnd *input_target(wnd &root);
+
+    //
+    // Hand composed UTF-8 to the canvas holding focus under a window.
+    //
+    // Returns:
+    //      Whether a focused canvas took it; false leaves the text for
+    //      the backend's other controls.
+    //
+    bool deliver_canvas_text(wnd &window, const std::string &utf8);
     // Cancel a complete owner input tree before a panel or menu takes input.
     void reset_input(wnd &root);
     // Test held ownership before accelerator dispatch.

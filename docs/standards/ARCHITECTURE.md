@@ -166,6 +166,24 @@ resource destruction cancel held input. Derived focus hooks call the base.
 Focused editor text and composition paths remain separate. Unclaimed keys
 go to their actual input target, without automatic parent bubbling.
 
+`canvas::on_text_input` and `canvas::on_native_text_input()` are the composed
+text path for application-drawn editors: shift state, dead keys and the
+keyboard layout are already resolved, and the value is UTF-8. It never replaces
+`on_key`, which keeps reporting positions, and a canvas receives both.
+Every backend routes unconsumed presses here. X11-family backends share
+`dispatch_x_keyboard`, which composes through an input context with
+`Xutf8LookupString`, so dead keys and non-Latin-1 layouts work. GEM key packets
+carry translated ASCII only, so GEM text is limited to ASCII until the SDK
+reports more.
+
+`canvas::focus()` gives a canvas the keyboard programmatically, as a click would.
+On backends where keys arrive at the top-level window, a focused canvas receives
+them through `input_target`.
+
+`canvas` fills `mouse_event::clicks` and `mouse_event::modifiers` in shared code
+for every backend: presses within 500ms and 4 pixels count as one gesture, and
+modifiers come from the canvas's held keys.
+
 `app::get_physical_keyboard_supported()` reports adapter availability.
 GEMix enables this adapter only with the optional `gem/input.h` SDK extension
 and matching GEM libraries/server. It requests real USB-position press/release
@@ -775,7 +793,22 @@ painted tool labels and monochrome images. Its default follows menu states;
 GTK overrides it with native button foregrounds for normal, hot, pressed,
 selected and disabled tools, matching its button-based background.
 
+`theme::draw_toolbar_icon(image, bounds, state)` owns toolbar artwork state
+painting. The default tints black/transparent masks with toolbar foreground
+and preserves color artwork. GEM uses binary black/transparent stippling for
+disabled masks, matching disabled stock text; gray image ink would threshold
+to white and disappear. Enabled and selected masks retain normal theme ink.
+
 ## 8. Application
+
+Input capabilities are queried through the portable `app` interface.
+`get_physical_keyboard_supported()` describes press/release packets;
+`get_unicode_text_input_supported()` independently describes native keyboard
+text beyond ASCII. A false Unicode capability does not change signal encoding:
+`canvas::on_text_input` still carries UTF-8, limited to the transport's subset.
+Applications must query capabilities rather than inspect toolkit/platform names.
+Native editors hosted inside a canvas retain keyboard priority over the host's
+text composition; unused canvas handlers must not swallow an editor's input.
 
 Application code must define `program()` instead of an operating-system entry
 point. Not every target starts through a conventional `main()`; a backend may
@@ -1413,9 +1446,32 @@ orientation, programmatic silence, user event counts, and native
 create/show/destroy transitions.
 ## 17. Input controls, standard dialogs, and non-client chrome
 
+### Portable resource packs
+
+`resources` owns named, explicitly typed byte variants. The type is metadata,
+never inferred from a dotted name. Shared core code reads/writes versioned,
+bounded, little-endian binary packs and compiles strict UTF-8 JSON manifests.
+`tools/rc` uses this public API; it contains no private duplicate pack writer.
+File paths use `std::filesystem::path` and contents use standard streams.
+Embedded spans decode to owned entries without extraction. Native handles
+and toolkit types remain outside the public resource interface.
+
+Every serialized resource name has exactly one unqualified default; duplicate
+selectors and mixed types are errors. Lookup excludes foreign platform/toolkit
+selectors, then ranks color, toolkit, platform, theme and pixel size, with
+stable insertion-order ties. CMake supplies platform/toolkit identity and the
+current drawing policy (monochrome on X11/GEMix); v1 does not probe live theme,
+DPI or display depth. An explicit portable context supports those caller
+choices. Unknown names fail explicitly. Returned entries are borrowed from
+the owning container. The v1 API stores bytes; image decoding and control
+lifecycle remain separate. Full format and ranking details are maintained in
+[Resource packs](../manuals/book-of-native/RESOURCES.md).
+
+### Controls, dialogs and chrome
+
 The public input, filesystem-resource, and chrome API consists of `combo_box`,
 the `list_box` alias, `file_icon`, `special_directory`, `directory_dialog`,
-`message_box`, `non_client`, `ruler`, and `status_bar`.
+`message_box`, `non_client`, `ruler`, `status_bar`, and `tab_strip`.
 Headers remain pure C++ and are exported through `include/native.h`. Portable
 state and fallback behavior live in `lib/native/`; native widget creation,
 dialog presentation, and event routing remain in the matching platform or
@@ -1628,16 +1684,41 @@ including both lower corners, while side non-client strips stop above them.
 Status bars precede all other bottom strips in edge reservation, independent
 of attachment order, so bottom toolbars sit above them. Changing a status bar
 to another edge is invalid; toolbars retain their four-edge docking contract.
+`status_bar(owner, content_canvas, height)` associates a document footer with
+its scrolling content. GEM chooses the canvas as the docking host, placing
+the strip above the horizontal scrollbar and before the vertical scrollbar.
+Other backends choose the outer owner. The existing owner-only constructor
+keeps its original host everywhere. Both objects must outlive the bar and the
+application parents the canvas under owner; `get_owner()` reports the selected
+host. Use `theme::get_status_bar_height()` after window creation to size the
+bar from native metrics, rather than an application constant.
+
 Status bars divide their width into fixed parts and equal shares of remaining
 flexible parts. Painted status strips and their parts use the panel/chrome
 surface rather than the white editable-content surface; part edges remain
 visually distinct through the active theme's highlight and shadow roles.
 
+A `tab_strip` is a labeled strip at any edge of any host that owns no pages:
+its tabs select what one content window shows, where `tab_view` would need a
+page window per tab. It is painted by shared code on every backend. A press
+selects a tab and emits `on_selection_change`; a double click on the selected
+tab emits `on_activate`; `set_items` and `set_selected_index` are silent and
+selecting scrolls the tab into view. Tabs past the strip's end are out of view,
+never clipped, so each visible label is whole.
+
+A `password_edit` is a single-line secret field painted by shared code on every
+backend, because toolkit fields differ in whether they can mask at all. It is a
+`canvas`, so typing reaches it through the path every backend already routes:
+`on_native_text_input` appends and refuses control characters, Backspace removes
+one character and Ctrl+V pastes without line ends. It offers no selection, copy
+or reveal, `on_change` fires for user edits only, `set_text` is silent, and the
+destructor overwrites the value.
+
 The complete default rendering must occur inside each protected virtual draw
 stage. Derived classes may replace a stage or call its base implementation and
 augment it; no owner-draw pass may repaint the default afterward. Rulers expose
 background, tick, label, and tracker stages. Status bars expose background and
-part stages. The painting uses the graphics context of the active paint event
+part stages. Tab strips expose background and tab stages. The painting uses the graphics context of the active paint event
 and the current backend theme.
 
 Vision exposes the combined demonstration through **Window -> Input and
@@ -1718,6 +1799,26 @@ Native toolbar feedback must grow with configured icon sizes.
 A stock button with no border sides disables its complete native bezel rather
 than retaining rounded corner fragments from a partial-edge clip.
 
+
+### Recent input and chrome acceptance (2026-11-06)
+
+Canvas text delivered separately from a physical press must respect that
+press's consumed result. Focus/reset clears pending text suppression; SDL
+programmatic canvas focus starts text input, and Windows dispatches a canvas
+press before deciding whether to translate it into WM_CHAR.
+
+Non-client strips receive silent `pointer_cancel()` on owner cancellation,
+owner native destruction, hiding or edge changes. Rulers end pending drags
+without a completion notification on cancellation. A normal release commits
+its final snapped value before emitting the finished marker event.
+
+A toolbar borrows hosted controls, which must outlive the toolbar. Removing a
+control descriptor destroys and detaches its native child while preserving
+its C++ values. Changing between native-button and hosted-control layouts
+recreates the internal canvas, retiring obsolete native buttons. Duplicate
+control pointers and controls already created under another parent are
+rejected. Hosted controls never act as sticky toolbar commands.
+
 ## 18. Structural containers
 
 `panel` is a concrete, empty child `wnd` whose purpose is to parent and lay out
@@ -1754,6 +1855,29 @@ Inheritance must not be used to merge their roles: a panel hosts controls and a
 canvas draws application content.
 
 ## 19. Paintable child surfaces
+
+`app_wnd::set_scroll_content(canvas *)` associates one direct-child document
+canvas before window creation. The association is non-owning and is cleared
+when either object is destroyed; pass null before creation to remove it.
+Applications use this same call on every platform. Backend adapters choose
+frame scrollbars or the existing canvas implementation.
+
+GEM creates real AES window arrows and sliders for enabled axes. `automatic`
+and `always` both retain those frame axes; `never` omits an axis. Configure
+policies before creating the window. AES determines their dimensions and
+handles mouse tracking; Native maps `WM_ARROWED`, `WM_HSLID` and `WM_VSLID`
+to the canvas range and `on_scroll`. Programmatic changes remain silent and
+publish slider sizes/positions using the 0..1000 AES protocol. The canvas
+reserves no duplicate track or corner space. Its status bar ends at the AES
+work-area edge, directly above the native bottom track. Nested/unassociated
+canvases retain their internal scrollbars. Other backends retain their
+existing canvas controls and geometry through the default adapter.
+
+`canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
+The axis visibility getters include frame bars; `get_client_bounds()` always
+excludes only chrome inside the canvas. Drawers continue using the same
+content bounds, scroll position, paint and input API.
+
 
 `canvas` is a concrete child `wnd` whose entire client viewport is owned by
 application painting, together with optional horizontal and vertical

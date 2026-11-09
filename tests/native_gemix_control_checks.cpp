@@ -54,12 +54,104 @@ namespace
         child.create();
         child.show();
     }
+
+    // Toolbar popups overlap the document canvas, not empty root space.
+    void check_toolbar_combos(app_wnd &owner,
+                              const gem_control_driver &driver) {
+        modeless_wnd host(owner, "Toolbar combo input", 40, 60, 500, 300);
+        combo_box fonts({"Serif", "Sans", "Mono"});
+        combo_box sizes({"10", "12", "14"});
+        canvas document;
+        toolbar tools(host);
+        point origin;
+        int canvas_clicks = 0, changes = 0, opens = 0, closes = 0;
+        const auto click = [&](point p) {
+            p.x += origin.x;
+            p.y += origin.y;
+            driver.pointer(3, p);
+            driver.pointer(10, p);
+            driver.pointer(11, p);
+        };
+        point font_arrow, size_arrow, font_row, size_row;
+        try {
+            driver.wait([&] {
+                tool_item font_tool, size_tool;
+                font_tool.id = "font";
+                font_tool.kind = tool_kind::control;
+                font_tool.control = &fonts;
+                font_tool.length = 180;
+                size_tool.id = "size";
+                size_tool.kind = tool_kind::control;
+                size_tool.control = &sizes;
+                size_tool.length = 80;
+                tools.set_items({font_tool, size_tool});
+                fonts.set_selected_index(0);
+                sizes.set_selected_index(0);
+                for (auto *combo : {&fonts, &sizes}) {
+                    combo->on_selection_change.connect([&](int) {
+                        ++changes;
+                        return true;
+                    });
+                    combo->on_drop_down.connect([&](bool open) {
+                        open ? ++opens : ++closes;
+                        return true;
+                    });
+                }
+                document.on_mouse_click.connect([&](mouse_event) {
+                    ++canvas_clicks;
+                    return true;
+                });
+                host.create();
+                document.set_bounds(host.get_client_bounds());
+                attach(document, host);
+                host.show();
+                origin = work_rect(wnd_bindings.handle_from_object(&host)).p;
+                const int row = theme::create(host.get_gpx())->get_list_item_height();
+                const auto font_bounds = root_bounds(fonts);
+                const auto size_bounds = root_bounds(sizes);
+                font_arrow = point(font_bounds.x2() - 5, font_bounds.y1() + 8);
+                size_arrow = point(size_bounds.x2() - 5, size_bounds.y1() + 8);
+                font_row = point(font_bounds.x1() + 10, font_bounds.y2() + 1 + row + row / 2);
+                size_row = point(size_bounds.x1() + 10, size_bounds.y2() + 1 + row + row / 2);
+                return true;
+            }, "create toolbar combos over a document canvas");
+            click(font_arrow);
+            driver.wait([&] { return opens == 1; }, "open hosted font combo");
+            click(font_row);
+            driver.wait([&] {
+                return fonts.get_selected_index() == 1 && changes == 1 &&
+                       closes == 1 && canvas_clicks == 0;
+            }, "font popup selects over canvas without leaking pointer input");
+            click(size_arrow);
+            click(size_row);
+            driver.wait([&] {
+                return sizes.get_selected_index() == 1 && changes == 2 &&
+                       closes == 2 && canvas_clicks == 0;
+            }, "size popup selects over canvas");
+            click(font_arrow);
+            click(point(450, 260));
+            driver.wait([&] {
+                return closes == 3 && changes == 2 && canvas_clicks == 0;
+            }, "outside click dismisses popup without clicking document");
+            click(point(450, 260));
+            driver.wait([&] { return canvas_clicks == 2; },
+                        "document receives fresh input after dismissal");
+            driver.wait([&] { host.destroy(); return true; },
+                        "close toolbar combo test");
+        } catch (...) {
+            driver.wait([&] { host.destroy(); return true; },
+                        "release failed toolbar combo test");
+            throw;
+        }
+    }
 } // namespace
 
 void check_gemix_controls(native::app_wnd &owner,
                           const gem_control_driver &driver) {
     using namespace native;
     using namespace linux::gemix;
+    check_toolbar_combos(owner, driver);
+    check_gemix_window_scrollbars(owner, driver);
     modeless_wnd host(owner, "GEM control review", 40, 60, 720, 720);
     combo_box combo({"10 mm", "25 mm", "50 mm"},
                     combo_box_style::editable,

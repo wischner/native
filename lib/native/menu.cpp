@@ -160,6 +160,29 @@ namespace native
         return false;
     }
 
+    main_menu &main_menu::set_enabled(int command, bool enabled) {
+        for (auto &top : _tops) {
+            for (auto &item : top.items) {
+                if (item.id != command || item.separator)
+                    continue;
+                if (item.enabled == enabled) return *this;
+                item.enabled = enabled;
+                if (_id)
+                    apply_enabled(command);
+                return *this;
+            }
+        }
+        return *this;
+    }
+
+    bool main_menu::get_enabled(int command) const {
+        for (const auto &top : _tops)
+            for (const auto &item : top.items)
+                if (item.id == command && !item.separator)
+                    return item.enabled;
+        return true;
+    }
+
     void main_menu::activate(int command) {
         set_checked(command, !get_checked(command));
     }

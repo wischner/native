@@ -1,0 +1,148 @@
+name: Release SDKs
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate numeric release tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Check SDK dependency packaging
+        run: python3 tests/native_sdk_package_tests.py
+
+  docker:
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: docker-wayland
+            sdk: linux-wayland-x86_64
+          - target: docker-elementary
+            sdk: linux-elementary-x86_64
+          - target: docker-x11
+            sdk: linux-x11-x86_64
+          - target: docker-sdl2
+            sdk: linux-sdl2-x86_64
+          - target: docker-openmotif
+            sdk: linux-openmotif-x86_64
+          - target: docker-openlook
+            sdk: linux-openlook-x86_64
+          - target: docker-wmaker
+            sdk: linux-wmaker-x86_64
+          - target: docker-gemix
+            sdk: linux-gemix-x86_64
+          - target: docker-gemix-gemd
+            sdk: linux-gemix-gemd-x86_64
+          - target: docker-win
+            sdk: windows-mingw-x86_64
+          - target: docker-haiku
+            sdk: haiku-x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SDK release
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+          SDK: ${{ matrix.sdk }}
+        run: |
+          cmake -S . -B build/cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DNATIVE_BUILD_SDK=ON \
+            -DNATIVE_SDK_VERSION="$TAG" \
+            -DNATIVE_SDK_ID="$SDK"
+      - name: Build and package inside the target SDK
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cmake --build build/cmake --target "$TARGET"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-${{ matrix.sdk }}
+          path: build/release/*
+          if-no-files-found: error
+          compression-level: 0
+
+  macos:
+    needs: version
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            sdk: macos-x86_64
+          - runner: macos-15
+            sdk: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure with AppleClang and the Apple SDK
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+          SDK: ${{ matrix.sdk }}
+        run: |
+          cmake -S . -B "build/$SDK" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DNATIVE_BUILD_SDK=ON \
+            -DNATIVE_SDK_VERSION="$TAG" \
+            -DNATIVE_SDK_ID="$SDK"
+      - name: Build and package on macOS
+        env:
+          SDK: ${{ matrix.sdk }}
+        run: cmake --build "build/$SDK" --parallel 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-${{ matrix.sdk }}
+          path: build/release/*
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    needs: [version, docker, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sdk-*
+          merge-multiple: true
+          path: packages
+      - name: Verify all packages and publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.version.outputs.tag }}
+        working-directory: packages
+        run: |
+          shopt -s nullglob
+          archives=(native-"$TAG"-*-sdk.tar.gz)
+          checksums=(native-"$TAG"-*-sdk.tar.gz.sha256)
+          [[ ${#archives[@]} == 13 && ${#checksums[@]} == 13 ]]
+          sha256sum --check "${checksums[@]}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "Native $TAG" \
+              --notes "Native SDKs: one archive per target, with public headers and dependency libraries. No demos."
+          fi
+          gh release upload "$TAG" "${archives[@]}" "${checksums[@]}" --clobber

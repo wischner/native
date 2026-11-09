@@ -214,6 +214,14 @@ namespace native
         mouse_action action = mouse_action::release;
         point position;
 
+        // Keyboard modifiers held at the transition. A canvas fills this
+        // from its held keys on every backend.
+        key_modifiers modifiers = key_modifiers::none;
+
+        // Consecutive presses at this position: 2 is a double click.
+        // A canvas counts them on every backend.
+        int clicks = 1;
+
         // Construct an empty mouse event.
         mouse_event();
 

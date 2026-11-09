@@ -89,6 +89,15 @@ namespace native
                     nullptr);
     }
 
+    void main_menu::apply_enabled(int command) {
+        auto *menu = linux::x11::menu_bindings.object_from_handle(_id);
+        if (!menu) return;
+        for (auto *callback : menu->callbacks)
+            if (callback->item_id == command)
+                XtSetSensitive(callback->item,
+                               get_enabled(command) ? True : False);
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -239,6 +248,8 @@ namespace native
                                             display.c_str(),
                                             nullptr);
                 callback->item = entry;
+                if (!item.enabled)
+                    XtSetSensitive(entry, False);
                 if (item.checkable)
                     XtVaSetValues(entry, XtNleftMargin, 16,
                         XtNleftBitmap,

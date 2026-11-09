@@ -9,6 +9,8 @@
 
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "non_client.h"
 #include "signal.h"
@@ -20,6 +22,41 @@ namespace native
     {
         horizontal,
         vertical
+    };
+
+    // Selects how a ruler marker is drawn.
+    enum class ruler_marker_shape
+    {
+        // Points away from the owner's content: a left or right indent.
+        down_triangle,
+
+        // Points toward the content: a first-line indent.
+        up_triangle,
+
+        // A small block: a page margin edge.
+        block,
+
+        // A short bar: a tab stop.
+        tab
+    };
+
+    // One position an application shows, and optionally lets users move.
+    struct ruler_marker
+    {
+        int id = 0;
+        double value = 0.0;
+        ruler_marker_shape shape = ruler_marker_shape::down_triangle;
+        bool movable = true;
+    };
+
+    // Reports a marker being moved by the pointer.
+    struct ruler_marker_move
+    {
+        int id = 0;
+        double value = 0.0;
+
+        // True on release, when the gesture is complete.
+        bool finished = false;
     };
 
     class ruler : public non_client
@@ -75,8 +112,27 @@ namespace native
         // Return the latest tracked logical value, when available.
         std::optional<double> get_tracked_value() const;
 
+        // Highlight the span between two values, such as the text area
+        // between page margins, in the content color.
+        ruler &set_active_range(double first, double last);
+
+        // Remove the highlighted span.
+        ruler &clear_active_range();
+
+        // Replace the markers. Ids identify them in on_marker_move.
+        ruler &set_markers(std::vector<ruler_marker> markers);
+
+        // Return the markers.
+        const std::vector<ruler_marker> &get_markers() const;
+
+        // Round dragged values to multiples of an interval; 0 disables it.
+        ruler &set_marker_snap(double interval);
+
         // Emits the current ruler value after pointer tracking changes.
         signal<double> on_tracking;
+
+        // Emits while a marker is dragged and once more on release.
+        signal<ruler_marker_move> on_marker_move;
 
     protected:
         // Paint the complete ruler into its current edge strip.
@@ -84,6 +140,19 @@ namespace native
 
         // Convert host pointer motion into a logical ruler value.
         void track_pointer(const point &position) override;
+        // Route presses/releases to movable markers.
+        bool pointer_click(const mouse_event &event) override;
+        // Clear an interrupted drag without emitting a completed move.
+        void pointer_cancel() override;
+        // Report whether this strip is dragging a marker.
+        bool get_pointer_held() const override;
+
+        // Draw one marker at an axis position.
+        virtual void draw_marker(gpx &graphics,
+                                 const rect &bounds,
+                                 int axis_position,
+                                 const ruler_marker &marker,
+                                 const theme::palette &colors);
 
         // Draw the ruler's native-themed strip background.
         virtual void draw_background(
@@ -125,6 +194,19 @@ namespace native
         bool _edge_visible = false;
         std::optional<double> _tracked_value;
         std::optional<int> _tracked_axis;
+        std::optional<std::pair<double, double>> _active_range;
+        std::vector<ruler_marker> _markers;
+        double _marker_snap = 0.0;
+        int _dragged_marker = -1;
+
+        // Return the axis pixel of a value, along the strip.
+        int axis_of(double value) const;
+
+        // Return the strip-relative axis of an owner-local point.
+        int axis_at(const point &position) const;
+
+        // Return the value at an axis pixel, snapped.
+        double value_at(int axis) const;
 
         // Convert an edge into its horizontal or vertical orientation.
         static ruler_orientation orientation_for(window_edge edge);

@@ -54,6 +54,16 @@ namespace native
         memory
     };
 
+    // Selects what a portable font's pixel size measures.
+    enum class font_size_basis
+    {
+        // Ascent plus descent span the size: the default UI convention.
+        line_height,
+
+        // One em spans the size: how documents specify a point size.
+        em
+    };
+
     // Describes one installed face without exposing a native handle.
     struct font_description
     {
@@ -137,6 +147,8 @@ namespace native
         //      path        - TrueType/OpenType file or collection.
         //      size        - Positive pixel line size.
         //      face_index  - Zero-based face within a collection.
+        //      basis       - What the pixel size measures. Documents
+        //                    use em, so a 12pt face matches print.
         //
         // Returns:
         //      An invalid font when validation or creation fails.
@@ -144,7 +156,8 @@ namespace native
         static font_t from_file(
             const std::filesystem::path &path,
             int size,
-            std::uint32_t face_index = 0);
+            std::uint32_t face_index = 0,
+            font_size_basis basis = font_size_basis::line_height);
 
         //
         // Create a portable TrueType font by copying encoded bytes.
@@ -155,6 +168,7 @@ namespace native
         //      data_size   - Number of accessible bytes.
         //      size        - Positive pixel line size.
         //      face_index  - Zero-based face within a collection.
+        //      basis       - What the pixel size measures.
         //
         // Returns:
         //      An invalid font when validation or creation fails.
@@ -163,7 +177,8 @@ namespace native
             const std::uint8_t *data,
             std::size_t data_size,
             int size,
-            std::uint32_t face_index = 0);
+            std::uint32_t face_index = 0,
+            font_size_basis basis = font_size_basis::line_height);
 
         // Enumerate installed TrueType/OpenType faces on this machine.
         static std::vector<font_description> enumerate_installed();

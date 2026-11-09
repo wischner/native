@@ -526,8 +526,16 @@ namespace
                 argument,
                 type);
         XEvent *physical = event_xevent(event);
+        // A canvas can host windowless native Panel text items (the
+        // property grid does this). Their caret owns keyboard input;
+        // canvas composition must not consume it before XView inserts it.
+        const auto caret = static_cast<Panel_item>(
+            xv_get(window, PANEL_CARET_ITEM));
+        auto *editor = caret ? linux::openlook::wnd_bindings
+            .object_from_handle(caret) : nullptr;
         if (physical &&
             (physical->type == KeyPress || physical->type == KeyRelease) &&
+            !editor &&
             native::detail::dispatch_x_keyboard(*owner, *physical))
             return NOTIFY_DONE;
         const int action = event_action(event);

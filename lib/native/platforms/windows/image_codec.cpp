@@ -46,11 +46,6 @@ namespace
         ULONG_PTR _token = 0;
     };
 
-    gdiplus_runtime &runtime() {
-        static gdiplus_runtime instance;
-        return instance;
-    }
-
     struct stream_releaser
     {
         void operator()(IStream *stream) const {
@@ -164,8 +159,11 @@ namespace native::detail
 {
     decoded_image decode_image(const std::uint8_t *data,
                                std::size_t size) {
-        (void)runtime();
         require_supported_input(data, size);
+        // Release every codec object before this scope ends. A static
+        // runtime shuts down under the CRT exit lock, where GDI+'s
+        // background window thread can deadlock during DLL initialization.
+        const gdiplus_runtime runtime;
         stream_ptr stream = input_stream(data, size);
         std::unique_ptr<Gdiplus::Bitmap> bitmap(
             Gdiplus::Bitmap::FromStream(stream.get(), FALSE));
@@ -222,7 +220,7 @@ namespace native::detail
                                            dim width,
                                            dim height,
                                            int jpeg_quality) {
-        (void)runtime();
+        const gdiplus_runtime runtime;
         std::vector<std::uint8_t> bgra(static_cast<std::size_t>(width) *
                                        height * 4);
         for (std::size_t index = 0;

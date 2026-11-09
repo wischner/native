@@ -75,6 +75,8 @@ namespace
     private:
         native::text_edit field, multi;
         native::button copy, paste;
+        native::canvas writer{335, 20, 90, 60};
+        std::string written;
         native::modeless_wnd collections;
         native::icon_view icons;
         native::accordion libraries;
@@ -94,9 +96,14 @@ namespace
             for (native::wnd *child : {static_cast<native::wnd *>(&field),
                     static_cast<native::wnd *>(&multi),
                     static_cast<native::wnd *>(&copy),
-                    static_cast<native::wnd *>(&paste)}) {
+                    static_cast<native::wnd *>(&paste),
+                    static_cast<native::wnd *>(&writer)}) {
                 child->set_parent(this); child->create(); child->show();
             }
+            writer.on_text_input.connect([this](const std::string &utf8) {
+                written += utf8;
+                return true;
+            });
             native::app::post([this] {
                 origin = linux::gemix::work_rect(
                     linux::gemix::wnd_bindings.handle_from_object(this)).p;
@@ -524,6 +531,12 @@ namespace
                 click(40, 75); key(27); key(40); key(28);
                 wait_for([this] { return multi.get_text() == "x\ny"; },
                          "multiline field lost click, text or Enter");
+                click(345, 40);
+                wait_for([this] { return writer.get_focused(); },
+                         "canvas click did not take focus");
+                key(4); key(5); key(6);
+                wait_for([this] { return written == "abc"; },
+                         "canvas lost typed keys");
                 click(50, 173); click(200, 173);
                 wait_for([this] { return multi.get_text() == "abc"; },
                          "Copy field/Paste text buttons failed");

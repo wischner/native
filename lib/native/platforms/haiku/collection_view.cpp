@@ -198,6 +198,17 @@ namespace
             if (!bytes || count <= 0)
                 return;
             const char key = bytes[0];
+            if (auto *surface = dynamic_cast<native::canvas *>(&_owner)) {
+                // B_DELETE and the navigation keys are all control codes.
+                const uint32 keys = modifiers();
+                if (static_cast<unsigned char>(key) >= 0x20 && key != 0x7f &&
+                    (keys & (B_COMMAND_KEY | B_CONTROL_KEY)) == 0)
+                    surface->on_native_text_input(std::string(
+                        bytes, static_cast<std::size_t>(count)));
+                else
+                    BView::KeyDown(bytes, count);
+                return;
+            }
             if (auto *editor =
                     dynamic_cast<native::code_edit *>(&_owner)) {
                 const uint32 keys = modifiers();

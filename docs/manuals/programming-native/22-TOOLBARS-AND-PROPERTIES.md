@@ -17,11 +17,23 @@ matching translated labels.
 
 ## Step 2: Attach chrome and create the grid
 
+A `tool_kind::control` item hosts any control, such as a font `combo_box`, with
+`control` and `length` set. The toolbar parents, creates and places it. Declare
+the control before the toolbar. A bar with hosted controls uses Native's portable
+painting on every backend; a bar of plain tools keeps its OS peer.
+
 Declare chrome after its owner. Constructing a toolbar or status bar reserves
 its strip. Create ordinary client content in `on_wnd_create` and size it from
 `get_client_bounds()` so it clears the strips. A status bar occupies the bottom
 below bottom toolbars. The following complete program uses a fixed-width grid
 for readability; a larger application can install a layout manager.
+
+For document windows, `status_bar(window, document_canvas)` lets Native choose
+GEM's placement inside the canvas scrollbars while retaining the outer footer
+on other platforms. Keep both objects alive until after the status bar. Obtain
+its height from `theme::get_status_bar_height()` on the created window.
+Toolbar icons delegate state painting to `theme::draw_toolbar_icon`; disabled
+monochrome icons on GEM remain visible with the backend's binary stipple.
 
 ## Step 3: Connect user actions
 
@@ -110,11 +122,47 @@ Edit Name and Width, select Outline, toggle Snap, and press Reset. The status
 reports user actions. Reset uses silent setters, so it explicitly updates the
 title and status rather than expecting user-change signals.
 
+## Choose content with a tab strip
+
+`tab_strip` is a labeled strip for when tabs select what one window shows, such
+as a spreadsheet's sheets. It owns no pages, unlike `tab_view`:
+
+```cpp
+native::tab_strip tabs(document, native::window_edge::bottom, 24);
+tabs.set_items({"Sheet1", "Sheet2"});
+tabs.on_selection_change.connect([&](int index) {
+    show_sheet(index);
+    return true;
+});
+```
+
+`set_items` and `set_selected_index` are silent. Double-clicking the selected
+tab emits `on_activate`.
+
+## Take a secret with a password field
+
+`text_edit` shows what it holds. `password_edit` shows one bullet per character
+and looks the same on every backend, because Native paints it:
+
+```cpp
+native::password_edit secret(120, 40, 220, 26);
+secret.set_parent(&dialog);
+secret.on_change.connect([&](std::string value) {
+    login.set_enabled(!value.empty());
+    return true;
+});
+```
+
+Read the value with `get_text()`. There is no selection, copy or reveal, and the
+destructor clears the value from memory.
+
 ## Add images and exclusive tools
 
 A `tool_item::icon` is a `std::shared_ptr<const img>`. Load a PNG once and share
 it between tools. Transparent image pixels retain the toolbar background.
 `set_icon_size({24, 24})` changes the image box and the toolbar's thickness.
+A tool with an icon and no text is square, as long as the strip is thick;
+`get_item_bounds(id)` returns where a tool sits on the strip.
 Use `tool_kind::exclusive` and a common nonempty group string for mutually
 exclusive tools on one bar. A separator has no command and may use an empty ID.
 
@@ -181,3 +229,49 @@ Motif property values use the same control font across text, number, boolean,
 choice and custom-dropdown rows. Normal values have black ink and matching
 light entry backgrounds; their labels also use black ink. Ordinary controls
 outside the inspector retain the desktop's native resources.
+
+
+## New-feature acceptance window
+
+Run `vision --new-features` from any backend build (through its documented
+SDK session or native desktop). This public-API window exercises the recent
+resource, document-input and chrome additions together:
+
+1. Read the resource profile at the top. X11/GEMix choose monochrome artwork;
+   color backends choose the default blue artwork. The keyboard capability
+   is also shown using `app::get_unicode_text_input_supported()`. Both icons come from one named
+   `assets.icons.platform-icon` resource with explicit `icon` metadata.
+2. Type text into the canvas, including accented text where the backend
+   supports composition. Escape consumes its physical key and clears the text.
+   GEM's current text path remains ASCII-only.
+3. Choose an item in the hosted combo. Use **Test → Focus canvas** or Ctrl+F,
+   then type again. Check Shift-click and double-click counts in the status bar
+   and the mirrored canvas feedback.
+4. Drag the ruler triangles and tab marker. The block is fixed. Values snap
+   to 0.1; release commits the final value. Switching focus during a drag must
+   stop it, with no jump when the pointer returns.
+5. Toggle hosted controls from the Test menu twice. The combo disappears and
+   returns with its selection retained, without old toolbar buttons covering it.
+   The icon-only tool stays square and returns keyboard focus to the canvas.
+6. Compare 24-pixel line-height and em text. Some fonts, including the bundled
+   terminal face, legitimately have equal metrics for these conventions.
+
+The font fixture is the existing attributed `retro-terminal/terminal.ttf`,
+which normal builds and deployment scripts copy beside Vision. Keep its
+license files with it. The window constructs and round-trips its own small
+PNG resource pack in memory; it needs no extra icon files.
+
+`vision --new-features --features-smoke` creates the real window, checks
+resource decode, font availability/measurement, native control creation,
+removal/recreation and retained selection, canvas focus/UTF-8 dispatch and
+square icon geometry, then exits with a nonzero status on failure. CTest
+registers this as `native_new_features_smoke`. This smoke mode calls portable
+input hooks; it is not proof of physical keyboard, IME or pointer delivery.
+The backend keyboard/menu tests and the manual steps above cover those
+separate paths. See the [feature matrix](../book-of-native/FEATURE-MATRIX.md)
+for the actual target results.
+
+Hosted control objects must outlive their toolbar. Removing their descriptors
+destroys and detaches native children but does not delete C++ objects. A live
+control from another parent cannot be adopted; destroy its native resource
+first. A control cannot occupy two slots in the same toolbar.

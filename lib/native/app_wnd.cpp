@@ -13,6 +13,7 @@
 
 #include <native/app_wnd.h>
 #include <native/app.h>
+#include <native/canvas.h>
 #include "input_state.h"
 #include "mouse_state.h"
 #include <native/modal_wnd.h>
@@ -40,11 +41,26 @@ namespace native
 
     app_wnd::~app_wnd() {
         destroy();
+        if (_scroll_content) _scroll_content->_scroll_host = nullptr;
         if (app::_main_wnd == this) app::_main_wnd = nullptr;
 
         while (!_owned_windows.empty())
             _owned_windows.back()->detach_owner();
     }
+
+    app_wnd &app_wnd::set_scroll_content(canvas *content) {
+        if (_created)
+            throw std::logic_error("Configure document scrolling before create().");
+        if (content && (content->get_parent() != this ||
+                        (content->_scroll_host && content->_scroll_host != this)))
+            throw std::invalid_argument("Scroll content must be a direct child.");
+        if (_scroll_content) _scroll_content->_scroll_host = nullptr;
+        _scroll_content = content;
+        if (content) content->_scroll_host = this;
+        return *this;
+    }
+
+    canvas *app_wnd::get_scroll_content() const { return _scroll_content; }
 
     const std::string &app_wnd::get_title() const {
         return _title;
@@ -126,6 +142,8 @@ namespace native
 
     void app_wnd::on_native_menu(int command) {
         if (!get_input_enabled()) return;
+        // Every backend's pointer and shortcut paths converge here.
+        if (!menu.get_enabled(command)) return;
         const detail::window_guard guard(*this);
         detail::mouse_access::cancel_tree(*this, mouse_cancel_reason::menu);
         if (!guard.alive()) return;

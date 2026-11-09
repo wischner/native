@@ -30,6 +30,14 @@ namespace native
                               ? MF_CHECKED : MF_UNCHECKED));
     }
 
+    void main_menu::apply_enabled(int command) {
+        auto *menu = windows::menu_bindings.object_from_handle(_id);
+        if (menu && menu->hmenu)
+            EnableMenuItem(menu->hmenu, static_cast<UINT>(command),
+                           MF_BYCOMMAND | (get_enabled(command)
+                               ? MF_ENABLED : MF_GRAYED));
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -84,7 +92,8 @@ namespace native
                         display += "\t" + item.shortcut;
                     AppendMenuW(sub,
                                 MF_STRING | (item.checked
-                                    ? MF_CHECKED : MF_UNCHECKED),
+                                    ? MF_CHECKED : MF_UNCHECKED) |
+                                    (item.enabled ? MF_ENABLED : MF_GRAYED),
                                 (UINT_PTR)item.id,
                                 windows::utf8_to_wide(display).c_str());
                     const auto parsed = native::detail::parse_menu_shortcut(

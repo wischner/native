@@ -123,7 +123,7 @@ namespace windows
         native::tree_view *, win_tree_view *> tree_view_bindings;
     inline constexpr native::detail::peer_bindings<
         native::table_view *, win_table_view *> table_view_bindings;
-    extern std::unordered_map<native::code_edit *, wchar_t>
+    extern std::unordered_map<native::wnd *, wchar_t>
         code_edit_high_surrogates;
 
     // Translate a report ListView or header notification.

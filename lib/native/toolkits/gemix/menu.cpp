@@ -229,7 +229,8 @@ namespace
                     G_STRING,
                     NONE,
                     item.separator ? DISABLED
-                                   : (item.checked ? CHECKED : NORMAL),
+                                   : ((item.checked ? CHECKED : NORMAL) |
+                                      (item.enabled ? NORMAL : DISABLED)),
                     store_string(
                         state,
                         item.separator
@@ -272,6 +273,16 @@ namespace native
             if (id == command)
                 menu_icheck(state.tree.data(), static_cast<WORD>(object),
                             get_checked(command) ? 1 : 0);
+    }
+
+    void main_menu::apply_enabled(int command) {
+        auto found = linux::gemix::menu_states.find(_owner);
+        if (found == linux::gemix::menu_states.end()) return;
+        auto &state = found->second;
+        for (const auto &[object, id] : state.object_to_item_id)
+            if (id == command)
+                menu_ienable(state.tree.data(), static_cast<WORD>(object),
+                             get_enabled(command) ? 1 : 0);
     }
 
     main_menu::~main_menu() {

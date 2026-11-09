@@ -37,6 +37,19 @@ namespace native
                 g_variant_new_boolean(get_checked(command)));
     }
 
+    void main_menu::apply_enabled(int command) {
+        if (!_owner) return;
+        auto *peer = detail::peer_state<linux::wayland::widget_state>(
+            *_owner);
+        if (!peer || !peer->menu_actions) return;
+        const auto name = "command" + std::to_string(command);
+        auto *action = g_action_map_lookup_action(
+            G_ACTION_MAP(peer->menu_actions), name.c_str());
+        if (action)
+            g_simple_action_set_enabled(G_SIMPLE_ACTION(action),
+                get_enabled(command));
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -124,6 +137,7 @@ namespace native
                     ? g_simple_action_new_stateful(name.c_str(), nullptr,
                           g_variant_new_boolean(entry.checked))
                     : g_simple_action_new(name.c_str(), nullptr);
+                g_simple_action_set_enabled(action, entry.enabled);
                 g_object_set_data(G_OBJECT(action),
                                   "native-id",
                                   GINT_TO_POINTER(entry.id));

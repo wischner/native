@@ -318,6 +318,12 @@ namespace native
                                            const std::string &text,
                                            const state &element_state);
 
+        // Draw toolbar artwork with native enabled/selected/disabled feedback.
+        // Black/transparent masks use theme ink; color artwork is preserved.
+        virtual theme &draw_toolbar_icon(const img &image, const rect &bounds,
+                                        const state &element_state);
+
+
         // Match labels and monochrome icons to the toolbar button
         // style.
         virtual rgba

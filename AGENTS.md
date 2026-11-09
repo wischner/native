@@ -53,6 +53,8 @@ The library implementation is organized into three layers:
 The `src/` directory contains the `vision` application. It is a consumer of
 the public library API and must not contain private library implementation.
 Tests live in `tests/`, and developer automation in `scripts/`.
+Command-line developer tools live in `tools/`; `tools/rc/` compiles JSON
+resource manifests using the public `native::resources` reader/writer.
 
 Library-owned path manipulation, traversal, metadata, and file publication
 use the C++20 `std::filesystem` library; file contents use standard C++
@@ -100,6 +102,19 @@ has no equivalent.
   first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
 
+Tag releases use `.github/workflows/release-sdk.yml`: numeric
+`vMAJOR.MINOR.PATCH` tags produce one SDK per backend/architecture, including
+both GEM transports and separate macOS Intel/Apple Silicon packages. This
+release workflow builds macOS on GitHub macOS runners with AppleClang and
+the Apple SDK; local development continues to use the remote Mac workflow.
+`NATIVE_BUILD_SDK=ON` requires Release, `NATIVE_SDK_VERSION` and
+`NATIVE_SDK_ID`, omits Vision/tools/runtime tests, and builds the link-only
+`native_sdk_probe` and `native_sdk_package` targets. Packaging code lives in
+`scripts/release/`; archives/checksums go in `build/release/`. Public headers,
+Native and dependency libraries, a relocatable CMake package and notices are
+included; OS runtimes and desktop services remain target prerequisites.
+F5 configure tasks explicitly reset SDK mode to OFF.
+
 The macOS remote build checks Apple Command Line Tools and CMake before
 source synchronization, including `~/Applications/CMake.app` in its search
 path. CMake probes `std::jthread`/`std::stop_token` and enables libc++
@@ -129,6 +144,7 @@ The top-level CMake project provides:
 - `docker-elementary` (GTK 4.14 + Granite 7 C interface)
 - `docker-wayland-sdk` (builds the shared local SDK image)
 - `docker-win-sdk` (builds the pinned GNU/WinUI SDK image)
+- `docker-wmaker-sdk` (builds the WINGs SDK with resource-lifetime fixes)
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd` (same GEMix image, serialized libgem transport)
@@ -147,13 +163,13 @@ These targets use the following Docker images:
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
 - OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
-- Window Maker: `wischner/gcc-x86_64-linux-window-maker`
+- Window Maker: `native-wmaker-sdk:1`
 - Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
+`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
@@ -238,8 +254,14 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ### Window Maker backend
 
+- `docker-wmaker` first builds `native-wmaker-sdk:1` through
+  `docker-wmaker-sdk`. The Dockerfile and pinned-source lifetime patch live in
+  `scripts/linux/wmaker/`; builds, F5 and standalone sessions use that image.
+  Keep the narrow WINGs allocation suppressions unchanged unless their
+  underlying native-only fixture proves they are no longer needed.
+
 - Build with `docker-wmaker`. F5 and standalone execution use
-  `wischner/gcc-x86_64-linux-window-maker:latest` and its
+  `native-wmaker-sdk:1` and its
   `window-maker-xephyr` helper for Xephyr and Window Maker.
 - Use `scripts/linux/docker-debug.sh` for F5 and
   `scripts/linux/toolkit-session-run.sh wmaker` for standalone execution.
@@ -315,7 +337,13 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 
 ## Vision program
 
-- `vision` is the single program built by the repository.
+- `vision` is the UI application built by the repository.
+- `vision --new-features` is the recent-feature acceptance window;
+  `--features-smoke` runs its CTest checks and exits. Keep its existing
+  `retro-terminal/` font payload beside the executable.
+- `native_rc` is the developer-tool CMake target, producing
+  `build/<backend>/tools/rc/rc` (or `rc.exe`). Normal backend builds include
+  it. Run hosted tools inside their SDK; cross-built tools run on their target.
 - Its source lives in `src/` and it links against `native` through the public API.
 - VS Code launch configurations should point to `vision` for each active backend.
 - Educational programs belong in
@@ -387,6 +415,7 @@ contents.
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [PATTERNS-BACKGROUND-SERVICES.md](docs/manuals/book-of-native/PATTERNS-BACKGROUND-SERVICES.md) | Scoped UI delivery, bounded PCM peers, child ownership and shutdown. Expands Architecture 20. |
 | [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
+| [RESOURCES.md](docs/manuals/book-of-native/RESOURCES.md) | Resource ownership, automatic backend profiles, variant ranking, strict JSON manifest, v1 binary format and embedding. Expands Architecture 17. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
 Architecture Sections 10 (Fonts) and 15 (Classic trees) now have matching
@@ -416,7 +445,7 @@ control index, and build instructions.
 | [09-OWNED-WINDOWS-AND-DIALOGS.md](docs/manuals/programming-native/09-OWNED-WINDOWS-AND-DIALOGS.md) | Owned/modeless/modal windows and standard file dialogs. |
 | [10-GRAPHICS-IMAGES-FONTS-THEMES.md](docs/manuals/programming-native/10-GRAPHICS-IMAGES-FONTS-THEMES.md) | The `gpx` drawing interface, images, fonts, themes. |
 | [11-CLIPBOARD-AND-TEXT-EDITING.md](docs/manuals/programming-native/11-CLIPBOARD-AND-TEXT-EDITING.md) | UTF-8 encoding boundary, clipboard, text controls. |
-| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The eleven build selections (eight Linux toolkits plus Windows, Haiku, macOS), linking, distribution. |
+| [12-BUILDING-AND-DISTRIBUTING.md](docs/manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md) | The eleven build selections (eight Linux toolkits plus Windows, Haiku, macOS), linking, distribution, resource compilation, loading, writing and embedding. |
 | [13-COLLECTION-AND-DISCLOSURE-CONTROLS.md](docs/manuals/programming-native/13-COLLECTION-AND-DISCLOSURE-CONTROLS.md) | `accordion`, `icon_view`, `tree_view`. |
 | [14-ADVANCED-TABLE-VIEWS.md](docs/manuals/programming-native/14-ADVANCED-TABLE-VIEWS.md) | `list` versus `table_view`, models, virtualization. |
 | [15-SOURCE-EDITING.md](docs/manuals/programming-native/15-SOURCE-EDITING.md) | `code_edit`: line numbers, syntax styles, source UTF-8. |

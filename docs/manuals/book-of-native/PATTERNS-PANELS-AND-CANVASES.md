@@ -1,5 +1,30 @@
 # Patterns: Structural Panels and Paintable Canvases
 
+## Document window scrollbars
+
+`app_wnd::set_scroll_content(canvas *)` associates one direct-child document
+canvas before window creation. The association is non-owning and is cleared
+when either object is destroyed; pass null before creation to remove it.
+Applications use this same call on every platform. Backend adapters choose
+frame scrollbars or the existing canvas implementation.
+
+GEM creates real AES window arrows and sliders for enabled axes. `automatic`
+and `always` both retain those frame axes; `never` omits an axis. Configure
+policies before creating the window. AES determines their dimensions and
+handles mouse tracking; Native maps `WM_ARROWED`, `WM_HSLID` and `WM_VSLID`
+to the canvas range and `on_scroll`. Programmatic changes remain silent and
+publish slider sizes/positions using the 0..1000 AES protocol. The canvas
+reserves no duplicate track or corner space. Its status bar ends at the AES
+work-area edge, directly above the native bottom track. Nested/unassociated
+canvases retain their internal scrollbars. Other backends retain their
+existing canvas controls and geometry through the default adapter.
+
+`canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
+The axis visibility getters include frame bars; `get_client_bounds()` always
+excludes only chrome inside the canvas. Drawers continue using the same
+content bounds, scroll position, paint and input API.
+
+
 This chapter expands Architecture Sections 18 and 19. Native has two concrete
 child windows that carry no semantics of their own. A `panel` parents and lays
 out other controls. A `canvas` hands its whole client viewport to application
@@ -383,3 +408,14 @@ convention, preserving the 24-pixel step for canvases and one-line code-editor
 scrolling. Both axes are delivered independently and zero deltas emit no
 movement. Top-level window wheel events use the same direction convention.
 The public API and control implementation classifications are unchanged.
+
+
+## Text and chrome acceptance
+
+Canvas composed text respects the preceding physical press's consumed result,
+including separately delivered SDL/Windows text messages. Focus/reset clears
+that pending state. SDL `canvas::focus()` also restarts native text input after
+an editor relinquishes it. Windows decides whether to queue translated text
+after dispatching the canvas press. The `vision --new-features` acceptance
+window combines typed canvas text with hosted toolbar controls and interactive
+ruler markers; see the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).

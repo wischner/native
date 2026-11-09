@@ -60,7 +60,7 @@ openlook)
     PARENT_DISPLAY_VARIABLE=OPENLOOK_PARENT_DISPLAY
     ;;
 wmaker | window-maker)
-    IMAGE=${WMAKER_IMAGE:-wischner/gcc-x86_64-linux-window-maker:latest}
+    IMAGE=${WMAKER_IMAGE:-native-wmaker-sdk:1}
     SESSION=window-maker-xephyr
     DISPLAY_VARIABLE=WINDOW_MAKER_DISPLAY
     PARENT_DISPLAY_VARIABLE=WINDOW_MAKER_PARENT_DISPLAY

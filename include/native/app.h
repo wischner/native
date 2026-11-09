@@ -77,6 +77,11 @@ namespace native
         // GEM AES alone has no reliable release/physical-position stream.
         static bool get_physical_keyboard_supported();
 
+        // Report whether native keyboard text can contain Unicode beyond
+        // ASCII. Text signals always use UTF-8; a restricted transport can
+        // supply only its ASCII subset. Independent of physical-key support.
+        static bool get_unicode_text_input_supported();
+
         // Return the current main window, or null before run().
         static app_wnd *main_wnd();
 

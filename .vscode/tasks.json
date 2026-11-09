@@ -2,6 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build Resource Compiler (Docker X11)",
+            "detail": "Build rc and Native through the reproducible X11 SDK target.",
+            "type": "process",
+            "command": "cmake",
+            "args": ["--build", "build/cmake", "--target", "docker-x11"],
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "dependsOn": "CMake Configure Debug (Docker Targets)"
+        },
+        {
             "label": "Deploy Vision Debug (Elementary VM)",
             "type": "process",
             "command": "${workspaceFolder}/scripts/linux/elementary-vm/deploy.sh",
@@ -55,7 +65,9 @@
                 "build/cmake",
                 "-G",
                 "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DNATIVE_BUILD_SDK=OFF",
+                "-DBUILD_TESTING=ON"
             ],
             "problemMatcher": [],
             "group": "build"
@@ -136,7 +148,7 @@
             "label": "CMake Configure Debug (Windows VM)",
             "type": "process",
             "command": "cmake",
-            "args": ["-S", ".", "-B", "build/cmake", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug"],
+            "args": ["-S", ".", "-B", "build/cmake", "-G", "Unix Makefiles", "-DCMAKE_BUILD_TYPE=Debug", "-DNATIVE_BUILD_SDK=OFF", "-DBUILD_TESTING=ON"],
             "problemMatcher": [],
             "presentation": {"reveal": "never", "revealProblems": "onProblem", "focus": false, "showReuseMessage": false}
         },

@@ -133,6 +133,27 @@ namespace native
         draw_background(graphics, *appearance, bounds, state);
 
         const ruler_orientation orientation = get_orientation();
+        if (_active_range) {
+            const bool horizontal =
+                orientation == ruler_orientation::horizontal;
+            const int origin = horizontal ? bounds.x1() : bounds.y1();
+            const int extent = horizontal ? bounds.w() : bounds.h();
+            const int first = std::clamp(origin + axis_of(_active_range->first),
+                                         origin, origin + extent);
+            const int last = std::clamp(origin + axis_of(_active_range->second),
+                                        origin, origin + extent);
+            if (last > first) {
+                graphics.set_ink(colors.content_bg);
+                graphics.draw_rect(
+                    horizontal
+                        ? rect(static_cast<coord>(first), bounds.y1(),
+                               static_cast<dim>(last - first), bounds.h())
+                        : rect(bounds.x1(), static_cast<coord>(first),
+                               bounds.w(), static_cast<dim>(last - first)),
+                    true);
+            }
+        }
+
         const int length = orientation == ruler_orientation::horizontal
             ? bounds.w() : bounds.h();
         const double final_value = _origin + length * _units_per_pixel;
@@ -172,6 +193,10 @@ namespace native
         if (_edge_visible)
             draw_edge(graphics, bounds, colors);
 
+        for (const ruler_marker &marker : _markers)
+            draw_marker(graphics, bounds, axis_of(marker.value), marker,
+                        colors);
+
         if (_track_mouse && _tracked_axis)
             draw_tracker(graphics, bounds, *_tracked_axis, colors);
         graphics.set_pen(1).set_ink(colors.button_bg)
@@ -179,7 +204,177 @@ namespace native
                 unsigned(border_sides::all) ^ unsigned(get_border_sides())));
     }
 
+    int ruler::axis_of(double value) const {
+        return static_cast<int>(
+            std::lround((value - _origin) / _units_per_pixel));
+    }
+
+    int ruler::axis_at(const point &position) const {
+        const rect bounds = get_bounds();
+        return get_orientation() == ruler_orientation::horizontal
+            ? static_cast<int>(position.x) - bounds.x1()
+            : static_cast<int>(position.y) - bounds.y1();
+    }
+
+    double ruler::value_at(int axis) const {
+        const double value = _origin + axis * _units_per_pixel;
+        return _marker_snap > 0.0
+            ? std::round(value / _marker_snap) * _marker_snap
+            : value;
+    }
+
+    ruler &ruler::set_active_range(double first, double last) {
+        if (!std::isfinite(first) || !std::isfinite(last))
+            throw std::invalid_argument(
+                "A ruler active range must be finite.");
+        _active_range = std::make_pair(first, last);
+        invalidate();
+        return *this;
+    }
+
+    ruler &ruler::clear_active_range() {
+        _active_range.reset();
+        invalidate();
+        return *this;
+    }
+
+    ruler &ruler::set_markers(std::vector<ruler_marker> markers) {
+        for (const ruler_marker &marker : markers)
+            if (!std::isfinite(marker.value))
+                throw std::invalid_argument(
+                    "A ruler marker value must be finite.");
+        // An application echoing a drag back must not end the drag.
+        if (_dragged_marker >= 0 &&
+            std::none_of(markers.begin(), markers.end(),
+                         [this](const ruler_marker &marker) {
+                             return marker.id == _dragged_marker;
+                         }))
+            _dragged_marker = -1;
+        _markers = std::move(markers);
+        invalidate();
+        return *this;
+    }
+
+    const std::vector<ruler_marker> &ruler::get_markers() const {
+        return _markers;
+    }
+
+    ruler &ruler::set_marker_snap(double interval) {
+        if (!std::isfinite(interval) || interval < 0.0)
+            throw std::invalid_argument(
+                "A ruler snap interval cannot be negative.");
+        _marker_snap = interval;
+        return *this;
+    }
+
+    void ruler::pointer_cancel() {
+        _dragged_marker = -1;
+    }
+
+    bool ruler::get_pointer_held() const {
+        return _dragged_marker >= 0;
+    }
+
+    bool ruler::pointer_click(const mouse_event &event) {
+        if (event.button != mouse_button::left)
+            return false;
+        if (event.action == mouse_action::release) {
+            if (_dragged_marker < 0)
+                return false;
+            const int id = _dragged_marker;
+            _dragged_marker = -1;
+            const double value = value_at(axis_at(event.position));
+            for (auto &marker : _markers)
+                if (marker.id == id) marker.value = value;
+            invalidate();
+            on_marker_move.emit({id, value, true});
+            return true;
+        }
+        const int axis = axis_at(event.position);
+        const rect bounds = get_bounds();
+        const bool horizontal =
+            get_orientation() == ruler_orientation::horizontal;
+        const int across = horizontal ? event.position.y - bounds.y1()
+                                      : event.position.x - bounds.x1();
+        const int cross = horizontal ? bounds.h() : bounds.w();
+        // Markers can share a pixel, as a page margin and an indent of zero
+        // do. Where the press lands across the strip tells them apart.
+        const auto band = [](ruler_marker_shape shape) {
+            return shape == ruler_marker_shape::up_triangle ? 0
+                : shape == ruler_marker_shape::block        ? 1
+                                                            : 2;
+        };
+        const int pressed_band = std::clamp(across * 3 / std::max(cross, 1),
+                                            0, 2);
+        constexpr int grab_distance = 5;
+        int best = (grab_distance + 1) * 4;
+        for (const ruler_marker &marker : _markers) {
+            const int distance = std::abs(axis - axis_of(marker.value));
+            if (!marker.movable || distance > grab_distance)
+                continue;
+            const int score =
+                distance * 4 + std::abs(band(marker.shape) - pressed_band);
+            if (score < best) {
+                best = score;
+                _dragged_marker = marker.id;
+            }
+        }
+        return _dragged_marker >= 0;
+    }
+
+    void ruler::draw_marker(gpx &graphics,
+                            const rect &bounds,
+                            int axis_position,
+                            const ruler_marker &marker,
+                            const theme::palette &colors) {
+        const bool horizontal =
+            get_orientation() == ruler_orientation::horizontal;
+        const int cross = horizontal ? bounds.h() : bounds.w();
+        const auto place = [&](int along, int across) {
+            return horizontal
+                ? point(static_cast<coord>(bounds.x1() + axis_position + along),
+                        static_cast<coord>(bounds.y1() + across))
+                : point(static_cast<coord>(bounds.x1() + across),
+                        static_cast<coord>(bounds.y1() + axis_position + along));
+        };
+        constexpr int half = 4;
+        graphics.set_pen(1).set_ink(colors.button_text);
+        switch (marker.shape) {
+        case ruler_marker_shape::down_triangle:
+            graphics.draw_polygon({place(-half, cross - half - 1),
+                                   place(half, cross - half - 1),
+                                   place(0, cross - 1)},
+                                  true);
+            break;
+        case ruler_marker_shape::up_triangle:
+            graphics.draw_polygon(
+                {place(-half, half), place(half, half), place(0, 0)}, true);
+            break;
+        case ruler_marker_shape::block:
+            graphics.draw_polygon({place(-1, 0), place(1, 0),
+                                   place(1, cross - 1), place(-1, cross - 1)},
+                                  true);
+            break;
+        case ruler_marker_shape::tab:
+            graphics.draw_line(place(0, cross - 7), place(0, cross - 2));
+            graphics.draw_line(place(0, cross - 2), place(4, cross - 2));
+            break;
+        }
+    }
+
     void ruler::track_pointer(const point &position) {
+        if (_dragged_marker >= 0) {
+            const double value = value_at(axis_at(position));
+            for (ruler_marker &marker : _markers) {
+                if (marker.id == _dragged_marker && marker.value != value) {
+                    marker.value = value;
+                    invalidate();
+                    on_marker_move.emit({marker.id, value, false});
+                    break;
+                }
+            }
+            return;
+        }
         if (!_track_mouse)
             return;
         const rect bounds = get_bounds();

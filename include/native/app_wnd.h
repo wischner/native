@@ -17,6 +17,7 @@
 
 namespace native
 {
+    class canvas;
     class modal_wnd;
     class owned_wnd;
 
@@ -47,6 +48,16 @@ namespace native
 
         // Change the title and update a created native window.
         app_wnd &set_title(const std::string &title);
+
+        // Associate one direct-child document canvas before window creation.
+        // GEM uses AES frame scrollbars for this canvas; other backends keep
+        // their canvas scrollbars. Parent and size the canvas normally.
+        // The association is non-owning and detaches when either object dies.
+        // Throws if the window is created or the canvas has another parent.
+        app_wnd &set_scroll_content(canvas *content);
+
+        // Return the associated document canvas, or null.
+        canvas *get_scroll_content() const;
 
         // Return the owning top-level window, or null for the main one.
         virtual app_wnd *get_owner() const;
@@ -113,10 +124,12 @@ namespace native
         virtual void apply_title();
 
     private:
+        friend class canvas;
         friend class modal_wnd;
         friend class owned_wnd;
 
         std::string _title;
+        canvas *_scroll_content = nullptr;
 
         // Independent owned windows never participate in child layout.
         std::vector<owned_wnd *> _owned_windows;

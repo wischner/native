@@ -1,6 +1,15 @@
 # Amiga runtime qualification is a standalone project in amiga_toolchain/,
 # invoked by docker-amiga-check before a Native backend can be configured.
 # It must not be registered as an existing backend's runtime test.
+# The SDK link probe is configured separately by scripts/release/sdk.cmake
+# when NATIVE_BUILD_SDK is ON; it must never execute on a cross-build host.
+find_program(NATIVE_TEST_PYTHON python3)
+if(NATIVE_TEST_PYTHON)
+    add_test(NAME native_sdk_package_tests
+        COMMAND ${NATIVE_TEST_PYTHON}
+            ${CMAKE_CURRENT_SOURCE_DIR}/native_sdk_package_tests.py)
+endif()
+
 add_executable(native_core_tests
     native_core_tests.cpp
     ${PROJECT_SOURCE_DIR}/lib/native/connection.cpp
@@ -102,6 +111,20 @@ add_test(NAME native_menu_runtime_tests
 set_tests_properties(native_menu_runtime_tests PROPERTIES TIMEOUT 30
     ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-menu.fb;GEM_RASTA_PORT=5024")
 
+add_executable(native_ruler_toolbar_tests native_ruler_toolbar_tests.cpp)
+target_link_libraries(native_ruler_toolbar_tests PRIVATE native native_developer_options)
+add_test(NAME native_ruler_toolbar_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_ruler_toolbar_tests>)
+set_tests_properties(native_ruler_toolbar_tests PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
+add_executable(native_owned_teardown_tests native_owned_teardown_tests.cpp)
+target_link_libraries(native_owned_teardown_tests PRIVATE native native_developer_options)
+add_test(NAME native_owned_teardown_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_owned_teardown_tests>)
+set_tests_properties(native_owned_teardown_tests PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
 add_executable(native_inspector_tests native_inspector_tests.cpp)
 target_link_libraries(native_inspector_tests PRIVATE native native_developer_options)
 add_test(NAME native_inspector_tests
@@ -187,7 +210,7 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
         set_tests_properties(native_gemix_session_tests PROPERTIES TIMEOUT 40)
     endif()
     add_executable(native_gemix_input_tests native_gemix_input_tests.cpp
-        native_gemix_control_checks.cpp)
+        native_gemix_control_checks.cpp native_gemix_scroll_checks.cpp)
     target_include_directories(native_gemix_input_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_gemix_input_tests PRIVATE native native_developer_options)
@@ -265,6 +288,18 @@ if(UNIX AND NOT APPLE AND TOOLKIT STREQUAL "SDL2")
         native native_developer_options)
     add_test(NAME native_canvas_input_tests COMMAND native_canvas_input_tests)
     set_tests_properties(native_canvas_input_tests PROPERTIES
+        TIMEOUT 20 ENVIRONMENT
+        "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
+
+    add_executable(native_sdl_canvas_input_tests
+        native_sdl_canvas_input_tests.cpp)
+    target_include_directories(native_sdl_canvas_input_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib/native)
+    target_link_libraries(native_sdl_canvas_input_tests PRIVATE
+        native native_developer_options)
+    add_test(NAME native_sdl_canvas_input_tests
+        COMMAND native_sdl_canvas_input_tests)
+    set_tests_properties(native_sdl_canvas_input_tests PROPERTIES
         TIMEOUT 20 ENVIRONMENT
         "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
 
@@ -587,3 +622,36 @@ if(UNIX AND NOT APPLE AND TOOLKIT MATCHES "^(WMAKER|MOTIF|GEMIX)$")
             "ASAN_OPTIONS=fast_unwind_on_malloc=0;LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan-motif-suppressions.txt")
     endif()
 endif()
+
+# Resource storage and selection need no display server.
+add_executable(native_resources_tests native_resources_tests.cpp)
+target_link_libraries(native_resources_tests PRIVATE native)
+add_test(NAME native_resources_tests COMMAND native_resources_tests
+    ${CMAKE_CURRENT_BINARY_DIR}/resource-tests)
+
+# A target-built rc can execute during a build only on hosted toolchains.
+if(NOT CMAKE_CROSSCOMPILING)
+    set(resource_fixture ${CMAKE_CURRENT_SOURCE_DIR}/data/resources)
+    set(resource_generated ${CMAKE_CURRENT_BINARY_DIR}/embedded_resources)
+    add_custom_command(
+        OUTPUT ${resource_generated}.cpp ${resource_generated}.resources
+        COMMAND $<TARGET_FILE:native_rc> ${resource_fixture}/manifest.json
+            -o ${resource_generated}.resources --cpp ${resource_generated}.cpp
+        DEPENDS native_rc ${resource_fixture}/manifest.json
+            ${resource_fixture}/hello.txt ${resource_fixture}/mono.txt
+        VERBATIM)
+    add_executable(native_resources_embed_tests
+        native_resources_embed_tests.cpp ${resource_generated}.cpp)
+    target_link_libraries(native_resources_embed_tests PRIVATE native)
+    add_test(NAME native_resources_embed_tests COMMAND native_resources_embed_tests
+        ${resource_generated}.resources)
+    add_test(NAME native_rc_help COMMAND native_rc --help)
+    add_test(NAME native_rc_bad_arguments COMMAND native_rc)
+    set_tests_properties(native_rc_bad_arguments PROPERTIES WILL_FAIL TRUE)
+endif()
+
+# A public-API acceptance window also offers a deterministic smoke mode.
+add_test(NAME native_new_features_smoke
+    COMMAND ${gemd_runner} $<TARGET_FILE:vision> --new-features --features-smoke)
+set_tests_properties(native_new_features_smoke PROPERTIES TIMEOUT 30
+    ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-features.fb;GEM_RASTA_PORT=5026")

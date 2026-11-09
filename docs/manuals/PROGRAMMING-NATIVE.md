@@ -149,3 +149,6 @@ Backend qualification and current review limits are described in
 and [ADJUST.md](../ADJUST.md). Amiga's runtime check is not a supported
 application target. The repair record distinguishes passing portable examples,
 native runtime regressions and SDK exceptions from exhaustive conformance.
+
+For named assets, platform variants and executable embedding, see
+[Chapter 12: Resource packs](programming-native/12-BUILDING-AND-DISTRIBUTING.md#resource-packs).

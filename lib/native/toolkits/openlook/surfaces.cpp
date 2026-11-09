@@ -163,6 +163,12 @@ namespace native
         self->relayout_children();
     }
 
+    void canvas::focus_native() {
+        auto *state = linux::openlook::canvas_bindings.object_from_handle(this);
+        if (state && state->paint_window)
+            xv_set(state->paint_window, WIN_SET_FOCUS, nullptr);
+    }
+
     void canvas::show_native() {
         auto *state = linux::openlook::canvas_bindings
                           .object_from_handle(

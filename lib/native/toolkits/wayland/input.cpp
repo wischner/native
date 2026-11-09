@@ -6,6 +6,7 @@
 //
 #include "globals.h"
 #include "../../collection_render.h"
+#include "../../input_state.h"
 #include "../../table_render.h"
 #include <algorithm>
 #include <cmath>
@@ -402,10 +403,12 @@ namespace linux::wayland
             "commit",
             G_CALLBACK(
                 +[](GtkIMContext *, const char *text, gpointer data) {
+                    auto *owner = static_cast<native::wnd *>(data);
                     if (auto *editor =
-                            dynamic_cast<native::code_edit *>(
-                                static_cast<native::wnd *>(data)))
+                            dynamic_cast<native::code_edit *>(owner))
                         editor->on_native_text_input(text);
+                    else
+                        native::detail::deliver_canvas_text(*owner, text);
                 }),
             &owner);
         g_object_unref(im);

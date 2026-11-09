@@ -29,7 +29,7 @@ Read only the selected target's section in the build chapter:
 | Linux X11/Athena | `docker-x11`, `TOOLKIT=X11` | [X11](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-x11-with-athena-widgets) |
 | Linux OpenMotif | `docker-openmotif`, `TOOLKIT=MOTIF` | [Motif](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-openmotif) |
 | Linux OPEN LOOK | `docker-openlook`, `TOOLKIT=OPENLOOK` | [XView](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-open-look-with-xview) |
-| Linux Window Maker | `docker-wmaker`, `TOOLKIT=WMAKER` | [WINGs](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-window-maker-with-wings) |
+| Linux Window Maker | `docker-wmaker` (builds `docker-wmaker-sdk`, image `native-wmaker-sdk:1`), `TOOLKIT=WMAKER` | [WINGs](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-window-maker-with-wings) |
 | Linux GEMix | `docker-gemix`, `TOOLKIT=GEMIX`; `docker-gemix-gemd` also sets `GEMIX_USE_GEMD=ON` | [GEMix](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#linux-gemix), including client/server resources |
 | Linux GTK Wayland | `docker-wayland`, `TOOLKIT=WAYLAND` | [GTK Wayland](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#gtk-414-wayland-and-elementary-os) |
 | elementary OS | `docker-elementary`, `TOOLKIT=ELEMENTARY` | [GTK/Granite](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#gtk-414-wayland-and-elementary-os) and [picker schemas](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#picker-dependencies) |
@@ -57,8 +57,10 @@ For a separate application, follow
 [consumer integration](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#native-as-a-cmake-dependency):
 mount both checkouts into the selected SDK, configure the parent project with
 the matching `TOOLKIT` or toolchain file, and link the CMake target `native`.
-Native's Docker targets build Vision, not an external consumer. There is no
-installed/exported Native CMake package. Keep target build trees separate;
+Native's ordinary Docker targets build Vision, not an external consumer.
+Tag-release SDKs provide a relocatable `Native::Native` CMake package; see
+[prebuilt SDK packages](../../manuals/programming-native/12-BUILDING-AND-DISTRIBUTING.md#prebuilt-sdk-packages).
+`NATIVE_BUILD_SDK=ON` selects packaging without Vision. Keep target build trees separate;
 do not replace SDK builds with an ad hoc host build.
 
 Validate shared C++ with GCC/Docker before the remote Apple SDK build. The

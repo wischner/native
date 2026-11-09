@@ -18,6 +18,14 @@ AI runners can use the [generation guide](../../ai/README.md).
 
 ## Prerequisites
 
+To consume a prebuilt library, download the matching target's SDK from a
+numeric tag release. Each archive contains public headers, libraries and a
+`Native::Native` CMake target, without Vision or demos. macOS has separate
+Intel and Apple Silicon archives. Read
+[SDK releases](BUILD-SYSTEM.md#sdk-releases) for contents and
+[consumer setup](../programming-native/12-BUILDING-AND-DISTRIBUTING.md#prebuilt-sdk-packages)
+for linking and runtime prerequisites.
+
 You need:
 
 - CMake 3.20 or newer
@@ -139,7 +147,8 @@ Note:
 - `docker-openlook` produces the reproducible XView-linked binary in
   `build/linux-openlook/`. The maintained graphical debug/runtime path runs
   that binary inside the same image using Xephyr and olwm.
-- `docker-wmaker` produces the reproducible WINGs-linked binary in
+- `docker-wmaker` first builds the patched `native-wmaker-sdk:1` image through
+  `docker-wmaker-sdk`, then produces the reproducible WINGs-linked binary in
   `build/linux-wmaker/`. The maintained graphical debug/runtime path runs
   that binary in the same image using Xephyr and Window Maker.
 - `docker-haiku` is part of the current verified workflow.
@@ -369,3 +378,20 @@ The GTK/elementary SDK includes `gsettings-desktop-schemas`, required by
 GraniteTimePicker; keep that package installed on a native deployment too.
 Haiku's Docker SDK supplies the shared-kit headers and static libraries for
 its native date/time editors. No new F5 profile is needed.
+
+
+## Resource compiler
+
+Backend builds also produce `tools/rc/rc` (`rc.exe` on Windows) beneath their
+build directory. CMake names this developer-tool target `native_rc`; Vision
+remains the UI application. The compiler in `tools/rc/` uses `native::resources`
+to turn JSON manifests into `.resources` packs and optional embedded C++.
+Run it inside the hosted SDK as shown in the
+[build chapter](BUILD-SYSTEM.md#resource-compiler). No display is needed.
+The existing Vision F5 launch configurations continue to start Vision.
+
+
+`vision --new-features` opens the recent-feature acceptance window;
+`vision --new-features --features-smoke` checks it and exits. Run it in the
+backend's normal session and retain its sibling `retro-terminal/` font assets.
+See the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).

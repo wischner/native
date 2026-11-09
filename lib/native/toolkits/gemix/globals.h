@@ -85,6 +85,8 @@ namespace linux::gemix
     struct gem_window
     {
         native::rect dirty;
+        WORD scroll_kind = 0;
+        int hslide = -1, vslide = -1, hsize = -1, vsize = -1;
         bool pending = false;
         native::wnd *capture = nullptr;
         bool horizontal = false;
@@ -93,6 +95,10 @@ namespace linux::gemix
     };
     inline constexpr native::detail::peer_bindings<
         native::app_wnd *, gem_window *> window_states;
+
+    // Resolve AES frame axes and deliver its native scroll messages.
+    WORD window_scroll_kind(const native::app_wnd &owner);
+    bool dispatch_window_scroll(native::app_wnd &owner, WORD message, WORD value);
 
     // Drain coalesced invalidation at an event boundary.
     void flush_repaints();
@@ -126,6 +132,11 @@ namespace linux::gemix
     };
     inline constexpr native::detail::peer_bindings<
         native::combo_box *, gem_combo_box *> combo_box_bindings;
+
+    // Route open popup gestures before ordinary children or canvas capture.
+    bool dispatch_combo_popup_click(native::app_wnd *owner,
+                                    native::point position,
+                                    bool pressed);
 
     bool handle_combo_key(native::app_wnd *parent,
                           WORD modifiers,
@@ -179,6 +190,10 @@ namespace linux::gemix
                              WORD modifiers = 0);
 
     // Route one AES key packet to the focused collection control.
+    // Deliver a key's translated character to the focused canvas. The
+    // AES and physical key packets carry ASCII only.
+    bool handle_canvas_key(native::app_wnd *parent, WORD modifiers, WORD key);
+
     bool handle_collection_key(native::app_wnd *parent,
                                WORD modifiers,
                                WORD key);

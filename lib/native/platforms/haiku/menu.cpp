@@ -65,6 +65,16 @@ namespace native
         window->Unlock();
     }
 
+    void main_menu::apply_enabled(int command) {
+        auto *menu = haiku::menu_bindings.object_from_handle(_id);
+        if (!menu || !menu->bar) return;
+        BWindow *window = menu->bar->Window();
+        if (!window || !window->Lock()) return;
+        if (auto *item = menu->bar->FindItem(static_cast<uint32>(command)))
+            item->SetEnabled(get_enabled(command));
+        window->Unlock();
+    }
+
     main_menu::~main_menu() {
         detach();
     }
@@ -153,6 +163,7 @@ namespace native
                     native_item->SetTrigger(
                         item.label[item.mnemonic_index]);
                 native_item->SetMarked(item.checked);
+                native_item->SetEnabled(item.enabled);
                 sub->AddItem(native_item);
                 h->item_ids.insert(item.id);
             }

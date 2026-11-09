@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "events.h"
 #include "geometry.h"
 #include "border.h"
 
@@ -64,6 +65,23 @@ namespace native
 
         // Observe host-relative pointer motion for optional tracking.
         virtual void track_pointer(const point &position);
+
+        //
+        // Offer a button transition to this strip.
+        //
+        // Parameters:
+        //      event       - Transition in owner-local coordinates.
+        //
+        // Returns:
+        //      Whether the strip took it, keeping it from the client.
+        //
+        virtual bool pointer_click(const mouse_event &event);
+
+        // Silently clear a gesture on cancellation, hiding or teardown.
+        virtual void pointer_cancel();
+
+        // Report whether a gesture holds the pointer, even off the strip.
+        virtual bool get_pointer_held() const;
 
         // Observe visibility or edge-geometry changes in native peers.
         virtual void on_configuration_changed();
