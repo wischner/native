@@ -1,6 +1,12 @@
 name: Release SDKs
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and publish (for example v1.2.3)'
+        required: true
+        type: string
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -9,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sdk-release-${{ github.ref }}
+  group: sdk-release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -17,15 +23,24 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
     steps:
-      - uses: actions/checkout@v4
       - name: Validate numeric release tag
         id: version
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must have the form vMAJOR.MINOR.PATCH (numbers only)."
+            exit 1
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', steps.version.outputs.tag) || github.sha }}
+      - name: Pin release source commit
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Check SDK dependency packaging
         run: python3 tests/native_sdk_package_tests.py
 
@@ -61,6 +76,8 @@ jobs:
             sdk: haiku-x86_64
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commit }}
       - name: Configure SDK release
         env:
           TAG: ${{ needs.version.outputs.tag }}
@@ -96,6 +113,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.commit }}
       - name: Configure with AppleClang and the Apple SDK
         env:
           TAG: ${{ needs.version.outputs.tag }}

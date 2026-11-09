@@ -105,9 +105,9 @@ class Package:
             self.system_libraries.add(name)
         return result
 
-    def resolve(self, name):
+    def resolve(self, name, directories=()):
         """Resolve a target library without falling back to host cross libraries."""
-        for directory in self.search:
+        for directory in [*directories, *self.search]:
             path = directory / name
             if path.is_file():
                 return path
@@ -145,12 +145,19 @@ class Package:
         if real in self.scanned or path.suffix == '.a':
             return
         self.scanned.add(real)
+        directories = []
         if self.system == 'Darwin':
             names = [line.strip().split(' (')[0]
                      for line in run('otool', '-L', path).splitlines()[1:]]
         else:
             output = run(self.info['objdump'], '-p', path)
             names = re.findall(r'^\s*(?:NEEDED|DLL Name:)\s+(\S+)', output, re.M)
+            for value in re.findall(r'^\s*(?:RPATH|RUNPATH)\s+(\S+)', output, re.M):
+                for directory in value.split(':'):
+                    expanded = directory.replace('${ORIGIN}', str(real.parent))
+                    expanded = expanded.replace('$ORIGIN', str(real.parent))
+                    if expanded.startswith('/'):
+                        directories.append(Path(expanded))
         # Haiku's sysroot holds OS link libraries, not a complete OS runtime.
         # Their ICU/compression/compiler runtimes belong to the installed OS;
         # never substitute the Linux host's identically named libraries.
@@ -160,7 +167,7 @@ class Package:
         for name in names:
             if self.is_system(name):
                 continue
-            dependency = Path(name) if name.startswith('/') else self.resolve(name)
+            dependency = Path(name) if name.startswith('/') else self.resolve(name, directories)
             self.library(dependency)
 
     def link_interface(self):

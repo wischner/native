@@ -58,6 +58,18 @@ class PackageTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Unresolved Linux'):
                 self.pkg.resolve('libmissing.so')
 
+    def test_elf_origin_runtime_search_path(self):
+        first = self.library('libfirst.so')
+        private = self.pkg.build / 'private/libprivate.so'
+        private.parent.mkdir()
+        private.write_bytes(b'private runtime')
+        def inspect(*args):
+            return ('  RUNPATH $ORIGIN/private\n  NEEDED libprivate.so'
+                    if args[-1] == first else '')
+        with patch.object(SDK, 'run', side_effect=inspect):
+            self.pkg.library(first)
+        self.assertIn('lib/libprivate.so', self.pkg.files)
+
     def test_colliding_flat_names_fail(self):
         first = self.library('one', b'one')
         second = self.library('two', b'two')
