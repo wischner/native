@@ -90,6 +90,11 @@ Native uses concrete contexts for two different targets:
 - `gpx_img` draws into an `img`. The image owns its pixel buffer and the
   context borrows that image as its target.
 
+The `gpx_wnd::window()` accessor is defined once in the shared implementation,
+including for GTK Wayland and elementary. Backends implement drawing and
+resource lifetimes without duplicating that accessor, so linking the complete
+static archive does not introduce duplicate symbols.
+
 These contexts share the public `gpx` contract, so drawing code can often work
 with either target. The difference is important to the backend: a window may
 require a paint transaction or presentation step, while an image is an owned

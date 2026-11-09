@@ -35,9 +35,6 @@ namespace native
         , _clip(point(), owner->get_dimensions())
         , _offset(offset) {}
     gpx_wnd::~gpx_wnd() = default;
-    wnd *gpx_wnd::window() const {
-        return _wnd;
-    }
     gpx &gpx_wnd::set_clip(const rect &r) {
         _clip = r;
         return *this;

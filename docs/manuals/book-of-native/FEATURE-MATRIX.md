@@ -1,5 +1,18 @@
 # Feature Matrix
 
+## SDK release packaging (2026-11-09)
+
+Release builds, dependency packaging and relocated consumer links pass for
+all eleven Docker selections: Wayland, elementary, X11, SDL2, OpenMotif,
+OPEN LOOK, Window Maker, both GEM transports, Windows MinGW and Haiku.
+Eight host packaging regressions also pass. The complete-archive link check
+identified and removed the redundant GTK `gpx_wnd::window()` definition;
+Wayland and elementary use the shared accessor. This is compile/link evidence,
+not a new desktop runtime acceptance run. Intel and Apple Silicon macOS SDK
+jobs are configured on GitHub runners and have not been executed locally.
+See [SDK releases](BUILD-SYSTEM.md#sdk-releases) for package contents and OS
+runtime boundaries.
+
 ## Document window scrollbars (2026-11-06)
 
 One portable `app_wnd::set_scroll_content` association lets GEM use actual
