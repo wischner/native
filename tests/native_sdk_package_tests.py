@@ -5,6 +5,7 @@ MIT License (see LICENSE). Copyright (C) 2026 Tomaz Stih.
 """
 
 import importlib.util
+import hashlib
 from pathlib import Path
 import sys
 import tempfile
@@ -85,6 +86,23 @@ class PackageTests(unittest.TestCase):
         result = self.pkg.root / 'lib/libactual.so'
         self.assertFalse(result.is_symlink())
         self.assertEqual(result.read_bytes(), original.read_bytes())
+
+    def test_copy_preserves_contents_and_modes_without_host_metadata(self):
+        for mode in (0o444, 0o755):
+            with self.subTest(mode=oct(mode)):
+                original = self.library(f'source-{mode}', b'packaged contents')
+                original.chmod(mode)
+                relative = f'share/licenses/notice-{mode}'
+                # Reproduce the metadata operation rejected by macOS, while
+                # allowing the readable file itself to be copied normally.
+                with patch.object(SDK.shutil, 'copystat', side_effect=PermissionError(
+                        'Operation not permitted: protected file flags')):
+                    self.pkg.copy(original, relative)
+                result = self.pkg.root / relative
+                self.assertEqual(result.read_bytes(), original.read_bytes())
+                self.assertEqual(result.stat().st_mode & 0o777, mode)
+                self.assertEqual(self.pkg.files[relative]['sha256'],
+                                 hashlib.sha256(original.read_bytes()).hexdigest())
 
     def test_windows_imports_are_case_insensitive(self):
         self.pkg.system = 'Windows'

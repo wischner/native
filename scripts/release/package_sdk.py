@@ -129,7 +129,10 @@ class Package:
         if relative in self.files and self.files[relative]['sha256'] != digest:
             raise RuntimeError(f'Conflicting dependency files: {relative}')
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, destination)
+        # Keep bytes and permission bits, not host filesystem flags/xattrs.
+        # macOS system notices can carry protected flags that an ordinary
+        # GitHub runner cannot apply to files in the package staging tree.
+        shutil.copy(source, destination)
         self.files[relative] = {'source': str(source), 'sha256': digest}
         return relative
 

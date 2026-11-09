@@ -5,11 +5,15 @@
 Release builds, dependency packaging and relocated consumer links pass for
 all eleven Docker selections: Wayland, elementary, X11, SDL2, OpenMotif,
 OPEN LOOK, Window Maker, both GEM transports, Windows MinGW and Haiku.
-Eight host packaging regressions also pass. The complete-archive link check
+Nine host packaging regressions also pass. The complete-archive link check
 identified and removed the redundant GTK `gpx_wnd::window()` definition;
 Wayland and elementary use the shared accessor. This is compile/link evidence,
-not a new desktop runtime acceptance run. Intel and Apple Silicon macOS SDK
-jobs are configured on GitHub runners and have not been executed locally.
+not a new desktop runtime acceptance run. The reported GitHub macOS jobs
+failed while copying protected filesystem flags from system license notices;
+the supplied Apple Silicon log confirms Native and its link probe built.
+The shared packager now copies contents and permission bits without those
+flags, covering both Intel and Apple Silicon. A metadata-failure regression
+passes; complete macOS SDK packaging still needs a fresh GitHub run.
 See [SDK releases](BUILD-SYSTEM.md#sdk-releases) for package contents and OS
 runtime boundaries.
 

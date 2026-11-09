@@ -306,6 +306,13 @@ GNU probe links the whole Native archive; Apple uses `-force_load`. Cross
 targets use their own objdump; no target executable runs on the build host.
 Missing dependencies or conflicting flattened library names fail packaging.
 
+Dependency and license copies preserve file contents and permission bits,
+without importing host filesystem flags or extended attributes. In
+particular, macOS system notices may carry protected flags that cannot be
+applied inside an unprivileged GitHub runner's staging directory. The shared
+copy path handles both Intel and Apple Silicon packages; its regression
+simulates a rejected metadata copy and checks contents, permissions and hashes.
+
 The package includes a relocatable `lib/cmake/Native/NativeConfig.cmake`,
 Windows manifest resources/bootstrap DLL where applicable, available license
 notices, a dependency manifest and runtime guidance. No demos, Vision assets,
