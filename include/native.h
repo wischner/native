@@ -52,6 +52,7 @@
 #include "native/password_edit.h"
 #include "native/property_grid.h"
 #include "native/toolbar.h"
+#include "native/standard_icon.h"
 #include "native/radio.h"
 #include "native/resources.h"
 #include "native/ruler.h"

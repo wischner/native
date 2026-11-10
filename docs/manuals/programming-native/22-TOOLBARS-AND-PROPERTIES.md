@@ -275,3 +275,27 @@ Hosted control objects must outlive their toolbar. Removing their descriptors
 destroys and detaches native children but does not delete C++ objects. A live
 control from another parent cannot be adopted; destroy its native resource
 first. A control cannot occupy two slots in the same toolbar.
+
+### Matching the backend's standard toolbar
+
+In the owner's `on_wnd_create` handler, set each toolbar's extent from
+`native::theme::create(get_gpx())->get_toolbar_height()`. Apply the same metric
+to secondary rows; let `tool_kind::control` parent and align combo boxes and
+edit fields. GEM uses the Gemscape/Ted chrome layout and one-pixel hosted
+control insets, so embedding a field does not enlarge the band.
+
+Prefer `native::standard_icon(native::standard_icon_id::copy)` when it returns
+a non-null image; use an application resource otherwise. GEM shares Ted's
+16x16 command bitmaps without scaling. The shared catalog includes New, Open,
+Save, Save As, Undo, Cut, Copy and Paste; unsupported operations return null.
+The artwork's GPL-2.0-or-later terms are recorded under `third_party/ted`.
+
+Toolbar metrics are queried through the root window's graphics context;
+child canvases need not own an operating-system graphics context (SDL2 does
+not). This keeps hosted toolbars usable on both GEM and SDL2. Fyodor's GEM
+and SDL2 desktop regression suites exercise this path.
+
+Toolbar extents also respect the minimum image area and the backend's
+single-line input height plus both insets. For example, the SDL2 control band
+is 28 pixels (24-pixel input plus outer padding), while GEM's 18-pixel fields
+fit its 20-pixel band. Explicit larger extents remain supported.

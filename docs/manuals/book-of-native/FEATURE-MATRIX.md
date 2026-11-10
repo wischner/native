@@ -1900,3 +1900,16 @@ convention, preserving the 24-pixel step for canvases and one-line code-editor
 scrolling. Both axes are delivered independently and zero deltas emit no
 movement. Top-level window wheel events use the same direction convention.
 The public API and control implementation classifications are unchanged.
+
+GEM toolbar geometry (2026-11-10): the **C** toolbar uses GEM's
+`gemctl_chrome_layout` band metric, full-band command slots and inset hosted
+controls. `standard_icon` shares the eight canonical Ted command masks;
+unsupported commands return null for application fallback. This change does
+not alter the tree/table backend classifications or event contracts.
+
+Fyodor consumer validation (2026-11-10, latest GEMix SDK revision
+`d940cf31ee9e85af0264a83abd1526d4475ffb0c`): both GEM toolbar rows measure
+20 pixels with 18-pixel fields and unchanged 16×16 stock icons. The SDL2
+consumer retains 28-pixel rows and 24-pixel fields. Root-window metric lookup
+avoids requesting window graphics from SDL2 child canvases. GEM
+`native_ruler_toolbar_tests` and real-packet `native_gemix_input_tests` pass.

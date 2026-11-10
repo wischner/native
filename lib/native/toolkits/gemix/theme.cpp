@@ -15,6 +15,9 @@
 #include "../emulated_theme.h"
 #include "globals.h"
 #include "stock_text.h"
+extern "C" {
+#include <gem/gemctl.h>
+}
 
 namespace
 {
@@ -35,10 +38,17 @@ namespace
             m.popup_width = character_width * 22;
             m.text_padding_x = character_width;
             m.header_height = character_height + 6;
-            // Match gemctl_chrome_layout, used by Gemscape and Ted.
-            // Application bands are slimmer than the AES title strip.
-            m.status_bar_height = std::max({12, character_height + 4,
-                static_cast<int>(linux::gemix::runtime.box_h) - 2});
+            // Ask the same layout routine as Gemscape and Ted. A tall
+            // work area obtains the natural band without viewport clipping.
+            const GRECT work{0, 0, 1024, 1024};
+            gemctl_chrome_t chrome{};
+            gemctl_chrome_layout(&work, linux::gemix::runtime.char_h,
+                                 linux::gemix::runtime.box_h, &chrome);
+            m.toolbar_height = chrome.band_height;
+            m.status_bar_height = chrome.band_height;
+            m.toolbar_padding = 0;
+            m.toolbar_control_padding = 1;
+            m.text_edit_height = m.toolbar_height - 2;
             m.tab_height = m.header_height;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
             m.tree_indent_width = 9;
@@ -65,6 +75,23 @@ namespace
                              native::point(r.x2() - 1, r.y2() - 1));
             return *this;
         }
+        theme &draw_toolbar_button(const native::rect &r,
+                                   const std::string &text,
+                                   const state &element_state) override {
+            if (!r.w() || !r.h()) return *this;
+            auto saved = _g.save_state();
+            // GEM slots share a trailing separator and the band's bottom
+            // rule. Keep selection feedback inside those lines.
+            draw_menu_title(native::rect(r.x1(), r.y1(),
+                r.w() - 1, r.h() - 1), text, element_state);
+            _g.set_ink(native_palette().menu_bar_line_bottom).set_pen(1)
+                .draw_line(native::point(r.x2() - 1, r.y1()),
+                           native::point(r.x2() - 1, r.y2() - 1))
+                .draw_line(native::point(r.x1(), r.y2() - 1),
+                           native::point(r.x2() - 1, r.y2() - 1));
+            return *this;
+        }
+
         theme &draw_list(const native::rect &r,
                          const std::vector<std::string> &items,
                          int selected,

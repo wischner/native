@@ -19,3 +19,13 @@ Vision's optional CRT terminal test has separately attributed upstream shader
 and font assets outside this library directory. Their exact revision, licenses,
 adaptation differences and retained source are documented in
 [the terminal asset README](../../../src/assets/retro-terminal/README.md).
+
+## Ted toolbar artwork
+
+`ted/toolbar_icons.h` preserves the eight 16x16 bitmaps from
+[triglav-os/gem, src/apps/ted/toolbar.c](https://github.com/triglav-os/gem/blob/d940cf31ee9e85af0264a83abd1526d4475ffb0c/src/apps/ted/toolbar.c),
+Copyright (C) 2026 tomaz stih, GPL-2.0-or-later. `ted/COPYING` contains the
+license. These exact masks are linked only by the GEM `standard_icon` adapter.
+Native's MIT license does not relicense this artwork; GEM distributions that
+include it must respect its GPL terms. No application should vendor another
+copy. The SDK packager includes this license in its third-party notices.

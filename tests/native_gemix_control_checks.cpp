@@ -102,6 +102,12 @@ namespace
                     return true;
                 });
                 host.create();
+                const auto appearance = theme::create(host.get_gpx());
+                tools.set_extent(appearance->get_toolbar_height());
+                expect(fonts.get_dimensions().h ==
+                           appearance->get_text_edit_height() &&
+                           fonts.get_bounds().y2() <= tools.get_extent(),
+                       "compact toolbar contains its native font field");
                 document.set_bounds(host.get_client_bounds());
                 attach(document, host);
                 host.show();

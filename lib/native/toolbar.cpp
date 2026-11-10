@@ -183,19 +183,28 @@ namespace native
                            });
     }
 
+    theme::metrics toolbar::current_metrics() const {
+        auto *root = get_owner();
+        while (root && root->get_parent()) root = root->get_parent();
+        return root && root->get_created()
+            ? theme::create(root->get_gpx())->defaults() : theme::metrics{};
+    }
+
     void toolbar::place_controls() {
         if (!_surface->get_created()) return;
         const auto bounds = item_bounds();
+        const int inset = current_metrics().toolbar_control_padding;
         for (std::size_t index = 0; index < _items.size(); ++index) {
             wnd *control = _items[index].control;
             if (_items[index].kind != tool_kind::control) continue;
             const int height = std::min<int>(control->get_dimensions().h,
-                                             bounds[index].h());
+                std::max(0, int(bounds[index].h()) - 2 * inset));
             control->set_bounds(rect(
-                bounds[index].p.x,
+                bounds[index].p.x + inset,
                 static_cast<coord>(bounds[index].y1() +
                                    (bounds[index].h() - height) / 2),
-                bounds[index].d.w, static_cast<dim>(height)));
+                std::max(0, int(bounds[index].w()) - 2 * inset),
+                static_cast<dim>(height)));
             if (!control->get_created()) {
                 control->set_parent(_surface.get());
                 control->create();
@@ -207,9 +216,20 @@ namespace native
     void toolbar::on_configuration_changed() {
         const bool vertical = get_edge() == window_edge::left ||
                               get_edge() == window_edge::right;
-        if (get_extent() && std::any_of(_items.begin(), _items.end(),
-                [](const tool_item &item) { return bool(item.icon); })) {
-            const int minimum = (vertical ? _icon_size.w : _icon_size.h) + 4;
+        if (get_extent()) {
+            const auto metrics = current_metrics();
+            int minimum = 0;
+            if (std::any_of(_items.begin(), _items.end(),
+                    [](const tool_item &item) { return bool(item.icon); }))
+                minimum = (vertical ? _icon_size.w : _icon_size.h) +
+                    4 + 2 * metrics.toolbar_padding;
+            // A hosted input may enforce the toolkit's minimum height.
+            // Reserve that height before placing it, otherwise set_bounds
+            // can silently grow the child outside the toolbar slot.
+            if (has_controls() && !vertical)
+                minimum = std::max(minimum, metrics.text_edit_height +
+                    2 * (metrics.toolbar_padding +
+                         metrics.toolbar_control_padding));
             if (get_extent() < minimum) {
                 set_extent(minimum);
                 return;
@@ -234,7 +254,8 @@ namespace native
         const bool vertical = get_edge() == window_edge::left ||
                               get_edge() == window_edge::right;
         std::vector<rect> result;
-        int offset = 2;
+        const int padding = current_metrics().toolbar_padding;
+        int offset = padding;
         for (const auto &item : _items) {
             int length = 8;
             if (item.kind == tool_kind::control) {
@@ -254,14 +275,17 @@ namespace native
                 // An icon-only tool is as long as the strip is thick.
                 if (item.icon && item.text.empty())
                     length = std::max(length,
-                        int(vertical ? bounds.w() : bounds.h()) - 4);
+                        int(vertical ? bounds.w() : bounds.h()) - 2 * padding);
             }
-            const int available = (vertical ? bounds.h() : bounds.w()) - 2 - offset;
-            const int visible = std::max(0, std::min(length, available));
-            result.emplace_back(vertical ? 2 : std::min(offset, 32767),
-                vertical ? std::min(offset, 32767) : 2,
-                vertical ? std::max(0, int(bounds.w()) - 4) : visible,
-                vertical ? visible : std::max(0, int(bounds.h()) - 4));
+            const int available = (vertical ? bounds.h() : bounds.w()) - padding - offset;
+            // GEM chrome hides partial command slots, as Ted does.
+            const int visible = padding == 0 && item.kind != tool_kind::control
+                && item.kind != tool_kind::separator && available < length
+                ? 0 : std::max(0, std::min(length, available));
+            result.emplace_back(vertical ? padding : std::min(offset, 32767),
+                vertical ? std::min(offset, 32767) : padding,
+                vertical ? std::max(0, int(bounds.w()) - 2 * padding) : visible,
+                vertical ? visible : std::max(0, int(bounds.h()) - 2 * padding));
             offset = std::min(32767, offset + length);
         }
         return result;

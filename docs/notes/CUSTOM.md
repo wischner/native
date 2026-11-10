@@ -1083,3 +1083,13 @@ convention, preserving the 24-pixel step for canvases and one-line code-editor
 scrolling. Both axes are delivered independently and zero deltas emit no
 movement. Top-level window wheel events use the same direction convention.
 The public API and control implementation classifications are unchanged.
+
+### GEM toolbar audit, 2026-11-10
+
+The toolbar remains **C**: the SDK exposes chrome layout and drawing helpers,
+but no widget implementing Native's arbitrary-edge command/hosted-control
+contract. Its metrics now call `gemctl_chrome_layout`, command slots match
+Gemscape/Ted, and hosted controls use a one-pixel inset. Canonical Ted command
+artwork is centralized through `standard_icon`; applications need no GEM
+headers or local copies. Existing Native tree/table/combo/split controls remain
+the public reuse boundary; no application-owned replacements are needed.

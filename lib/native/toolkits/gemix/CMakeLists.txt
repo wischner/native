@@ -4,6 +4,8 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(GEMIX_AES REQUIRED gemix-aes>=1.0.0)
 pkg_check_modules(GEMIX_VDI REQUIRED gemix-vdi>=1.0.0)
+find_library(GEMIX_CONTROLS_LIBRARY NAMES gemctl REQUIRED)
+target_link_libraries(native PRIVATE ${GEMIX_CONTROLS_LIBRARY})
 
 option(GEMIX_USE_GEMD "Link libgem instead of in-process AES/VDI" OFF)
 
@@ -12,6 +14,7 @@ target_compile_definitions(native PRIVATE NATIVE_NO_UNICODE_TEXT_INPUT)
 
 target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/standard_icon.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/status_bar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/canvas_scrollbars.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/screen.cpp

@@ -117,6 +117,8 @@ namespace native
 
         // Create, relocate, or destroy the private input surface.
         void synchronize();
+        // Query the root window; a child canvas may have no native graphics.
+        theme::metrics current_metrics() const;
         void place_controls();
         bool has_controls() const;
         // Invalidate both the strip and its native child surface.

@@ -63,6 +63,10 @@ namespace native
 
     theme::~theme() = default;
 
+    int theme::get_toolbar_height() const {
+        return defaults().toolbar_height;
+    }
+
     int theme::get_button_height() const {
         return defaults().button_height;
     }

@@ -2099,3 +2099,17 @@ These requirements are normative. The 2026-10-15 working-tree review and
 non-Amiga repairs are recorded with source evidence, regressions, narrow SDK
 exceptions and acceptance limits in [ADJUST.md](../ADJUST.md). Passing builds
 and regressions do not establish exhaustive-path conformance.
+
+### Standard toolbar geometry and artwork
+
+Application toolbars can use `theme::get_toolbar_height()` after their owner
+is created. `theme::metrics` supplies the band height, outer toolbar padding
+and hosted-control inset. GEM obtains its band from `gemctl_chrome_layout`,
+the same routine used by Gemscape and Ted, and keeps 16x16 artwork unscaled
+in full-band square slots. Toolkit declarations remain private.
+
+`standard_icon(standard_icon_id)` returns shared immutable backend artwork or
+null when no canonical icon exists. GEM supplies Ted's New, Open, Save, Save As,
+Undo, Cut, Copy and Paste masks; applications supply fallbacks for other actions.
+The imported artwork retains its GPL-2.0-or-later license separately from
+Native's MIT sources; see `lib/native/third_party/ted/`.

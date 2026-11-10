@@ -164,6 +164,7 @@ endif()
 
 if(NOT TOOLKIT STREQUAL "GEMIX" OR WIN32 OR APPLE OR HAIKU)
     target_sources(native PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/standard_icon_default.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/status_bar_host_default.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/canvas_scrollbars_default.cpp)
 endif()

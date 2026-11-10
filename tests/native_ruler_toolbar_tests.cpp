@@ -71,7 +71,9 @@ namespace
         void check_toolbar() {
             expect(box_.get_created(), "the toolbar creates its control");
             expect(box_.get_parent() != nullptr, "the control is parented");
-            expect(box_.get_dimensions().w == 120,
+            const auto metrics = theme::create(get_gpx())->defaults();
+            expect(box_.get_dimensions().w ==
+                       120 - 2 * metrics.toolbar_control_padding,
                    ("the toolbar places its control: width=" +
                     std::to_string(box_.get_dimensions().w) + " strip=" +
                     std::to_string(bar_.get_bounds().w()) + "x" +

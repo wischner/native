@@ -108,6 +108,10 @@ namespace native
         // Stores dimensions selected by the active platform or toolkit.
         struct metrics
         {
+            // Toolbar band, outer inset, and extra hosted-control inset.
+            int toolbar_height = 24;
+            int toolbar_padding = 2;
+            int toolbar_control_padding = 0;
             int button_height = 28;
             int menu_bar_height = 20;
             int menu_item_height = 20;
@@ -220,6 +224,8 @@ namespace native
 
         // Return individual native dimensions used by themed shapes.
         int get_button_height() const;
+        // Return the backend's standard application toolbar band height.
+        int get_toolbar_height() const;
         int get_menu_bar_height() const;
         int get_menu_item_height() const;
         int get_popup_width() const;

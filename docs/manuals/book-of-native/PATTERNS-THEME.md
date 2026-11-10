@@ -431,3 +431,24 @@ enabled/selected/disabled state. The common implementation tints binary masks
 and preserves color artwork. GEM overrides disabled mask painting with a
 black/transparent checkerboard like its disabled stock text, keeping undo/redo
 visible without a gray tint that would become white in one-bit image output.
+
+### Toolbar metrics and command icons
+
+Use `get_toolbar_height()` for an application's normal edge band. The theme's
+`toolbar_padding` determines command-slot insets and `toolbar_control_padding`
+keeps hosted controls inside the band. GEM calls `gemctl_chrome_layout` with
+the current workstation character and box metrics, uses square full-band
+slots, and centers controls with one pixel around their borders. Other
+backends retain the default 24-pixel band and two-pixel outer padding.
+
+`native::standard_icon(native::standard_icon_id::file_save)` returns an
+immutable shared image or null. GEM provides Ted's exact 16x16 masks for New,
+Open, Save, Save As, Undo, Cut, Copy and Paste. Close, Redo, Print and Find have
+no stock entry in the audited GEM SDK; callers retain their resource fallback.
+Stock lookup works before window creation. See the Ted artwork license in
+`lib/native/third_party/ted/COPYING`.
+
+Toolbar extents also respect the minimum image area and the backend's
+single-line input height plus both insets. For example, the SDL2 control band
+is 28 pixels (24-pixel input plus outer padding), while GEM's 18-pixel fields
+fit its 20-pixel band. Explicit larger extents remain supported.
