@@ -556,6 +556,12 @@ namespace native
         return draw_separator_fallback(bounds, orientation);
     }
 
+    theme &theme::draw_toolbar_separator(
+        const rect &bounds,
+        separator_orientation orientation) {
+        return draw_separator(bounds, orientation);
+    }
+
     theme &theme::draw_splitter_grip(
         const rect &bounds,
         separator_orientation orientation,

@@ -259,7 +259,8 @@ namespace native
         const int padding = current_metrics().toolbar_padding;
         int offset = padding;
         for (const auto &item : _items) {
-            int length = 8;
+            int length = item.kind == tool_kind::separator && item.length > 0
+                ? item.length : 8;
             if (item.kind == tool_kind::control) {
                 length = item.length;
             } else if (item.kind != tool_kind::separator) {
@@ -360,7 +361,7 @@ namespace native
         if (item.kind == tool_kind::separator) {
             const bool vertical = get_edge() == window_edge::left ||
                                   get_edge() == window_edge::right;
-            appearance.draw_separator(bounds, vertical ? separator_orientation::horizontal
+            appearance.draw_toolbar_separator(bounds, vertical ? separator_orientation::horizontal
                                                         : separator_orientation::vertical);
             return;
         }

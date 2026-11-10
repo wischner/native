@@ -311,3 +311,10 @@ This removes horizontal gaps between consecutive hosted fields while retaining
 their vertical sizing and centering. Combine it with the control's
 `set_border_sides(border_sides::right)` for one dividing line between adjacent
 combo boxes; the toolbar continues to supply its own horizontal rules.
+
+Separator items accept a positive `tool_item::length` to set the gap along
+the bar. Zero or negative lengths retain the default eight-pixel gap.
+Toolbar separators use `theme::draw_toolbar_separator`, which delegates to
+ordinary separator painting by default. GEM puts the rule at the gap's
+trailing edge, so the next tool remains visually square instead of absorbing
+half of a centered separator slot. Menu and other separators are unchanged.

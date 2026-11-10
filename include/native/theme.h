@@ -441,6 +441,12 @@ namespace native
             const rect &bounds,
             separator_orientation orientation);
 
+        // Draw a toolbar group separator; defaults to draw_separator.
+        // Backends may align its rule with their toolbar slot borders.
+        virtual theme &draw_toolbar_separator(
+            const rect &bounds,
+            separator_orientation orientation);
+
         // Draw a centered grip along the splitter's long axis.
         virtual theme &draw_splitter_grip(
             const rect &bounds,

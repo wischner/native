@@ -92,6 +92,21 @@ namespace
             return *this;
         }
 
+        theme &draw_toolbar_separator(
+            const native::rect &r,
+            native::separator_orientation orientation) override {
+            if (!r.w() || !r.h()) return *this;
+            auto saved = _g.save_state();
+            // End the empty group slot where the next square tool begins.
+            // A centered rule would visually merge half the gap into it.
+            _g.set_pen(1).set_ink(native_palette().menu_bar_line_bottom)
+                .draw_border(r,
+                    orientation == native::separator_orientation::vertical
+                        ? native::border_sides::right
+                        : native::border_sides::bottom);
+            return *this;
+        }
+
         theme &draw_list(const native::rect &r,
                          const std::vector<std::string> &items,
                          int selected,

@@ -38,7 +38,8 @@ namespace native
         // declare it before the toolbar.
         wnd *control = nullptr;
 
-        // Length along the bar of a hosted control.
+        // Length along the bar of a hosted control, or a separator.
+        // Separators use the default eight pixels when length <= 0.
         int length = 0;
 
         // Fill the hosted slot's width without horizontal control insets.
