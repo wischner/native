@@ -35,6 +35,27 @@
 }
 @end
 
+// Retain AppKit tab hit testing and add label activation only when opted in.
+@interface native_selection_tabs : NSTabView {
+@public
+    native::tab_view *_owner;
+}
+@end
+@implementation native_selection_tabs
+- (void)mouseDown:(NSEvent *)event {
+    if (_owner && _owner->get_selection_only() && [event clickCount] == 2) {
+        NSPoint position = [self convertPoint:[event locationInWindow]
+                                    fromView:nil];
+        NSTabViewItem *item = [self tabViewItemAtPoint:position];
+        if (item) {
+            _owner->on_native_activation([self indexOfTabViewItem:item]);
+            return;
+        }
+    }
+    [super mouseDown:event];
+}
+@end
+
 @interface native_tab_delegate : NSObject <NSTabViewDelegate> {
 @public
     native::tab_view *_owner;
@@ -90,7 +111,8 @@ namespace native
         for (NSTabViewItem *item in previous)
             [state.view removeTabViewItem:item];
         for (std::size_t index = 0; index < get_item_count(); ++index) {
-            auto &content = get_item(index).get_content();
+            auto *content = get_item(index).has_content()
+                ? &get_item(index).get_content() : nullptr;
             NSTabViewItem *item = [[NSTabViewItem alloc]
                 initWithIdentifier:[NSNumber numberWithUnsignedLong:index]];
             NSString *title = [NSString stringWithUTF8String:
@@ -98,12 +120,12 @@ namespace native
             [item setLabel:title ? title : @""];
             native_tab_page_host *host = [[native_tab_page_host alloc]
                 initWithFrame:[state.view contentRect]];
-            host->_content = &content;
+            host->_content = content;
             [host setAutoresizesSubviews:YES];
             [host setClipsToBounds:YES];
             [item setView:host];
             [state.view addTabViewItem:item];
-            if (NSView *child = mac::view_from_control(&content))
+            if (NSView *child = content ? mac::view_from_control(content) : nil)
                 [host addSubview:child];
             [host fitContent];
             [host release];
@@ -129,8 +151,10 @@ namespace native
         if (!parent)
             throw std::runtime_error("macOS: tabs require a created parent.");
         auto *state = new mac::mac_tab_view();
-        state->view = [[NSTabView alloc] initWithFrame:NSMakeRect(
+        auto *view = [[native_selection_tabs alloc] initWithFrame:NSMakeRect(
             _bounds.p.x, _bounds.p.y, _bounds.d.w, _bounds.d.h)];
+        view->_owner = this;
+        state->view = view;
         native_tab_delegate *delegate = [[native_tab_delegate alloc] init];
         delegate->_owner = this;
         state->delegate = delegate;
@@ -148,7 +172,8 @@ namespace native
         [state.view setHidden:NO];
         refresh_contents();
         apply_selected_index();
-        if (get_selected_index() >= 0)
+        if (get_selected_index() >= 0 &&
+            get_item(get_selected_index()).has_content())
             get_item(get_selected_index()).get_content().show();
     }
 

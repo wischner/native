@@ -129,10 +129,10 @@ namespace native
 
     tab_item::tab_item(tab_view &owner,
                        std::string title,
-                       wnd &content)
+                       wnd *content)
         : _owner(&owner)
         , _title(std::move(title))
-        , _content(&content) {}
+        , _content(content) {}
 
     const std::string &tab_item::get_title() const {
         return _title;
@@ -160,7 +160,11 @@ namespace native
         return *this;
     }
 
+    bool tab_item::has_content() const { return _content != nullptr; }
+
     wnd &tab_item::get_content() const {
+        if (!_content)
+            throw std::logic_error("A selection-only tab has no page.");
         return *_content;
     }
 
@@ -205,6 +209,8 @@ namespace native
 
     tab_item &tab_view::add_item(const std::string &title,
                                  wnd &content) {
+        if (_selection_only)
+            throw std::logic_error("Selection-only tabs cannot borrow pages.");
         if (content.get_created()) {
             throw std::invalid_argument(
                 "tab content must be uncreated when added");
@@ -218,7 +224,7 @@ namespace native
 
         content.set_parent(this);
         _items.push_back(std::unique_ptr<tab_item>(
-            new tab_item(*this, title, content)));
+            new tab_item(*this, title, &content)));
         if (_selected_index < 0)
             _selected_index = 0;
         refresh();
@@ -226,6 +232,8 @@ namespace native
     }
 
     tab_view &tab_view::operator<<(tab_page page) {
+        if (!page.content)
+            throw std::invalid_argument("A tab_page needs content.");
         add_item(page.title, *page.content);
         return *this;
     }
@@ -252,6 +260,8 @@ namespace native
         for (auto &item : _items)
             detach_item(*item);
         _items.clear();
+        _first_visible = 0;
+        _last_clicked = -1;
         _selected_index = -1;
         if (_created) {
             apply_items();
@@ -277,6 +287,7 @@ namespace native
         if (_selected_index == index)
             return *this;
         _selected_index = index;
+        reveal_selection();
         refresh_contents();
         if (_created)
             apply_selected_index();
@@ -325,9 +336,11 @@ namespace native
 
     rect tab_view::get_tab_bounds(std::size_t index) const {
         const tab_item &item = get_item(index);
+        if (_selection_only && index < _first_visible) return rect();
         const font_t &font = font_t::stock(font_role::control);
         int offset = _page_frame_visible ? _page_inset : _tab_inset;
-        for (std::size_t current = 0; current < index; ++current) {
+        for (std::size_t current = _selection_only ? _first_visible : 0;
+             current < index; ++current) {
             const int extent = std::max(
                 36,
                 font.measure_text(_items[current]->_title).width +
@@ -381,6 +394,7 @@ namespace native
     }
 
     rect tab_view::get_content_bounds() const {
+        if (_selection_only) return rect();
         if (!_page_frame_visible) {
             constexpr int separator = 1;
             if (!horizontal_tabs(_tab_placement)) {
@@ -449,6 +463,7 @@ namespace native
         if (!_items[index]->_enabled || _selected_index == index)
             return;
         _selected_index = index;
+        reveal_selection();
         refresh_contents();
         if (_created)
             apply_selected_index();
@@ -457,11 +472,14 @@ namespace native
     }
 
     void tab_view::on_bounds_changed() {
+        reveal_selection();
         refresh_contents();
         invalidate();
     }
 
     void tab_view::refresh() {
+        _last_clicked = -1;
+        reveal_selection();
         if (_created)
             apply_items();
         refresh_contents();
@@ -485,6 +503,7 @@ namespace native
                                   content_bounds.d.h);
         }
         for (std::size_t index = 0; index < _items.size(); ++index) {
+            if (!_items[index]->_content) continue;
             wnd &content = *_items[index]->_content;
             if (static_cast<int>(index) == _selected_index) {
                 content.set_bounds(content_bounds);
@@ -500,8 +519,10 @@ namespace native
     }
 
     void tab_view::detach_item(tab_item &item) {
-        if (!item._content)
+        if (!item._content) {
+            item._owner = nullptr;
             return;
+        }
         if (item._content->get_created())
             item._content->destroy();
         if (item._content->get_parent() == this)
@@ -659,7 +680,18 @@ namespace native
         for (std::size_t index = 0; index < _items.size(); ++index) {
             if (_items[index]->_enabled &&
                 get_tab_bounds(index).contains(event.position)) {
-                on_native_selection(static_cast<int>(index));
+                const auto now = std::chrono::steady_clock::now();
+                const bool activate = _selection_only &&
+                    static_cast<int>(index) == _selected_index &&
+                    (event.clicks >= 2 ||
+                     (_last_clicked == static_cast<int>(index) &&
+                      now - _last_click < std::chrono::milliseconds(500)));
+                _last_clicked = activate ? -1 : static_cast<int>(index);
+                _last_click = now;
+                if (activate)
+                    on_native_activation(static_cast<int>(index));
+                else
+                    on_native_selection(static_cast<int>(index));
                 return true;
             }
         }

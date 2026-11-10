@@ -158,3 +158,34 @@ changing the selected-tab overlap.
 
 Both controls detach borrowed children during destruction. The application
 must keep page and pane objects alive longer than their containing control.
+
+## Select external content without page ownership
+
+This is opt-in; ordinary page tabs above are unchanged. Configure the option
+before adding labels or creating the control:
+
+```cpp
+native::tab_view tabs;
+tabs.set_selection_only(true)
+    .set_page_frame_visible(false)
+    .set_tab_placement(native::tab_placement::bottom);
+tabs.add_item("Sheet1");
+tabs.add_item("Sheet2");
+tabs.on_selection_change.connect([&](int index) {
+    show_sheet(index); // Update one independently owned document view.
+    return true;
+});
+```
+
+Parent, create and position `tabs` normally, or borrow it as a toolbar control.
+After creation, `get_tab_extent()` supplies the native band thickness for that
+placement; include the host toolbar's theme insets. `set_selected_index` stays
+silent. `on_activate` supports actions on double-clicked labels. Disabled items
+cannot be selected or activated by native input. Selection and resizing keep
+overflowed labels reachable in painted backends.
+
+Do not call `get_content()` on these items: `has_content()` is false, and the
+accessor throws `std::logic_error`. A live or populated control cannot change
+ownership modes. Clear and destroy it first if a mode change is necessary.
+Platform notebook internals may retain empty page hosts; applications need no
+placeholder windows and external content is never reparented.

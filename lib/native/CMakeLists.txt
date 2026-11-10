@@ -109,6 +109,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tab_strip.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/password_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tab_view.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tab_view_selection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/owned_wnd.cpp

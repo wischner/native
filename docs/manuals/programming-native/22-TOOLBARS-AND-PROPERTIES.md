@@ -124,8 +124,12 @@ title and status rather than expecting user-change signals.
 
 ## Choose content with a tab strip
 
-`tab_strip` is a labeled strip for when tabs select what one window shows, such
-as a spreadsheet's sheets. It owns no pages, unlike `tab_view`:
+For new selectors, use `tab_view::set_selection_only(true)` and host that control
+in a toolbar when edge docking is needed. This reuses the existing tab peer;
+[Chapter 16](16-SPLIT-VIEWS-AND-TABS.md) explains the optional mode.
+
+The older `tab_strip` remains available for compatibility with existing code.
+It is a separately painted non-client strip and owns no pages:
 
 ```cpp
 native::tab_strip tabs(document, native::window_edge::bottom, 24);
@@ -299,3 +303,11 @@ Toolbar extents also respect the minimum image area and the backend's
 single-line input height plus both insets. For example, the SDL2 control band
 is 28 pixels (24-pixel input plus outer padding), while GEM's 18-pixel fields
 fit its 20-pixel band. Explicit larger extents remain supported.
+
+
+Set `tool_item::control_fill_width = true` to let a hosted control occupy its
+whole slot width. The default is false, preserving theme control insets.
+This removes horizontal gaps between consecutive hosted fields while retaining
+their vertical sizing and centering. Combine it with the control's
+`set_border_sides(border_sides::right)` for one dividing line between adjacent
+combo boxes; the toolbar continues to supply its own horizontal rules.

@@ -78,6 +78,22 @@ namespace
                     std::to_string(box_.get_dimensions().w) + " strip=" +
                     std::to_string(bar_.get_bounds().w()) + "x" +
                     std::to_string(bar_.get_bounds().h())).c_str());
+            const auto original = bar_.get_items();
+            auto filled = original;
+            filled.front().control_fill_width = true;
+            const auto initial_bounds = box_.get_bounds();
+            bar_.set_items(filled);
+            const auto slot = bar_.get_item_bounds("choice");
+            expect(box_.get_bounds().x1() == slot.x1() &&
+                       box_.get_bounds().w() == slot.w(),
+                   "fill-width control occupies its complete slot width");
+            expect(box_.get_bounds().y1() == initial_bounds.y1() &&
+                       box_.get_bounds().h() == initial_bounds.h(),
+                   "fill-width control retains vertical sizing and alignment");
+            bar_.set_items(original);
+            expect(box_.get_bounds().w() == initial_bounds.w() &&
+                       box_.get_bounds().x1() == initial_bounds.x1(),
+                   "default control insets can be restored");
             bool threw = false;
             try {
                 tool_item empty;

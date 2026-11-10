@@ -136,6 +136,7 @@ namespace
         if (!state)
             return;
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
+            if (!owner.get_item(index).has_content()) continue;
             Widget content = linux::openmotif::wnd_bindings.handle_from_object(
                 &owner.get_item(index).get_content());
             if (!content || index >= state->pages.size() ||
@@ -205,6 +206,7 @@ namespace
                 : 0,
             nullptr);
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
+            if (!owner.get_item(index).has_content()) continue;
             native::wnd &content = owner.get_item(index).get_content();
             if (content.get_created())
                 content.destroy();
@@ -370,6 +372,25 @@ namespace
             }
             state.page_frames.push_back(page_frame);
             state.pages.push_back(page);
+            if (owner.get_selection_only())
+                XtAddEventHandler(tab, ButtonReleaseMask, False,
+                    +[](Widget widget, XtPointer data, XEvent *event, Boolean *) {
+                        if (event->type != ButtonRelease ||
+                            event->xbutton.button != Button1) return;
+                        auto &tabs = *static_cast<native::tab_view *>(data);
+                        auto *peer = binding(tabs);
+                        if (!peer) return;
+                        const auto found = std::find(peer->tabs.begin(),
+                                                     peer->tabs.end(), widget);
+                        if (found == peer->tabs.end()) return;
+                        const auto index = found - peer->tabs.begin();
+                        const auto bounds = tabs.get_tab_bounds(index);
+                        tabs.on_native_mouse_click(native::mouse_event(
+                            native::mouse_button::left,
+                            native::mouse_action::release,
+                            native::point(bounds.x1() + bounds.w() / 2,
+                                          bounds.y1() + bounds.h() / 2)));
+                    }, &owner);
             state.tabs.push_back(tab);
         }
     }
@@ -466,7 +487,7 @@ namespace native
                         hide_page_scroller_later,
                         state->notebook);
         const int selected = get_selected_index();
-        if (selected >= 0) {
+        if (selected >= 0 && get_item(selected).has_content()) {
             wnd &content = get_item(
                 static_cast<std::size_t>(selected)).get_content();
             if (content.get_created())

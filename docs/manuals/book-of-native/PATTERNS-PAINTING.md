@@ -155,7 +155,10 @@ thread. Its two fields are:
 The last two stages run after the subscriber, in that order.
 `wnd::on_native_paint()` emits the signal and then calls the protected
 `draw_non_client()`, which paints every visible attached strip over the bounds
-`non_client_bounds()` resolved for it. A control that owns edge chrome of its
+`non_client_bounds()` resolved for it. GEM window footer bounds stop before
+the AES resize corner, so both painting and strip hit testing exclude that
+area; applications keep painting inside the SDK-owned work rectangle.
+A control that owns edge chrome of its
 own overrides `on_native_paint()`, clips the client stage to its viewport,
 calls `draw_non_client()`, and paints its chrome last — this is how `canvas`
 draws its scrollbars and their corner filler without ever handing them to the

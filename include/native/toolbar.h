@@ -40,6 +40,10 @@ namespace native
 
         // Length along the bar of a hosted control.
         int length = 0;
+
+        // Fill the hosted slot's width without horizontal control insets.
+        // Vertical sizing and centering remain unchanged. Default false.
+        bool control_fill_width = false;
     };
 
     struct tool_command

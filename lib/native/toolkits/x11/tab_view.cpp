@@ -21,7 +21,7 @@ namespace native
     void tab_view::apply_items() { invalidate(); }
     void tab_view::apply_selected_index() {
         const int selected = get_selected_index();
-        if (selected >= 0) {
+        if (selected >= 0 && get_item(selected).has_content()) {
             auto &content = get_item(selected).get_content();
             Widget page = linux::x11::wnd_bindings.handle_from_object(&content);
             // A List used as a page must not close the selected tab's join
@@ -53,7 +53,7 @@ namespace native
         if (XtIsRealized(state->widget))
             XRaiseWindow(linux::x11::cached_display, XtWindow(state->widget));
         const int selected = get_selected_index();
-        if (selected >= 0) {
+        if (selected >= 0 && get_item(selected).has_content()) {
             wnd &content = get_item(
                 static_cast<std::size_t>(selected)).get_content();
             if (content.get_created())

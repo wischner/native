@@ -30,6 +30,9 @@ namespace native
 
         std::unique_ptr<status_bar_peer> create_status_bar_peer();
 
+        // Keep a bottom status strip clear of platform-owned resize chrome.
+        rect status_bar_bounds(const wnd &owner, const rect &bounds);
+
         // Choose the native docking host for a scrolling document footer.
         wnd &status_bar_host(wnd &owner, canvas &content);
     } // namespace detail

@@ -45,6 +45,7 @@ namespace
 
     void destroy_borrowed_contents(native::tab_view &owner) {
         for (std::size_t index = 0; index < owner.get_item_count(); ++index) {
+            if (!owner.get_item(index).has_content()) continue;
             native::wnd &content = owner.get_item(index).get_content();
             if (content.get_created()) content.destroy();
         }
@@ -198,7 +199,7 @@ namespace native
         WMRealizeWidget(host);
         WMMapWidget(host);
         const int selected_index = get_selected_index();
-        if (selected_index >= 0) {
+        if (selected_index >= 0 && get_item(selected_index).has_content()) {
             wnd &content = get_item(static_cast<std::size_t>(selected_index)).get_content();
             if (content.get_created()) content.show();
         }

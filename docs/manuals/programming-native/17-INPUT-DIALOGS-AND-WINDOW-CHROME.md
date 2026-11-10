@@ -408,3 +408,11 @@ before window creation. On GEM the real AES frame then owns the scrollbars;
 the document status strip ends exactly at its work-area boundary. No extra
 canvas scrollbar track or bottom padding is reserved. The same application
 call retains existing canvas controls on other backends.
+
+### GEM footer and frame edges
+
+A window-owned `status_bar` remains docked at the bottom of GEM's work area
+and stops before the AES resize corner. Native queries AES frame geometry;
+applications do not supply a corner width. Document-associated bars already
+inside canvas scrollbars retain their existing bounds. The compact resize
+frame belongs to AES and lies outside the application's paintable work area.

@@ -1683,8 +1683,10 @@ Ruler ticks, labels, edges and tracking marks use the menu foreground.
 Rulers may occupy all four edges. Orientation follows the edge. Origins,
 units-per-pixel, and positive minor/major intervals are finite doubles.
 Optional pointer tracking uses host-relative motion, updates the cached value,
-and emits once per changed ruler pixel. Status bars occupy the full bottom edge,
-including both lower corners, while side non-client strips stop above them.
+and emits once per changed ruler pixel. Status bars occupy the bottom edge,
+while side non-client strips stop above them. The GEM backend trims window
+status bounds before the AES resize corner, measuring that corner through
+`wind_calc`; the vertical reservation and bottom docking remain unchanged.
 Status bars precede all other bottom strips in edge reservation, independent
 of attachment order, so bottom toolbars sit above them. Changing a status bar
 to another edge is invalid; toolbars retain their four-edge docking contract.
@@ -2111,9 +2113,36 @@ is created. `theme::metrics` supplies the band height, outer toolbar padding
 and hosted-control inset. GEM obtains its band from `gemctl_chrome_layout`,
 the same routine used by Gemscape and Ted, and keeps 16x16 artwork unscaled
 in full-band square slots. Toolkit declarations remain private.
+Hosted items may opt into `tool_item::control_fill_width` to remove horizontal
+control insets without changing vertical sizing or centering. The default is
+false, retaining existing layout. Adjacent full-width fields can use the
+existing per-control border sides to share a single dividing rule.
 
 `standard_icon(standard_icon_id)` returns shared immutable backend artwork or
 null when no canonical icon exists. GEM supplies Ted's New, Open, Save, Save As,
 Undo, Cut, Copy and Paste masks; applications supply fallbacks for other actions.
 The imported artwork retains its GPL-2.0-or-later license separately from
 Native's MIT sources; see `lib/native/third_party/ted/`.
+
+### Optional selection-only tabs (2026-11-10)
+
+`tab_view::set_selection_only(true)` opts into labels that select content managed
+outside the control. The default remains false: existing `add_item(title, wnd&)`
+callers retain their borrowed-page creation, switching and destruction behavior.
+Change the mode only while the control is empty and uncreated; an invalid change
+throws `std::logic_error` without modifying its model. In selection-only mode,
+`add_item(title)` creates a label and rejects page-taking overloads. `tab_item`
+reports `has_content() == false`; `get_content()` throws rather than dereferencing
+a missing page. `get_content_bounds()` is empty. Native toolkit page hosts may
+still exist internally where the platform notebook requires them, but no
+application page is created, destroyed, resized, or reparented.
+
+The option reuses the existing tab peer, tab drawing stages, enabled state and
+selection signals. Programmatic selection remains silent. Painted selectors
+reveal the selected label after selection and resize. `get_tab_extent()` reports
+the configured band including the selected-tab join, so a toolbar can host the
+control without an application height constant. `on_native_activation()` validates
+an enabled item before emitting `on_activate`; double-clicking a selection-only
+tab can invoke a consumer action such as renaming a sheet. Ordinary tab behavior
+is unchanged. Keep the legacy `tab_strip` API for compatibility; new selectors
+should use this mode instead of duplicating its tab painter.

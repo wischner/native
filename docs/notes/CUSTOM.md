@@ -1,5 +1,14 @@
 # Native Versus Custom Control Audit
 
+GEM status corner review (2026-11-10): window-owned status strips retain
+shared **C** painting and bottom docking, but their bounds stop before the
+AES resize corner. The private GEM adapter obtains the corner span with
+`wind_calc`; it adds no inset to windows whose native scrollbars already
+exclude that corner, or to nested document hosts. The SDK-owned compact
+resize frame remains outside the application's work area. Shared table
+header surfaces and their final column separator honor the table's outer
+border mask, avoiding a second frame on panes that meet window edges.
+
 This document records how every public visual control is implemented in each
 supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
@@ -1102,3 +1111,9 @@ Gemscape/Ted, and hosted controls use a one-pixel inset. Canonical Ted command
 artwork is centralized through `standard_icon`; applications need no GEM
 headers or local copies. Existing Native tree/table/combo/split controls remain
 the public reuse boundary; no application-owned replacements are needed.
+
+Tab selector update (2026-11-10): `tab_view` retains every backend kind listed
+above. The optional `selection_only` model uses the same peers/drawing stages
+and needs no application page windows. No new control or painter was added.
+`tab_strip` remains **C** for API compatibility; new external-content selectors
+should use the optional `tab_view` mode. Isaac has migrated to that path.

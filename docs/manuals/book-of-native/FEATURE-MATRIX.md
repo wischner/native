@@ -1,5 +1,14 @@
 # Feature Matrix
 
+GEM status corner review (2026-11-10): window-owned status strips retain
+shared **C** painting and bottom docking, but their bounds stop before the
+AES resize corner. The private GEM adapter obtains the corner span with
+`wind_calc`; it adds no inset to windows whose native scrollbars already
+exclude that corner, or to nested document hosts. The SDK-owned compact
+resize frame remains outside the application's work area. Shared table
+header surfaces and their final column separator honor the table's outer
+border mask, avoiding a second frame on panes that meet window edges.
+
 ## GEM menu installation (2026-11-10)
 
 GEM installation accepts only positive `menu_bar()` results. Failed menu
@@ -1939,3 +1948,12 @@ Fyodor consumer validation (2026-11-10, latest GEMix SDK revision
 consumer retains 28-pixel rows and 24-pixel fields. Root-window metric lookup
 avoids requesting window graphics from SDL2 child canvases. GEM
 `native_ruler_toolbar_tests` and real-packet `native_gemix_input_tests` pass.
+
+Optional tab selector model (2026-11-10): `tab_view` now accepts label-only
+items after `set_selection_only(true)` on an empty, uncreated control. Normal
+page ownership remains the default. Backend content access is guarded for empty
+items; toolkit-mandated page hosts stay private. `native_window_api_tests` covers
+both default page lifecycles and the opt-in model, mode-change rejection, disabled
+items, overflow, activation and creation without external page ownership.
+Isaac's GEM desktop suite exercises the selector, double-click rename and undo.
+Non-Linux native-peer runtime behavior still needs its platform acceptance run.

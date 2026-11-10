@@ -127,7 +127,8 @@ namespace linux::wayland
             } else if (auto *tabs =
                            dynamic_cast<native::tab_view *>(parent)) {
                 for (std::size_t i = 0; i < tabs->get_item_count(); ++i)
-                    if (&tabs->get_item(i).get_content() == &owner)
+                    if (tabs->get_item(i).has_content() &&
+                        &tabs->get_item(i).get_content() == &owner)
                         gtk_overlay_set_child(
                             GTK_OVERLAY(state(*parent).pages.at(i)),
                             widget);

@@ -750,6 +750,12 @@ namespace windows
                             return CDRF_DODEFAULT;
                         }
                     }
+                    if (notification->code == NM_DBLCLK &&
+                        tabs->get_selection_only() &&
+                        tabs->get_selected_index() >= 0) {
+                        tabs->on_native_activation(tabs->get_selected_index());
+                        return 0;
+                    }
                     if (notification->code == TCN_SELCHANGE) {
                         const int selected = TabCtrl_GetCurSel(
                             notification->hwndFrom);

@@ -46,7 +46,8 @@ namespace mac
             auto *binding = tab_view_bindings.object_from_handle(tabs);
             if (!binding) return nil;
             for (std::size_t index = 0; index < tabs->get_item_count(); ++index) {
-                if (&tabs->get_item(index).get_content() == child &&
+                if (tabs->get_item(index).has_content() &&
+                        &tabs->get_item(index).get_content() == child &&
                     index < static_cast<std::size_t>([binding->view numberOfTabViewItems]))
                     return [[binding->view tabViewItemAtIndex:index] view];
             }

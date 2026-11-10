@@ -204,7 +204,10 @@ allocation remains zero.
 
 Non-client reservation gives status bars priority at the bottom edge, before
 other bottom strips regardless of attachment order. Bottom toolbars stack
-above the footer. A status bar rejects a non-bottom edge.
+above the footer. A status bar rejects a non-bottom edge. On GEM, a private
+backend geometry adapter trims window footer bounds before the AES resize
+corner without changing the reserved height or moving the bottom edge.
+Nested document hosts and frames already excluding the corner are unchanged.
 
 ## Parent and child relationships
 

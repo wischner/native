@@ -219,6 +219,7 @@ namespace native
         peer.updating = true;
         std::vector<GtkWidget *> contents(get_item_count(), nullptr);
         for (std::size_t i = 0; i < get_item_count(); ++i) {
+            if (!get_item(i).has_content()) continue;
             auto &content = get_item(i).get_content();
             if (!content.get_created())
                 continue;
@@ -246,6 +247,22 @@ namespace native
             gtk_widget_set_margin_top(label, 2);
             gtk_widget_set_margin_bottom(label, 2);
             gtk_widget_set_sensitive(label, get_item(i).get_enabled());
+            if (get_selection_only()) {
+                auto *click = gtk_gesture_click_new();
+                gtk_event_controller_set_propagation_phase(
+                    GTK_EVENT_CONTROLLER(click), GTK_PHASE_CAPTURE);
+                g_object_set_data(G_OBJECT(click), "native-tab-index",
+                                  GINT_TO_POINTER(static_cast<int>(i)));
+                g_signal_connect(click, "pressed",
+                    G_CALLBACK(+[](GtkGestureClick *gesture, int count,
+                                   double, double, gpointer data) {
+                        if (count == 2)
+                            static_cast<tab_view *>(data)->on_native_activation(
+                                GPOINTER_TO_INT(g_object_get_data(
+                                    G_OBJECT(gesture), "native-tab-index")));
+                    }), this);
+                gtk_widget_add_controller(label, GTK_EVENT_CONTROLLER(click));
+            }
             gtk_notebook_append_page(notebook, page, label);
             if (contents[i]) {
                 gtk_overlay_set_child(GTK_OVERLAY(page), contents[i]);

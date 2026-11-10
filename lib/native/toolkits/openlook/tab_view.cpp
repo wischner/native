@@ -82,7 +82,7 @@ namespace native
         if (linux::openlook::cached_display)
             XFlush(linux::openlook::cached_display);
         const int selected = get_selected_index();
-        if (selected >= 0) {
+        if (selected >= 0 && get_item(selected).has_content()) {
             wnd &content = get_item(
                 static_cast<std::size_t>(selected)).get_content();
             if (content.get_created()) content.show();

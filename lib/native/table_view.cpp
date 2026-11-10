@@ -585,9 +585,18 @@ namespace native
         const theme::state &state) {
         const int frame = std::max(
             0, appearance.defaults().table_outer_border_extent);
-        const int left = std::max<int>(bounds.p.x, frame);
-        const int top = std::max<int>(bounds.p.y, frame);
-        const int right = bounds.x2();
+        const auto sides = get_border_sides();
+        const bool left_edge = (sides & border_sides::left) != border_sides::none;
+        const bool top_edge = (sides & border_sides::top) != border_sides::none;
+        const bool right_edge = (sides & border_sides::right) != border_sides::none;
+        int left = std::max<int>(bounds.p.x, left_edge ? frame : 0);
+        int top = std::max<int>(bounds.p.y, top_edge ? frame : 0);
+        int right = bounds.x2();
+        // Move omitted header edges outside the control's paint clip.
+        // Otherwise themed header cells would restore a hidden outer frame.
+        if (!left_edge && left == 0) --left;
+        if (!top_edge && top == 0) --top;
+        if (!right_edge && right == get_dimensions().w) ++right;
         const int bottom = bounds.y2();
         if (right <= left || bottom <= top)
             return;
@@ -658,6 +667,9 @@ namespace native
         const table_column &,
         const rect &bounds,
         const theme::state &) {
+        if (bounds.x2() == get_dimensions().w &&
+            (get_border_sides() & border_sides::right) == border_sides::none)
+            return;
         appearance.draw_separator(
             rect(static_cast<coord>(bounds.x2() - 1),
                  bounds.p.y,

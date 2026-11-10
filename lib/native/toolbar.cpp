@@ -197,13 +197,15 @@ namespace native
         for (std::size_t index = 0; index < _items.size(); ++index) {
             wnd *control = _items[index].control;
             if (_items[index].kind != tool_kind::control) continue;
+            const int horizontal_inset = _items[index].control_fill_width
+                ? 0 : inset;
             const int height = std::min<int>(control->get_dimensions().h,
                 std::max(0, int(bounds[index].h()) - 2 * inset));
             control->set_bounds(rect(
-                bounds[index].p.x + inset,
+                bounds[index].p.x + horizontal_inset,
                 static_cast<coord>(bounds[index].y1() +
                                    (bounds[index].h() - height) / 2),
-                std::max(0, int(bounds[index].w()) - 2 * inset),
+                std::max(0, int(bounds[index].w()) - 2 * horizontal_inset),
                 static_cast<dim>(height)));
             if (!control->get_created()) {
                 control->set_parent(_surface.get());

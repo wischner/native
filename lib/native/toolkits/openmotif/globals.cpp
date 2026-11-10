@@ -65,7 +65,8 @@ namespace linux::openmotif
             for (std::size_t index = 0;
                  index < tabs->get_item_count() &&
                  index < state->pages.size(); ++index) {
-                if (&tabs->get_item(index).get_content() == child)
+                if (tabs->get_item(index).has_content() &&
+                        &tabs->get_item(index).get_content() == child)
                     return state->pages[index];
             }
             return nullptr;

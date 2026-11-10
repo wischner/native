@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -60,13 +61,16 @@ namespace native
         // Enable or disable user selection of this tab.
         tab_item &set_enabled(bool enabled);
 
-        // Return the borrowed page window.
+        // Return whether this item borrows a page window.
+        bool has_content() const;
+
+        // Return the borrowed page, or throw logic_error for a label-only item.
         wnd &get_content() const;
 
     private:
         friend class tab_view;
 
-        tab_item(tab_view &owner, std::string title, wnd &content);
+        tab_item(tab_view &owner, std::string title, wnd *content);
 
         tab_view *_owner;
         std::string _title;
@@ -98,6 +102,20 @@ namespace native
 
         // Return one tab or throw std::out_of_range.
         tab_item &get_item(std::size_t index) const;
+
+        // Opt into labels without page ownership. Defaults to false.
+        // Change only while empty and uncreated; page-taking add_item remains
+        // the default API and is rejected in selection-only mode.
+        tab_view &set_selection_only(bool enabled);
+
+        // Return whether tabs select external content instead of owning pages.
+        bool get_selection_only() const;
+
+        // Append a label without a page; requires selection-only mode.
+        tab_item &add_item(const std::string &title);
+
+        // Return the tab band thickness including its selected-page join.
+        int get_tab_extent() const;
 
         // Append a tab and borrow its uncreated page window.
         tab_item &add_item(const std::string &title, wnd &content);
@@ -145,6 +163,9 @@ namespace native
         // Accept a backend-originated user selection.
         virtual void on_native_selection(int index);
 
+        // Report activation (for example, double-click) of an enabled tab.
+        virtual void on_native_activation(int index);
+
     protected:
         // Create the backend tab-view resource.
         void create_native() override;
@@ -159,6 +180,9 @@ namespace native
 
         // Emits the selected index after a user-originated change.
         signal<int> on_selection_change;
+
+        // Emits an enabled tab index on activation, without changing selection.
+        signal<int> on_activate;
 
     protected:
         // Recalculate the selected page after a resize.
@@ -234,11 +258,17 @@ namespace native
         rgba _inactive_tab_highlight;
         tab_placement _tab_placement = tab_placement::top;
         bool _page_frame_visible = true;
+        bool _selection_only = false;
+        std::size_t _first_visible = 0;
+        int _last_clicked = -1;
+        std::chrono::steady_clock::time_point _last_click;
         bool _content_host_is_page = false;
         bool _preserve_inactive_pages = false;
 
         void validate_index(int index) const;
         void refresh_contents();
+        // Keep a selected label reachable when a painted tab band overflows.
+        void reveal_selection();
         void detach_item(tab_item &item);
         void draw(gpx &graphics);
         void draw_page_separator(theme &appearance,

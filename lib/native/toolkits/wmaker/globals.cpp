@@ -98,7 +98,8 @@ namespace linux::wmaker
                 for (std::size_t index = 0;
                      index < tabs->get_item_count() &&
                      index < state->pages.size(); ++index) {
-                    if (&tabs->get_item(index).get_content() == control)
+                    if (tabs->get_item(index).has_content() &&
+                        &tabs->get_item(index).get_content() == control)
                         return state->pages[index];
                 }
             }

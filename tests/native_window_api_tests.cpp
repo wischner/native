@@ -920,6 +920,87 @@ namespace
                "repeated side-page switching retains borrowed content");
     }
 
+    // Selection-only mode is explicit and never borrows or creates a page.
+    void test_selection_only_tabs() {
+        simulated_tab_view tabs(0, 0, 150, 30);
+        expect(!tabs.get_selection_only(), "page-owning tabs remain the default");
+        bool rejected = false;
+        try { tabs.add_item("No page"); }
+        catch (const std::logic_error &) { rejected = true; }
+        expect(rejected && tabs.get_item_count() == 0,
+               "default mode rejects a missing page without changing its model");
+        tabs.set_selection_only(true).set_page_frame_visible(false);
+        simulated_page external(0, 0, 80, 60);
+        rejected = false;
+        try { tabs.add_item("Page", external); }
+        catch (const std::logic_error &) { rejected = true; }
+        expect(rejected && external.get_parent() == nullptr,
+               "selection-only mode rejects page ownership without reparenting");
+        for (int index = 0; index < 12; ++index)
+            tabs.add_item("Sheet " + std::to_string(index));
+        expect(!tabs.get_item(0).has_content() &&
+                   tabs.get_content_bounds().w() == 0,
+               "label tabs contain no application page and reserve no page area");
+        rejected = false;
+        try { (void)tabs.get_item(0).get_content(); }
+        catch (const std::logic_error &) { rejected = true; }
+        expect(rejected, "page access fails explicitly for label-only tabs");
+        rejected = false;
+        try { tabs.set_selection_only(false); }
+        catch (const std::logic_error &) { rejected = true; }
+        expect(rejected && tabs.get_selection_only(),
+               "populated tabs cannot silently change ownership modes");
+        int selections = 0, activations = 0;
+        tabs.on_selection_change.connect([&](int) { ++selections; return true; });
+        tabs.on_activate.connect([&](int) { ++activations; return true; });
+        tabs.set_selected_index(11);
+        expect(selections == 0 && tabs.get_tab_bounds(11).w() > 0 &&
+                   tabs.get_tab_bounds(0).w() == 0,
+               "silent selection reveals an overflowed label");
+        tabs.set_dimensions({100, 30});
+        expect(tabs.get_tab_bounds(11).w() > 0,
+               "resizing retains the selected label in view");
+        tabs.set_selected_index(0);
+        tabs.get_item(1).set_enabled(false);
+        tabs.on_native_selection(1);
+        tabs.on_native_activation(1);
+        expect(selections == 0 && activations == 0 &&
+                   tabs.get_selected_index() == 0,
+               "disabled labels neither select nor activate");
+        tabs.on_native_selection(2);
+        expect(selections == 1 && tabs.get_selected_index() == 2,
+               "enabled native selection emits once");
+        auto bounds = tabs.get_tab_bounds(2);
+        native::mouse_event click(native::mouse_button::left,
+            native::mouse_action::release,
+            native::point(bounds.x1() + bounds.w() / 2,
+                          bounds.y1() + bounds.h() / 2));
+        click.clicks = 2;
+        tabs.on_native_mouse_click(click);
+        expect(activations == 1 && selections == 1,
+               "double-click activates without another selection event");
+        simulated_app_window root;
+        root.create();
+        tabs.set_parent(&root);
+        tabs.create();
+        expect(tabs.get_created() && !external.get_created(),
+               "creating selection-only tabs creates no external page");
+        tabs.clear_items();
+        expect(tabs.get_selected_index() == -1 && tabs.get_item_count() == 0,
+               "clearing label-only tabs resets selection safely");
+        rejected = false;
+        try { tabs.set_selection_only(false); }
+        catch (const std::logic_error &) { rejected = true; }
+        expect(rejected, "a live tab peer cannot change ownership modes");
+        tabs.destroy();
+        tabs.set_selection_only(false);
+        tabs.add_item("Page again", external);
+        expect(tabs.get_item(0).has_content() &&
+                   &tabs.get_item(0).get_content() == &external,
+               "an empty destroyed selector can opt back into normal pages");
+        tabs.clear_items();
+    }
+
     // Verify native callbacks and paint stages dispatch virtually once,
     // while base calls retain state updates and public signals.
     void test_control_extension_hooks() {
@@ -3145,6 +3226,7 @@ int main() {
     test_menu_label_metadata();
     test_menu_checks();
     test_tab_view_model();
+    test_selection_only_tabs();
     test_control_extension_hooks();
     test_parent_lifetime();
     test_owned_window_lifetime();

@@ -419,3 +419,34 @@ an editor relinquishes it. Windows decides whether to queue translated text
 after dispatching the canvas press. The `vision --new-features` acceptance
 window combines typed canvas text with hosted toolbar controls and interactive
 ruler markers; see the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
+
+### Optional selection-only tabs (2026-11-10)
+
+`tab_view::set_selection_only(true)` opts into labels that select content managed
+outside the control. The default remains false: existing `add_item(title, wnd&)`
+callers retain their borrowed-page creation, switching and destruction behavior.
+Change the mode only while the control is empty and uncreated; an invalid change
+throws `std::logic_error` without modifying its model. In selection-only mode,
+`add_item(title)` creates a label and rejects page-taking overloads. `tab_item`
+reports `has_content() == false`; `get_content()` throws rather than dereferencing
+a missing page. `get_content_bounds()` is empty. Native toolkit page hosts may
+still exist internally where the platform notebook requires them, but no
+application page is created, destroyed, resized, or reparented.
+
+The option reuses the existing tab peer, tab drawing stages, enabled state and
+selection signals. Programmatic selection remains silent. Painted selectors
+reveal the selected label after selection and resize. `get_tab_extent()` reports
+the configured band including the selected-tab join, so a toolbar can host the
+control without an application height constant. `on_native_activation()` validates
+an enabled item before emitting `on_activate`; double-clicking a selection-only
+tab can invoke a consumer action such as renaming a sheet. Ordinary tab behavior
+is unchanged. Keep the legacy `tab_strip` API for compatibility; new selectors
+should use this mode instead of duplicating its tab painter.
+
+
+Set `tool_item::control_fill_width = true` to let a hosted control occupy its
+whole slot width. The default is false, preserving theme control insets.
+This removes horizontal gaps between consecutive hosted fields while retaining
+their vertical sizing and centering. Combine it with the control's
+`set_border_sides(border_sides::right)` for one dividing line between adjacent
+combo boxes; the toolbar continues to supply its own horizontal rules.

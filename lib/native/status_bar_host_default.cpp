@@ -8,5 +8,7 @@
 
 namespace native::detail
 {
+    rect status_bar_bounds(const wnd &, const rect &bounds) { return bounds; }
+
     wnd &status_bar_host(wnd &owner, canvas &) { return owner; }
 }

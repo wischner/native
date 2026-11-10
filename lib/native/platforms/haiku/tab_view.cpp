@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include <InterfaceDefs.h>
+#include <Message.h>
 #include <TabView.h>
 #include <View.h>
 #include <Window.h>
@@ -37,6 +38,20 @@ namespace
         explicit native_tab_view(native::tab_view *owner)
             : BTabView("native_tab_view", B_WIDTH_AS_USUAL)
             , _owner(owner) {}
+
+        void MouseDown(BPoint point) override {
+            int32 clicks = 0;
+            if (_owner && _owner->get_selection_only() && Window() &&
+                Window()->CurrentMessage() &&
+                Window()->CurrentMessage()->FindInt32("clicks", &clicks) == B_OK &&
+                clicks == 2 && _owner->get_selected_index() >= 0 &&
+                _owner->get_tab_bounds(_owner->get_selected_index()).contains(
+                    native::point(point.x, point.y))) {
+                _owner->on_native_activation(_owner->get_selected_index());
+                return;
+            }
+            BTabView::MouseDown(point);
+        }
 
         void Select(int32 index) override {
             const int32 previous = Selection();
@@ -103,6 +118,7 @@ namespace
     void destroy_borrowed_contents(native::tab_view &control) {
         for (std::size_t index = 0;
              index < control.get_item_count(); ++index) {
+            if (!control.get_item(index).has_content()) continue;
             native::wnd &content = control.get_item(index).get_content();
             if (content.get_created())
                 content.destroy();
@@ -165,6 +181,7 @@ namespace
                            : B_NO_BORDER);
         for (std::size_t index = 0;
              index < control.get_item_count(); ++index) {
+            if (!control.get_item(index).has_content()) continue;
             native::wnd &content = control.get_item(index).get_content();
             if (content.get_created())
                 content.destroy();

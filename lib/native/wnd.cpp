@@ -15,6 +15,7 @@
 #include <native/wnd.h>
 
 #include "wnd_peer.h"
+#include "status_bar_peer.h"
 #include "input_state.h"
 #include "mouse_state.h"
 #include "emulated_tree.h"
@@ -834,11 +835,13 @@ namespace native
             const bool spans_window =
                 dynamic_cast<const status_bar *>(target) != nullptr ||
                 dynamic_cast<const toolbar *>(target) != nullptr;
-            return rect(static_cast<coord>(origin_x + (spans_window ? 0 : left_total)),
+            const rect bounds(static_cast<coord>(origin_x + (spans_window ? 0 : left_total)),
                         static_cast<coord>(origin_y+height-before-target->_extent),
                         static_cast<dim>(spans_window ? width :
                             std::max(0, width-left_total-right_total)),
                         static_cast<dim>(target->_extent));
+            return dynamic_cast<const status_bar *>(target)
+                ? detail::status_bar_bounds(*this, bounds) : bounds;
         }
         case window_edge::left:
             return rect(static_cast<coord>(origin_x+before),
