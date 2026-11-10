@@ -443,6 +443,7 @@ tab can invoke a consumer action such as renaming a sheet. Ordinary tab behavior
 is unchanged. Keep the legacy `tab_strip` API for compatibility; new selectors
 should use this mode instead of duplicating its tab painter.
 
+## Joined toolbar fields and group spacing
 
 Set `tool_item::control_fill_width = true` to let a hosted control occupy its
 whole slot width. The default is false, preserving theme control insets.

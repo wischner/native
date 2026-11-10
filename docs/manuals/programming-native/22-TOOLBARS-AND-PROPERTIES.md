@@ -304,6 +304,7 @@ single-line input height plus both insets. For example, the SDL2 control band
 is 28 pixels (24-pixel input plus outer padding), while GEM's 18-pixel fields
 fit its 20-pixel band. Explicit larger extents remain supported.
 
+### Joined fields and square group gaps
 
 Set `tool_item::control_fill_width = true` to let a hosted control occupy its
 whole slot width. The default is false, preserving theme control insets.
@@ -318,3 +319,16 @@ Toolbar separators use `theme::draw_toolbar_separator`, which delegates to
 ordinary separator painting by default. GEM puts the rule at the gap's
 trailing edge, so the next tool remains visually square instead of absorbing
 half of a centered separator slot. Menu and other separators are unchanged.
+
+For a gap as wide as an icon button, first configure the toolbar extent after
+its owner is created, then measure a fully visible icon-only command with
+`get_item_bounds(command_id).w()`. Copy `get_items()`, assign that width to the
+separator descriptors' `length`, and call `set_items()`. Do not infer the width
+from the icon bitmap: the slot includes theme chrome. If the application later
+changes icon size or toolbar thickness, update those explicit gap lengths too.
+
+These are independent opt-ins: `control_fill_width` affects only hosted-field
+width, `wnd::set_border_sides` selects a field's visible borders, and separator
+`length` controls group spacing. Other hosted fields retain their insets,
+vertical sizing and centering. Zero/default separator lengths remain eight
+pixels. Selection, popup and command routing are unaffected.

@@ -2124,6 +2124,11 @@ Undo, Cut, Copy and Paste masks; applications supply fallbacks for other actions
 The imported artwork retains its GPL-2.0-or-later license separately from
 Native's MIT sources; see `lib/native/third_party/ted/`.
 
+Toolbar group rules use `theme::draw_toolbar_separator`; its default calls
+`draw_separator`. GEM places this rule at the trailing edge of the gap to
+preserve the visible square boundary of the next command slot. Other
+separator uses retain their existing painting.
+
 ### Optional selection-only tabs (2026-11-10)
 
 `tab_view::set_selection_only(true)` opts into labels that select content managed
@@ -2146,8 +2151,3 @@ an enabled item before emitting `on_activate`; double-clicking a selection-only
 tab can invoke a consumer action such as renaming a sheet. Ordinary tab behavior
 is unchanged. Keep the legacy `tab_strip` API for compatibility; new selectors
 should use this mode instead of duplicating its tab painter.
-
-Toolbar group rules use `theme::draw_toolbar_separator`; its default calls
-`draw_separator`. GEM places this rule at the trailing edge of the gap to
-preserve the visible square boundary of the next command slot. Other
-separator uses retain their existing painting.
