@@ -156,6 +156,12 @@ cmake --build build/cmake --target docker-win
 cmake --build build/cmake --target docker-haiku
 ```
 
+Complete application menus require the matching libgem/gemd pair in SDK
+`1.5.1` or later (private protocol 3, up to 256 objects and strings). Pull the
+updated image, rebuild consumers and restart gemd and its clients together;
+protocol-2 clients cannot use the new server. Native reports nonpositive
+menu installation results and preserves the preceding menu on rejection.
+
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
 image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
 `03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend

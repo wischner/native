@@ -751,6 +751,15 @@ converting titles; the desktop's fonts still determine available glyphs.
 
 ### GEM modeless menu ownership
 
+Native treats only a positive `menu_bar()` result as success. A rejected
+installation reports the status and menu size to standard error and leaves
+the previous menu installed. Failed removal also retains its installed flag;
+destruction reports failure and removes the deceased owner's routing state.
+The libgem/gemd SDK uses protocol 3 with up to 256 objects and strings; deploy
+matching clients and server together. Larger trees and labels over 63 bytes
+are rejected explicitly. Native keeps standard AES menus and command IDs.
+
+
 GEM's desktop menu follows the active application window. Showing or topping
 a modeless window installs its menu; returning to the main window restores
 that menu. A window without its own menu inherits its owner's menu. Building

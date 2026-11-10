@@ -171,6 +171,10 @@ Partial GTK button frames use scoped native CSS on the original GtkButton;
 restoring all edges removes the override, and all sixteen masks are checked.
 
 
+Menu audit, 2026-11-10: GEM remains **N** (AES object-tree menu). Installation
+failures are reported, and rejected switches retain the preceding menu owner;
+no application menu painting or item filtering is introduced.
+
 ## Settings navigation and civil pickers — 2026-10-21
 
 These rows extend the per-backend inventory below. **H** means native

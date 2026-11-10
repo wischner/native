@@ -8,6 +8,12 @@ control tree and backend-specific build trees.
 
 ### GEMix transport selection
 
+Complete application menus require the matching libgem/gemd pair in SDK
+`1.5.1` or later (private protocol 3, up to 256 objects and strings). Pull the
+updated image, rebuild consumers and restart gemd and its clients together;
+protocol-2 clients cannot use the new server. Native reports nonpositive
+menu installation results and preserves the preceding menu on rejection.
+
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
 image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
 `03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
@@ -185,7 +191,7 @@ executables:
 | `native_openlook_runtime_tests` | Real XTest table modifiers and code-editor arrows/Tab/Escape, combo choice-menu synchronization, dot dates/colon times, native picker popup lifecycle, labeled search, nested page coordinates and preserved native editor pixels during background damage; radio exclusion, intrinsic button height, identical partial-expose pixels, keyboard focus/text/completion, pre-show chrome construction, pane/list resizing and repeated modal/modeless teardown | OPEN LOOK display with XTest; Docker Xvfb/olwm or Xephyr/olwm |
 | `native_windows_runtime_tests` | Real Win32 styles and custom-draw defaults, keyboard/clipboard, splitter dragging, paint clipping/resource lifetime, independent modeless stacking and modal exclusion, grouped/virtual grid pixels and scrolling, four-edge tabs and short vertical label sizing, status-strip resize clipping and hit-testing | Windows VM |
 | `native_window_api_tests` | Backend-neutral window, control, layout, and model contracts; no control windows, but Haiku initializes an app-server connection for fonts and themes | Every hosted build |
-| `native_menu_runtime_tests` | Initial and live native check marks, silent setters, state before command notification, repeated activation, input blocking, recreation and destruction from a handler; SDL shortcut/pointer paths and tick pixels | Every supported backend; SDL dummy/software, X11 toolkit displays, GTK Wayland/elementary under Weston, GEM direct/gemd, or native Windows/Haiku/macOS desktop |
+| `native_menu_runtime_tests` | Initial and live native check marks, silent setters, state before command notification, repeated activation, input blocking, recreation and destruction from a handler; SDL shortcut/pointer paths and tick pixels; GEM six-title menus beyond 64 objects and injected zero/negative installation/removal failures | Every supported backend; SDL dummy/software, X11 toolkit displays, GTK Wayland/elementary under Weston, GEM direct/gemd, or native Windows/Haiku/macOS desktop |
 | `native_inspector_runtime_tests` | Modeless inspector creation and post-creation resizing, native checkbox/text/number input, icon/value pixels, Win32 combo paper and selection, live toolbar grow/shrink and sibling hits, all 16 SDL/Haiku/Motif border masks, arbitrary dropdown values with native popup content, cancellation/stale callbacks, scrolling and recreation | SDL2, X11, Motif, OPEN LOOK, WINGs, Windows and Haiku; native event loop, XTest on X11 toolkits |
 | `native_inspector_tests` | Typed property validation, event silence, all sixteen border masks, multiple edge bars, sticky groups and exact 16x16/24x24/32x32 icon pixels | Every hosted build; gemd session wrapper for proxy GEM |
 | `native_table_model_tests` | `table_model`/`table_store` behavior, native-pitch paging and scroll endpoints | Every hosted build |

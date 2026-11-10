@@ -6,6 +6,7 @@
 //
 
 #include <cstring>
+#include <iostream>
 #include <utility>
 #include <vector>
 
@@ -364,17 +365,30 @@ namespace linux::gemix
             owner = owner->get_owner();
         auto *previous = menu_owner();
         if (previous == owner) return;
-        if (previous) {
-            native::detail::reset_input(*previous);
-            auto &state = menu_states.at(previous);
-            menu_bar(state.tree.data(), 0);
-            state.installed = false;
-        }
         if (owner) {
             auto &state = menu_states.at(owner);
             menu_click(1, 1);
-            menu_bar(state.tree.data(), 1);
+            const WORD result = menu_bar(state.tree.data(), 1);
+            if (result <= 0) {
+                std::cerr << "GEM menu installation failed (menu_bar="
+                          << result << ", objects=" << state.tree.size()
+                          << ", strings=" << state.strings.size()
+                          << ")\n";
+                return;
+            }
             state.installed = true;
+        } else if (previous) {
+            const WORD result =
+                menu_bar(menu_states.at(previous).tree.data(), 0);
+            if (result <= 0) {
+                std::cerr << "GEM menu removal failed (menu_bar="
+                          << result << ")\n";
+                return;
+            }
+        }
+        if (previous) {
+            native::detail::reset_input(*previous);
+            menu_states.at(previous).installed = false;
         }
     }
 
@@ -405,7 +419,10 @@ namespace linux::gemix
             return;
         }
         if (it->second.installed) {
-            menu_bar(it->second.tree.data(), 0);
+            const WORD result = menu_bar(it->second.tree.data(), 0);
+            if (result <= 0)
+                std::cerr << "GEM menu destruction failed (menu_bar="
+                          << result << ")\n";
         }
         menu_states.erase(it);
     }

@@ -76,6 +76,12 @@ Build the Linux toolkit target backed by the native window-system image:
 cmake --build build/cmake --target docker-x11
 ```
 
+Complete application menus require the matching libgem/gemd pair in SDK
+`1.5.1` or later (private protocol 3, up to 256 objects and strings). Pull the
+updated image, rebuild consumers and restart gemd and its clients together;
+protocol-2 clients cannot use the new server. Native reports nonpositive
+menu installation results and preserves the preceding menu on rejection.
+
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
 image, which already contains the GEM `v1.0.0` SDK built from commit
 `0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend

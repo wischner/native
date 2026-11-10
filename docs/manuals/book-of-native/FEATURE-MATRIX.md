@@ -1,5 +1,14 @@
 # Feature Matrix
 
+## GEM menu installation (2026-11-10)
+
+GEM installation accepts only positive `menu_bar()` results. Failed menu
+switches retain the prior owner and report the failure. The menu runtime
+fixture covers six titles and more than 64 objects, both zero and negative
+installation/removal failures, check/enable state, switching and destruction.
+Matching protocol-3 libgem/gemd supports up to 256 objects/strings; Fyodor's
+six titles and 43 rows fit without removing any commands or separators.
+
 ## SDK release packaging (2026-11-09)
 
 Release builds, dependency packaging and relocated consumer links pass for

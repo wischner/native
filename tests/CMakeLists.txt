@@ -106,6 +106,9 @@ elseif(NOT WIN32 AND NOT HAIKU)
         target_link_libraries(native_menu_runtime_tests PRIVATE PkgConfig::GTK4)
     endif()
 endif()
+if(TOOLKIT STREQUAL "GEMIX")
+    target_link_options(native_menu_runtime_tests PRIVATE "-Wl,--wrap=menu_bar")
+endif()
 add_test(NAME native_menu_runtime_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_menu_runtime_tests>)
 set_tests_properties(native_menu_runtime_tests PROPERTIES TIMEOUT 30

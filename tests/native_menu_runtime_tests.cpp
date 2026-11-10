@@ -37,6 +37,20 @@
 #include "../lib/native/toolkits/wayland/globals.h"
 #endif
 
+#if defined(MENU_TEST_GEMIX)
+namespace {
+    int forced_menu_result = 1;
+}
+
+// Inject both GEM failure conventions without changing production code.
+extern "C" WORD __real_menu_bar(OBJECT *, WORD);
+extern "C" WORD __wrap_menu_bar(OBJECT *tree, WORD show) {
+    if (forced_menu_result <= 0)
+        return static_cast<WORD>(forced_menu_result);
+    return __real_menu_bar(tree, show);
+}
+#endif
+
 // Check native canvas input alongside window/menu activation.
 void check_canvas_keyboard(native::app_wnd &parent);
 void check_window_title(native::app_wnd &parent);
@@ -231,7 +245,17 @@ namespace
         menu_window child{*this, "Checkable menus", 60, 60, 360, 240};
 
         fixture() : app_wnd("Menu test owner", 10, 10, 400, 300) {
+#if defined(MENU_TEST_GEMIX)
+            for (const auto *title : {"File", "Edit", "View", "Insert",
+                                      "Format", "Help"}) {
+                auto rows = menu_items("Main");
+                for (int row = 1; row < 9; ++row)
+                    rows << ("Entry " + std::to_string(row));
+                menu << title << rows;
+            }
+#else
             menu << "&File" << menu_items("Main");
+#endif
             child.menu << "&View" << (menu_items(
                 menu_check_item{42, "&Grid\tCtrl+G", true})
                 << menu_check_item{43, "&Rulers", false}
@@ -256,6 +280,17 @@ namespace
                 linux::gemix::activate_menu(this);
                 expect(linux::gemix::menu_owner() == this,
                        "main menu restores on activation");
+                for (const int failure : {-1, 0}) {
+                    forced_menu_result = failure;
+                    linux::gemix::activate_menu(&child);
+                    expect(linux::gemix::menu_owner() == this &&
+                           !linux::gemix::menu_states.at(&child).installed,
+                           "failed replacement retains the installed menu");
+                    linux::gemix::activate_menu(nullptr);
+                    expect(linux::gemix::menu_owner() == this,
+                           "failed removal retains the installed menu");
+                }
+                forced_menu_result = 1;
                 linux::gemix::activate_menu(&child);
                 expect(linux::gemix::menu_owner() == &child,
                        "child menu reactivates");
