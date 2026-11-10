@@ -296,6 +296,21 @@ namespace native
         return *this;
     }
 
+    std::optional<dim> tab_view::get_tab_height() const {
+        return _tab_height_override;
+    }
+
+    tab_view &tab_view::set_tab_height(std::optional<dim> height) {
+        if (height && *height == 0)
+            throw std::invalid_argument("tab height must be non-zero");
+        if (_tab_height_override == height)
+            return *this;
+        _tab_height_override = height;
+        synchronize_theme_metrics();
+        refresh();
+        return *this;
+    }
+
     bool tab_view::get_page_frame_visible() const {
         return _page_frame_visible;
     }
@@ -495,6 +510,10 @@ namespace native
     }
 
     void tab_view::synchronize_theme_metrics() {
+        if (_tab_height_override) {
+            _tab_height = *_tab_height_override;
+            return;
+        }
         const font_metrics metrics =
             font_t::stock(font_role::control).get_metrics();
         _tab_height = std::max(20, metrics.height + 8);

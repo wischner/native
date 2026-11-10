@@ -58,6 +58,15 @@ Change `set_tab_placement()` or `set_page_frame_visible()` before creation to
 try the other presentations. A panel page is the next step when a tab needs
 several controls: see [Panels and canvases](18-PANELS-AND-CANVASES.md).
 
+GEM tabs default to a 20-pixel band. Use `tabs.set_tab_height(28)` to
+configure the painted band before or after creation, and
+`tabs.set_tab_height(std::nullopt)` to restore the theme. Zero is rejected.
+`get_tab_height()` returns the optional override. For left/right placement
+the value sets the band width; the selected tab also overlaps the page by
+one pixel. Changing height relayouts the page without changing selection.
+Native tab widgets retain their toolkit sizing; this override controls the
+library-painted presentations, including GEM and SDL2.
+
 `split_view` places two borrowed child windows on opposite sides of a native
 separator. Construct it with both uncreated panes, choose an orientation, and
 then parent the split view like any other control:

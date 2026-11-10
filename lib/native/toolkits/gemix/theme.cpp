@@ -49,7 +49,7 @@ namespace
             m.toolbar_padding = 0;
             m.toolbar_control_padding = 1;
             m.text_edit_height = m.toolbar_height - 2;
-            m.tab_height = m.header_height;
+            m.tab_height = 20;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
             m.tree_indent_width = 9;
             m.tree_horizontal_padding = 3;

@@ -1916,6 +1916,13 @@ controls. `standard_icon` shares the eight canonical Ted command masks;
 unsupported commands return null for application fallback. This change does
 not alter the tree/table backend classifications or event contracts.
 
+GEM tab geometry: painted bands default to 20 pixels, with a per-control
+`set_tab_height()` override and `std::nullopt` reset. Side tabs use the value
+as their width; selected tabs retain the one-pixel page overlap. The override
+survives creation and resize and does not emit selection changes. Native
+widget presentations retain toolkit sizing. Docker builds and window API,
+menu runtime and real-input checks pass for both GEM transports.
+
 Fyodor consumer validation (2026-11-10, latest GEMix SDK revision
 `d940cf31ee9e85af0264a83abd1526d4475ffb0c`): both GEM toolbar rows measure
 20 pixels with 18-pixel fields and unchanged 16×16 stock icons. The SDL2

@@ -676,6 +676,31 @@ namespace
                    tabs.get_content_bounds().d.h < tabs.get_dimensions().h,
                "tab_view reserves a tab strip above its page bounds");
 
+        const auto themed_bounds = tabs.get_tab_bounds(0);
+        const auto themed_content = tabs.get_content_bounds();
+        expect(!tabs.get_tab_height(), "tabs follow the theme by default");
+        tabs.set_tab_height(30);
+        const int height_delta = tabs.get_tab_bounds(0).d.h - themed_bounds.d.h;
+        expect(tabs.get_tab_height() == 30 &&
+                   tabs.get_content_bounds().p.y ==
+                       themed_content.p.y + height_delta && changes == 0,
+               "tab height override relayouts pages without selection events");
+        tabs.set_tab_placement(native::tab_placement::left);
+        expect(tabs.get_tab_bounds(0).d.w == 31,
+               "side tabs use the requested band thickness and page join");
+        bool rejected_height = false;
+        try {
+            tabs.set_tab_height(0);
+        } catch (const std::invalid_argument &) {
+            rejected_height = true;
+        }
+        expect(rejected_height && tabs.get_tab_height() == 30,
+               "zero height is rejected without changing the override");
+        tabs.set_tab_placement(native::tab_placement::top);
+        tabs.set_tab_height(std::nullopt);
+        expect(tabs.get_tab_bounds(0).d.h == themed_bounds.d.h,
+               "clearing the override restores themed tab geometry");
+
         const native::rect top_tabs = tabs.get_tab_bounds(0);
         const native::rect top_content = tabs.get_content_bounds();
         expect(top_tabs.p.x == top_content.p.x,

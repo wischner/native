@@ -632,7 +632,9 @@ Status parts retain their top rule and leading dividers, but omit bottom and
 right borders already supplied by the surrounding window.
 List selection explicitly invalidates its own region, including split panes.
 Focused editors handle clipboard shortcuts before menu accelerators, and the
-event loop requests both press and release edges. Flat left tabs retain their
+event loop requests both press and release edges. GEM's painted tabs default
+to a 20-pixel band, configurable with `tab_view::set_tab_height()`; clearing
+the optional override restores the theme. Flat left tabs retain their
 page separator beside inactive tabs. AES selector buttons invert until release;
 menu teardown occurs before the workstation closes. The sibling GEM runtime
 restores complete title strips and publishes restored menu-popup pixels.

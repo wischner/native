@@ -194,6 +194,7 @@ void check_gemix_controls(native::app_wnd &owner,
         driver.wait(
             [&] {
                 tabs.add_item("Choices", page);
+                tabs.set_tab_height(28);
                 sidebar.set_sidebar_width(180).set_search_visible(true);
                 sidebar << settings_page(
                     1, "General", general, {}, "Settings");
@@ -221,6 +222,20 @@ void check_gemix_controls(native::app_wnd &owner,
                                                          &command})
                     attach(*control, host);
                 attach(choices, page);
+                expect(tabs.get_tab_bounds(0).d.h == 29,
+                        "GEM tab height override survives native creation");
+                tabs.set_tab_height(std::nullopt);
+                expect(tabs.get_tab_bounds(0).d.h == 21,
+                        "GEM tabs default to 20 pixels plus the page join");
+                tabs.set_tab_height(28);
+                const auto raised_page = tabs.get_content_bounds();
+                tabs.set_bounds(rect(10, 60, 350, 125));
+                expect(tabs.get_tab_bounds(0).d.h == 29 &&
+                            page.get_bounds().p.y == raised_page.p.y,
+                        "GEM tab height survives live resize and relayouts pages");
+                tabs.set_tab_height(std::nullopt);
+                expect(tabs.get_tab_bounds(0).d.h == 21,
+                        "GEM tab height resets to the theme");
                 host.show();
                 origin =
                     work_rect(wnd_bindings.handle_from_object(&host)).p;

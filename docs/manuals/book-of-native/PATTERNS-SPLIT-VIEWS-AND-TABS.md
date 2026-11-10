@@ -24,6 +24,14 @@ List panes repaint their selection independently of divider movement. The
 flat left-tab page edge remains visible beside inactive tabs; the selected
 tab alone keeps an open join to its content.
 
+GEM's themed tab band is 20 pixels. `tab_view::set_tab_height()` accepts a
+nonzero optional pixel height for library-painted tabs; `std::nullopt`
+restores the theme. The shared metric lookup and backend layout setup both
+retain the override, including across creation and resize. Side placement
+uses it as the band width. The existing one-pixel selected-page overlap is
+additional. Changes relayout borrowed pages without selection signals.
+Native widget presentations keep their toolkit-owned dimensions.
+
 Use a split view for two simultaneously visible work areas whose boundary the
 user may resize. Use a tab view when only one page should be live at a time.
 They compose: either split pane may itself contain tabs, and a tab page may

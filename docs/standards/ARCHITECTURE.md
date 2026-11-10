@@ -1424,6 +1424,10 @@ button-based substitute. Both AppKit tab pages and split panes fill the
 dimensions allocated by their native container; the backend reports those
 dimensions back to the portable cache. Native divider thickness and tab
 appearance remain system-owned, with no extra painted separator.
+Library-painted tabs accept a nonzero optional pixel band height through
+`set_tab_height()`; clearing it restores the theme. Side placement uses that
+value as the band width. Changing it relayouts pages without selection events;
+native widget dimensions remain system-owned.
 Library-painted tabs overlap the adjoining page edge by one device pixel when
 selected. The page frame or strip-only separator paints first, preventing a
 gap on any of the four tab placements. Bottom and right selected tabs must

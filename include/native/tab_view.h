@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -122,6 +123,13 @@ namespace native
         // Move the tab labels without changing selection or emitting an event.
         tab_view &set_tab_placement(tab_placement placement);
 
+        // Return the requested painted tab height, or nullopt for the theme.
+        std::optional<dim> get_tab_height() const;
+
+        // Set painted tab height in pixels; nullopt restores the theme.
+        // Zero is invalid. Native tab widgets retain their toolkit sizing.
+        tab_view &set_tab_height(std::optional<dim> height);
+
         // Return whether tab pages have a complete native frame.
         bool get_page_frame_visible() const;
 
@@ -214,6 +222,7 @@ namespace native
         std::vector<std::unique_ptr<tab_item>> _items;
         int _selected_index = -1;
         int _tab_height = 24;
+        std::optional<dim> _tab_height_override;
         int _tab_inset = 0;
         int _tab_padding = 20;
         int _tab_overlap = 0;

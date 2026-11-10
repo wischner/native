@@ -35,7 +35,9 @@ namespace native::detail
         bool sloped,
         rgba inactive_background,
         rgba inactive_highlight) {
-        control._tab_height = std::max(1, height);
+        control._tab_height = control._tab_height_override
+            ? static_cast<int>(*control._tab_height_override)
+            : std::max(1, height);
         control._tab_inset = std::max(0, inset);
         control._tab_padding = std::max(0, padding);
         control._tab_overlap = std::max(0, overlap);
