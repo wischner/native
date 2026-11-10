@@ -101,6 +101,9 @@ has no equivalent.
   Apple SDK on the configured remote Mac; validate shared C++ with GCC/Docker
   first. Do not substitute an ad hoc host build.
 - The purpose of Docker is to make backend builds reproducible and independent of host package drift.
+- Docker CMake targets use `scripts/cmake/docker-build.cmake` to lock each
+  backend directory across configuration and compilation. Keep F5 and terminal
+  builds on this shared path so overlapping builds cannot replace live outputs.
 
 Tag releases use `.github/workflows/release-sdk.yml`: numeric
 `vMAJOR.MINOR.PATCH` tags produce one SDK per backend/architecture, including

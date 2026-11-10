@@ -126,6 +126,13 @@ The backend builds are driven by custom targets in the top-level
 Those targets run CMake inside Docker images that already contain the required
 toolchain and system headers.
 
+`scripts/cmake/docker-build.cmake` holds a per-backend build-directory lock
+across both configuration and compilation. Concurrent F5 and terminal builds
+of the same backend wait for each other, preventing generated Makefiles and
+`libnative.a` from being replaced during another build's link step. Different
+backend directories can still build concurrently. The lock is released when
+the driver exits, including on a configure or build failure.
+
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd`

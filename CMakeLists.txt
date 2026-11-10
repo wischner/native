@@ -211,20 +211,17 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             endif()
 
             add_custom_target(${target_name}
-                COMMAND ${DOCKER_EXECUTABLE} run --rm
-                    -u ${HOST_UID}:${HOST_GID}
-                    -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
-                    -w ${CMAKE_SOURCE_DIR}
-                    ${image}
-                    cmake -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_SOURCE_DIR}/${build_dir}
-                    ${cmake_args}
-                COMMAND ${DOCKER_EXECUTABLE} run --rm
-                    -u ${HOST_UID}:${HOST_GID}
-                    -v ${CMAKE_SOURCE_DIR}:${CMAKE_SOURCE_DIR}
-                    -w ${CMAKE_SOURCE_DIR}
-                    ${image}
-                    cmake --build ${CMAKE_SOURCE_DIR}/${build_dir} ${build_args}
+                COMMAND ${CMAKE_COMMAND}
+                    "-DNATIVE_DOCKER_EXECUTABLE=${DOCKER_EXECUTABLE}"
+                    "-DNATIVE_DOCKER_USER=${HOST_UID}:${HOST_GID}"
+                    "-DNATIVE_DOCKER_IMAGE=${image}"
+                    "-DNATIVE_DOCKER_SOURCE=${CMAKE_SOURCE_DIR}"
+                    "-DNATIVE_DOCKER_BUILD=${CMAKE_SOURCE_DIR}/${build_dir}"
+                    "-DNATIVE_DOCKER_CONFIGURE_ARGS=${cmake_args}"
+                    "-DNATIVE_DOCKER_BUILD_ARGS=${build_args}"
+                    -P ${CMAKE_SOURCE_DIR}/scripts/cmake/docker-build.cmake
                 USES_TERMINAL
+                VERBATIM
                 COMMENT "Building ${target_name} with Docker image ${image}"
             )
         endfunction()
