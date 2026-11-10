@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
 #include <stdexcept>
 #include <native.h>
 #include "globals.h"
@@ -21,6 +22,7 @@ namespace native
             throw std::runtime_error("GEMix: split_view requires a created parent.");
         auto *self = this;
         self->refresh_contents();
+        linux::gemix::split_views.push_back(self);
     }
 
     void split_view::show_native() {
@@ -34,5 +36,7 @@ namespace native
     void split_view::destroy_native() {
         if (!_created) return;
         linux::gemix::forget_drag(this);
+        auto &views = linux::gemix::split_views;
+        views.erase(std::remove(views.begin(), views.end(), this), views.end());
     }
 } // namespace native

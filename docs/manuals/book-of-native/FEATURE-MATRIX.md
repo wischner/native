@@ -1923,6 +1923,16 @@ survives creation and resize and does not emit selection changes. Native
 widget presentations retain toolkit sizing. Docker builds and window API,
 menu runtime and real-input checks pass for both GEM transports.
 
+GEM tab/splitter chrome: selected bottom/right tab outlines join the page
+without erasing their tips. Horizontal and vertical splitters show exactly
+three centered ink pixels, with one blank pixel between dots. The focused
+`native_gemix_chrome_tests` reads real framebuffer pixels for both frame
+styles, 20/32-pixel tabs, both selections, both splitter axes and changed
+divider ratios.
+Both GEM transports pass these framebuffer and real-input checks. Rasta
+screenshots also verify all four tab edges after mouse selection, frame and
+height changes, and visible three-dot grips during mouse dragging.
+
 Fyodor consumer validation (2026-11-10, latest GEMix SDK revision
 `d940cf31ee9e85af0264a83abd1526d4475ffb0c`): both GEM toolbar rows measure
 20 pixels with 18-pixel fields and unchanged 16×16 stock icons. The SDL2

@@ -441,6 +441,12 @@ namespace native
             const rect &bounds,
             separator_orientation orientation);
 
+        // Draw a centered grip along the splitter's long axis.
+        virtual theme &draw_splitter_grip(
+            const rect &bounds,
+            separator_orientation orientation,
+            const state &element_state);
+
         // Draw one semantic native-looking scrollbar part.
         virtual theme &draw_scrollbar_part(
             const rect &bounds,

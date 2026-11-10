@@ -157,6 +157,28 @@ namespace
             return p;
         }
 
+        theme &draw_splitter_grip(
+            const native::rect &bounds,
+            native::separator_orientation orientation,
+            const state &) override {
+            if (!bounds.w() || !bounds.h())
+                return *this;
+            auto saved = _g.save_state();
+            const int x = bounds.x1() + bounds.w() / 2;
+            const int y = bounds.y1() + bounds.h() / 2;
+            _g.set_pen(1).set_ink(native_palette().separator);
+            for (int offset : {-2, 0, 2}) {
+                const native::point dot(
+                    x + (orientation == native::separator_orientation::horizontal
+                             ? offset : 0),
+                    y + (orientation == native::separator_orientation::vertical
+                             ? offset : 0));
+                if (bounds.contains(dot))
+                    _g.draw_rect(native::rect(dot, native::size(1, 1)), true);
+            }
+            return *this;
+        }
+
         theme &draw_radio(const native::rect &bounds,
                           const std::string &text, const state &s) override {
             auto saved = _g.save_state();

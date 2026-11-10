@@ -24,6 +24,15 @@ List panes repaint their selection independently of divider movement. The
 flat left-tab page edge remains visible beside inactive tabs; the selected
 tab alone keeps an open join to its content.
 
+Selected bottom/right sloped tabs open their page join with the polygon fill;
+they retain the stroked tips where the outline meets the frame or separator.
+Erasing those tips after drawing would leave a visible gap. GEM splitters
+show three centered single-pixel dots along the divider, with one blank pixel
+between dots. The grip follows the divider when its ratio or bounds change.
+GEM registers live split hosts for the structural paint pass, including hosts
+whose panes are only leaf controls such as lists or editors. Destruction
+removes the host from that registry before later painting can reach it.
+
 GEM's themed tab band is 20 pixels. `tab_view::set_tab_height()` accepts a
 nonzero optional pixel height for library-painted tabs; `std::nullopt`
 restores the theme. The shared metric lookup and backend layout setup both

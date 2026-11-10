@@ -149,7 +149,9 @@ the owner-draw contract: simple controls dispatch background, border or
 indicator, text/content, and focus stages from their complete control entry
 point, while collections also split rows, cells, images, disclosures, and
 scrollbars. Windows and panels expose their surface background, and split
-views separate the splitter background from its grip. The default pixels are
+views separate the splitter background from its grip. The grip stage delegates
+to `theme::draw_splitter_grip()` using the divider's axis. GEM supplies three
+centered one-pixel dots; the base theme retains its short line. The default pixels are
 drawn inside each base virtual method. A derived implementation can therefore
 replace a part, or add to it by calling base:
 

@@ -556,6 +556,23 @@ namespace native
         return draw_separator_fallback(bounds, orientation);
     }
 
+    theme &theme::draw_splitter_grip(
+        const rect &bounds,
+        separator_orientation orientation,
+        const state &) {
+        if (!bounds.w() || !bounds.h())
+            return *this;
+        auto saved = _g.save_state();
+        const coord x = bounds.x1() + bounds.w() / 2;
+        const coord y = bounds.y1() + bounds.h() / 2;
+        _g.set_ink(get_separator_color());
+        if (orientation == separator_orientation::vertical)
+            _g.draw_line(point(x, y - 6), point(x, y + 6));
+        else
+            _g.draw_line(point(x - 6, y), point(x + 6, y));
+        return *this;
+    }
+
     theme &theme::draw_scrollbar_part(
         const rect &bounds,
         scrollbar_orientation orientation,

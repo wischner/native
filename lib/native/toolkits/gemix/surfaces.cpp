@@ -209,19 +209,11 @@ namespace linux::gemix
             if (created_in(control, parent))
                 regions.push_back(control);
         }
-        // Split hosts have no registry. Collect their live ancestors
-        // before sorting every structural surface in one paint pass.
-        const auto descendants = regions;
-        for (auto *control : descendants) {
-            for (auto *ancestor = control->get_parent();
-                 ancestor && ancestor != parent;
-                 ancestor = ancestor->get_parent()) {
-                if (dynamic_cast<native::split_view *>(ancestor) &&
-                    created_in(ancestor, parent) &&
-                    std::find(regions.begin(), regions.end(), ancestor) ==
-                        regions.end())
-                    regions.push_back(ancestor);
-            }
+        // Paint split hosts even when their panes are leaf controls,
+        // such as lists or text editors, rather than registered surfaces.
+        for (auto *control : split_views) {
+            if (created_in(control, parent))
+                regions.push_back(control);
         }
         std::stable_sort(regions.begin(),
                          regions.end(),

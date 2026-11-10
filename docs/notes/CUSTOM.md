@@ -634,9 +634,12 @@ List selection explicitly invalidates its own region, including split panes.
 Focused editors handle clipboard shortcuts before menu accelerators, and the
 event loop requests both press and release edges. GEM's painted tabs default
 to a 20-pixel band, configurable with `tab_view::set_tab_height()`; clearing
-the optional override restores the theme. Flat left tabs retain their
+the optional override restores the theme. Selected bottom/right tabs retain
+their sloped tips at the page join. Both splitter axes use three centered
+single-pixel grip dots, separated by one blank pixel. GEM's structural paint
+pass includes splitters with leaf-control panes. Flat left tabs retain their
 page separator beside inactive tabs. AES selector buttons invert until release;
-menu teardown occurs before the workstation closes. The sibling GEM runtime
+menu teardown occurs before the workstation closes. The matching GEM runtime
 restores complete title strips and publishes restored menu-popup pixels.
 
 The same classifications apply to the verified `libgem -> gemd -> AES/VDI`

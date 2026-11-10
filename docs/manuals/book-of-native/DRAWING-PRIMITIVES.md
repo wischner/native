@@ -372,6 +372,7 @@ Overloads without a state argument draw the default state.
 | `draw_sort_indicator(bounds, direction, state)` | A native table sort indicator |
 | `draw_caption_button(bounds, kind, state)` | A compact close, pin, or unpin button |
 | `draw_separator(bounds, orientation)` | A native-looking separator |
+| `draw_splitter_grip(bounds, orientation, state)` | A centered divider grip; GEM draws three single-pixel dots |
 | `draw_scrollbar_part(bounds, orientation, part, state)` | A track, thumb, or step part |
 
 The caller supplies the rectangles. `defaults()` returns backend-selected

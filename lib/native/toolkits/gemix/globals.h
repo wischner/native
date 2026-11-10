@@ -78,6 +78,7 @@ namespace linux::gemix
     extern std::vector<native::table_view *> table_views;
     extern std::vector<native::code_edit *> code_edits;
     extern std::vector<native::panel *> panels;
+    extern std::vector<native::split_view *> split_views;
     extern std::vector<native::canvas *> canvases;
     extern std::vector<native::app_wnd *> windows;
     extern native::app_wnd *active_window;

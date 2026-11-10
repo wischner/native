@@ -34,6 +34,7 @@ namespace
 
     bool colors_only = false;
     bool editor_frame_only = false;
+    bool chrome_only = false;
 
     // Read a packed physical bit or the darkness of an RGBA pixel.
     bool raw_pixel(const std::vector<unsigned char> &frame, int x, int y) {
@@ -49,6 +50,100 @@ namespace
     // The configured non-inverted raster uses set bits/dark RGBA for ink.
     bool pixel(const std::vector<unsigned char> &frame, int x, int y) {
         return raw_pixel(frame, x, y);
+    }
+
+    // The selected trailing outline must survive opening its page join.
+    void check_tab_joins(native::app_wnd &owner) {
+        using namespace native;
+        using namespace linux::gemix;
+        modeless_wnd host(owner, "Tab joins", 60, 60, 320, 220);
+        panel first, second;
+        tab_view tabs(10, 10, 280, 180);
+        tabs.add_item("One", first);
+        tabs.add_item("Two", second);
+        tabs.set_parent(&host);
+        host.create();
+        tabs.create();
+        tabs.show();
+        host.show();
+        for (const auto placement : {tab_placement::bottom,
+                                      tab_placement::right}) {
+            tabs.set_tab_placement(placement);
+            for (bool framed : {true, false}) {
+                tabs.set_page_frame_visible(framed);
+                for (dim height : {dim(20), dim(32)}) {
+                    tabs.set_tab_height(height);
+                    for (int selected : {0, 1}) {
+                        tabs.set_selected_index(selected);
+                        tabs.invalidate();
+                        flush_repaints();
+                        WORD attributes[6] = {};
+                        vqt_attributes(runtime.vdi_handle, attributes);
+                        const auto pixels = framebuffer();
+                        const auto work = work_rect(
+                            wnd_bindings.handle_from_object(&host));
+                        const auto control = root_bounds(tabs);
+                        const auto tab = tabs.get_tab_bounds(selected);
+                        expect(pixel(pixels,
+                                   work.x1() + control.x1() + tab.x1() + 1,
+                                   work.y1() + control.y1() + tab.y1() + 1),
+                               "selected bottom/right tab outline touches its page join");
+                        const int far_x = placement == tab_placement::bottom
+                            ? tab.x2() - 1 : tab.x1() + 1;
+                        const int far_y = placement == tab_placement::right
+                            ? tab.y2() - 1 : tab.y1() + 1;
+                        expect(pixel(pixels, work.x1() + control.x1() + far_x,
+                                     work.y1() + control.y1() + far_y),
+                               "both ends of the selected tab meet the page line");
+                    }
+                }
+            }
+        }
+        host.destroy();
+    }
+
+    // Verify the displayed grip contains exactly three separated ink pixels.
+    void check_splitter_grips(native::app_wnd &owner) {
+        using namespace native;
+        using namespace linux::gemix;
+        modeless_wnd host(owner, "Splitter grips", 60, 60, 320, 220);
+        list first({"First pane"}), second({"Second pane"});
+        split_view split(first, second, split_orientation::horizontal,
+                         10, 10, 280, 180);
+        split.set_parent(&host);
+        host.create();
+        split.create();
+        split.show();
+        host.show();
+        for (auto orientation : {split_orientation::horizontal,
+                                  split_orientation::vertical}) {
+            split.set_orientation(orientation);
+            for (float ratio : {0.5f, 0.3f, 0.7f}) {
+                split.set_ratio(ratio);
+                flush_repaints();
+                WORD attributes[6] = {};
+                vqt_attributes(runtime.vdi_handle, attributes);
+                const auto pixels = framebuffer();
+                const auto work = work_rect(
+                    wnd_bindings.handle_from_object(&host));
+                const auto control = root_bounds(split);
+                const auto grip = split.get_splitter_bounds();
+                const int cx = grip.x1() + grip.w() / 2;
+                const int cy = grip.y1() + grip.h() / 2;
+                for (int y = grip.y1(); y < grip.y2(); ++y) {
+                    for (int x = grip.x1(); x < grip.x2(); ++x) {
+                        const bool expected =
+                            orientation == split_orientation::horizontal
+                                ? x == cx && (y == cy - 2 || y == cy || y == cy + 2)
+                                : y == cy && (x == cx - 2 || x == cx || x == cx + 2);
+                        expect(pixel(pixels, work.x1() + control.x1() + x,
+                                     work.y1() + control.y1() + y) == expected,
+                               "GEM splitter has exactly three centered grip pixels");
+                    }
+                }
+            }
+        }
+        host.destroy();
     }
 
     // Verify absolute displayed colors. Calibrating against VDI's logical
@@ -286,6 +381,13 @@ namespace
                 if (editor_frame_only) {
                     check_code_editor_frame(*this);
                     std::cout << "GEM editor frame checks passed\n";
+                    destroy();
+                    return;
+                }
+                if (chrome_only) {
+                    check_tab_joins(*this);
+                    check_splitter_grips(*this);
+                    std::cout << "GEM tab joins and splitter grip checks passed\n";
                     destroy();
                     return;
                 }
@@ -593,6 +695,7 @@ int program(int argc, char **argv) {
     colors_only = argc > 1 && std::string(argv[1]) == "--colors-only";
     editor_frame_only = argc > 1 &&
         std::string(argv[1]) == "--editor-frame-only";
+    chrome_only = argc > 1 && std::string(argv[1]) == "--chrome-only";
     test_window window;
     const int result = native::app::run(window);
     return result ? result : window.failures;

@@ -233,6 +233,10 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
     endif()
     set_tests_properties(native_gemix_runtime_tests PROPERTIES ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-tests.fb;GEM_RASTA_PORT=5001;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
+    add_test(NAME native_gemix_chrome_tests
+        COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_runtime_tests> --chrome-only)
+    set_tests_properties(native_gemix_chrome_tests PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-chrome-tests.fb;GEM_RASTA_PORT=5013;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     set_tests_properties(native_window_api_tests PROPERTIES ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-api-tests.fb;GEM_RASTA_PORT=5001;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     set_tests_properties(native_gemix_runtime_tests native_window_api_tests

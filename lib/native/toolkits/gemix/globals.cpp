@@ -88,6 +88,7 @@ namespace linux::gemix
     std::vector<native::table_view *> table_views;
     std::vector<native::code_edit *> code_edits;
     std::vector<native::panel *> panels;
+    std::vector<native::split_view *> split_views;
     std::vector<native::canvas *> canvases;
     std::vector<native::app_wnd *> windows;
     native::app_wnd *active_window = nullptr;
@@ -201,6 +202,7 @@ namespace linux::gemix
         text_edits.clear();
         accordions.clear();
         tab_views.clear();
+        split_views.clear();
         icon_views.clear();
         tree_views.clear();
         table_views.clear();
