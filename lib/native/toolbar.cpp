@@ -256,11 +256,24 @@ namespace native
         const bool vertical = get_edge() == window_edge::left ||
                               get_edge() == window_edge::right;
         std::vector<rect> result;
-        const int padding = current_metrics().toolbar_padding;
+        const auto &metrics = current_metrics();
+        const int padding = metrics.toolbar_padding;
+        // An icon-only tool's slot, as computed for tools below.
+        int vertical_text_length = 24;
+        if (vertical && _surface->get_created())
+            vertical_text_length =
+                font_t::stock(font_role::control).get_metrics().height + 6;
+        const int icon_tool_length = std::max({
+            vertical ? std::max(vertical_text_length, int(_icon_size.h) + 4)
+                     : int(_icon_size.w) + 4,
+            20, int(vertical ? bounds.w() : bounds.h()) - 2 * padding});
+        const int default_separator_length =
+            metrics.toolbar_separator_length > 0
+                ? metrics.toolbar_separator_length : icon_tool_length;
         int offset = padding;
         for (const auto &item : _items) {
             int length = item.kind == tool_kind::separator && item.length > 0
-                ? item.length : 8;
+                ? item.length : default_separator_length;
             if (item.kind == tool_kind::control) {
                 length = item.length;
             } else if (item.kind != tool_kind::separator) {
@@ -338,8 +351,12 @@ namespace native
         event.g.set_pen(1).set_ink(appearance->native_palette().menu_bar_bg)
             .draw_border(rect(0, 0, dimensions.w, dimensions.h),
                 static_cast<border_sides>(unsigned(border_sides::all) ^ unsigned(get_border_sides())));
-        if (!has_controls() && detail::toolbar_peer_active(*this, *_surface))
+        if (!has_controls() && detail::toolbar_peer_active(*this, *_surface)) {
+            appearance->draw_toolbar_border(
+                rect(0, 0, dimensions.w, dimensions.h),
+                get_edge(), get_border_sides());
             return;
+        }
         const auto bounds = item_bounds();
         for (std::size_t index = 0; index < _items.size(); ++index) {
             if (!bounds[index].w() || !bounds[index].h()) continue;
@@ -354,6 +371,9 @@ namespace native
             state.selected = _items[index].checked;
             draw_tool(event.g, *appearance, bounds[index], _items[index], state);
         }
+        appearance->draw_toolbar_border(
+            rect(0, 0, dimensions.w, dimensions.h),
+            get_edge(), get_border_sides());
     }
 
     void toolbar::draw_tool(gpx &graphics, theme &appearance, const rect &bounds,

@@ -326,6 +326,14 @@ the generic blue focus rectangle; the disclosure mark indicates expansion.
 Native checkboxes invalidate again after mouse tracking ends, so a repaint
 during a change callback cannot leave an unchecked indicator depressed.
 
+The shared table renderer draws a continuous rule beneath column headings.
+GEM paints `table_header` surfaces without individual outlines, keeping
+the table frame and single vertical column separators. Table group bands
+use `theme::draw_table_group_background`; its default delegates to the
+ordinary header surface. GEM overrides it to retain the side and bottom
+edges while omitting the top edge, including for collapsed groups.
+Other header surfaces retain their existing theme appearance.
+
 ```cpp
 event.g.clear(appearance->get_content_background_color())
        .set_ink(appearance->get_content_foreground_color());
@@ -434,13 +442,22 @@ and preserves color artwork. GEM overrides disabled mask painting with a
 black/transparent checkerboard like its disabled stock text, keeping undo/redo
 visible without a gray tint that would become white in one-bit image output.
 
+After command painting, `theme::draw_toolbar_border(bounds, edge, sides)`
+finishes the strip. Its default does nothing. GEM draws a one-pixel rule on
+the content-facing edge: bottom for a top bar, top for a bottom bar, right
+for a left bar and left for a right bar. Painting this last keeps full-band
+command backgrounds from erasing the rule. The supplied border mask can
+disable that edge.
+
 ### Toolbar metrics and command icons
 
 Use `get_toolbar_height()` for an application's normal edge band. The theme's
-`toolbar_padding` determines command-slot insets and `toolbar_control_padding`
-keeps hosted controls inside the band. GEM calls `gemctl_chrome_layout` with
+`toolbar_padding` determines command-slot insets, `toolbar_control_padding`
+keeps hosted controls inside the band, and `toolbar_separator_length` sets the
+default separator gap (zero or less: one icon-only tool). GEM calls `gemctl_chrome_layout` with
 the current workstation character and box metrics, uses square full-band
-slots, and centers controls with one pixel around their borders. Other
+slots, centers controls with one pixel around their borders, and makes
+default separators one square slot long. Other
 backends retain the default 24-pixel band and two-pixel outer padding.
 
 `native::standard_icon(native::standard_icon_id::file_save)` returns an

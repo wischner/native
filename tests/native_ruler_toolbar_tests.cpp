@@ -111,6 +111,33 @@ namespace
             const rect tool = bar_.get_item_bounds("icon");
             expect(tool.w() > 0 && tool.w() == tool.h(),
                    "an icon-only tool is square");
+            {
+                // Separators have no lookup ID; measure each gap from the
+                // square tool that follows it.
+                const auto before = bar_.get_items();
+                tool_item gap;
+                gap.kind = tool_kind::separator;
+                tool_item after = icon_tool;
+                after.id = "after";
+                const auto gap_width = [&](int length) {
+                    gap.length = length;
+                    bar_.set_items({icon_tool, gap, after});
+                    const rect first = bar_.get_item_bounds("icon");
+                    return int(bar_.get_item_bounds("after").x1()) -
+                           int(first.x1()) - int(first.w());
+                };
+                const int expected = metrics.toolbar_separator_length > 0
+                                         ? metrics.toolbar_separator_length
+                                         : int(tool.w());
+                const int measured = gap_width(0);
+                expect(measured == expected,
+                       ("a default separator uses the theme gap: width=" +
+                        std::to_string(measured) + " expected=" +
+                        std::to_string(expected)).c_str());
+                expect(gap_width(5) == 5,
+                       "an explicit separator length overrides the default");
+                bar_.set_items(before);
+            }
             const auto hosted = bar_.get_items();
             bar_.set_items({icon_tool});
             expect(!box_.get_created() && !box_.get_parent(),
@@ -304,6 +331,8 @@ namespace
             }
             expect(threw, "selection outside the list is rejected");
             tabs_.set_visible(false);
+            tabs_.on_selection_change.disconnect(selection);
+            tabs_.on_activate.disconnect(activation);
         }
 
         void check_status() {

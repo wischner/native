@@ -686,7 +686,7 @@ namespace native
         const theme::state &state) {
         const theme::metrics metrics = appearance.defaults();
         const theme::palette colors = appearance.native_palette();
-        appearance.draw_surface(bounds, surface_kind::header, state);
+        appearance.draw_table_group_background(bounds, state);
         int text_x = bounds.p.x + metrics.header_padding_x;
         if (group.collapsible) {
             const int side = std::min(

@@ -12,6 +12,11 @@ Its root peer captures a thumb drag through release; painting uses GEM-style
 arrow buttons, a flat outlined thumb, and a stippled track. The hard AES visible
 clip also applies to table rows and borders, preventing owner content from
 overpainting a modeless window above it.
+GEM column headings have flat backgrounds and single vertical separators.
+The table supplies the outer frame and a continuous bottom rule beneath
+the column headings, including virtual tables. Group bands omit their top
+edge and retain their side and bottom edges, so adjacent headings or
+collapsed groups do not produce two horizontal rules.
 
 `table_view` is the advanced, model-backed sibling of the lightweight `list`
 control. It presents semantic columns, image-and-text cells, stable row

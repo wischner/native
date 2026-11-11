@@ -1,5 +1,35 @@
 # Backend Open Issues
 
+## GEM compact frame gutter (2026-11-10)
+
+Resolved by GEM SDK 1.5.2 (2026-11-11), built from upstream commit
+[`89fdb8b`](https://github.com/triglav-os/gem/commit/89fdb8b83d7fb61395a3779b9b5690b1c88ecce3).
+SDK 1.5.1 reserved a four-pixel bottom/right border for scrollbar-free
+`SIZER` windows and drew an inner work-area frame and L-shaped grip.
+Those native decorations caused the gap and extra lines below Vision's
+status bar. SDK 1.5.2 uses one outer border pixel without the gutter,
+inner frame or extra strokes. AES retains resizing on the corner border;
+client clicks and native-scrollbar windows keep their existing behavior.
+
+The published `1.5.2` and `latest` tags resolve to manifest digest
+`sha256:436bcf41e27fb0f0d23a6f7546e0be3258dfc599e4e3e67f596f6a4958a9e67d`.
+Both ordinary Docker build targets and the image-provided gemd runtime were
+verified; no diagnostic library or server override is needed.
+
+Native spans the full client width and accepts both legacy four-pixel and
+corrected one-pixel geometry. It leaves frame painting and resize input to
+AES. Pull the updated `wischner/gcc-x86_64-gemix:latest` image and rebuild
+both GEM targets for existing development installations. Normal F5 uses
+the image-provided runtime without local SDK overrides.
+
+The upstream geometry/hit-target regression and Native's five focused
+regressions pass on both transports with the Release SDK and Native
+Debug/ASan/UBSan builds. `NATIVE_GEM_PLAIN_FRAME=1` requires one-pixel
+bottom/right borders and status paper immediately beside them. The actual
+Vision Properties and Toolbars window is also checked after status updates
+and native corner resizing; preserving the old frame alone is not visual
+acceptance.
+
 ## Cross-backend audit (2026-11-06)
 
 Current suite counts and scope are in the

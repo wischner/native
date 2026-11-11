@@ -1,13 +1,36 @@
 # Feature Matrix
 
-GEM status corner review (2026-11-10): window-owned status strips retain
-shared **C** painting and bottom docking, but their bounds stop before the
-AES resize corner. The private GEM adapter obtains the corner span with
-`wind_calc`; it adds no inset to windows whose native scrollbars already
-exclude that corner, or to nested document hosts. The SDK-owned compact
-resize frame remains outside the application's work area. Shared table
+GEM frame review (2026-11-11): window-owned status strips retain shared
+**C** painting and span the normalized client width. SDK 1.5.2 provides a
+single-pixel compact AES border without the old gutter, inner rule or
+L-shaped grip. Native resize hit testing stays on the outer corner border.
+Native also detects legacy four-pixel borders and excludes their inner
+rule while preserving requested client dimensions. Native-scrollbar
+windows and nested document hosts keep their existing bounds.
+GEM's **C** toolbars draw their content-facing border after commands on all
+four docking edges, honoring disabled border sides. Shared table
 header surfaces and their final column separator honor the table's outer
 border mask, avoiding a second frame on panes that meet window edges.
+GEM column headings use flat backgrounds, single vertical separators and
+a continuous bottom rule, including in virtual tables. Group bands omit
+their top edge and retain their side and bottom edges, avoiding doubled
+rules beneath column headings and between collapsed groups.
+The GEM chrome pixel regression checks virtual table headings and both
+expanded and collapsed materialized groups.
+It and the table-model, window-API and ruler/toolbar tests pass on both
+transports (2026-11-11). Vision table captures verify expanded and collapsed
+groups and the ungrouped virtual table with a continuous header-bottom rule.
+
+Docked-chrome verification (2026-11-11): the framebuffer regression checks
+requested client dimensions, full-width status bounds, inward toolbar borders
+and border-mask suppression. `NATIVE_GEM_PLAIN_FRAME=1` additionally requires
+one-pixel bottom/right borders, status paper directly beside those borders,
+and no inner grip strokes. GEM's native geometry/hit-target regression and
+Native's five focused regressions pass on both transports with the Release
+SDK and Native Debug/ASan/UBSan builds. Captures of the actual Vision
+Properties and Toolbars window show no bottom gap or extra corner lines
+after status updates and native pointer resizing. See the
+[SDK correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
 
 ## GEM menu installation (2026-11-10)
 

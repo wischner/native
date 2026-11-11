@@ -32,6 +32,12 @@ For document windows, `status_bar(window, document_canvas)` lets Native choose
 GEM's placement inside the canvas scrollbars while retaining the outer footer
 on other platforms. Keep both objects alive until after the status bar. Obtain
 its height from `theme::get_status_bar_height()` on the created window.
+For a window-owned GEM status bar, Native keeps the complete native frame
+outside the client area. The status strip spans the client width without a
+corner cutout; no application inset or resize-handle drawing is needed.
+SDK 1.5.2 uses a plain one-pixel frame without the old gutter or corner
+strokes. Existing installations should pull the updated SDK image and rebuild;
+see the [GEM correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
 Toolbar icons delegate state painting to `theme::draw_toolbar_icon`; disabled
 monochrome icons on GEM remain visible with the backend's binary stipple.
 
@@ -173,6 +179,9 @@ exclusive tools on one bar. A separator has no command and may use an empty ID.
 Bars can attach to any edge. `set_edge()` moves one; multiple bars can share an
 edge. Use adequate `set_extent()` for vertical labels. Available strip length
 clips overflowing tools, so allocate space for the commands you expose.
+GEM keeps a continuous border facing the content on every docking edge,
+including the top of bottom bars and the left of right bars. Use
+`set_border_sides()` to omit an edge when joining adjacent controls.
 
 ## Add a custom property dropdown
 
@@ -314,21 +323,25 @@ their vertical sizing and centering. Combine it with the control's
 combo boxes; the toolbar continues to supply its own horizontal rules.
 
 Separator items accept a positive `tool_item::length` to set the gap along
-the bar. Zero or negative lengths retain the default eight-pixel gap.
+the bar. Zero or negative lengths use the theme's `toolbar_separator_length`:
+eight pixels on most backends. GEM sets it to zero, which makes the default
+gap exactly as long as an icon-only tool on that bar, following its icon
+size and thickness.
 Toolbar separators use `theme::draw_toolbar_separator`, which delegates to
 ordinary separator painting by default. GEM puts the rule at the gap's
 trailing edge, so the next tool remains visually square instead of absorbing
 half of a centered separator slot. Menu and other separators are unchanged.
 
-For a gap as wide as an icon button, first configure the toolbar extent after
-its owner is created, then measure a fully visible icon-only command with
-`get_item_bounds(command_id).w()`. Copy `get_items()`, assign that width to the
-separator descriptors' `length`, and call `set_items()`. Do not infer the width
-from the icon bitmap: the slot includes theme chrome. If the application later
-changes icon size or toolbar thickness, update those explicit gap lengths too.
+On GEM, leave separator `length` at zero for gaps as wide as an icon
+button. Another backend can get the same spacing by measuring a fully visible
+icon-only command with `get_item_bounds(command_id).w()` once the toolbar
+extent is configured. Copy `get_items()`, assign that width to the separator
+descriptors' `length`, and call `set_items()`. Do not infer the width from the
+icon bitmap: the slot includes theme chrome. Explicit lengths do not follow
+later icon-size or thickness changes.
 
 These are independent opt-ins: `control_fill_width` affects only hosted-field
 width, `wnd::set_border_sides` selects a field's visible borders, and separator
 `length` controls group spacing. Other hosted fields retain their insets,
-vertical sizing and centering. Zero/default separator lengths remain eight
-pixels. Selection, popup and command routing are unaffected.
+vertical sizing and centering. Zero/default separator lengths follow the
+theme metric above. Selection, popup and command routing are unaffected.

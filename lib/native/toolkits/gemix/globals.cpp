@@ -21,6 +21,16 @@ namespace linux::gemix
 
     namespace
     {
+        // Legacy compact AES frames have a four-pixel gutter and put an
+        // inner rule inside the reported work area. Plain one-pixel frames
+        // already report the exact drawable rectangle and need no inset.
+        int compact_frame_inset(WORD kind, int right_border) {
+            constexpr WORD tracks = UPARROW | DNARROW | VSLIDE |
+                                    LFARROW | RTARROW | HSLIDE;
+            return (kind & SIZER) && !(kind & tracks) && right_border == 4
+                ? 1 : 0;
+        }
+
         WORD current_mouse_form = ARROW;
         bool mouse_hidden = false;
 
@@ -252,6 +262,14 @@ namespace linux::gemix
             y += dialog_frame_width;
             w = std::max(0, int(w) - 2 * dialog_frame_width);
             h = std::max(0, int(h) - 2 * dialog_frame_width);
+        } else {
+            WORD kind = 0, unused = 0;
+            if (wind_get(handle, WF_KIND, &kind, &unused, &unused, &unused)) {
+                const int inset = compact_frame_inset(
+                    kind, outer_rect(handle).x2() - (int(x) + w));
+                w = std::max(0, int(w) - inset);
+                h = std::max(0, int(h) - inset);
+            }
         }
 
         return native::rect(
@@ -313,9 +331,10 @@ namespace linux::gemix
                        &h))
             return work;
 
+        const int inset = compact_frame_inset(kind, int(x) + w - work.w);
         return native::size(
-            static_cast<native::dim>(std::max<WORD>(0, w)),
-            static_cast<native::dim>(std::max<WORD>(0, h)));
+            static_cast<native::dim>(std::max(0, int(w) + inset)),
+            static_cast<native::dim>(std::max(0, int(h) + inset)));
     }
 
     native::rect screen_rect() {

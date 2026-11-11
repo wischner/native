@@ -1203,6 +1203,12 @@ column fitting is active, its header also covers the top-right area above a
 vertical scrollbar. Native scroller hosts may retain separately framed native
 controls. Window Maker uses a one-pixel black top/left and white bottom/right
 relief. Column-header cells use their distinct table-header surface role.
+GEM table-header surfaces have no individual outlines. Their vertical
+separators, outer table frame and continuous header-bottom rule supply the
+edges, including for ungrouped virtual tables. Table groups use
+`theme::draw_table_group_background`, which defaults to the ordinary header
+surface. GEM omits the group band's top edge while retaining its side and
+bottom edges, preventing doubled rules at header and group joins.
 Window Maker table and collection headers have a white left edge only; their top
 edge remains black, matching the reference Task Manager rather than an
 ordinary raised-button relief.
@@ -1684,9 +1690,12 @@ Rulers may occupy all four edges. Orientation follows the edge. Origins,
 units-per-pixel, and positive minor/major intervals are finite doubles.
 Optional pointer tracking uses host-relative motion, updates the cached value,
 and emits once per changed ruler pixel. Status bars occupy the bottom edge,
-while side non-client strips stop above them. The GEM backend trims window
-status bounds before the AES resize corner, measuring that corner through
-`wind_calc`; the vertical reservation and bottom docking remain unchanged.
+while side non-client strips stop above them. GEM detects legacy four-pixel
+compact borders and excludes their inner bottom/right frame rule from the
+client area. Plain one-pixel SDK borders need no such adjustment. The inverse
+outer-size conversion preserves requested client dimensions in both cases.
+Window status bars span that client width without a corner cutout; AES owns
+frame rendering, and removing an SDK gutter requires an SDK correction.
 Status bars precede all other bottom strips in edge reservation, independent
 of attachment order, so bottom toolbars sit above them. Changing a status bar
 to another edge is invalid; toolbars retain their four-edge docking contract.
@@ -2128,6 +2137,11 @@ Toolbar group rules use `theme::draw_toolbar_separator`; its default calls
 `draw_separator`. GEM places this rule at the trailing edge of the gap to
 preserve the visible square boundary of the next command slot. Other
 separator uses retain their existing painting.
+
+`theme::draw_toolbar_border(bounds, edge, sides)` finishes toolbar painting
+after commands. The default adds nothing; GEM draws the content-facing rule
+for the actual docking edge and honors the enabled border sides. Full-band
+command painting must not erase this rule on bottom or right toolbars.
 
 ### Optional selection-only tabs (2026-11-10)
 

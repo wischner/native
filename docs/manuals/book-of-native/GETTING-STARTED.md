@@ -83,12 +83,17 @@ protocol-2 clients cannot use the new server. Native reports nonpositive
 menu installation results and preserves the preceding menu on rejection.
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image, which already contains the GEM `v1.0.0` SDK built from commit
-`0df463d9ff4b4cbbdd0612ce700c9e11e5e33661`: headers and Rasta-backend
+image. SDK `1.5.2` contains GEM revision
+`89fdb8b83d7fb61395a3779b9b5690b1c88ecce3`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
 no local SDK image build and no sibling GEM checkout is needed.
+SDK 1.5.2 uses a one-pixel compact window frame, so status bars meet the
+bottom border without a gutter or extra corner strokes. Existing installs
+should run `docker pull wischner/gcc-x86_64-gemix:latest`, rebuild both GEM
+targets and restart the debug session. Native retains compatibility with
+the earlier four-pixel frame geometry.
 
 Build the GEMix toolkit target:
 

@@ -15,12 +15,17 @@ protocol-2 clients cannot use the new server. Native reports nonpositive
 menu installation results and preserves the preceding menu on rejection.
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
-`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
+image. SDK `1.5.2` contains GEM revision
+`89fdb8b83d7fb61395a3779b9b5690b1c88ecce3`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
 no local SDK image build and no sibling GEM checkout is needed.
+SDK 1.5.2 uses a one-pixel compact window frame, so status bars meet the
+bottom border without a gutter or extra corner strokes. Existing installs
+should run `docker pull wischner/gcc-x86_64-gemix:latest`, rebuild both GEM
+targets and restart the debug session. Native retains compatibility with
+the earlier four-pixel frame geometry.
 
 `docker-gemix` builds the direct AES/VDI variant in `build/linux-gemix/`.
 `docker-gemix-gemd` uses the same Docker image, sets `GEMIX_USE_GEMD=ON`,
@@ -216,6 +221,7 @@ executables:
 | `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; desktop pixel readback also requires `SDL_RENDER_DRIVER=software` |
 | `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, drag/release capture and cancellation without synthetic releases | SDL2 dummy video with software rendering |
 | `native_gemix_runtime_tests` | Absolute displayed white/black colors (`--colors-only` isolates it), stable source-editor borders across caret changes (`--editor-frame-only` isolates it), packed/RGBA framebuffer decoding, initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
+| `native_gemix_chrome_tests` | Runtime fixture in `--chrome-only` mode: client dimensions, full-width status, all four toolbar inward borders and masks, virtual-table header bottom rules, expanded/collapsed group joins, selected tab joins and splitter grip pixels. `NATIVE_GEM_PLAIN_FRAME=1` also requires the SDK 1.5.2 one-pixel compact frame with no gutter or extra corner strokes | GEMix direct and proxy; private Rasta framebuffer |
 | `native_gemix_session_tests` | Real viewer screenshot checks for AES menus/title/edges and Native content; WM close with live GDB/MI stdin, owned process shutdown, command exit status and clean MI stdout | GEMix proxy; Python 3, Xvfb, Xlib, ImageMagick and GDB from the pinned Docker image; saves `tests/rasta-desktop.png` in the backend build tree |
 | `native_gemix_input_tests` | Actual Rasta packets through `app::run`: rapid focus clicks, typing/clipboard, SDK file/save/folder/alert acceptance and restored owner input, fresh combo/tab-list input, calendar activation/toggling, selected time components and square-arrow pixels, framed embedded fields, navigator spacing, final property rules, stippled modal-owner text, actual splitter cursor bitmap restoration, collection scrolling/capture, property editing, and toolbar activation/recreation | GEMix direct and proxy; private framebuffer and UDP viewer endpoint, no graphical viewer required |
 | `native_x11_runtime_tests` | Visible single-line/search glyph pixels, real copy/paste, typed-match popup checkmarks, six-pixel labeled-search/navigation spacing, real calendar selection and holiday disabling, equal time arrows and selected-component steps, nested-grid shrink allocation queries, group-bottom pixels, pre-show graphics, real Ctrl/Shift table selection, native text replacement and Enter commits, full-row selection, grow/shrink layout, idle repaint counts, collection/table edges, bottom rows, bordered full-width combo menus with hover/selection, four open tab joins, individual menu borders without a full-width rule, teardown, centered message buttons/shells with edge and hidden-owner placement, server modal grabs, all three native file/folder panels, and live bordered-pane drag | X11; X server (including private Xvfb) and the image's XTest runtime |

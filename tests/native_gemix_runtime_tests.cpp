@@ -52,6 +52,161 @@ namespace
         return raw_pixel(frame, x, y);
     }
 
+    // Check actual edge-toolbar pixels and the AES compact resize corner.
+    void check_docked_chrome(native::app_wnd &owner) {
+        using namespace native;
+        using namespace linux::gemix;
+        modeless_wnd host(owner, "Docked chrome", 60, 60, 320, 220);
+        toolbar tools(host, window_edge::bottom, 24);
+        status_bar status(host, 20);
+        tool_item command;
+        command.id = "command";
+        command.text = "Tool";
+        tools.add_item(command);
+        host.create();
+        host.show();
+        const WORD handle = wnd_bindings.handle_from_object(&host);
+        const auto work = work_rect(handle);
+        const auto outer = outer_rect(handle);
+        const auto footer = status.get_bounds();
+        WORD attributes[6] = {};
+        vqt_attributes(runtime.vdi_handle, attributes);
+        const auto before = framebuffer();
+        flush_repaints();
+        vqt_attributes(runtime.vdi_handle, attributes);
+        const auto after = framebuffer();
+        WORD raw_x = 0, raw_y = 0, raw_w = 0, raw_h = 0;
+        wind_get(handle, WF_WORKXYWH, &raw_x, &raw_y, &raw_w, &raw_h);
+        // Legacy AES includes its inner bottom/right frame rule in the
+        // reported work rectangle. Compare the entire native frame, not a corner
+        // patch that can preserve a disconnected fragment of that rule.
+        const int legacy_inset = outer.x2() - raw_x - raw_w == 4 ? 1 : 0;
+        const rect content(raw_x, raw_y,
+                           raw_w - legacy_inset, raw_h - legacy_inset);
+        for (int y = outer.y1(); y < outer.y2(); ++y)
+            for (int x = outer.x1(); x < outer.x2(); ++x) {
+                if (content.contains(point(x, y))) continue;
+                expect(pixel(before, x, y) == pixel(after, x, y),
+                       "application repaint preserves the complete native frame");
+            }
+        expect(work.w() == 320 && work.h() == 220,
+               "compact frame normalization retains requested client size");
+        expect(footer.x2() == work.w(),
+               "status meets the native frame without a corner cutout");
+        if (std::getenv("NATIVE_GEM_PLAIN_FRAME")) {
+            expect(outer.x2() - work.x2() == 1 &&
+                   outer.y2() - work.y2() == 1,
+                   "plain GEM frame has no bottom or right gutter");
+            for (int x = work.x1() + 1; x < work.x2(); ++x)
+                expect(!pixel(after, x, work.y2() - 1) &&
+                       pixel(after, x, work.y2()),
+                       "status paper meets one continuous bottom border");
+            for (int y = work.y1() + footer.y1() + 1; y < work.y2(); ++y)
+                expect(!pixel(after, work.x2() - 1, y) &&
+                       pixel(after, work.x2(), y),
+                       "status corner has no extra inner grip strokes");
+        }
+        status.set_text("Updated status");
+        for (auto edge : {window_edge::bottom, window_edge::right,
+                          window_edge::top, window_edge::left}) {
+            tools.set_edge(edge);
+            host.invalidate();
+            flush_repaints();
+            vqt_attributes(runtime.vdi_handle, attributes);
+            const auto frame = framebuffer();
+            const auto band = tools.get_bounds();
+            const bool vertical = edge == window_edge::left ||
+                                  edge == window_edge::right;
+            for (int offset = 0; offset < (vertical ? band.h() : band.w()); ++offset) {
+                const int x = vertical
+                    ? (edge == window_edge::left ? band.x2() - 1 : band.x1())
+                    : band.x1() + offset;
+                const int y = vertical ? band.y1() + offset
+                    : (edge == window_edge::top ? band.y2() - 1 : band.y1());
+                expect(pixel(frame, work.x1() + x, work.y1() + y),
+                       "each docked toolbar retains its full inward border");
+            }
+            // Test mask suppression away from the commands and their own
+            // slot boundaries, on the two formerly missing strip edges.
+            if (edge == window_edge::bottom || edge == window_edge::right) {
+                tools.set_border_sides(border_sides::none);
+                host.invalidate();
+                flush_repaints();
+                vqt_attributes(runtime.vdi_handle, attributes);
+                const auto borderless = framebuffer();
+                expect(!pixel(borderless,
+                    work.x1() + (vertical ? band.x1() : band.x2() - 2),
+                    work.y1() + (vertical ? band.y2() - 2 : band.y1())),
+                    "toolbar inward borders honor disabled border sides");
+                tools.set_border_sides(border_sides::all);
+            }
+        }
+        host.destroy();
+    }
+
+    // Column headings keep their bottom rule; groups omit their top edge.
+    void check_table_headers(native::app_wnd &owner) {
+        using namespace native;
+        using namespace linux::gemix;
+        modeless_wnd host(owner, "Table heading borders", 60, 60, 180, 160);
+        table_store store;
+        store.set_rows({{1, {}}, {2, {}}});
+        table_view table(0, 0, 160, 140);
+        table.set_columns({{1, "", 80}, {2, "", 80}}).set_model(&store);
+        host.create();
+        table.set_parent(&host);
+        table.create();
+        table.show();
+        host.show();
+        const auto work = work_rect(wnd_bindings.handle_from_object(&host));
+        gpx_wnd graphics(&table, {});
+        const auto metrics = theme::create(graphics)->defaults();
+        const int header = metrics.header_height;
+        for (int scenario = 0; scenario < 3; ++scenario) {
+            const bool grouped = scenario != 0;
+            const bool collapsed = scenario == 2;
+            // Live grouping preserves the first data row as a scroll
+            // anchor. Reattach so each case starts at its first heading.
+            table.set_model(nullptr);
+            store.set_groups(grouped
+                ? std::vector<table_group>{{1, "First", 0, 1, true, true},
+                                           {2, "Second", 1, 1, true, true}}
+                : std::vector<table_group>{});
+            table.set_data_mode(grouped ? table_data_mode::materialized
+                                       : table_data_mode::virtualized)
+                .set_model(&store);
+            if (collapsed) table.set_group_expanded(1, false);
+            host.invalidate();
+            flush_repaints();
+            WORD attributes[6] = {};
+            vqt_attributes(runtime.vdi_handle, attributes);
+            const auto frame = framebuffer();
+            const auto ink = [&](int x, int y) {
+                return pixel(frame, work.x1() + x, work.y1() + y);
+            };
+            expect(ink(40, 0) && !ink(40, 1) &&
+                   ink(0, header / 2) && !ink(1, header / 2) &&
+                   ink(159, header / 2) && !ink(158, header / 2),
+                   "GEM headings share one outer table frame");
+            expect(ink(79, header / 2) && !ink(78, header / 2) &&
+                   !ink(80, header / 2),
+                   "GEM headings have single-pixel column separators");
+            for (int x = 1; x < 159; ++x)
+                expect(ink(x, header - 1),
+                       "GEM headings have a continuous bottom border");
+            if (grouped) {
+                const int row = metrics.table_row_height;
+                const int second = header + (collapsed ? row : 2 * row);
+                expect(!ink(120, header) && !ink(120, second),
+                       "expanded and collapsed groups have no top border");
+                expect(ink(120, header + row - 1) &&
+                       ink(120, second + row - 1),
+                       "group bottom borders remain visible");
+            }
+        }
+        host.destroy();
+    }
+
     // The selected trailing outline must survive opening its page join.
     void check_tab_joins(native::app_wnd &owner) {
         using namespace native;
@@ -385,9 +540,11 @@ namespace
                     return;
                 }
                 if (chrome_only) {
+                    check_docked_chrome(*this);
+                    check_table_headers(*this);
                     check_tab_joins(*this);
                     check_splitter_grips(*this);
-                    std::cout << "GEM tab joins and splitter grip checks passed\n";
+                    std::cout << "GEM table, toolbar, tab and splitter chrome checks passed\n";
                     destroy();
                     return;
                 }

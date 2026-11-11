@@ -1,13 +1,20 @@
 # Native Versus Custom Control Audit
 
-GEM status corner review (2026-11-10): window-owned status strips retain
-shared **C** painting and bottom docking, but their bounds stop before the
-AES resize corner. The private GEM adapter obtains the corner span with
-`wind_calc`; it adds no inset to windows whose native scrollbars already
-exclude that corner, or to nested document hosts. The SDK-owned compact
-resize frame remains outside the application's work area. Shared table
+GEM frame review (2026-11-11): window-owned status strips retain shared
+**C** painting and span the normalized client width. SDK 1.5.2 provides a
+single-pixel compact AES border without the old gutter, inner rule or
+L-shaped grip. Native resize hit testing stays on the outer corner border.
+Native also detects legacy four-pixel borders and excludes their inner
+rule while preserving requested client dimensions. Native-scrollbar
+windows and nested document hosts keep their existing bounds.
+GEM's **C** toolbars draw their content-facing border after commands on all
+four docking edges, honoring disabled border sides. Shared table
 header surfaces and their final column separator honor the table's outer
 border mask, avoiding a second frame on panes that meet window edges.
+GEM column headings use flat backgrounds, single vertical separators and
+a continuous bottom rule, including in virtual tables. Group bands omit
+their top edge and retain their side and bottom edges, avoiding doubled
+rules beneath column headings and between collapsed groups.
 
 This document records how every public visual control is implemented in each
 supported backend. It describes the code as it exists, not merely what the

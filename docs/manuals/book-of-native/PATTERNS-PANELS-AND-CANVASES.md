@@ -453,7 +453,10 @@ their vertical sizing and centering. Combine it with the control's
 combo boxes; the toolbar continues to supply its own horizontal rules.
 
 Separator items accept a positive `tool_item::length` to set the gap along
-the bar. Zero or negative lengths retain the default eight-pixel gap.
+the bar. Zero or negative lengths use the theme's `toolbar_separator_length`:
+eight pixels on most backends. GEM sets it to zero, which makes the default
+gap exactly as long as an icon-only tool on that bar, following its icon
+size and thickness.
 Toolbar separators use `theme::draw_toolbar_separator`, which delegates to
 ordinary separator painting by default. GEM puts the rule at the gap's
 trailing edge, so the next tool remains visually square instead of absorbing

@@ -48,6 +48,8 @@ namespace
             m.status_bar_height = chrome.band_height;
             m.toolbar_padding = 0;
             m.toolbar_control_padding = 1;
+            // GEM groups commands with gaps as wide as one square tool.
+            m.toolbar_separator_length = 0;
             m.text_edit_height = m.toolbar_height - 2;
             m.tab_height = 20;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
@@ -75,6 +77,26 @@ namespace
                              native::point(r.x2() - 1, r.y2() - 1));
             return *this;
         }
+        theme &draw_toolbar_border(const native::rect &r,
+                                   native::window_edge edge,
+                                   native::border_sides sides) override {
+            native::border_sides inward = native::border_sides::none;
+            switch (edge) {
+            case native::window_edge::top:
+                inward = native::border_sides::bottom; break;
+            case native::window_edge::bottom:
+                inward = native::border_sides::top; break;
+            case native::window_edge::left:
+                inward = native::border_sides::right; break;
+            case native::window_edge::right:
+                inward = native::border_sides::left; break;
+            }
+            auto saved = _g.save_state();
+            _g.set_pen(1).set_ink(native_palette().menu_bar_line_bottom)
+                .draw_border(r, inward & sides);
+            return *this;
+        }
+
         theme &draw_toolbar_button(const native::rect &r,
                                    const std::string &text,
                                    const state &element_state) override {
@@ -234,12 +256,24 @@ namespace
                 return *this;
             }
             draw_surface_fallback(r, kind, s);
-            if (kind == native::surface_kind::header ||
-                kind == native::surface_kind::table_header)
+            // Table headings use the table's outer frame and column
+            // separators. Other header surfaces retain their outline.
+            if (kind == native::surface_kind::header)
                 _g.set_ink(native_palette().button_border).draw_rect(r, false);
             if (kind == native::surface_kind::status && r.w() && r.h())
                 _g.set_ink(native_palette().button_border).draw_line(
                     r.p, native::point(r.x2() - 1, r.y1()));
+            return *this;
+        }
+
+        theme &draw_table_group_background(const native::rect &bounds,
+                                            const state &s) override {
+            auto saved = _g.save_state();
+            draw_surface_fallback(bounds, native::surface_kind::header, s);
+            // The preceding header or row supplies the upper boundary.
+            _g.set_pen(1).set_ink(native_palette().button_border)
+                .draw_border(bounds, native::border_sides::left |
+                    native::border_sides::bottom | native::border_sides::right);
             return *this;
         }
 

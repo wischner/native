@@ -29,6 +29,12 @@ Run `vision --new-features` for the
 [interactive acceptance window](programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
 The dated records below retain their original verification scope.
 
+The 2026-11-11 GEM follow-up verifies SDK 1.5.2 compact frames, full-width
+status strips, inward borders on all toolbar edges, and table headings with
+continuous bottom rules above groups that omit their top borders. Both GEM
+transports pass the focused pixel and API checks recorded in the
+[feature matrix](book-of-native/FEATURE-MATRIX.md).
+
 Settings navigation and civil date/time pickers are implemented on every
 maintained backend. Granite, AppKit, Win32 and Haiku use dedicated native
 widgets; Windows settings navigation hosts the actual WinUI 3 NavigationView

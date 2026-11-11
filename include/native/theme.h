@@ -18,6 +18,7 @@
 namespace native
 {
     enum class ruler_orientation;
+    enum class window_edge;
 
     // Selects a semantic native-looking background or frame.
     enum class surface_kind
@@ -112,6 +113,9 @@ namespace native
             int toolbar_height = 24;
             int toolbar_padding = 2;
             int toolbar_control_padding = 0;
+            // Default gap for a separator whose tool_item::length is not
+            // positive. Zero or less makes the gap one icon-only tool long.
+            int toolbar_separator_length = 8;
             int button_height = 28;
             int menu_bar_height = 20;
             int menu_item_height = 20;
@@ -318,6 +322,12 @@ namespace native
         // Draw a complete empty menu bar.
         virtual theme &draw_menu_bar(const rect &bounds) = 0;
 
+        // Finish an edge toolbar after its commands have been painted.
+        // The default adds no border; overrides honor the enabled sides.
+        virtual theme &draw_toolbar_border(const rect &bounds,
+                                           window_edge edge,
+                                           border_sides sides);
+
         // Draw a menu title in its default state.
         // Paint a menu-styled command without a submenu arrow.
         virtual theme &draw_toolbar_button(const rect &bounds,
@@ -405,6 +415,12 @@ namespace native
         virtual theme &draw_surface(
             const rect &bounds,
             surface_kind kind,
+            const state &element_state);
+
+        // Draw a table group band's background and border. The default
+        // uses the ordinary header surface; text and disclosure follow.
+        virtual theme &draw_table_group_background(
+            const rect &bounds,
             const state &element_state);
 
         // Draw a row or tile selection background.

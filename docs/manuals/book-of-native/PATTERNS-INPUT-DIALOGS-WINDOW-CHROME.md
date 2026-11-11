@@ -560,6 +560,12 @@ GEMix follows Gemscape and Ted's `gemctl_chrome_layout` band metric:
 This is the application status height, not the taller AES title strip.
 Its GEM status parts draw top and leading divider lines only: the surrounding
 window supplies the bottom/right enclosure.
+Window-owned GEM status bars span the normalized client width. The adapter
+excludes the inner rule of legacy four-pixel compact frames; corrected SDK
+one-pixel frames use the reported work rectangle directly. No status cutout
+is needed. SDK 1.5.2 removes the old gutter and grip strokes with the
+[GEM-side correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
+Native-scrollbar windows and nested document hosts keep their bounds.
 For automated desktop smoke tests, `vision --input-chrome` opens the same
 window immediately after the application enters its normal event loop.
 

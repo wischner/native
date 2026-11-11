@@ -396,6 +396,11 @@ namespace native
         return draw_button(bounds, text, state{});
     }
 
+    theme &theme::draw_toolbar_border(const rect &, window_edge,
+                                      border_sides) {
+        return *this;
+    }
+
     theme &theme::draw_toolbar_button(const rect &bounds,
                                       const std::string &text,
                                       const state &element_state) {
@@ -473,6 +478,12 @@ namespace native
         const state &element_state) {
         auto saved = _g.save_state();
         return draw_surface_fallback(bounds, kind, element_state);
+    }
+
+    theme &theme::draw_table_group_background(
+        const rect &bounds,
+        const state &element_state) {
+        return draw_surface(bounds, surface_kind::header, element_state);
     }
 
     theme &theme::draw_selection(

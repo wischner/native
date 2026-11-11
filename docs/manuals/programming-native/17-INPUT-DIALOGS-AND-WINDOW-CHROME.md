@@ -411,8 +411,9 @@ call retains existing canvas controls on other backends.
 
 ### GEM footer and frame edges
 
-A window-owned `status_bar` remains docked at the bottom of GEM's work area
-and stops before the AES resize corner. Native queries AES frame geometry;
-applications do not supply a corner width. Document-associated bars already
-inside canvas scrollbars retain their existing bounds. The compact resize
-frame belongs to AES and lies outside the application's paintable work area.
+A window-owned `status_bar` spans the bottom of GEM's normalized client area.
+Native excludes the inner rule of legacy four-pixel compact frames; corrected
+SDK one-pixel frames need no additional inset. There is no application corner
+width or cutout. SDK 1.5.2 removes the old gap and extra grip lines with the
+[GEM correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
+Document-associated bars inside canvas scrollbars retain their bounds.

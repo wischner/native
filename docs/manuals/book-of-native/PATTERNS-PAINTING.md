@@ -155,9 +155,9 @@ thread. Its two fields are:
 The last two stages run after the subscriber, in that order.
 `wnd::on_native_paint()` emits the signal and then calls the protected
 `draw_non_client()`, which paints every visible attached strip over the bounds
-`non_client_bounds()` resolved for it. GEM window footer bounds stop before
-the AES resize corner, so both painting and strip hit testing exclude that
-area; applications keep painting inside the SDK-owned work rectangle.
+`non_client_bounds()` resolved for it. GEM window footer bounds span the
+normalized client width; the adapter excludes the complete native frame
+from application painting and strip hit testing.
 A control that owns edge chrome of its
 own overrides `on_native_paint()`, clips the client stage to its viewport,
 calls `draw_non_client()`, and paints its chrome last — this is how `canvas`
@@ -350,6 +350,12 @@ event boundaries. Root invalidation starts at client origin, not at the
 window's screen position. Each flush intersects damage with the work area and
 the AES visible-rectangle list. That screen-space clip is a hard limit for
 every VDI primitive, even when a control changes its local graphics clip.
+Legacy compact AES work rectangles include their inner bottom/right rule.
+`work_rect()` detects the four-pixel native border and excludes this row and
+column; `outer_size_for()` compensates to keep requested dimensions exact.
+Corrected SDKs with one-pixel borders already report the exact client area.
+Native leaves frame painting to AES. SDK 1.5.2 removes the old gutter and
+grip through the [GEM-side correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
 Image scanlines are restricted to that visible intersection before VDI calls
 are emitted, avoiding off-clip drawing and unnecessary libgem round trips.
 Container surfaces paint before content; transient combo lists paint last.

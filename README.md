@@ -163,12 +163,16 @@ protocol-2 clients cannot use the new server. Native reports nonpositive
 menu installation results and preserves the preceding menu on rejection.
 
 Both GEMix build targets use the published `wischner/gcc-x86_64-gemix:latest`
-image. The 2026-11-06 audit uses its AES/VDI `1.4.1` SDK at commit
-`03a9c1efdc67fef89abb9c1c3c5de9d42f133ecf`: headers and Rasta-backend
+image. SDK `1.5.2` contains GEM revision
+`89fdb8b83d7fb61395a3779b9b5690b1c88ecce3`: headers and Rasta-backend
 libraries in `/usr/local` with `gemix-*` pkg-config files, plus `gemd`,
 `resgen`, the GEM resources, and the recorded revision in
 `/opt/gemix/share/metadata/gem.version`. Docker pulls the image on first use;
 no local SDK image build and no sibling GEM checkout is needed.
+SDK `1.5.2` removes the compact-frame gutter and extra corner strokes so
+window status bars meet the outer border. Existing installations should pull
+the updated image and rebuild; see the
+[frame correction](docs/notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
 
 Run tests in the same SDK that built them; see the
 [build book](docs/manuals/book-of-native/BUILD-SYSTEM.md) for desktop fixtures

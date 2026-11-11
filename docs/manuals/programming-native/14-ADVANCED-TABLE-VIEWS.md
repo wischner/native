@@ -178,6 +178,12 @@ which resolve for light or dark appearance. AppKit paints both; there is no
 library-painted grid overlay. `set_grid_lines()` selects either axis, both,
 or neither, and `set_alternating_rows(false)` restores plain row backgrounds.
 
+On GEM, column headings share the outer table frame and use single vertical
+separators plus a continuous bottom rule, including in virtual tables.
+Group bands have side and bottom borders without a top border. Applications
+need no border adjustment where headings and groups meet or where collapsed
+groups touch.
+
 ## Groups, selection, and sorting
 
 Groups describe ordered, disjoint ranges in logical model-row coordinates:
