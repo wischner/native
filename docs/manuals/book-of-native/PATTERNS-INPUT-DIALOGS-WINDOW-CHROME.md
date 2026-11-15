@@ -875,3 +875,17 @@ date calendar. A peer marker requests a plain one-pixel calendar frame;
 GEM work/client conversion and painting use the same width. Other untitled
 and modal hosts keep their dialog frame. Calendar arrow navigation retains
 a pending date; Enter commits, Escape cancels, and both restore field focus.
+
+SDL file selectors use explicit Tab/Shift+Tab stops for navigation buttons,
+Places, files, filename and action buttons. Ctrl+L exposes the location field
+at its reading-order position; hiding it removes its stop. Save initially
+focuses the filename, Open the file list. Enter/Space activates a focused
+button; Enter in location/filename retains navigation/accept behavior.
+The SDL selector's initial size is capped to the owner's display work area
+(with a 640 by 420 logical-pixel minimum), and its centered position is clamped
+to that area. Resizing cannot shrink below the content minimum.
+
+SDL message boxes preserve paragraphs and wrap text in a read-only, keyboard
+scrollable editor instead of clipping a single line. Height follows the text
+up to the display height. Explicit tab stops include the message and buttons;
+Enter/Space activates the focused button, while Escape keeps dismissal behavior.

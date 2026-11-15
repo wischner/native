@@ -132,6 +132,7 @@ namespace native
 
         // Handle Tab/Shift+Tab or a single-line editor's Enter-as-Tab.
         // Returns true for a traversal key, even when there are no stops.
+        // Canvases with order zero retain Tab as application input.
         bool on_native_tab(key_event event);
 
         // Return the cached system pointer shape.

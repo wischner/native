@@ -1,5 +1,11 @@
 # Native Versus Custom Control Audit
 
+SDL dialog review (2026-11-15): existing **C** buttons/checks/radios support
+keyboard activation. File selectors and message boxes provide explicit tab
+order and initial focus; messages wrap in a scrollable editor, and dialog
+sizing accounts for the display and window frame. Zero-order canvases retain
+Tab for application editing. Existing control-kind marks are unchanged.
+
 Picker keyboard review (2026-11-15): all adapters redirect a picker tab stop
 to its native or composed editor. GEM **C** pickers use standard form height
 outside compact hosts, caret-component Up/Down and typed Enter commit. The

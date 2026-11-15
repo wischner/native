@@ -821,6 +821,10 @@ chords remain available to the control. `wnd::focus()` explicitly focuses a
 created, visible, enabled control regardless of its tab order. The protected
 `focus_native()` hook changes the actual toolkit keyboard target.
 
+Application canvases with tab order zero retain Tab and Shift+Tab as
+application input (for example spreadsheet navigation). Give a canvas a
+positive tab order to opt it into form traversal.
+
 Single-line `text_edit` has `set_enter_as_tab(bool)` and `get_enter_as_tab()`;
 the default is true. Enter and keypad Enter use the same traversal, with Shift
 reversing direction. Setting false restores the editor's normal Enter behavior.

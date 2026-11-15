@@ -1,3 +1,12 @@
+Dialog compatibility follow-up (2026-11-15): unordered application canvases
+retain Tab/Shift+Tab for editing and navigation. SDL's file browser assigns
+explicit stops, skips its hidden location field, focuses the initial filename
+or file list, and activates focused buttons with Enter/Space. Enter in the
+location/name editors continues to navigate/accept. SDL also dispatches
+Enter/Space to focused buttons and Space to checks/radios outside file panels;
+its real-keyboard regression exercises activation and toggling. SDL message
+boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
+
 # Feature Matrix
 
 Picker traversal follow-up (2026-11-15): Vision includes date/time stops and

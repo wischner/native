@@ -208,6 +208,10 @@ within the window and skipping unavailable controls. Nested containers share
 the window's order; ties follow child attachment order. `control.focus()` gives
 an already shown control keyboard focus directly, even with order zero.
 
+Application canvases with tab order zero retain Tab and Shift+Tab as
+application input (for example spreadsheet navigation). Give a canvas a
+positive tab order to opt it into form traversal.
+
 Single-line fields treat Enter as Tab by default. Call
 `name.set_enter_as_tab(false)` to retain ordinary Enter behavior. Multiline
 fields still use Enter for a newline. If there are no eligible stops, Tab and

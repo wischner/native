@@ -8,6 +8,7 @@
 
 #include <native/wnd.h>
 #include <native/app_wnd.h>
+#include <native/canvas.h>
 #include <native/text_edit.h>
 #include <native/tab_view.h>
 #include "input_state.h"
@@ -45,6 +46,10 @@ namespace native
         if ((event.modifiers & (key_modifiers::ctrl | key_modifiers::alt |
                                 key_modifiers::meta)) != key_modifiers::none)
             return false;
+        // Application canvases own Tab (for example spreadsheet navigation)
+        // unless explicitly included in the form traversal order.
+        if (event.key == key_code::tab && !get_tab_order() &&
+            dynamic_cast<canvas *>(this)) return false;
         bool traverse = event.key == key_code::tab;
         if (event.key == key_code::enter || event.key == key_code::keypad_enter) {
             const auto *editor = dynamic_cast<const text_edit *>(this);

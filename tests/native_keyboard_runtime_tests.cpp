@@ -25,6 +25,9 @@ namespace
         native::text_edit omitted{"", native::text_edit_mode::single_line, 10, 90, 200, 30};
         native::audio_out audio{44100, 1, 22050};
         bool failed = false;
+        native::button action{"Action"};
+        native::check option{"Option"};
+        int activations = 0;
         input_window() : native::app_wnd("Keyboard test") {
             on_key.connect([this](native::key_event event) {
                 if (event.action == native::key_action::press) {
@@ -38,6 +41,9 @@ namespace
                 second.set_parent(this).create(); second.show();
                 omitted.set_parent(this).create(); omitted.show();
                 editor.set_tab_order(2); second.set_tab_order(1);
+                action.set_parent(this).create(); action.show();
+                option.set_parent(this).create(); option.show();
+                action.on_click.connect([this] { ++activations; return true; });
                 check(audio.open(), "SDL dummy audio failed to open.");
                 native::app::post([this] { sequence(); });
                 return true;
@@ -81,7 +87,19 @@ namespace
                     native::app::post([this] {
                         check(native::detail::input_target(*this) == &editor,
                               "Disabled Enter-as-Tab moved focus.");
-                        destroy();
+                        action.focus();
+                        key(SDL_KEYDOWN, SDL_SCANCODE_RETURN);
+                        key(SDL_KEYUP, SDL_SCANCODE_RETURN);
+                        native::app::post([this] {
+                            check(activations == 1, "Enter did not activate the focused button once.");
+                            option.focus();
+                            key(SDL_KEYDOWN, SDL_SCANCODE_SPACE);
+                            key(SDL_KEYUP, SDL_SCANCODE_SPACE);
+                            native::app::post([this] {
+                                check(option.get_checked(), "Space did not toggle the focused check.");
+                                destroy();
+                            });
+                        });
                     });
                 });
             });

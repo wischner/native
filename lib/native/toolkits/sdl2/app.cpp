@@ -262,6 +262,27 @@ namespace native
                         target->on_native_key(physical);
                         break;
                     }
+                    // These emulated controls have no toolkit default key
+                    // action. Match the native button/check/radio contract.
+                    if ((mods & (key_modifiers::ctrl | key_modifiers::alt |
+                                 key_modifiers::meta)) == key_modifiers::none) {
+                        auto *button = dynamic_cast<native::button *>(target);
+                        auto *check = dynamic_cast<native::check *>(target);
+                        auto *radio = dynamic_cast<native::radio *>(target);
+                        const bool activate_button = button &&
+                            (code == key_code::enter || code == key_code::keypad_enter ||
+                             code == key_code::space);
+                        const bool toggle = (check || radio) && code == key_code::space;
+                        if (activate_button || toggle) {
+                            const bool consumed = target->on_native_key(physical);
+                            if (target_guard.alive() && !consumed && !physical.repeat) {
+                                if (button) button->on_native_click();
+                                else if (check) check->on_native_checked(!check->get_checked());
+                                else radio->on_native_selected();
+                            }
+                            break;
+                        }
+                    }
                     if (linux::sdl2::handle_completion_key(wnd,
                                                            event.key) ||
                         linux::sdl2::handle_combo_key(wnd, event.key) ||

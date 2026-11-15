@@ -15,6 +15,8 @@
 
 #include "globals.h"
 #include "scale.h"
+#include "window_position.h"
+#include "../../input_state.h"
 
 namespace linux::sdl2
 {
@@ -101,6 +103,17 @@ namespace linux::sdl2
             .set_horizontal_scrollbar_policy(
                 native::scrollbar_policy::never)
             .set_type_search_enabled(true);
+        _back.set_tab_order(1);
+        _forward.set_tab_order(2);
+        _up.set_tab_order(3);
+        _places.set_tab_order(5);
+        _entries.set_tab_order(6);
+        _name.set_tab_order(7);
+        _accept.set_tab_order(8);
+        _cancel.set_tab_order(9);
+        // Enter submits these fields; Tab still traverses the form.
+        _location.set_enter_as_tab(false);
+        _name.set_enter_as_tab(false);
         build_places();
         choose_initial_directory();
         connect_events();
@@ -108,7 +121,31 @@ namespace linux::sdl2
     }
 
     bool file_browser::run(std::vector<std::filesystem::path> &paths) {
+        const auto &screens = native::screen::detect();
+        const native::screen *screen = screens.empty() ? nullptr : &screens.front();
+        const auto owner = _source.get_owner()->get_bounds();
+        const native::point center(owner.x1() + owner.w() / 2,
+                                   owner.y1() + owner.h() / 2);
+        for (const auto &candidate : screens)
+            if (candidate.bounds().contains(center)) screen = &candidate;
+        if (screen) {
+            const auto area = screen->work_area();
+            const auto frame_origin = constrain_window_position(nullptr, area.p, area.d);
+            const int frame_top = std::max(0, int(frame_origin.y) - int(area.y1()));
+            _window.set_dimensions(native::size(
+                std::max(640, std::min(760, int(area.w()))),
+                std::max(420, std::min(500, int(area.h()) - frame_top))));
+        }
         _window.center_to_parent();
+        if (screen) {
+            const auto area = screen->work_area();
+            const auto bounds = _window.get_bounds();
+            _window.set_position(native::point(
+                std::clamp(int(bounds.x1()), int(area.x1()),
+                    std::max(int(area.x1()), int(area.x2()) - int(bounds.w()))),
+                std::clamp(int(bounds.y1()), int(area.y1()),
+                    std::max(int(area.y1()), int(area.y2()) - int(bounds.h())))));
+        }
         _window.create();
         for (native::wnd *control : controls()) {
             control->set_parent(&_window);
@@ -116,6 +153,8 @@ namespace linux::sdl2
             control->show();
         }
         _window.show();
+        if (_save && !_directory_mode) _name.focus();
+        else _entries.focus();
         run_loop();
         paths = _paths;
         return !_paths.empty();
@@ -209,6 +248,11 @@ namespace linux::sdl2
     bool file_browser::layout(native::size dimensions) {
         const int width = std::max(640, static_cast<int>(dimensions.w));
         const int height = std::max(420, static_cast<int>(dimensions.h));
+        if (_window.get_created() &&
+            (int(dimensions.w) < width || int(dimensions.h) < height)) {
+            _window.set_dimensions(native::size(width, height));
+            return true;
+        }
         const int body_height = std::max(220, height - 154);
         const int main_width = width - 206;
         const native::rect breadcrumb_bounds(
@@ -255,6 +299,7 @@ namespace linux::sdl2
 
     void file_browser::show_location_editor(int pointer_x) {
         _editing_location = true;
+        _location.set_tab_order(4);
         layout(_window.get_dimensions());
         if (!_window.get_created())
             return;
@@ -273,6 +318,8 @@ namespace linux::sdl2
 
     void file_browser::hide_location_editor() {
         _editing_location = false;
+        _location.set_tab_order(0);
+        _entries.focus();
         if (auto *state = text_edit_bindings.object_from_handle(&_location))
             state->focused = false;
         _location.set_bounds(native::rect(0, 0, 0, 0));
@@ -348,6 +395,30 @@ namespace linux::sdl2
     void file_browser::dispatch(const SDL_Event &event) {
         switch (event.type) {
         case SDL_KEYDOWN:
+            if (event.key.keysym.sym == SDLK_TAB) {
+                auto *target = native::detail::input_target(_window);
+                if (!target) target = &_window;
+                auto modifiers = native::key_modifiers::none;
+                if (event.key.keysym.mod & KMOD_SHIFT)
+                    modifiers = modifiers | native::key_modifiers::shift;
+                if (event.key.keysym.mod & KMOD_CTRL)
+                    modifiers = modifiers | native::key_modifiers::ctrl;
+                if (event.key.keysym.mod & KMOD_ALT)
+                    modifiers = modifiers | native::key_modifiers::alt;
+                target->on_native_tab({native::key_code::tab,
+                    native::key_action::press, false, modifiers});
+                _window.invalidate();
+                break;
+            }
+            if (event.key.keysym.sym == SDLK_RETURN ||
+                event.key.keysym.sym == SDLK_KP_ENTER ||
+                event.key.keysym.sym == SDLK_SPACE) {
+                if (auto *button = dynamic_cast<native::button *>(
+                        native::detail::input_target(_window))) {
+                    button->on_native_click();
+                    break;
+                }
+            }
             if ((event.key.keysym.mod & KMOD_CTRL) != 0 &&
                 event.key.keysym.sym == SDLK_l) {
                 show_location_editor();

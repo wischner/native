@@ -489,6 +489,15 @@ namespace
         void focus_native() override {}
     };
 
+    class focus_canvas : public native::canvas
+    {
+    public:
+        void create_native() override {}
+        void destroy_native() override {}
+        void show_native() override {}
+        void focus_native() override {}
+    };
+
     void test_tab_traversal() {
         using namespace native;
         simulated_app_window root;
@@ -513,6 +522,22 @@ namespace
             return from.on_native_key({key_code::tab, key_action::press, false, mods});
         };
         auto focused = [&] { return detail::input_target(root); };
+        focus_canvas canvas;
+        canvas.set_parent(&root).create(); canvas.show(); canvas.focus();
+        int tabs_received = 0;
+        canvas.on_key.connect([&](key_event event) {
+            if (event.key == key_code::tab) ++tabs_received;
+            return true;
+        });
+        expect(tab(canvas) && focused() == &canvas && tabs_received == 1,
+               "an unordered canvas retains Tab for application input");
+        expect(tab(canvas, key_modifiers::shift) && tabs_received == 2,
+               "an unordered canvas retains Shift+Tab");
+        canvas.set_tab_order(40);
+        expect(tab(canvas) && focused() == &first && tabs_received == 2,
+               "a canvas explicitly added to traversal wraps to the first stop");
+        canvas.set_tab_order(0);
+
         expect(tab(root) && focused() == &first, "Tab enters the lowest explicit stop");
         expect(tab(first) && focused() == &duplicate, "duplicate orders use attachment order");
         expect(tab(duplicate) && focused() == &nested_child, "nested stops share the window order");
