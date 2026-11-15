@@ -647,6 +647,7 @@ namespace native
     }
 
     bool wnd::on_native_key(key_event event) {
+        if (on_native_tab(event)) return true;
         auto *state = detail::peer_state<detail::input_state>(*this);
         const auto key = static_cast<unsigned>(event.key);
         if (!state || !get_input_enabled() ||

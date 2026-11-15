@@ -13,6 +13,7 @@
 
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "../../input_state.h"
 
 namespace
 {
@@ -110,6 +111,7 @@ namespace linux::sdl2
             h->bounds = root_bounds(*btn);
 
             native::theme::state st;
+            st.focused = native::detail::input_target(*owner) == btn;
             st.hot = h->hover;
             st.pressed = h->pressed;
             native::detail::control_render_access::draw(

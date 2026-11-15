@@ -5,6 +5,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "../../picker_peer.h"
 #include <algorithm>
@@ -143,6 +144,8 @@ namespace
         [peer->field setBackgroundColor:[NSColor controlColor]];
         [peer->field addSubview:peer->picker];
         [mac::panel_bindings.object_from_handle(&owner)->view addSubview:peer->field];
+        native::detail::assign_peer_state(owner, new native::detail::focus_redirect{
+            [peer] { [[peer->picker window] makeFirstResponder:peer->picker]; }});
         return *peer;
     }
     void geometry(native::panel &owner, picker_state &peer) {

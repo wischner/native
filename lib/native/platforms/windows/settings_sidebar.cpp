@@ -290,15 +290,13 @@ namespace
                     DesktopWindowXamlSource const &,
                     DesktopWindowXamlSourceTakeFocusRequestedEventArgs const
                         &event) {
-                    if (auto *state = live(target, guard)) {
-                        const auto stops = state->tab_stops();
-                        if (!stops.empty())
-                            SetFocus(
-                                event.Request().Reason() ==
-                                        XamlSourceFocusNavigationReason::
-                                            Last
-                                    ? stops.back()
-                                    : stops.front());
+                    if (live(target, guard)) {
+                        const bool previous = event.Request().Reason() ==
+                            XamlSourceFocusNavigationReason::Last;
+                        target->on_native_tab({native::key_code::tab,
+                            native::key_action::press, false,
+                            previous ? native::key_modifiers::shift :
+                                       native::key_modifiers::none});
                     }
                 });
             source.Content(navigation);
@@ -321,59 +319,6 @@ namespace
             source = nullptr;
             navigation = nullptr;
             search = nullptr;
-        }
-        std::vector<HWND> tab_stops() const {
-            std::vector<HWND> result;
-            if (!owner.get_selected_item())
-                return result;
-            auto *page =
-                owner.get_item(owner.get_selected_item()).content;
-            const auto window =
-                windows::wnd_bindings.handle_from_object(page);
-            if (window)
-                EnumChildWindows(
-                    window,
-                    +[](HWND child, LPARAM data) -> BOOL {
-                        if ((GetWindowLongPtrW(child, GWL_STYLE) &
-                             WS_TABSTOP) &&
-                            IsWindowVisible(child) &&
-                            IsWindowEnabled(child))
-                            reinterpret_cast<std::vector<HWND> *>(data)
-                                ->push_back(child);
-                        return TRUE;
-                    },
-                    reinterpret_cast<LPARAM>(&result));
-            return result;
-        }
-        bool tab(const MSG &message) {
-            if (message.message != WM_KEYDOWN ||
-                message.wParam != VK_TAB)
-                return false;
-            HWND focus = GetFocus();
-            if (SendMessageW(focus,
-                             WM_GETDLGCODE,
-                             VK_TAB,
-                             reinterpret_cast<LPARAM>(&message)) &
-                DLGC_WANTTAB)
-                return false;
-            const auto stops = tab_stops();
-            const auto found = std::find_if(
-                stops.begin(), stops.end(), [focus](HWND window) {
-                    return window == focus || IsChild(window, focus);
-                });
-            if (found == stops.end())
-                return false;
-            const bool previous = GetKeyState(VK_SHIFT) & 0x8000;
-            if ((!previous && std::next(found) == stops.end()) ||
-                (previous && found == stops.begin()))
-                return source
-                    .NavigateFocus(XamlSourceFocusNavigationRequest(
-                        previous
-                            ? XamlSourceFocusNavigationReason::Last
-                            : XamlSourceFocusNavigationReason::First))
-                    .WasFocusMoved();
-            SetFocus(previous ? *std::prev(found) : *std::next(found));
-            return true;
         }
         void refresh() {
             if (!source)
@@ -447,26 +392,16 @@ namespace
 } // namespace
 namespace windows
 {
-    bool pretranslate_winui(const MSG &message) {
-        if (!session)
-            return false;
-        if (session->translate && session->translate(&message))
-            return true;
-        if (message.message != WM_KEYDOWN || message.wParam != VK_TAB)
-            return false;
-        native::wnd *target = nullptr;
-        for (HWND window = message.hwnd; window && !target;
-             window = GetParent(window))
-            target = wnd_bindings.object_from_handle(window);
-        while (target &&
-               !dynamic_cast<native::settings_sidebar *>(target))
-            target = target->get_parent();
-        if (!target)
-            return false;
+    bool focus_winui(native::wnd &owner) {
         auto *state = static_cast<settings_state *>(
             native::detail::peer_state<
-                native::detail::settings_sidebar_resources>(*target));
-        return state && !state->closing && state->tab(message);
+                native::detail::settings_sidebar_resources>(owner));
+        return state && !state->closing && state->source &&
+            state->source.NavigateFocus(XamlSourceFocusNavigationRequest(
+                XamlSourceFocusNavigationReason::First)).WasFocusMoved();
+    }
+    bool pretranslate_winui(const MSG &message) {
+        return session && session->translate && session->translate(&message);
     }
     void shutdown_winui() noexcept {
         session.reset();

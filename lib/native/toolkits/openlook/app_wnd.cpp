@@ -248,6 +248,16 @@ namespace
 
         linux::openlook::permit_input(owner);
 
+        native::wnd *receiver = owner;
+        if (auto *state = linux::openlook::window_bindings.object_from_handle(owner);
+            state && window == state->paint_window) {
+            auto item = static_cast<Panel_item>(xv_get(state->content, PANEL_CARET_ITEM));
+            if (auto *control = linux::openlook::wnd_bindings.object_from_handle(item))
+                receiver = control;
+        }
+        if (XEvent *raw = event_xevent(event);
+            raw && native::detail::dispatch_x_tab(*receiver, *raw))
+            return NOTIFY_DONE;
         if (XEvent *raw = event_xevent(event);
             raw && native::detail::dispatch_x_keyboard(*owner, *raw))
             return NOTIFY_DONE;

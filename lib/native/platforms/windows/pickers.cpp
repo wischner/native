@@ -5,6 +5,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "../../picker_peer.h"
 #include <stdexcept>
@@ -71,6 +72,8 @@ namespace
         if (!SetWindowSubclass(peer->parent, notification, 1, reinterpret_cast<DWORD_PTR>(peer)))
             throw std::runtime_error("Cannot route date/time picker notifications.");
         SendMessageW(peer->child, WM_SETFONT, reinterpret_cast<WPARAM>(windows::control_font()), TRUE);
+        native::detail::assign_peer_state(owner, new native::detail::focus_redirect{
+            [peer] { SetFocus(peer->child); }});
         return *peer;
     }
     void geometry(native::panel &owner, picker_state &peer) {

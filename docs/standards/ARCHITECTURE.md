@@ -143,7 +143,7 @@ through a protected virtual hook. An optional signal initializer may defer
 event-source setup; it runs once before the first `connect()` or `emit()`.
 
 Keyboard focus follows the same route: backends call `wnd::on_native_focus()`
-without switching on the public control type. The `wnd` default is a no-op;
+without switching on the public control type. The `wnd` default maintains the shared input focus;
 `custom_control` caches focus and invalidates, and specialized controls may
 extend that behavior.
 
@@ -229,6 +229,27 @@ signals.
 Derived types add only their specific properties and events. Native handles and
 backend graphics state belong in the internal peer or callback-facing
 bindings, never in public window classes.
+
+Every `wnd` exposes `set_tab_order(unsigned)` and `get_tab_order()`. Zero is
+the default and excludes the control from keyboard traversal. Positive orders
+are sorted within the current top-level window, including nested containers;
+equal orders use depth-first child attachment order. Tab advances, Shift+Tab
+reverses, and both wrap. Uncreated, hidden, disabled and inactive tab-page
+subtrees are excluded. The order can change before or after creation.
+
+Traversal starts at the first (or last for Shift+Tab) eligible stop when the
+current control has no order. An internal editor uses its enclosing control's
+stop when one exists. With no eligible stops, focus stays put. Traversal keys
+are consumed before native widget defaults and `on_key`; Ctrl, Alt and Meta
+chords remain available to the control. `wnd::focus()` explicitly focuses a
+created, visible, enabled control regardless of its tab order. The protected
+`focus_native()` hook changes the actual toolkit keyboard target.
+
+Single-line `text_edit` has `set_enter_as_tab(bool)` and `get_enter_as_tab()`;
+the default is true. Enter and keypad Enter use the same traversal, with Shift
+reversing direction. Setting false restores the editor's normal Enter behavior.
+Multiline text and source editors retain Enter for editing. Tab traversal never
+inserts a tab or newline into text.
 
 Window lifecycle must follow these rules:
 
@@ -320,6 +341,16 @@ standard input height once a created ancestor can supply metrics. Bounds
 allocations taller than that height center the control vertically; zero-height
 allocations remain zero. Multiline editors retain their requested dimensions.
 The cached bounds describe the resolved control, not the larger layout cell.
+Date and time pickers are single composite tab stops. Their private peer
+redirects focus to the native editor or composed field, without exposing
+backend widget types or requiring application-managed child tab orders.
+
+GEM supplies a 24-pixel `form_control_height` for standalone single-line
+fields, combos and date/time pickers. Default-height (28-pixel) buttons resolve to the same
+24-pixel height; explicit non-default button heights remain unchanged.
+Property grids, toolbar hosts and settings controls retain
+the compact `text_edit_height` throughout their child hierarchy. Other
+backends leave the optional form metric at zero and retain their dimensions.
 
 A child's current allocation must not become a persistent top-level minimum.
 A client-filling layout must remain resizable in both directions; backend
@@ -1081,6 +1112,11 @@ through another.
 
 ## 12. Text editing
 
+Text editors inherit the explicit `wnd::tab_order` navigation contract in
+Section 5. `text_edit::enter_as_tab` defaults to true for single-line editors;
+its setter is cached and applies immediately. Enter and keypad Enter then
+traverse, with Shift reversing direction. Multiline editors retain newlines.
+
 `text_edit` is the portable editable-text window and is declared in
 `include/native/text_edit.h`. It is a `wnd`, participates in the normal child
 window lifecycle and layout, and uses a native text control whenever the
@@ -1286,7 +1322,7 @@ keyboard-focusable, toolkit-themed painted editor through its normal event
 loop. The shared painted path renders visible source rows, current-line and
 selection surfaces, style runs, diagnostic marks, caret, and a themed
 completion list. Its painted viewport supplies pointer hit geometry; clicking
-a visible completion accepts that item. Enter and Tab accept its active choice; the application
+a visible completion accepts that item. Enter accepts its active choice; Tab follows window traversal; the application
 remains responsible for inserting the accepted item. Platform input translation must preserve scalar boundaries
 and route standard clipboard and undo keys through the public commands.
 An unset `code_theme::current_line` is a native selected-row surface, and all

@@ -38,6 +38,8 @@ namespace linux::sdl2
         }
         if (!state->editor) {
             state->editor = std::make_unique<native::text_edit>();
+            // This private field retains the combo's native Enter command.
+            state->editor->set_enter_as_tab(false);
             auto &editor = *state->editor;
             editor.set_parent(&owner);
             editor.set_border_sides(native::border_sides::none);

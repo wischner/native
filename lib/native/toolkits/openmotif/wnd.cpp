@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include <Xm/Xm.h>
+#include <Xm/ComboBox.h>
 #include <Xm/PushB.h>
 #include <Xm/XmP.h>
 #include <X11/Xlib.h>
@@ -20,6 +21,7 @@
 #include "gpx_wnd.h"
 #include "globals.h"
 #include "../x_pointer.h"
+#include "../x_keyboard.h"
 #include "../x_border.h"
 
 namespace
@@ -183,6 +185,19 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        Widget widget = linux::openmotif::wnd_bindings.handle_from_object(this);
+        if (widget && dynamic_cast<combo_box *>(this)) {
+            Widget entry = nullptr;
+            if (XmIsComboBox(widget))
+                XtVaGetValues(widget, XmNtextField, &entry, nullptr);
+            else
+                entry = XtNameToWidget(widget, const_cast<char *>("*comboText"));
+            if (entry) widget = entry;
+        }
+        if (widget) XmProcessTraversal(widget, XmTRAVERSE_CURRENT);
+    }
+
     void wnd::apply_border_sides() {
         Widget widget = linux::openmotif::wnd_bindings.handle_from_object(this);
         if (!widget || !XtIsRealized(widget) ||
@@ -320,6 +335,11 @@ namespace native
             detail::assign_peer_state(*this, tracking);
         }
         if (!tracking->installed) {
+            XtInsertEventHandler(widget, KeyPressMask | KeyReleaseMask, False,
+                +[](Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+                    if (detail::dispatch_x_tab(*static_cast<wnd *>(data), *event))
+                        *dispatch = False;
+                }, this, XtListHead);
             XtAddEventHandler(widget,
                               EnterWindowMask | LeaveWindowMask |
                                   PointerMotionMask |

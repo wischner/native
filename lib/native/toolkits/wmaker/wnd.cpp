@@ -94,6 +94,16 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        WMWidget *widget = linux::wmaker::wnd_bindings.handle_from_object(this);
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state = linux::wmaker::combo_box_bindings.object_from_handle(combo);
+            if (state && state->field) widget = state->field;
+            else if (state && state->popup) widget = state->popup;
+        }
+        if (widget) WMSetFocusToWidget(widget);
+    }
+
     void wnd::apply_border_sides() {
         if (auto *editor = dynamic_cast<text_edit *>(this)) {
             auto *binding = linux::wmaker::text_edit_bindings.object_from_handle(editor);

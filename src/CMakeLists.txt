@@ -65,4 +65,4 @@ add_custom_command(TARGET vision POST_BUILD
 
 target_sources(vision PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/worker_shutdown.cpp)
 
-target_sources(vision PRIVATE vision_new_features.cpp)
+target_sources(vision PRIVATE vision_new_features.cpp vision_edit_form.cpp)

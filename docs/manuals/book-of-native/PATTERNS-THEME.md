@@ -269,6 +269,16 @@ draw the primitive. Every backend must provide a usable result.
 
 ## Palette and metrics
 
+GEM supplies a 24-pixel `form_control_height` for standalone single-line
+fields, combos and date/time pickers. Default-height (28-pixel) buttons resolve to the same
+24-pixel height; explicit non-default button heights remain unchanged.
+Property grids, toolbar hosts and settings controls retain
+the compact `text_edit_height` throughout their child hierarchy. Other
+backends leave the optional form metric at zero and retain their dimensions.
+
+`get_form_control_height()` returns this optional override; zero means use
+the ordinary control metrics. It does not change toolbar bands or grid rows.
+
 The facade exposes every backend-selected control dimension through a named
 getter. Fixed shapes use getters such as `get_button_height()`,
 `get_text_edit_height()` also resolves actual single-line entry, combo and

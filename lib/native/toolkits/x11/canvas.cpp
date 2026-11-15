@@ -29,7 +29,7 @@ namespace native
     }
 
     // Top-level key events reach the focused canvas through input_target.
-    void canvas::focus_native() {}
+    void canvas::focus_native() { wnd::focus_native(); }
 
     void canvas::show_native() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(

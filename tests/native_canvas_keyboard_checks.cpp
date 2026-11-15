@@ -7,11 +7,14 @@
 //
 #include <native.h>
 #include <stdexcept>
+#include "../lib/native/input_state.h"
 
 #if defined(_WIN32)
 #include "../lib/native/platforms/windows/globals.h"
 #elif defined(__APPLE__)
 #include "../lib/native/platforms/mac/globals.h"
+#elif defined(MENU_TEST_WAYLAND) || defined(MENU_TEST_ELEMENTARY)
+#include "../lib/native/toolkits/wayland/globals.h"
 #elif defined(MENU_TEST_X11)
 #include "../lib/native/toolkits/x11/globals.h"
 #include "../lib/native/toolkits/x11/scale.h"
@@ -78,8 +81,106 @@ void check_window_title(native::app_wnd &parent) {
 #endif
 }
 
+// Exercise ordering and native focus transfer with real text widgets.
+static void check_tab_focus(native::app_wnd &parent) {
+    native::text_edit first("first"), second("second"), skipped("skip");
+    first.set_position({10, 10}).set_tab_order(2);
+    second.set_position({10, 50}).set_tab_order(1);
+    skipped.set_position({10, 90});
+    for (native::wnd *control : {&first, &second, &skipped}) {
+        control->set_parent(&parent).create(); control->show();
+    }
+    first.focus();
+#if defined(MENU_TEST_X11) || defined(MENU_TEST_MOTIF)
+#if defined(MENU_TEST_X11)
+    auto widget = linux::x11::wnd_bindings.handle_from_object(&first);
+#else
+    auto widget = linux::openmotif::wnd_bindings.handle_from_object(&first);
+#endif
+    XEvent event{};
+    event.xkey.type = KeyPress;
+    event.xkey.display = XtDisplay(widget);
+    event.xkey.window = XtWindow(widget);
+    event.xkey.root = DefaultRootWindow(event.xkey.display);
+    event.xkey.keycode = XKeysymToKeycode(event.xkey.display, XK_Tab);
+    event.xkey.same_screen = True;
+    XtDispatchEvent(&event);
+#elif defined(MENU_TEST_WMAKER)
+    XEvent event{};
+    event.xkey.type = KeyPress;
+    event.xkey.display = linux::wmaker::display;
+    event.xkey.window = WMWidgetXID(linux::wmaker::wnd_bindings.handle_from_object(&first));
+    event.xkey.keycode = XKeysymToKeycode(event.xkey.display, XK_Tab);
+    if (!linux::wmaker::handle_menu_event(event))
+        throw std::runtime_error("WINGs did not intercept Tab before native editing");
+#else
+    first.on_native_tab({native::key_code::tab, native::key_action::press,
+                          false, native::key_modifiers::none});
+#endif
+    if (native::detail::input_target(parent) != &second)
+        throw std::runtime_error("Tab did not focus the ordered native editor");
+#if defined(_WIN32)
+    if (GetFocus() != windows::wnd_bindings.handle_from_object(&second))
+        throw std::runtime_error("Tab did not transfer Win32 focus");
+#elif defined(__APPLE__)
+    auto *field = mac::text_edit_bindings.object_from_handle(&second)->field;
+    if (![field currentEditor])
+        throw std::runtime_error("Tab did not transfer AppKit field-editor focus");
+#elif defined(MENU_TEST_X11)
+    Window focused = None; int revert = 0;
+    auto expected = linux::x11::wnd_bindings.handle_from_object(&second);
+    XGetInputFocus(XtDisplay(expected), &focused, &revert);
+    if (focused != XtWindow(expected))
+        throw std::runtime_error("Tab did not transfer X11 focus");
+#elif defined(MENU_TEST_MOTIF)
+    auto expected = linux::openmotif::wnd_bindings.handle_from_object(&second);
+    if (XmGetFocusWidget(expected) != expected)
+        throw std::runtime_error("Tab did not transfer Motif focus");
+#elif defined(MENU_TEST_WAYLAND) || defined(MENU_TEST_ELEMENTARY)
+    auto *widget = linux::wayland::state(second).editor;
+    auto *focused = gtk_root_get_focus(gtk_widget_get_root(widget));
+    if (focused != widget && !gtk_widget_is_ancestor(focused, widget))
+        throw std::runtime_error("Tab did not transfer GTK focus");
+#endif
+    second.on_native_tab({native::key_code::enter, native::key_action::press,
+                           false, native::key_modifiers::none});
+    if (native::detail::input_target(parent) != &first ||
+        first.get_text() != "first" || second.get_text() != "second")
+        throw std::runtime_error("Enter-as-Tab changed text or lost focus");
+    native::combo_box combo({"One", "Two"}, native::combo_box_style::editable);
+    combo.set_parent(&parent).set_tab_order(3).create(); combo.show();
+    combo.focus();
+    auto *target = native::detail::input_target(parent);
+    if (auto *entry = dynamic_cast<native::text_edit *>(target))
+        if (entry->get_enter_as_tab())
+            throw std::runtime_error("Private combo entry lost its native Enter command");
+    if (!target || !target->on_native_tab({native::key_code::tab,
+            native::key_action::press, false, native::key_modifiers::none}) ||
+        native::detail::input_target(parent) != &second)
+        throw std::runtime_error("Composite control lost its enclosing tab order");
+    combo.destroy();
+    native::date_picker date;
+    native::time_picker time;
+    date.set_parent(&parent).set_tab_order(3).create(); date.show();
+    time.set_parent(&parent).set_tab_order(4).create(); time.show();
+    first.focus();
+    for (native::wnd *expected : std::initializer_list<native::wnd *>{&date, &time, &second}) {
+        auto *origin = native::detail::input_target(parent);
+        if (!origin) throw std::runtime_error("Picker traversal lost its input owner");
+        origin->on_native_tab({native::key_code::tab, native::key_action::press,
+                              false, native::key_modifiers::none});
+        auto *focused = native::detail::input_target(parent);
+        while (focused && focused != expected) focused = focused->get_parent();
+        if (focused != expected)
+            throw std::runtime_error("Date/time picker is not one composite tab stop");
+    }
+    date.destroy(); time.destroy();
+    first.destroy(); second.destroy(); skipped.destroy();
+}
+
 // Exercise the actual view/widget callback rather than on_native_key itself.
 void check_canvas_keyboard(native::app_wnd &parent) {
+    check_tab_focus(parent);
 #if defined(MENU_TEST_GEMIX)
     if (native::app::get_unicode_text_input_supported())
         throw std::runtime_error("AES byte packets cannot advertise Unicode commits");
@@ -134,6 +235,12 @@ void check_canvas_keyboard(native::app_wnd &parent) {
     native::canvas surface(10, 10, 100, 80);
     surface.set_parent(&parent).create();
     surface.show();
+    surface.focus();
+#if defined(MENU_TEST_MOTIF)
+    auto focus_widget = linux::openmotif::wnd_bindings.handle_from_object(&surface);
+    if (XmGetFocusWidget(focus_widget) != focus_widget)
+        throw std::runtime_error("Motif canvas did not receive native keyboard focus");
+#endif
     int presses = 0, releases = 0, repeats = 0, resets = 0;
     bool consume_keys = true;
     std::string typed;
@@ -190,6 +297,8 @@ void check_canvas_keyboard(native::app_wnd &parent) {
         WMHandleEvent(&event);
 #elif !defined(MENU_TEST_OPENLOOK)
         XtDispatchEvent(&event);
+#else
+        (void)event;
 #endif
     };
 #if defined(MENU_TEST_OPENLOOK)
@@ -234,6 +343,7 @@ void check_canvas_keyboard(native::app_wnd &parent) {
 #if defined(MENU_TEST_OPENLOOK)
     (void)blur;
     (void)dispatch;
+    (void)key;
     consume_keys = false;
 #else
     key(true);

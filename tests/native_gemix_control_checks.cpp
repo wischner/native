@@ -6,6 +6,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include "native_gemix_control_checks.h"
+#include "../lib/native/property_grid_peer.h"
 #include "../lib/native/toolkits/gemix/globals.h"
 #include "../lib/native/combo_picker.h"
 #include "../lib/native/picker_peer.h"
@@ -222,6 +223,21 @@ void check_gemix_controls(native::app_wnd &owner,
                                                          &command})
                     attach(*control, host);
                 attach(choices, page);
+                const auto metrics = theme::create(host.get_gpx())->defaults();
+                const int compact = metrics.text_edit_height;
+                expect(dates.get_dimensions().h == metrics.form_control_height &&
+                           times.get_dimensions().h == metrics.form_control_height,
+                       "GEM standalone picker heights match form fields");
+                expect(grid.get_row_height() == std::max({
+                           font_t::stock(font_role::control).get_metrics().height + 6,
+                           compact + 2, metrics.check_height + 2}),
+                       "GEM property rows retain compact metrics");
+                for (auto *edit : text_edits) {
+                    if (native::detail::property_grid_owner(*edit) == &grid)
+                        expect(edit->get_dimensions().h == compact,
+                               "property-grid editors retain compact height");
+                }
+
                 expect(tabs.get_tab_bounds(0).d.h == 29,
                         "GEM tab height override survives native creation");
                 tabs.set_tab_height(std::nullopt);

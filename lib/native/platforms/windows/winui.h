@@ -7,8 +7,11 @@
 //
 #pragma once
 #include <windows.h>
+namespace native { class wnd; }
 namespace windows
 {
+    // Give a settings island native keyboard focus when it owns this control.
+    bool focus_winui(native::wnd &owner);
     // Let WinUI consume island input before ordinary Win32 dispatch.
     bool pretranslate_winui(const MSG &message);
     // Release XAML, its dispatcher queue and runtime bootstrap in that

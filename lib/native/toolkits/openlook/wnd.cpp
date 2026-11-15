@@ -16,6 +16,7 @@
 
 #include <xview/panel.h>
 #include <xview/xview.h>
+#include <xview/textsw.h>
 
 #include "../../gpx_wnd.h"
 #include "globals.h"
@@ -146,6 +147,24 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        if (auto *editor = dynamic_cast<text_edit *>(this)) {
+            auto *state = linux::openlook::text_edit_bindings.object_from_handle(editor);
+            if (state && state->multiline) {
+                auto view = static_cast<Xv_Window>(xv_get(state->item, OPENWIN_NTH_VIEW, 0));
+                xv_set(view, WIN_SET_FOCUS, nullptr);
+                return;
+            }
+        }
+        if (auto *state = collection_state(this); state && state->paint_window) {
+            xv_set(state->paint_window, WIN_SET_FOCUS, nullptr);
+        } else if (Panel_item item = control_item(this)) {
+            Panel panel = static_cast<Panel>(xv_get(item, XV_OWNER));
+            xv_set(panel, PANEL_CARET_ITEM, item, nullptr);
+            xv_set(panel, WIN_SET_FOCUS, nullptr);
+        }
+    }
+
     void wnd::apply_position() {
         if (auto *state = native::detail::peer_state<
                 linux::openlook::openlook_window>(*this)) {

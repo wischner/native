@@ -128,7 +128,7 @@ namespace native
         void show_native() override;
 
         // Move toolkit keyboard focus here, where the backend tracks it.
-        virtual void focus_native();
+        void focus_native() override;
 
     public:
 

@@ -68,6 +68,12 @@ namespace native
         // Return whether this is a single-line or multiline editor.
         text_edit_mode get_mode() const;
 
+        // Return whether Enter traverses from a single-line editor; default true.
+        bool get_enter_as_tab() const;
+
+        // Enable Enter/Shift+Enter traversal; multiline editing is unaffected.
+        text_edit &set_enter_as_tab(bool enabled);
+
         // Return whether user edits are currently disabled.
         virtual bool get_read_only() const;
 
@@ -123,6 +129,7 @@ namespace native
         std::string _text;
         text_edit_mode _mode;
         bool _read_only = false;
+        bool _enter_as_tab = true;
         text_validator _validator;
 
         // Dispatch the complete staged text-edit frame contract.

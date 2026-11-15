@@ -9,7 +9,7 @@ fields and unstyled multiline text.
 1. Keep a `code_edit` and a button as window members.
 2. Configure a language and connect completion acceptance before creation.
 3. Create both controls after the window; the button opens candidate choices.
-4. Click Complete, use Up/Down and accept with Enter or Tab. Reopen and dismiss
+4. Click Complete, use Up/Down and accept with Enter. Reopen and dismiss
    with Escape, or choose an item with the mouse.
 
 The application supplies the inserted text. This example inserts at the caret;
@@ -193,14 +193,19 @@ source.on_complete.connect(
     });
 ```
 
-Up and Down change the active choice, Enter or Tab accepts it, and Escape dismisses
+Up and Down change the active choice, Enter accepts it, and Escape dismisses
 the popup while keyboard focus remains in the editor. The shared painted
 completion also accepts a mouse click on its visible row. SDL gives an open
 completion priority over sibling text-field keyboard input. Language-server and
 debugger protocols are application responsibilities.
 
-Completion accepts the active choice with Enter or Tab. GTK transfers focus
+Completion accepts the active choice with Enter. GTK transfers focus
 to the completion keyboard host when the application opens the overlay.
 The application still inserts the accepted item through `on_complete`.
 
 Previous: [Advanced Table Views](14-ADVANCED-TABLE-VIEWS.md).
+
+Source editors inherit `wnd::set_tab_order()`. Positive values include the
+editor in Tab/Shift+Tab traversal; the default zero excludes it. Tab moves
+focus before editing or completion handling, even when completion is open;
+use Enter to accept a completion. Multiline Enter otherwise inserts a newline.

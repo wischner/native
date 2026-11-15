@@ -14,6 +14,7 @@ struct gem_control_driver
 {
     std::function<void(unsigned, native::point)> pointer;
     std::function<void(std::function<bool()>, const char *)> wait;
+    std::function<void(unsigned, bool)> key{};
 };
 
 // Exercise fresh controls, modal paint and composed picker geometry.
@@ -23,3 +24,7 @@ void check_gemix_controls(native::app_wnd &owner,
 // Exercise AES frame scrollbars through real pointer packets and messages.
 void check_gemix_window_scrollbars(native::app_wnd &owner,
                                    const gem_control_driver &driver);
+
+// Exercise form traversal, keyboard activation and editable combo popups.
+void check_gemix_form(native::app_wnd &owner,
+                      const gem_control_driver &driver);

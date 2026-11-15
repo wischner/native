@@ -220,3 +220,15 @@ its time arrows continue to adjust the selected hour, minute or second across
 successive clicks. Search and navigator spacing is measured from their native
 rectangles, so their gap matches the outside margins. Motif uses compact
 text/arrow fields and a framed calendar popup.
+
+## Keyboard traversal
+
+Set a positive `set_tab_order()` on a date or time picker to include it as
+one form stop. Focus enters its native editor or private composed field,
+and Tab/Shift+Tab leaves the whole picker. Vision `--edit-form` includes
+both controls. On GEM, Up/Down adjusts the component at the caret and Enter
+commits typed text; F4/Alt+Down opens the date calendar. Calendar arrows move
+by one day horizontally or one week vertically, Enter selects an available
+day, and Escape closes without selecting. Closing restores field focus.
+GEM standalone pickers are 24 pixels high, matching form text fields. Pickers
+inside property-grid, toolbar and settings hosts retain compact sizing.

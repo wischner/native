@@ -6,16 +6,30 @@
 //
 
 #include <algorithm>
-#include <cctype>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "../../input_state.h"
 #include "../../combo_picker.h"
 
 namespace linux::gemix
 {
+    // Native selection notifications normally come from a widget that has
+    // already changed its text. GEM must update its private editor first.
+    static void select_item(native::combo_box &control, int index) {
+        auto *state = combo_box_bindings.object_from_handle(&control);
+        if (state && state->editor) {
+            state->editor->set_text(control.get_items().at(index));
+            auto *entry = text_edit_bindings.object_from_handle(state->editor.get());
+            entry->cursor = entry->anchor = state->editor->get_text().size();
+        }
+        control.on_native_selection(index);
+    }
+
     native::rect combo_editor_bounds(const native::combo_box &owner) {
         const auto size = owner.get_dimensions();
         const auto *actions = native::detail::peer_state<
@@ -52,7 +66,7 @@ namespace linux::gemix
             const native::detail::window_guard control_guard(*control);
             state->open = false;
             state->focused = true;
-            if (selected >= 0) control->on_native_selection(selected);
+            if (selected >= 0) select_item(*control, selected);
             if (control_guard.alive()) control->on_native_drop_down(false);
             if (owner_guard.alive()) owner->invalidate();
             return true;
@@ -60,24 +74,83 @@ namespace linux::gemix
         return false;
     }
 
-    bool handle_combo_key(native::app_wnd *parent, WORD, WORD key) {
+    void dismiss_combo_popups(native::app_wnd &owner) {
+        const native::detail::window_guard owner_guard(owner);
+        // Drop-down callbacks may remove controls from the live registry.
+        using guarded_combo = std::pair<native::combo_box *,
+                                        native::detail::window_guard>;
+        std::vector<guarded_combo> controls;
+        for (auto *control : combo_boxes)
+            controls.emplace_back(control, native::detail::window_guard(*control));
+        for (const auto &[control, guard] : controls) {
+            if (!owner_guard.alive()) return;
+            if (!guard.alive()) continue;
+            auto *state = combo_box_bindings.object_from_handle(control);
+            if (!state || !state->open || root_of(control) != &owner) continue;
+            state->open = false;
+            owner.invalidate();
+            control->on_native_drop_down(false);
+        }
+    }
+
+    bool handle_combo_key(native::app_wnd *parent, WORD modifiers, WORD key) {
+        const auto *focus = native::detail::input_target(*parent);
         for (auto *control : combo_boxes) {
             auto *state = combo_box_bindings.object_from_handle(control);
             if (!control || !state || root_of(control) != parent ||
-                !state->focused)
+                (focus != control && focus != state->editor.get()))
                 continue;
-            const unsigned char character = key & 0xff;
-            if (control->get_style() ==
-                native::combo_box_style::editable) {
-                std::string text = control->get_text();
-                if (character == 8 && !text.empty())
-                    text.pop_back();
-                else if (std::isprint(character))
-                    text.push_back(static_cast<char>(character));
-                else
-                    return false;
-                control->on_native_text(text);
+            const unsigned scan = (unsigned(key) >> 8) & 255;
+            const unsigned character = key & 255;
+            const bool up = scan == 82, down = scan == 81;
+            const bool enter = character == 13 || character == 10;
+            const bool toggle = scan == 61 || ((modifiers & 8) && down);
+            if (modifiers & 4) return false;
+            if ((modifiers & 8) && !toggle) return false;
+            if (auto *actions = native::detail::peer_state<
+                    native::detail::combo_picker_actions>(*control)) {
+                std::function<void()> action;
+                if (toggle || (enter && actions->read_only)) action = actions->open;
+                else if (enter) action = actions->commit;
+                else if (up || down) {
+                    const auto step = actions->keyboard_step ? actions->keyboard_step : actions->step;
+                    if (step) action = [step, up] { step(up ? 1 : -1); };
+                }
+                if (!action) return false;
+                action();
+                return true;
+            }
+            const native::detail::window_guard control_guard(*control);
+            if (state->open) {
+                if (character == 27 || enter || toggle) {
+                    const int selected = state->hot;
+                    state->open = false;
+                    parent->invalidate();
+                    if (enter && selected >= 0 &&
+                        selected < static_cast<int>(control->get_items().size()))
+                        select_item(*control, selected);
+                    if (control_guard.alive()) control->on_native_drop_down(false);
+                    return true;
+                }
+                if (up || down) {
+                    const int count = static_cast<int>(control->get_items().size());
+                    if (count > 0)
+                        state->hot = std::clamp(state->hot + (down ? 1 : -1),
+                                                0, count - 1);
+                    parent->invalidate();
+                    return true;
+                }
+                // An open popup owns text; do not edit behind it.
+                return true;
+            }
+            if (toggle || up || down ||
+                (control->get_style() == native::combo_box_style::drop_down_list &&
+                 (enter || character == 32))) {
+                if (control->get_items().empty()) return true;
+                state->hot = std::max(0, control->get_selected_index());
+                state->open = true;
                 parent->invalidate();
+                control->on_native_drop_down(true);
                 return true;
             }
             return false;
@@ -126,6 +199,7 @@ namespace native
         if (auto *actions =
                 detail::peer_state<detail::combo_picker_actions>(
                     *this)) {
+            actions->plain_calendar = true;
             actions->square_stepper = bool(actions->step);
             actions->compact_date = bool(actions->open);
             actions->compact_time = bool(actions->step);
@@ -154,6 +228,8 @@ namespace native
         if (get_style() == combo_box_style::editable &&
             !state->editor) {
             state->editor = std::make_unique<text_edit>(get_text());
+            // This private field retains the combo's native Enter command.
+            state->editor->set_enter_as_tab(false);
             if (auto *actions = native::detail::peer_state<
                     native::detail::combo_picker_actions>(*this))
                 state->editor->set_read_only(actions->read_only);

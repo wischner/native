@@ -584,6 +584,16 @@ namespace
                      [this](auto condition, const char *message) {
                          wait_for(condition, message);
                      }});
+                check_gemix_form(*this,
+                    {[this](unsigned type, native::point position) {
+                         packet(type, position.x, position.y);
+                     },
+                     [this](auto condition, const char *message) {
+                         wait_for(condition, message);
+                     },
+                     [this](unsigned scan, bool pressed) {
+                         packet(pressed ? 1 : 2, scan);
+                     }});
                 check_collections();
                 check_inspector();
                 click(40, 30); shortcut(4); key(11);

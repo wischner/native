@@ -622,8 +622,7 @@ namespace native
     }
 
     void canvas::focus() {
-        on_native_focus(true);
-        focus_native();
+        wnd::focus();
     }
 
     bool canvas::on_native_text_input(const std::string &utf8) {

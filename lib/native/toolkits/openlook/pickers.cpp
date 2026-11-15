@@ -7,6 +7,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "../../picker_peer.h"
 #include "../../emulated_tree.h"
@@ -418,6 +419,7 @@ namespace native::detail
 {
     bool create_date_picker_peer(date_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         linux::openlook::combo_box_bindings
             .object_from_handle(&state.field)
             ->open_popup = [&state](Event *) {
@@ -427,6 +429,7 @@ namespace native::detail
     }
     bool create_time_picker_peer(time_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         auto *binding =
             linux::openlook::combo_box_bindings.object_from_handle(
                 &state.field);

@@ -533,6 +533,9 @@ namespace
             xv_get(window, PANEL_CARET_ITEM));
         auto *editor = caret ? linux::openlook::wnd_bindings
             .object_from_handle(caret) : nullptr;
+        if (physical && editor &&
+            native::detail::dispatch_x_tab(*editor, *physical))
+            return NOTIFY_DONE;
         if (physical &&
             (physical->type == KeyPress || physical->type == KeyRelease) &&
             !editor &&

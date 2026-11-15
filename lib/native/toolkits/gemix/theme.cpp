@@ -51,6 +51,8 @@ namespace
             // GEM groups commands with gaps as wide as one square tool.
             m.toolbar_separator_length = 0;
             m.text_edit_height = m.toolbar_height - 2;
+            m.form_control_height = 24;
+            m.button_height = m.form_control_height;
             m.tab_height = 20;
             m.disclosure_size = std::clamp(character_height / 2, 5, 9);
             m.tree_indent_width = 9;

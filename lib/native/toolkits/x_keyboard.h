@@ -10,6 +10,8 @@
 #include <native/wnd.h>
 namespace native::detail
 {
+    // Consume explicit traversal before native widget key translations.
+    bool dispatch_x_tab(wnd &owner, XEvent &event);
     // Normalize XKB physical names, repeat pairs and focus on one client.
     bool dispatch_x_keyboard(wnd &owner, XEvent &event);
 }

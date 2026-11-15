@@ -122,6 +122,9 @@ namespace native
             int popup_width = 180;
             int text_padding_x = 8;
             int text_edit_height = 24;
+            // Optional standalone form height; zero uses ordinary metrics.
+            // Compact composite editors retain text_edit_height.
+            int form_control_height = 0;
             int check_height = 22;
             int radio_height = 22;
             int list_item_height = 20;
@@ -235,6 +238,9 @@ namespace native
         int get_popup_width() const;
         int get_text_padding_x() const;
         int get_text_edit_height() const;
+
+        // Return the optional standalone form height; zero means no override.
+        int get_form_control_height() const;
         int get_check_height() const;
         int get_radio_height() const;
         int get_list_item_height() const;

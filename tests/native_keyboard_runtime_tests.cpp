@@ -8,6 +8,7 @@
 #include <native.h>
 #include "toolkits/sdl2/globals.h"
 #include <SDL.h>
+#include "../lib/native/input_state.h"
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -20,6 +21,8 @@ namespace
     public:
         int presses = 0, releases = 0, repeats = 0, resets = 0;
         native::text_edit editor{"", native::text_edit_mode::single_line, 10, 10, 200, 30};
+        native::text_edit second{"", native::text_edit_mode::single_line, 10, 50, 200, 30};
+        native::text_edit omitted{"", native::text_edit_mode::single_line, 10, 90, 200, 30};
         native::audio_out audio{44100, 1, 22050};
         bool failed = false;
         input_window() : native::app_wnd("Keyboard test") {
@@ -32,6 +35,9 @@ namespace
             on_key_reset.connect([this] { ++resets; return true; });
             on_wnd_create.connect([this] {
                 editor.set_parent(this).create(); editor.show();
+                second.set_parent(this).create(); second.show();
+                omitted.set_parent(this).create(); omitted.show();
+                editor.set_tab_order(2); second.set_tab_order(1);
                 check(audio.open(), "SDL dummy audio failed to open.");
                 native::app::post([this] { sequence(); });
                 return true;
@@ -55,6 +61,31 @@ namespace
             event.window.windowID = id(); event.window.event = type;
             SDL_PushEvent(&event);
         }
+        void traversal_sequence() {
+            editor.focus();
+            key(SDL_KEYDOWN, SDL_SCANCODE_TAB);
+            key(SDL_KEYUP, SDL_SCANCODE_TAB);
+            native::app::post([this] {
+                check(native::detail::input_target(*this) == &second,
+                      "SDL Tab did not wrap past the omitted editor.");
+                key(SDL_KEYDOWN, SDL_SCANCODE_RETURN);
+                key(SDL_KEYUP, SDL_SCANCODE_RETURN);
+                native::app::post([this] {
+                    check(native::detail::input_target(*this) == &editor,
+                          "SDL Enter-as-Tab did not reach the next editor.");
+                    check(editor.get_text().empty() && second.get_text().empty(),
+                          "Traversal inserted text in an editor.");
+                    editor.set_enter_as_tab(false);
+                    key(SDL_KEYDOWN, SDL_SCANCODE_RETURN);
+                    key(SDL_KEYUP, SDL_SCANCODE_RETURN);
+                    native::app::post([this] {
+                        check(native::detail::input_target(*this) == &editor,
+                              "Disabled Enter-as-Tab moved focus.");
+                        destroy();
+                    });
+                });
+            });
+        }
         void sequence() {
             focus(SDL_WINDOWEVENT_FOCUS_GAINED);
             key(SDL_KEYDOWN, SDL_SCANCODE_A);
@@ -76,7 +107,7 @@ namespace
                 key(SDL_KEYUP, SDL_SCANCODE_B);
                 native::app::post([this] {
                     check(presses == 4, "Editor physical input leaked to the root.");
-                    destroy();
+                    traversal_sequence();
                 });
             });
         }

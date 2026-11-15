@@ -32,6 +32,7 @@ namespace
     constexpr int command_input_chrome = 307;
     constexpr int command_properties = 308;
     constexpr int command_settings = 309;
+    constexpr int command_edit_form = 310;
     constexpr int command_installed_font = 401;
 
     // Create and show a native child after its parent exists.
@@ -56,7 +57,8 @@ namespace vision
     vision_window::vision_window(bool open_splitter_on_start,
                                  bool open_input_chrome_on_start,
                                  bool open_properties_on_start,
-                                 bool open_settings_on_start)
+                                 bool open_settings_on_start,
+                                 bool open_edit_form_on_start)
         : native::app_wnd(
               "Vision Native Feature Gallery", 36, 36, 820, 660)
         , _action("Activate", 20, 20, 120, 32)
@@ -101,6 +103,7 @@ namespace vision
         , _open_input_chrome_on_start(open_input_chrome_on_start)
         , _open_properties_on_start(open_properties_on_start)
         , _open_settings_on_start(open_settings_on_start)
+        , _open_edit_form_on_start(open_edit_form_on_start)
         , _inspector(*this)
         , _layout(*this)
         , _collections(*this)
@@ -110,6 +113,7 @@ namespace vision
         , _input_chrome(*this)
         , _properties(*this)
         , _settings(*this)
+        , _edit_form(*this)
         , _dialog(*this)
         , _open_image(*this, "Open PNG or JPEG")
         , _save_image(*this, "Save PNG or JPEG")
@@ -167,7 +171,8 @@ namespace vision
                         command_input_chrome,
                         "&Input and window chrome")
                  << std::pair<int, std::string>(command_properties, "&Properties and toolbars")
-                 << std::pair<int, std::string>(command_settings, "Settings and date/time &pickers"))
+                 << std::pair<int, std::string>(command_settings, "Settings and date/time &pickers")
+                 << std::pair<int, std::string>(command_edit_form, "Edit &form and tab order"))
              << "&Demo"
              << (native::menu_items("&Reset image")
                  << native::menu_separator
@@ -316,6 +321,8 @@ namespace vision
             set_status(std::string("Startup feature error: ") +
                        error.what());
         }
+        if (_open_edit_form_on_start)
+            native::app::post([this] { _edit_form.open(); });
         if (_open_splitter_on_start)
             native::app::post([this] { show_splitter(); });
         if (_open_settings_on_start)
@@ -470,6 +477,8 @@ namespace vision
         } else if (command == command_properties) {
             if (!_properties.get_created()) _properties.create();
             _properties.show();
+        } else if (command == command_edit_form) {
+            _edit_form.open();
         } else if (command == command_settings) {
             if (!_settings.get_created()) _settings.create();
             _settings.show();

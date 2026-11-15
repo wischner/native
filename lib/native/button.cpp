@@ -12,9 +12,14 @@
 #include <native/button.h>
 #include <native/font.h>
 #include <native/theme.h>
+#include "input_geometry.h"
 
 namespace native
 {
+    rect button::constrain_bounds(const rect &bounds) const {
+        return detail::button_bounds(*this, bounds);
+    }
+
     button::button(
         std::string text, coord x, coord y, dim width, dim height)
         : wnd(x, y, width, height)

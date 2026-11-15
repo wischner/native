@@ -5,6 +5,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "input_look.h"
 #include "../../picker_peer.h"
@@ -330,6 +331,10 @@ namespace native::detail
         auto *peer = new picker_state;
         assign_peer_state(owner, peer);
         peer->date = new date_edit(owner); host(owner)->AddChild(peer->date);
+        assign_peer_state(owner, new focus_redirect{[peer] {
+            BAutolock lock(peer->date->Window());
+            if (lock.IsLocked()) peer->date->MakeFocus(true);
+        }});
         peer->calendar = new calendar_button(owner); peer->date->AddChild(peer->calendar);
         peer->calendar->SetViewUIColor(B_DOCUMENT_BACKGROUND_COLOR);
         peer->calendar->SetLowUIColor(B_DOCUMENT_BACKGROUND_COLOR);
@@ -340,7 +345,11 @@ namespace native::detail
         if (!lock.IsLocked()) throw std::runtime_error("Cannot lock Haiku picker parent.");
         auto *peer = new picker_state;
         assign_peer_state(owner, peer);
-        peer->time = new time_edit(owner); host(owner)->AddChild(peer->time); return true;
+        peer->time = new time_edit(owner); host(owner)->AddChild(peer->time);
+        assign_peer_state(owner, new focus_redirect{[peer] {
+            BAutolock lock(peer->time->Window());
+            if (lock.IsLocked()) peer->time->MakeFocus(true);
+        }}); return true;
     }
     void refresh_date_picker_peer(date_picker &owner) {
         auto *peer = peer_state<picker_state>(owner);

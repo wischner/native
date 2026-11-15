@@ -6,6 +6,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "../../picker_peer.h"
 #include <charconv>
@@ -316,6 +317,7 @@ namespace native::detail
 {
     bool create_date_picker_peer(date_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         auto *peer = linux::sdl2::combo_box_bindings.object_from_handle(
             &state.field);
         peer->popup_paint = [&state](gpx &graphics) {
@@ -334,6 +336,7 @@ namespace native::detail
     }
     bool create_time_picker_peer(time_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         auto *peer = linux::sdl2::combo_box_bindings.object_from_handle(
             &state.field);
         peer->step = [&state](int direction) {

@@ -52,6 +52,9 @@ namespace native
         virtual void on_native_click();
 
     protected:
+        // Resolve default-height form buttons using the optional theme metric.
+        rect constrain_bounds(const rect &bounds) const override;
+
         // Create the backend button resource.
         void create_native() override;
 

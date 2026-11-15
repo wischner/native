@@ -91,6 +91,9 @@ endif()
 add_test(NAME native_window_api_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
 
+add_test(NAME native_tab_order_tests
+    COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests> --tab-order)
+
 add_executable(native_menu_runtime_tests native_menu_runtime_tests.cpp
     native_canvas_keyboard_checks.cpp)
 target_include_directories(native_menu_runtime_tests PRIVATE
@@ -213,7 +216,8 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
         set_tests_properties(native_gemix_session_tests PROPERTIES TIMEOUT 40)
     endif()
     add_executable(native_gemix_input_tests native_gemix_input_tests.cpp
-        native_gemix_control_checks.cpp native_gemix_scroll_checks.cpp)
+        native_gemix_control_checks.cpp native_gemix_scroll_checks.cpp
+        native_gemix_form_checks.cpp)
     target_include_directories(native_gemix_input_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_gemix_input_tests PRIVATE native native_developer_options)

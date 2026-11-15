@@ -14,6 +14,7 @@
 #include <View.h>
 #include <Region.h>
 #include <TextView.h>
+#include <TextControl.h>
 
 #include <native.h>
 #include <native/wnd.h>
@@ -74,6 +75,21 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        if (BView *view = haiku::view_from_control(this)) {
+            if (auto *editor = dynamic_cast<text_edit *>(this)) {
+                auto *state = haiku::text_edit_bindings.object_from_handle(editor);
+                if (state && state->view) view = state->view;
+            }
+            if (auto *combo = dynamic_cast<combo_box *>(this)) {
+                auto *state = haiku::combo_box_bindings.object_from_handle(combo);
+                if (state && state->text) view = state->text;
+                else if (state && state->choice) view = state->choice;
+            }
+            with_locked_window(view->Window(), [&](BWindow *) { view->MakeFocus(true); });
+        }
+    }
+
     void wnd::apply_border_sides() {
         // Buttons draw their complete background and chosen edges in Draw.
         // A persistent native clip would also prevent erasing old edges.

@@ -138,7 +138,7 @@ namespace native
     }
 
     // Top-level key events reach the focused canvas through input_target.
-    void canvas::focus_native() {}
+    void canvas::focus_native() { wnd::focus_native(); }
 
     void canvas::show_native() {
         auto *state = linux::wmaker::canvas_bindings.object_from_handle(

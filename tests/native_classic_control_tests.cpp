@@ -551,10 +551,8 @@ namespace
         expect(state && state->editor,
                "GEM editable combo owns a real text editor");
         combo.set_text("");
-        auto *entry =
-            linux::gemix::text_edit_bindings.object_from_handle(
-                state->editor.get());
-        entry->focused = true;
+        // Focus through the shared owner, as traversal and pointer input do.
+        combo.focus();
         for (const auto character : std::string("50 mm"))
             linux::gemix::handle_text_edit_key(&window, 0, character);
         expect(combo.get_text() == "50 mm" &&

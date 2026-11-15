@@ -149,6 +149,18 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state = linux::sdl2::combo_box_bindings.object_from_handle(combo);
+            if (state && state->editor) {
+                state->editor->focus();
+                return;
+            }
+        }
+        SDL_StartTextInput();
+        invalidate();
+    }
+
     // Shared drawing stages read the portable edge mask directly.
     void wnd::apply_border_sides() {}
 

@@ -1,5 +1,67 @@
 # Feature Matrix
 
+Picker traversal follow-up (2026-11-15): Vision includes date/time stops and
+all adapters redirect their focus into the real editor. GEM standalone
+pickers match the 24-pixel text fields, support caret-component arrows and
+Enter commit, and use a plain one-pixel calendar with arrow/Enter/Escape
+navigation. Embedded property/toolbar/settings sizing and other dialog
+frames remain unchanged.
+
+Picker verification: both GEM transports pass five focused CTests, including
+real Rasta keyboard packets, calendar accept/cancel and frame geometry, and
+compact property-grid/toolbar sizing. Picker tab-focus regressions pass on
+all Linux configurations and macOS; SDL also passes its keyboard and
+inspector checks. All backend builds pass, including remote AppleClang and
+Windows/Haiku cross-builds. Windows/Haiku runtime was not exercised. GEM
+framebuffer captures confirm matching form-field heights and the plain
+calendar border.
+
+Explicit keyboard traversal (2026-11-15): `wnd::tab_order` defaults to zero
+(no stop); positive values enable ordered Tab/Shift+Tab traversal. All backend
+adapters implement focus transfer and traversal interception, including GTK
+Wayland/elementary and both GEM transports. Single-line `text_edit` defaults to
+Enter-as-Tab; multiline Enter is unchanged. Shared window-API regressions cover
+ordering, wrapping, nested/excluded controls and live changes; SDL's keyboard
+runtime regression injects actual Tab and Enter events.
+
+Verification for this change: all eight Linux toolkit builds (including both
+GEM transports), Windows and Haiku cross-builds, and the remote macOS
+AppleClang build completed. The dedicated
+`native_tab_order_tests` and real-widget focus checks in
+`native_menu_runtime_tests` pass across the Linux configurations and macOS,
+including composite combo stops and AppKit field-editor focus; SDL's real
+keyboard and canvas-input regressions also pass. X11's runtime assertions pass
+with ASan/UBSan; the leak-enabled run additionally reports a 16-byte Xaw
+`SetErrCnxt` input-method allocation, so its separate passing runtime run disables
+leak scanning. Existing Motif, OPEN LOOK and WINGs suppressions are unchanged.
+The broader window-API suite still reports its separate uncreated-tab themed
+height-reset assertion on SDL, X11 and WINGs. Windows/Haiku runtime was not
+executed for this change.
+
+
+GEM form follow-up (2026-11-15): Space activates checks/radios and buttons
+without repeated activation while held; buttons also accept Enter. Combo
+popups accept F4/Alt+Down, arrow navigation, Enter selection, Escape
+cancellation and Tab dismissal before traversal. Mouse opening retains the
+embedded editor as the text target. Focus changes repaint the shared window
+surface, removing the stale last-button indicator after forward wrap (the
+logical focus had already moved). Real Rasta-packet regressions exercise
+these commands and both wrap directions, including the old-focus paint pass.
+Both GEM builds pass, together with all four targeted CTests per transport:
+`native_tab_order_tests`, `native_menu_runtime_tests`,
+`native_gemix_input_tests` and `native_classic_control_tests`.
+
+GEM sizing/selection follow-up (2026-11-15): mouse and keyboard combo commits
+update both the public value and visible editor. Standalone form fields and
+default buttons match at 24 pixels; Vision uses a 32-pixel GEM form pitch.
+Regression assertions separately check compact property-grid row/editor
+heights, toolbar fields and date/time picker heights. Other backend form
+metrics remain unchanged. Both GEM builds and five focused CTests per
+transport pass; SDL also passes four layout/focus/inspector CTests. The
+remote macOS AppleClang build and three focused focus/inspector CTests pass. A real
+GEM framebuffer capture verifies equal field/button height, tighter form
+spacing and readable labels.
+
 GEM frame review (2026-11-11): window-owned status strips retain shared
 **C** painting and span the normalized client width. SDK 1.5.2 provides a
 single-pixel compact AES border without the old gutter, inner rule or

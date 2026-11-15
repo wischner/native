@@ -10,6 +10,7 @@
 #include <native/list.h>
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "../../input_state.h"
 namespace linux::sdl2
 {
     bool
@@ -39,13 +40,16 @@ namespace linux::sdl2
         auto painter = native::theme::create(g);
         for (auto *c : lists) {
             auto *b = list_bindings.object_from_handle(c);
-            if (b && root_of(c) == owner && b->visible)
+            if (b && root_of(c) == owner && b->visible) {
+                native::theme::state state;
+                state.focused = native::detail::input_target(*owner) == c;
                 native::detail::control_render_access::draw(
                     *c,
                     g,
                     *painter,
                     root_bounds(*c),
-                    native::theme::state{});
+                    state);
+            }
         }
     }
 } // namespace linux::sdl2

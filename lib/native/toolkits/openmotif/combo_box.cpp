@@ -19,6 +19,7 @@
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "control_font.h"
 #include "../../property_grid_peer.h"
 #include "../../combo_picker.h"
@@ -656,6 +657,11 @@ namespace native
             }
             XtAddCallback(
                 text, XmNvalueChangedCallback, text_changed, self);
+            XtInsertEventHandler(text, KeyPressMask | KeyReleaseMask, False,
+                +[](Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+                    if (native::detail::dispatch_x_tab(*static_cast<native::combo_box *>(data), *event))
+                        *dispatch = False;
+                }, self, XtListHead);
             XtInsertEventHandler(text,
                                  KeyPressMask | ButtonPressMask |
                                      ButtonReleaseMask,

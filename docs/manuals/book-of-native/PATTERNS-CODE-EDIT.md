@@ -74,7 +74,7 @@ See the application-facing
 [Source Editing](../programming-native/15-SOURCE-EDITING.md) chapter for
 construction, overlays, lexer integration, completion, and file handling.
 
-Completion accepts the active choice with Enter or Tab. GTK transfers focus
+Completion accepts the active choice with Enter. GTK transfers focus
 to the completion keyboard host when the application opens the overlay.
 The application still inserts the accepted item through `on_complete`.
 
@@ -83,10 +83,11 @@ row height in the editor peer. Pointer selection uses that painted geometry
 and accepts the clicked item through the existing completion callback. A
 click outside dismisses the overlay before placing the caret. SDL routes an
 open completion's keys before sibling text-editor focus, so commands that
-open completion leave Up/Down and Enter/Tab available immediately.
+open completion leave Up/Down and Enter available immediately.
 
 OPEN LOOK consumes source-editor X key events after translating the shared
-commands, rather than allowing Panel traversal to handle Tab or arrows again.
+commands, without duplicate native arrow processing. Shared traversal consumes
+Tab before editor commands.
 Its native paint-window masks include raw keyboard events; physical server
 input is exercised alongside the synthetic notifier callback fixture.
 
@@ -112,3 +113,8 @@ and moving away cannot make a separator suddenly appear below a sibling
 header. Borderless and individual-side borders retain their public meaning.
 The GEM runtime regression compares the top edge across caret changes for
 all, top-only and absent borders.
+
+Source editors inherit `wnd::set_tab_order()`. Positive values include the
+editor in Tab/Shift+Tab traversal; the default zero excludes it. Tab moves
+focus before editing or completion handling, even when completion is open;
+use Enter to accept a completion. Multiline Enter otherwise inserts a newline.

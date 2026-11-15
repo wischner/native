@@ -5,6 +5,7 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include "../../combo_picker.h"
 #include <algorithm>
 
 #include "globals.h"
@@ -258,10 +259,11 @@ namespace linux::gemix
         auto *owner = dynamic_cast<native::app_wnd *>(
             wnd_bindings.object_from_handle(handle));
         if (owner && (owner->get_modal() || !owner->get_native_title_visible())) {
-            x += dialog_frame_width;
-            y += dialog_frame_width;
-            w = std::max(0, int(w) - 2 * dialog_frame_width);
-            h = std::max(0, int(h) - 2 * dialog_frame_width);
+            const int frame = native::detail::peer_state<native::detail::plain_calendar_frame>(*owner)
+                ? 1 : dialog_frame_width;
+            x += frame; y += frame;
+            w = std::max(0, int(w) - 2 * frame);
+            h = std::max(0, int(h) - 2 * frame);
         } else {
             WORD kind = 0, unused = 0;
             if (wind_get(handle, WF_KIND, &kind, &unused, &unused, &unused)) {
@@ -300,9 +302,11 @@ namespace linux::gemix
                                 const native::size &work) {
         auto *owner = dynamic_cast<native::app_wnd *>(
             wnd_bindings.object_from_handle(handle));
-        if (owner && (owner->get_modal() || !owner->get_native_title_visible()))
-            return native::size(work.w + 2 * dialog_frame_width,
-                                work.h + 2 * dialog_frame_width);
+        if (owner && (owner->get_modal() || !owner->get_native_title_visible())) {
+            const int frame = native::detail::peer_state<native::detail::plain_calendar_frame>(*owner)
+                ? 1 : dialog_frame_width;
+            return native::size(work.w + 2 * frame, work.h + 2 * frame);
+        }
         WORD kind = 0;
         WORD ignored_y = 0;
         WORD ignored_w = 0;

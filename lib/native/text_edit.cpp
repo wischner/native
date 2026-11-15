@@ -81,6 +81,15 @@ namespace native
         return *this;
     }
 
+    bool text_edit::get_enter_as_tab() const {
+        return _enter_as_tab;
+    }
+
+    text_edit &text_edit::set_enter_as_tab(bool enabled) {
+        _enter_as_tab = enabled;
+        return *this;
+    }
+
     text_edit_mode text_edit::get_mode() const {
         return _mode;
     }

@@ -11,6 +11,13 @@
 
 namespace native::detail
 {
+    wnd *find_input_owner(wnd &root, const std::function<bool(wnd &)> &matches) {
+        if (!root.get_created()) return nullptr;
+        for (wnd *child : wnd_peer_access::children(root))
+            if (auto *found = find_input_owner(*child, matches)) return found;
+        return matches(root) ? &root : nullptr;
+    }
+
     wnd *input_target(wnd &root) {
         for (wnd *child : root._children) {
             if (!child || !child->get_created() || !child->get_visible())

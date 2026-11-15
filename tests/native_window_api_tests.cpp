@@ -28,6 +28,7 @@
 #endif
 
 #include <native.h>
+#include "../lib/native/input_state.h"
 
 namespace
 {
@@ -465,6 +466,101 @@ namespace
     }
 
     // Verify property caching and the setter/getter naming contract.
+    // Use real peer/lifetime state with a backend-free focus sink.
+    class focus_probe : public native::wnd
+    {
+    public:
+        bool enabled = true;
+        bool get_input_enabled() const override { return enabled; }
+        void create_native() override {}
+        void destroy_native() override {}
+        void show_native() override {}
+        void focus_native() override {}
+    };
+
+    class focus_editor : public native::text_edit
+    {
+    public:
+        using native::text_edit::text_edit;
+        native::rect constrain_bounds(const native::rect &bounds) const override { return bounds; }
+        void create_native() override {}
+        void destroy_native() override {}
+        void show_native() override {}
+        void focus_native() override {}
+    };
+
+    void test_tab_traversal() {
+        using namespace native;
+        simulated_app_window root;
+        focus_probe first, skipped, duplicate, last, nested, hidden, uncreated;
+        focus_editor editor;
+        focus_editor multiline("", text_edit_mode::multi_line);
+        root.create(); root.show();
+        for (wnd *child : std::vector<wnd *>{&first, &skipped, &duplicate,
+                 &last, &nested, &hidden, &uncreated, &editor, &multiline}) {
+            child->set_parent(&root);
+            if (child == &uncreated) continue;
+            child->create();
+            if (child != &hidden) child->show();
+        }
+        focus_probe nested_child;
+        nested_child.set_parent(&nested).create(); nested_child.show();
+        first.set_tab_order(10); duplicate.set_tab_order(10);
+        last.set_tab_order(30); nested_child.set_tab_order(20);
+        hidden.set_tab_order(1); uncreated.set_tab_order(2);
+        expect(skipped.get_tab_order() == 0, "default controls have no tab stop");
+        auto tab = [](wnd &from, key_modifiers mods = key_modifiers::none) {
+            return from.on_native_key({key_code::tab, key_action::press, false, mods});
+        };
+        auto focused = [&] { return detail::input_target(root); };
+        expect(tab(root) && focused() == &first, "Tab enters the lowest explicit stop");
+        expect(tab(first) && focused() == &duplicate, "duplicate orders use attachment order");
+        expect(tab(duplicate) && focused() == &nested_child, "nested stops share the window order");
+        expect(tab(nested_child) && focused() == &last, "ascending traversal skips order zero");
+        expect(tab(last) && focused() == &first, "Tab wraps at the last stop");
+        expect(tab(first, key_modifiers::shift) && focused() == &last, "Shift+Tab wraps backward");
+        nested.enabled = false;
+        expect(tab(last, key_modifiers::shift) && focused() == &duplicate,
+               "disabled ancestor excludes its entire subtree");
+        duplicate.set_tab_order(0);
+        expect(tab(first) && focused() == &last, "live order removal applies immediately");
+        last.destroy();
+        expect(tab(first) && focused() == &first, "a lone stop retains focus");
+        editor.set_tab_order(25); editor.focus();
+        expect(editor.get_enter_as_tab() && editor.on_native_key(
+                   {key_code::enter, key_action::press, false, key_modifiers::none}) &&
+                   focused() == &first, "single-line Enter traverses by default");
+        editor.set_enter_as_tab(false); editor.focus();
+        expect(!editor.on_native_tab({key_code::enter, key_action::press,
+                   false, key_modifiers::none}) && focused() == &editor,
+               "Enter-as-Tab can be disabled");
+        expect(!multiline.on_native_tab({key_code::enter, key_action::press,
+                   false, key_modifiers::none}), "multiline Enter remains editing input");
+        expect(!editor.on_native_tab({key_code::tab, key_action::press,
+                   false, key_modifiers::ctrl}), "Ctrl+Tab remains available to controls");
+        expect(editor.on_native_tab({key_code::tab, key_action::release,
+                   false, key_modifiers::none}) && focused() == &editor,
+               "Tab release cannot move focus again");
+        first.set_tab_order(0); editor.set_tab_order(0);
+        expect(tab(editor) && focused() == &editor, "an empty traversal is consumed without native fallback");
+        simulated_tab_view tabs(0, 0, 200, 120);
+        focus_probe page_one, page_two;
+        tabs.set_parent(&root);
+        tabs.preserve_pages().add_item("One", page_one);
+        tabs.add_item("Two", page_two);
+        page_one.set_tab_order(1); page_two.set_tab_order(2);
+        tabs.create(); tabs.show();
+        tabs.set_selected_index(1);
+        expect(page_one.get_created() && page_two.get_created(),
+               "the traversal fixture retains both native pages");
+        expect(tab(root) && focused() == &page_two,
+               "retained inactive tab pages cannot become stops");
+        tabs.set_selected_index(0);
+        expect(tab(root) && focused() == &page_one,
+               "switching tabs changes the eligible subtree");
+        root.destroy();
+    }
+
     void test_cached_properties() {
         native::app_wnd window(
             "Initial", native::point(10, 20), native::size(300, 200));
@@ -3216,10 +3312,14 @@ namespace
     }
 } // namespace
 
-int main() {
+int main(int argc, char **argv) {
 #if defined(__HAIKU__)
     BApplication application("application/x-vnd.native-window-api-tests");
 #endif
+    if (argc > 1 && std::string(argv[1]) == "--tab-order") {
+        test_tab_traversal();
+        return failure_count == 0 ? 0 : 1;
+    }
     test_cached_properties();
     test_close_request();
     test_cursor_property();
@@ -3256,5 +3356,6 @@ int main() {
     test_panel_container();
     test_canvas_content_and_clamping();
     test_canvas_scrollbars();
+    test_tab_traversal();
     return failure_count == 0 ? 0 : 1;
 }

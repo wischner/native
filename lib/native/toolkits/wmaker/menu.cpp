@@ -21,6 +21,7 @@
 #include <native/menu.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 
 namespace
 {
@@ -774,6 +775,19 @@ namespace linux::wmaker
                 return handle_popup_key(*open_menu, event.xkey);
         }
 
+        if (event.type == KeyPress || event.type == KeyRelease) {
+            auto *view = W_GetViewForXWindow(event.xkey.display, event.xkey.window);
+            if (view) {
+                if (auto *focused = W_FocusedViewOfToplevel(W_TopLevelOfView(view)))
+                    view = focused;
+                for (; view; view = view->parent) {
+                    if (auto *target = wnd_bindings.object_from_handle(view->self)) {
+                        if (native::detail::dispatch_x_tab(*target, event)) return true;
+                        break;
+                    }
+                }
+            }
+        }
         if (event.type != KeyPress)
             return false;
         native_menu *menu = menu_for(active_owner);

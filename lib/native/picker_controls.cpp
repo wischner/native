@@ -5,6 +5,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "focus_redirect.h"
 #include "picker_controls.h"
 #include <algorithm>
 #include <charconv>
@@ -49,6 +50,7 @@ namespace native::detail
         if (guard.alive() && !focused) set_text(std::to_string(_owner.get_date().year));
     }
     date_picker_controls::date_picker_controls(date_picker &owner) : _owner(owner), _year(owner) {
+        assign_peer_state(owner, new focus_redirect{[this] { _year.focus(); }});
         _month.set_items(numbers(1, 12));
         for (auto *control : std::initializer_list<native::wnd *>{&_year, &_month, &_day}) create(*control, owner);
         _year.on_change.connect([this](const std::string &text) {
@@ -96,6 +98,7 @@ namespace native::detail
         geometry(_owner, {&_year, &_month, &_day});
     }
     time_picker_controls::time_picker_controls(time_picker &owner) : _owner(owner) {
+        assign_peer_state(owner, new focus_redirect{[this] { _hour.focus(); }});
         _hour.set_items(numbers(0, 23)); _second.set_items(numbers(0, 59));
         for (auto *control : {&_hour, &_minute, &_second}) create(*control, owner);
         _hour.on_selection_change.connect([this](int index) { return select(0, index); });

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <typeindex>
 #include <type_traits>
 #include <unordered_map>
@@ -81,6 +82,10 @@ namespace native
         class wnd_peer_access
         {
         public:
+            // Identify a private non-client host such as a toolbar surface.
+            static bool is_non_client_surface(const wnd &owner);
+            // Borrow children for backend focus resolution on the UI thread.
+            static const std::vector<wnd *> &children(const wnd &owner);
             static std::weak_ptr<wnd_lifetime> object_lifetime(wnd &owner);
             static std::weak_ptr<wnd_lifetime> resource_lifetime(wnd &owner);
             static void assign_state(wnd &owner,

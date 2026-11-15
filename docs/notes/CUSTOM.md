@@ -1,5 +1,33 @@
 # Native Versus Custom Control Audit
 
+Picker keyboard review (2026-11-15): all adapters redirect a picker tab stop
+to its native or composed editor. GEM **C** pickers use standard form height
+outside compact hosts, caret-component Up/Down and typed Enter commit. The
+**C** calendar has arrow/Enter/Escape navigation and a plain one-pixel frame;
+other dialog chrome and all control-kind marks are unchanged.
+
+Keyboard traversal review (2026-11-15): all controls inherit opt-in positive
+`tab_order`; zero excludes a stop. Shared ordering calls private Win32, AppKit,
+BeAPI, GTK, Xt, XView and WINGs focus operations, or the existing SDL/GEM focus
+state. Native editors intercept traversal before their widget defaults.
+Single-line Enter-as-Tab defaults to true. Existing **N/H/C/E** classifications
+are unchanged: this adds navigation policy without replacing native widgets.
+
+
+GEM form input review (2026-11-15): the existing **C** check/radio/button
+controls handle Space activation (buttons also accept Enter), without repeat
+activation while held. The **C** combo routes popup commands before its
+private editor: F4 or Alt+Down opens, arrows move the highlight, Enter commits,
+and Escape dismisses. Tab dismisses the popup and traverses. Focus transfer
+repaints the shared GEM surface so the previous caret/ring disappears,
+including last-to-first wraparound. No control-kind marks change.
+
+GEM form sizing/selection review (2026-11-15): **C** editable-combo commits
+synchronize their real private text editor before notifying the application.
+Standalone form fields, date/time pickers and default buttons share 24 pixels; the GEM demo
+uses a 32-pixel row pitch. Compact property, toolbar and settings
+editors retain their existing dimensions and all control-kind marks remain.
+
 GEM frame review (2026-11-11): window-owned status strips retain shared
 **C** painting and span the normalized client width. SDK 1.5.2 provides a
 single-pixel compact AES border without the old gutter, inner rule or
@@ -21,7 +49,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-06.
+Audit date: 2026-11-15 (keyboard traversal; earlier widget audit retained).
 
 GEM document chrome review: the document-associated status-bar constructor
 selects the canvas host, putting its existing **C** status painting inside

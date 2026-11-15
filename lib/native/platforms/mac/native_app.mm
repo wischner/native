@@ -25,10 +25,22 @@ __attribute__((constructor)) static void init_mac_app() {
                    : nullptr;
         if (target && ([event type] == NSEventTypeKeyDown ||
                        [event type] == NSEventTypeKeyUp)) {
-            if (auto *focused = native::detail::input_target(*target))
-                target = focused;
+            id responder = [window firstResponder];
+            if ([responder isKindOfClass:[NSTextView class]] &&
+                [(NSTextView *)responder isFieldEditor])
+                responder = [(NSTextView *)responder delegate];
+            auto *focused = native::detail::find_input_owner(*target,
+                [&](native::wnd &candidate) {
+                    NSView *view = mac::view_from_control(&candidate);
+                    if (!view) return false;
+                    return responder == view ||
+                        ([responder isKindOfClass:[NSView class]] &&
+                         [(NSView *)responder isDescendantOf:view]);
+                });
+            if (focused) target = focused;
             auto physical = mac::physical_key(event, [event type] == NSEventTypeKeyDown
                 ? native::key_action::press : native::key_action::release);
+            if (target->on_native_tab(physical)) return nil;
             if (native::detail::key_held(*target, physical.key)) {
                 target->on_native_key(physical);
                 return nil;

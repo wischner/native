@@ -10,6 +10,10 @@ civil pickers. Geometry is resolved before native creation and resizing, and
 text/caret placement uses native font metrics. This includes Vision's main
 copy/paste field. Multiline editors retain their full bounds and line flow.
 
+GEM uses a separate 24-pixel form height for standalone fields and combos;
+embedded editors in property grids, toolbars and settings keep the
+compact text-edit metric.
+
 ## Clipboard transactions
 
 Open a read snapshot when data is needed, or an empty write transaction when
@@ -80,7 +84,8 @@ same editor, so caret placement, range replacement and clipboard shortcuts
 share the standard input path. Keyboard dispatch checks the focused input
 tree rather than retaining a stale editor-local focus flag.
 
-GEMix gives a focused editor first refusal of keyboard commands, including
+After shared Tab/Enter traversal, GEMix gives a focused editor first refusal
+of keyboard commands, including
 selection and clipboard shortcuts, before trying application menu accelerators.
 This preserves the editor's selected range instead of invoking a gallery-wide
 Copy/Paste action. Read-only fields still permit copying, but reject typing,
@@ -173,3 +178,19 @@ OPEN LOOK canvas hosts can contain windowless native Panel text items. A live
 caret item takes priority over canvas key/text dispatch, so property-grid typing
 reaches XView's insertion handler and then its normal complete-value validation.
 The inspector runtime test exercises both text and numeric edits through XTest.
+
+## Tab order and Enter
+
+Editors inherit `wnd::set_tab_order()`: positive values participate in window
+traversal and zero, the default, does not. Native adapters intercept Tab before
+widget editing or built-in focus traversal. A single-line editor's
+`set_enter_as_tab(true)` is the default: Enter and keypad Enter advance, while
+Shift reverses direction. `set_enter_as_tab(false)` restores ordinary Enter
+handling. Multiline and source editors keep Enter for line insertion; Tab is
+reserved for traversal. These settings do not alter validation or `on_change`.
+GEM and SDL route editor input through the shared focused-window tree, including
+focus obtained through traversal rather than a pointer click.
+
+Private text fields used to implement editable SDL/GEM combos explicitly disable
+Enter-as-Tab, preserving the public combo's Enter command on every backend.
+They share the enclosing combo's explicit stop when Tab moves focus.

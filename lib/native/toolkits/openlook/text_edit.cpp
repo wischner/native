@@ -35,6 +35,7 @@
 #include <xview/window.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 
 #ifdef NATIVE_XVIEW_SELECTION_COMPAT
 #define EV_SEL_PRIMARY 0x0001
@@ -158,6 +159,9 @@ namespace
                                     .object_from_handle(item))
                           : nullptr;
         Event *input = reinterpret_cast<Event *>(event);
+        if (owner && event_xevent(input) &&
+            native::detail::dispatch_x_tab(*owner, *event_xevent(input)))
+            return NOTIFY_DONE;
         if (owner && !linux::openlook::permit_input(owner))
             return NOTIFY_DONE;
         if (owner && event_is_down(input) &&
@@ -190,6 +194,9 @@ namespace
         auto *owner = reinterpret_cast<native::text_edit *>(xv_get(
             client, XV_KEY_DATA, text_edit_event_key()));
         Event *input = reinterpret_cast<Event *>(event);
+        if (owner && event_xevent(input) &&
+            native::detail::dispatch_x_tab(*owner, *event_xevent(input)))
+            return NOTIFY_DONE;
         if (owner && !linux::openlook::permit_input(owner))
             return NOTIFY_DONE;
         if (owner && event_is_down(input) &&

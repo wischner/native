@@ -27,7 +27,13 @@ ordinary child hit testing or canvas capture. Selection is committed on
 release. A release outside dismisses the popup without activating the child
 underneath; the next fresh click resumes ordinary input. The backend closes
 its popup state before invoking user callbacks and guards control/window
-lifetime across selection and dropdown notifications.
+lifetime across selection and dropdown notifications. Editable and selection-only
+GEM combos accept F4 or Alt+Down to open their popup; Up/Down changes the
+highlight, Enter commits, and Escape cancels. Tab closes the popup and moves
+to the next explicit stop. Popup commands precede the private text editor;
+date/time proxy fields retain their own open/step/commit actions. GEM
+commits update the private text editor before selection callbacks, so mouse
+and keyboard selection display the new value immediately.
 
 A document footer can be constructed with `status_bar(owner, content_canvas,
 height)`. The private backend adapter chooses the canvas on GEM, so its
@@ -41,7 +47,9 @@ active theme's status-bar height once the window exists.
 Single-line editors, both combo styles and date/time pickers use the same
 active-theme input height with vertically centered content. A taller bounds
 allocation centers that standard-height field; multiline editors still fill
-their bounds. A status bar always occupies the outermost bottom strip, so
+their bounds. GEM standalone form fields use a separate 24-pixel height;
+embedded property-grid, toolbar and settings editors stay compact.
+A status bar always occupies the outermost bottom strip, so
 bottom toolbars appear above it regardless of construction order. Setting a
 status bar's edge to another edge throws `invalid_argument`.
 
@@ -854,3 +862,16 @@ before window creation. On GEM the real AES frame then owns the scrollbars;
 the document status strip ends exactly at its work-area boundary. No extra
 canvas scrollbar track or bottom padding is reserved. The same application
 call retains existing canvas controls on other backends.
+
+Settings and picker controls inherit explicit positive `tab_order` values;
+zero excludes a stop. Windows settings islands enter through WinUI's native
+focus-navigation request and leave through the shared traversal contract.
+They do not build a second order from Win32 `WS_TABSTOP` flags. See
+[window traversal](PATTERNS-WINDOWS.md#explicit-keyboard-traversal).
+
+GEM picker keys reach composition callbacks before the private text editor.
+Up/Down steps the caret component, Enter commits, and F4/Alt+Down opens the
+date calendar. A peer marker requests a plain one-pixel calendar frame;
+GEM work/client conversion and painting use the same width. Other untitled
+and modal hosts keep their dialog frame. Calendar arrow navigation retains
+a pending date; Enter commits, Escape cancels, and both restore field focus.

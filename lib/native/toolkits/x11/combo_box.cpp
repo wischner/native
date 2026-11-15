@@ -24,6 +24,7 @@
 #include <native/combo_box.h>
 
 #include "globals.h"
+#include "../x_keyboard.h"
 #include "scale.h"
 
 namespace
@@ -418,6 +419,11 @@ namespace native
             throw std::runtime_error("X11: Failed to create combo box.");
         }
         fit_children(binding);
+        XtInsertEventHandler(binding->text, KeyPressMask | KeyReleaseMask, False,
+            +[](Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+                if (native::detail::dispatch_x_tab(*static_cast<native::combo_box *>(data), *event))
+                    *dispatch = False;
+            }, self, XtListHead);
         XtAddEventHandler(binding->text,
                           KeyPressMask | ButtonPressMask,
                           False,

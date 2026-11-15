@@ -20,6 +20,7 @@
 #include "globals.h"
 #include "scale.h"
 #include "../x_pointer.h"
+#include "../x_keyboard.h"
 #include "../x_border.h"
 #include "window_position.h"
 
@@ -73,6 +74,19 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        Widget widget = linux::x11::wnd_bindings.handle_from_object(this);
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state = linux::x11::combo_box_bindings.object_from_handle(combo);
+            if (state && state->text) widget = state->text;
+        }
+        if (!widget || !XtIsRealized(widget)) return;
+        Widget shell = widget;
+        while (XtParent(shell)) shell = XtParent(shell);
+        XtSetKeyboardFocus(shell, widget);
+        XSetInputFocus(XtDisplay(widget), XtWindow(widget), RevertToParent, CurrentTime);
+    }
+
     void wnd::apply_border_sides() {
         Widget widget = linux::x11::wnd_bindings.handle_from_object(this);
         if (!widget || !XtIsRealized(widget) ||
@@ -196,8 +210,7 @@ namespace native
     void wnd::apply_cursor() {
         Widget widget =
             linux::x11::wnd_bindings.handle_from_object(this);
-        if (!widget || !XtIsRealized(widget))
-            return;
+        if (!widget) return;
 
         Display *display = XtDisplay(widget);
         auto *tracking = detail::peer_state<pointer_tracking>(*this);
@@ -206,10 +219,16 @@ namespace native
             detail::assign_peer_state(*this, tracking);
         }
         if (!tracking->installed) {
+            XtInsertEventHandler(widget, KeyPressMask | KeyReleaseMask, False,
+                +[](Widget, XtPointer data, XEvent *event, Boolean *dispatch) {
+                    if (detail::dispatch_x_tab(*static_cast<wnd *>(data), *event))
+                        *dispatch = False;
+                }, this, XtListHead);
             XtAddEventHandler(widget, EnterWindowMask | LeaveWindowMask | PointerMotionMask,
                 False, track_pointer, this);
             tracking->installed = true;
         }
+        if (!XtIsRealized(widget)) return;
         const point device =
             detail::x_pointer_position(display, XtWindow(widget));
         Cursor cursor = cursor_for(display, detail::pointer_cursor(*this,

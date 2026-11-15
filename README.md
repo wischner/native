@@ -29,6 +29,9 @@ If you are looking for a straightforward, understandable UI library, or if you w
   OPEN LOOK/XView, Window Maker/WINGs, GEMix, GTK Wayland, and elementary OS), Windows (Win32/WinUI),
   Haiku (API), and macOS (Cocoa)
 - **Native controls**: Direct use of system-native widgets and event loops
+- **Explicit keyboard order**: Positive `tab_order` values enable Tab/Shift+Tab
+  traversal; zero means no stop. Single-line fields default to Enter-as-Tab;
+  see [keyboard order](docs/manuals/programming-native/05-CONFIGURING-CONTROLS.md#keyboard-order)
 - **Checkable menus**: Portable on/off commands on every backend, with silent
   state setters and automatic toggling before command notification; see
   [Menus and commands](docs/manuals/programming-native/03-MENUS-AND-COMMANDS.md)
@@ -482,3 +485,18 @@ mouse, hosted toolbar, ruler marker and em-font acceptance window. Add
 `--features-smoke` for automated checks and exit. The
 [walkthrough](docs/manuals/programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window)
 distinguishes smoke checks from physical input acceptance.
+
+Run `vision --edit-form` or choose **Window > Edit form and tab order**
+for the keyboard traversal demo. It includes numbered single-line fields,
+a digits-only validator, an Enter-as-Tab opt-out, multiline notes, an editable
+combo, an order-zero field, and a checkbox that includes an optional tab stop.
+Use Tab/Shift+Tab to traverse and Enter/Shift+Enter in the default single-line
+fields. **Reset form** restores the samples and focuses the first field.
+
+GEM uses matching 24-pixel standalone edit/combo and default-button heights.
+The edit-form demo has tighter spacing; property-grid, toolbar and
+settings editors retain their compact dimensions.
+
+The edit form includes date/time pickers as individual tab stops. On GEM,
+use Up/Down and Enter to adjust/commit fields, and F4/Alt+Down to open the
+plain-bordered calendar; arrows navigate, Enter selects, Escape cancels.

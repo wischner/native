@@ -5,6 +5,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "picker_widgets.h"
 #include "../../picker_peer.h"
 #include <charconv>
@@ -76,12 +77,22 @@ namespace native::detail
     bool create_date_picker_peer(date_picker &owner) {
         auto *value = new linux::wayland::picker_state;
         assign_peer_state(owner, value);
-        linux::wayland::date_widget(owner, *value); place(owner, *value); return true;
+        linux::wayland::date_widget(owner, *value); place(owner, *value);
+        assign_peer_state(owner, new focus_redirect{[value] {
+            gtk_widget_grab_focus(value->entry ? value->entry :
+                value->hour ? value->hour : value->widget);
+        }});
+        return true;
     }
     bool create_time_picker_peer(time_picker &owner) {
         auto *value = new linux::wayland::picker_state;
         assign_peer_state(owner, value);
-        linux::wayland::time_widget(owner, *value); place(owner, *value); return true;
+        linux::wayland::time_widget(owner, *value); place(owner, *value);
+        assign_peer_state(owner, new focus_redirect{[value] {
+            gtk_widget_grab_focus(value->entry ? value->entry :
+                value->hour ? value->hour : value->widget);
+        }});
+        return true;
     }
     void refresh_date_picker_peer(date_picker &owner) {
         auto *value = peer_state<linux::wayland::picker_state>(owner);

@@ -211,3 +211,9 @@ An older AES-only SDK retains the unsupported capability result.
 Haiku window activation focuses the plain client view when no control already
 has BeAPI focus. Clicking the title tab can therefore resume keyboard input
 without a content click; an existing editor/control keeps its focus.
+
+Explicit Tab traversal and single-line Enter-as-Tab are window navigation
+commands consumed before `on_key` and toolkit editing. Their focus transfers
+reset the previous control's held input through the normal focus path. Ctrl,
+Alt and Meta chords retain ordinary input dispatch. See
+[window traversal](PATTERNS-WINDOWS.md#explicit-keyboard-traversal).

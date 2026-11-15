@@ -202,6 +202,13 @@ standard-height input, and the resulting cache matches its interactive field.
 Multiline editors continue filling their allocation. A zero-height layout
 allocation remains zero.
 
+GEM supplies a 24-pixel `form_control_height` for standalone single-line
+fields, combos and date/time pickers. Default-height (28-pixel) buttons resolve to the same
+24-pixel height; explicit non-default button heights remain unchanged.
+Property grids, toolbar hosts and settings controls retain
+the compact `text_edit_height` throughout their child hierarchy. Other
+backends leave the optional form metric at zero and retain their dimensions.
+
 Non-client reservation gives status bars priority at the bottom edge, before
 other bottom strips regardless of attachment order. Bottom toolbars stack
 above the footer. A status bar rejects a non-bottom edge. GEM excludes the
@@ -796,3 +803,31 @@ This accounts for the menu before the first child/chrome arrangement and keeps
 bottom status text inside the visible client area. The menu runtime fixture
 compares reported dimensions with the realized native widget and checks that
 its lower edge stays inside the parent.
+
+## Explicit keyboard traversal
+
+Every `wnd` exposes `set_tab_order(unsigned)` and `get_tab_order()`. Zero is
+the default and excludes the control from keyboard traversal. Positive orders
+are sorted within the current top-level window, including nested containers;
+equal orders use depth-first child attachment order. Tab advances, Shift+Tab
+reverses, and both wrap. Uncreated, hidden, disabled and inactive tab-page
+subtrees are excluded. The order can change before or after creation.
+
+Traversal starts at the first (or last for Shift+Tab) eligible stop when the
+current control has no order. An internal editor uses its enclosing control's
+stop when one exists. With no eligible stops, focus stays put. Traversal keys
+are consumed before native widget defaults and `on_key`; Ctrl, Alt and Meta
+chords remain available to the control. `wnd::focus()` explicitly focuses a
+created, visible, enabled control regardless of its tab order. The protected
+`focus_native()` hook changes the actual toolkit keyboard target.
+
+Single-line `text_edit` has `set_enter_as_tab(bool)` and `get_enter_as_tab()`;
+the default is true. Enter and keypad Enter use the same traversal, with Shift
+reversing direction. Setting false restores the editor's normal Enter behavior.
+Multiline text and source editors retain Enter for editing. Tab traversal never
+inserts a tab or newline into text.
+
+Picker focus uses a private peer-owned `focus_redirect` callback. Native
+adapters focus their actual date/time widget; composed adapters focus the
+private field. The outer picker keeps the public tab order, so traversal
+climbs from that private field to the enclosing stop.

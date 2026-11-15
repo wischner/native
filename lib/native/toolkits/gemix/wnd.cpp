@@ -40,6 +40,19 @@ namespace
 
 namespace native
 {
+    void wnd::focus_native() {
+        if (auto *combo = dynamic_cast<combo_box *>(this)) {
+            auto *state = linux::gemix::combo_box_bindings.object_from_handle(combo);
+            if (state && state->editor) {
+                state->editor->focus();
+                return;
+            }
+        }
+        // Focus loss changes the previous control's caret/ring as well.
+        // GEM paints children into one surface, so refresh that surface.
+        linux::gemix::root_of(this)->invalidate();
+    }
+
     // Shared drawing stages read the portable edge mask directly.
     void wnd::apply_border_sides() {}
 

@@ -9,6 +9,17 @@
 #include "../../mouse_state.h"
 namespace native
 {
+    void wnd::focus_native() {
+        auto &peer = linux::wayland::state(*this);
+        GtkWidget *target = peer.drawing && GTK_IS_EDITABLE(peer.drawing) ? peer.drawing :
+            peer.editor ? peer.editor :
+            peer.drawing ? peer.drawing : peer.widget;
+        if (target) {
+            gtk_widget_set_focusable(target, true);
+            gtk_widget_grab_focus(target);
+        }
+    }
+
     void wnd::apply_position() {
         linux::wayland::geometry(*this);
     }

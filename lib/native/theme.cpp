@@ -91,6 +91,10 @@ namespace native
         return defaults().text_edit_height;
     }
 
+    int theme::get_form_control_height() const {
+        return defaults().form_control_height;
+    }
+
     int theme::get_check_height() const {
         return defaults().check_height;
     }

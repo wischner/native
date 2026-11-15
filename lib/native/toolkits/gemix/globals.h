@@ -139,6 +139,10 @@ namespace linux::gemix
                                     native::point position,
                                     bool pressed);
 
+    // Dismiss overlays when keyboard traversal leaves a combo.
+    void dismiss_combo_popups(native::app_wnd &owner);
+
+    // Route popup commands before the combo's embedded editor sees them.
     bool handle_combo_key(native::app_wnd *parent,
                           WORD modifiers,
                           WORD key);

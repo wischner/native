@@ -10,6 +10,7 @@
 #include <native/check.h>
 #include "../../control_render_access.h"
 #include "globals.h"
+#include "../../input_state.h"
 namespace
 {
     bool hit(const native::rect &r, int x, int y) {
@@ -67,6 +68,7 @@ namespace linux::sdl2
             if (!b || root_of(c) != owner || !b->visible)
                 continue;
             native::theme::state s;
+            s.focused = native::detail::input_target(*owner) == c;
             s.hot = b->hover;
             s.pressed = b->pressed;
             native::detail::control_render_access::draw(

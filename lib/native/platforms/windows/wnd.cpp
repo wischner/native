@@ -19,6 +19,7 @@
 #include "../../control_render_access.h"
 #include "gpx_wnd.h"
 #include "globals.h"
+#include "winui.h"
 #include "../../input_state.h"
 #include "../../mouse_state.h"
 
@@ -943,6 +944,12 @@ namespace windows
 
 namespace native
 {
+    void wnd::focus_native() {
+        if (windows::focus_winui(*this)) return;
+        if (HWND handle = windows::wnd_bindings.handle_from_object(this))
+            SetFocus(handle);
+    }
+
     void wnd::apply_border_sides() {
         if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
               dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||

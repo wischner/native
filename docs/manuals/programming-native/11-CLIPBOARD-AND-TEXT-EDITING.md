@@ -9,6 +9,10 @@ Single-line text edits use the same active-theme height as combos and
 pickers, including Vision's copy/paste field. Taller bounds center the field
 vertically; multiline editors retain the full requested area.
 
+GEM uses a separate 24-pixel form height for standalone fields and combos;
+embedded editors in property grids, toolbars and settings keep the
+compact text-edit metric.
+
 ## Clipboard read snapshots
 
 Open one snapshot and inspect its available representations before reading:
@@ -253,3 +257,12 @@ OPEN LOOK uses the same native control font in single-line PANEL_TEXT and
 multiline PANEL_MULTILINE_TEXT/TextSW editors. Window Maker retains the
 I-beam in its native WINGs view state, including editable combo fields, so
 native pointer handling does not replace it with the window arrow.
+
+## Form navigation
+
+Use `field.set_tab_order(1)` and increasing positive values to include fields in
+Tab navigation. Zero is the default and omits a control. Single-line
+`text_edit` treats Enter and keypad Enter as Tab by default, including reverse
+navigation with Shift. Use `field.set_enter_as_tab(false)` to disable that
+behavior. Multiline Enter remains a newline; Tab is window navigation and does
+not insert text. See [keyboard order](05-CONFIGURING-CONTROLS.md#keyboard-order).

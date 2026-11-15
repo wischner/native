@@ -257,6 +257,7 @@ namespace native
                     key_event physical{code, event.type == SDL_KEYDOWN ?
                         key_action::press : key_action::release,
                         event.key.repeat != 0, mods};
+                    if (target->on_native_tab(physical)) break;
                     if (event.type == SDL_KEYUP || detail::key_held(*target, code)) {
                         target->on_native_key(physical);
                         break;
@@ -407,6 +408,14 @@ namespace native
                             : SDL_FALSE);
                     const int logical_y =
                         event.button.y - content_origin_y(wnd);
+
+                    if (event.type == SDL_MOUSEBUTTONDOWN) {
+                        auto *hit = detail::deepest_at(*wnd, point(event.button.x, logical_y));
+                        if (dynamic_cast<button *>(hit) || dynamic_cast<check *>(hit) ||
+                            dynamic_cast<radio *>(hit) || dynamic_cast<list *>(hit))
+                            hit->on_native_focus(true);
+                        if (!event_guard.alive()) break;
+                    }
 
                     // A control callback may close its window. Never
                     // retain renderer state across callback dispatch:

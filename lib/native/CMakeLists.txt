@@ -57,6 +57,7 @@ configure_file(
 
 # Add backend-neutral native source files.
 target_sources(native PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/wnd_focus.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/resources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/resources_io.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/resources_manifest.cpp

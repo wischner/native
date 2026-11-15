@@ -18,6 +18,7 @@
 #include <native/theme.h>
 
 #include "../../text_util.h"
+#include "../../input_state.h"
 #include "globals.h"
 #include "../../combo_picker.h"
 #include "../../control_render_access.h"
@@ -177,7 +178,7 @@ namespace
         const native::theme::palette colors =
             painter->native_palette();
         native::theme::state frame_state;
-        frame_state.selected = binding->focused;
+        frame_state.selected = native::detail::input_target(*linux::gemix::root_of(owner)) == owner;
         frame_state.disabled = owner->get_read_only();
         // The embedded entry shares its combo's outer enclosure.
         if (binding->combo_owner)
@@ -254,7 +255,7 @@ namespace
                     .draw_text(line, native::point(content.p.x, y));
                 g.set_clip(original_clip.intersect(content));
             }
-            if (binding->focused && binding->cursor >= begin &&
+            if (frame_state.selected && binding->cursor >= begin &&
                 binding->cursor <= end) {
                 const int columns = character_count(
                     text, begin, binding->cursor);
@@ -290,12 +291,14 @@ namespace linux::gemix
             auto *binding = text_edit_bindings.object_from_handle(editor);
             if (binding && root_of(editor) == parent && binding->focused && editor != hit) {
                 binding->focused = false;
+                editor->on_native_focus(false);
                 editor->invalidate();
             }
         }
         if (!hit) return false;
         auto *binding = text_edit_bindings.object_from_handle(hit);
         binding->focused = true;
+        hit->on_native_focus(true);
         binding->cursor = hit_offset(hit, point.x, point.y);
         binding->anchor = binding->cursor;
         hit->invalidate();
@@ -311,7 +314,7 @@ namespace linux::gemix
             auto *candidate =
                 text_edit_bindings.object_from_handle(editor);
             if (candidate && root_of(editor) == parent &&
-                candidate->visible && candidate->focused) {
+                candidate->visible && native::detail::input_target(*parent) == editor) {
                 owner = editor;
                 binding = candidate;
                 break;

@@ -387,3 +387,8 @@ returns false, independently of its physical-key support. `on_text_input` always
 uses UTF-8, and programmatic text/resource data can contain Unicode regardless
 of the keyboard capability. Native text editors inside a canvas receive their
 own typing before the canvas host considers composition.
+
+A canvas participates in Tab/Shift+Tab traversal only after
+`set_tab_order()` receives a positive order. Zero is the default. Tab is
+consumed by window traversal before `on_key`; `focus()` still gives a shown,
+enabled canvas keyboard focus directly, regardless of its order.

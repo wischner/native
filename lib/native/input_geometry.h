@@ -15,5 +15,9 @@ namespace native
         // Keep width and horizontal placement; center a standard-height field
         // within extra vertical space. Zero-height fields remain empty.
         rect input_bounds(const wnd &owner, const rect &requested);
+
+        // Match default-height form buttons without resizing embedded buttons
+        // or explicit non-default application allocations.
+        rect button_bounds(const wnd &owner, const rect &requested);
     }
 }

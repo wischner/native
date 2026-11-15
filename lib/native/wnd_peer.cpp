@@ -28,6 +28,12 @@ namespace native::detail
         const auto resource = _resource.lock();
         return object_alive() && (!_tracked || (resource && resource->alive));
     }
+    const std::vector<wnd *> &wnd_peer_access::children(const wnd &owner) {
+        return owner._children;
+    }
+    bool wnd_peer_access::is_non_client_surface(const wnd &owner) {
+        return owner._non_client_surface;
+    }
     std::weak_ptr<wnd_lifetime> wnd_peer_access::object_lifetime(wnd &owner) {
         return owner._object_lifetime;
     }

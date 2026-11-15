@@ -511,3 +511,11 @@ codec keeps no static shutdown hook: MinGW CRT exit cleanup can otherwise
 wait for a GDI+ worker that is itself entering DLL initialization. Repeated
 image I/O and process-exit checks exercise this lifetime without requiring an
 application event loop.
+
+## Focus and traversal
+
+`wnd::focus()` transfers shared and backend keyboard focus. Explicit positive
+`tab_order` values select the controls reached by Tab; the default zero excludes
+a control. The `focus_native()` hook owns the native focus request and does not
+alter the paint sequence, clipping, layout, or graphics-context lifetime.
+See [window traversal](PATTERNS-WINDOWS.md#explicit-keyboard-traversal).

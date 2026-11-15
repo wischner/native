@@ -56,15 +56,30 @@ namespace native
                 return -1;
             }
 
+            bool translated = false;
+            auto *target = windows::wnd_bindings.object_from_handle(msg.hwnd);
+            for (HWND parent = GetParent(msg.hwnd); !target && parent; parent = GetParent(parent))
+                target = windows::wnd_bindings.object_from_handle(parent);
+            if (target && (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP)) {
+                unsigned mods = (GetKeyState(VK_SHIFT) & 0x8000 ? 1 : 0) |
+                    (GetKeyState(VK_CONTROL) & 0x8000 ? 2 : 0) |
+                    (GetKeyState(VK_MENU) & 0x8000 ? 4 : 0) |
+                    ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000 ? 8 : 0);
+                if (target->on_native_tab({
+                        detail::pc_key((msg.lParam >> 16) & 0xff,
+                                      (msg.lParam & (1L << 24)) != 0),
+                        msg.message == WM_KEYDOWN ? key_action::press : key_action::release,
+                        msg.message == WM_KEYDOWN && (msg.lParam & (1L << 30)),
+                        static_cast<key_modifiers>(mods)})) {
+                    detail::drain_posted_work();
+                    continue;
+                }
+            }
             if (windows::pretranslate_winui(msg)) {
                 detail::drain_posted_work();
                 continue;
             }
 
-            bool translated = false;
-            auto *target = windows::wnd_bindings.object_from_handle(msg.hwnd);
-            for (HWND parent = GetParent(msg.hwnd); !target && parent; parent = GetParent(parent))
-                target = windows::wnd_bindings.object_from_handle(parent);
             const bool editor = dynamic_cast<text_edit *>(target) ||
                 dynamic_cast<code_edit *>(target) || dynamic_cast<combo_box *>(target) ||
                 dynamic_cast<settings_sidebar *>(target);

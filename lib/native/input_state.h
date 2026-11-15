@@ -8,6 +8,7 @@
 #pragma once
 #include <bitset>
 #include <atomic>
+#include <functional>
 #include <native/events.h>
 #include <native/wnd.h>
 #include "wnd_peer.h"
@@ -23,6 +24,9 @@ namespace native::detail
         bool text_consumed = false;
         key_modifiers modifiers = key_modifiers::none;
     };
+
+    // Resolve a backend focus resource to its deepest portable owner.
+    wnd *find_input_owner(wnd &root, const std::function<bool(wnd &)> &matches);
 
     // Find focused descendants without a process-wide window registry.
     wnd *input_target(wnd &root);

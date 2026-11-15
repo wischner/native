@@ -7,6 +7,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "../../focus_redirect.h"
 #include "globals.h"
 #include "scale.h"
 #include "../../picker_peer.h"
@@ -450,6 +451,7 @@ namespace native::detail
 {
     bool create_date_picker_peer(date_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         auto *binding =
             linux::x11::combo_box_bindings.object_from_handle(
                 &state.field);
@@ -471,6 +473,7 @@ namespace native::detail
     }
     bool create_time_picker_peer(time_picker &owner) {
         auto &state = create(owner);
+        assign_peer_state(owner, new focus_redirect{[&state] { state.field.focus(); }});
         auto *binding =
             linux::x11::combo_box_bindings.object_from_handle(
                 &state.field);

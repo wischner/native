@@ -223,7 +223,26 @@ namespace
 
 namespace native::detail
 {
+    bool dispatch_x_tab(wnd &owner, XEvent &event) {
+        if (event.type != KeyPress && event.type != KeyRelease) return false;
+        const auto symbol = XLookupKeysym(&event.xkey, 0);
+        const auto key = symbol == XK_Tab || symbol == XK_ISO_Left_Tab ? key_code::tab :
+            symbol == XK_Return ? key_code::enter :
+            symbol == XK_KP_Enter ? key_code::keypad_enter : key_code::unknown;
+        unsigned mods = (event.xkey.state & ShiftMask ? 1 : 0) |
+            (event.xkey.state & ControlMask ? 2 : 0) |
+            (event.xkey.state & Mod1Mask ? 4 : 0) |
+            (event.xkey.state & Mod4Mask ? 8 : 0);
+        wnd *target = &owner;
+        if (dynamic_cast<app_wnd *>(&owner))
+            if (auto *focused = input_target(owner)) target = focused;
+        return target->on_native_tab({key, event.type == KeyPress ?
+            key_action::press : key_action::release, false,
+            static_cast<key_modifiers>(mods)});
+    }
+
     bool dispatch_x_keyboard(wnd &owner, XEvent &event) {
+        if (dispatch_x_tab(owner, event)) return true;
         const window_guard guard(owner);
         if (event.type == FocusIn) { owner.on_native_focus(true); return !guard.alive(); }
         if (event.type == FocusOut) { owner.on_native_focus(false); return !guard.alive(); }

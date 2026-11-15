@@ -364,7 +364,7 @@ namespace native
     }
 
     // GEM has no per-control focus; input_target decides.
-    void canvas::focus_native() {}
+    void canvas::focus_native() { wnd::focus_native(); }
 
     void canvas::show_native() {
         if (!_created)

@@ -120,6 +120,20 @@ namespace native
         // managed by the operating system, independently of these flags.
         wnd &set_border_sides(border_sides sides);
 
+        // Return the traversal order; zero (the default) excludes this window.
+        unsigned get_tab_order() const;
+
+        // Set a positive traversal order, or zero to remove the tab stop.
+        // Equal values retain depth-first child attachment order.
+        wnd &set_tab_order(unsigned order);
+
+        // Focus a created, visible, input-enabled window.
+        void focus();
+
+        // Handle Tab/Shift+Tab or a single-line editor's Enter-as-Tab.
+        // Returns true for a traversal key, even when there are no stops.
+        bool on_native_tab(key_event event);
+
         // Return the cached system pointer shape.
         mouse_cursor get_cursor() const;
 
@@ -257,6 +271,9 @@ namespace native
     protected:
         // Called once after native teardown and peer release; may delete or recreate this object.
         virtual void on_destroy_completed();
+        // Transfer the backend keyboard target to this window.
+        virtual void focus_native();
+
         // Create this window's backend-specific native resource.
         virtual void create_native() = 0;
 
@@ -377,6 +394,7 @@ namespace native
         bool _updating_non_client = false;
         bool _non_client_dirty = false;
         border_sides _border_sides = border_sides::all;
+        unsigned _tab_order = 0;
 
         void attach_non_client(non_client *element);
         void detach_non_client(non_client *element);

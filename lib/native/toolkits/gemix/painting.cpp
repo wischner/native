@@ -14,6 +14,8 @@
 #include <native/app.h>
 
 #include "globals.h"
+#include "../../combo_picker.h"
+#include "../../input_state.h"
 #include "gpx_wnd.h"
 #include "../../control_render_access.h"
 #include "../../post_backend.h"
@@ -33,7 +35,9 @@ namespace
         native::gpx_wnd g(owner, outer.p);
         g.set_clip(native::rect(visible.x1() - outer.x1(),
             visible.y1() - outer.y1(), visible.w(), visible.h()));
-        for (int inset = 0; inset < linux::gemix::dialog_frame_width; ++inset) {
+        const int frame = native::detail::peer_state<native::detail::plain_calendar_frame>(*owner)
+            ? 1 : linux::gemix::dialog_frame_width;
+        for (int inset = 0; inset < frame; ++inset) {
             const int value = inset == 1 ? 255 : 0;
             g.set_ink(native::rgba(value, value, value, 255));
             g.draw_rect(native::rect(inset, inset,
@@ -60,6 +64,7 @@ namespace
 
             auto painter = native::theme::create(graphics);
             native::theme::state button_state;
+            button_state.focused = native::detail::input_target(*owner) == button;
             // Modal ownership blocks dispatch without changing the
             // appearance of every command in the covered window.
             button_state.disabled = !button->get_input_enabled() &&
@@ -86,6 +91,7 @@ namespace
                      .h())
                 continue;
             native::theme::state state;
+            state.focused = native::detail::input_target(*owner) == control;
             native::detail::control_render_access::draw(
                 *control,
                 graphics,
@@ -105,6 +111,7 @@ namespace
                      .h())
                 continue;
             native::theme::state state;
+            state.focused = native::detail::input_target(*owner) == control;
             native::detail::control_render_access::draw(
                 *control,
                 graphics,
@@ -132,12 +139,10 @@ namespace
                     std::max(0, int(bounds.w()) - 2),
                     std::max(0, int(bounds.h()) - 2))));
             }
+            native::theme::state state;
+            state.focused = native::detail::input_target(*owner) == control;
             native::detail::control_render_access::draw(
-                *control,
-                graphics,
-                *painter,
-                root_bounds(*control),
-                native::theme::state{});
+                *control, graphics, *painter, root_bounds(*control), state);
         }
         for (auto *control : linux::gemix::combo_boxes) {
             auto saved = graphics.save_state();

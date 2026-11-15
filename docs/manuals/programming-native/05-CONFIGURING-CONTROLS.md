@@ -23,6 +23,10 @@ A taller rectangle centers the field vertically; `get_bounds()` returns the
 resolved field. `set_dimensions()` changes size without moving its position.
 Use multiline mode when an editor should fill a taller area.
 
+On GEM, standalone fields and default buttons share a 24-pixel form height.
+Property-grid cells, toolbar inputs and settings controls
+keep their compact sizes. Explicit non-default button heights are respected.
+
 ## Runtime changes
 
 `button::set_text()` updates both the cached label and an existing backend
@@ -184,3 +188,58 @@ Use setters rather than reaching into backend state. They preserve the public
 model and let each backend perform the correct native update.
 
 Next: [Absolute layout](06-ABSOLUTE-LAYOUT.md).
+
+## Keyboard order
+
+Assign positive orders to controls that should receive focus through Tab:
+
+```cpp
+native::text_edit name;
+native::text_edit email;
+native::button save("Save");
+name.set_tab_order(1);
+email.set_tab_order(2);
+save.set_tab_order(3);
+```
+
+The default order is zero, which means no tab stop. Set the order before or
+after creating the controls. Tab advances and Shift+Tab goes backward, wrapping
+within the window and skipping unavailable controls. Nested containers share
+the window's order; ties follow child attachment order. `control.focus()` gives
+an already shown control keyboard focus directly, even with order zero.
+
+Single-line fields treat Enter as Tab by default. Call
+`name.set_enter_as_tab(false)` to retain ordinary Enter behavior. Multiline
+fields still use Enter for a newline. If there are no eligible stops, Tab and
+Enter-as-Tab leave focus where it is.
+
+## Try the edit form
+
+Run `vision --edit-form`, or open **Window > Edit form and tab order** in
+the gallery. The labels show the positive traversal orders. Test forward
+and reverse wrapping with Tab and Shift+Tab; Enter and Shift+Enter perform
+the same traversal in the ordinary single-line fields.
+
+The quantity accepts digits only. Field 5 disables Enter-as-Tab, and the
+multiline notes retain Enter for newlines. The editable city combo participates
+as one stop. Click the order-zero field to edit it; traversal skips it.
+The checkbox adds or removes the optional field at order 4 by changing its
+tab order and read-only state. **Reset form** restores sample values and first-field focus;
+**Close** destroys the native form, which can be reopened from the Window menu.
+
+On GEM, Space toggles the focused checkbox and activates buttons; Enter also
+activates buttons. Open the city list with its arrow, F4 or Alt+Down, move
+with Up/Down, and press Enter to select or Escape to cancel. Tab dismisses
+the list and continues through the form.
+
+The GEM edit form uses 32-pixel row spacing and a shorter window, with equal
+24-pixel single-line fields and buttons. Other backends keep the original
+form spacing. Selecting a city updates the visible editable field immediately.
+
+Date and time pickers are stops 8 and 9 in the edit form. Each is one tab
+stop even when its backend composes an editable field. On GEM, Left/Right
+moves the caret, Up/Down adjusts its date/time component, and Enter commits
+the typed value. F4 or Alt+Down opens the date calendar: arrow keys move by
+a day or week, Enter accepts, and Escape cancels and returns to the field.
+Standalone GEM pickers share the 24-pixel form height; their calendar has a
+plain one-pixel border instead of dialog chrome.

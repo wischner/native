@@ -191,6 +191,26 @@ namespace haiku
         if (!destination.IsValid() || destination.Target(nullptr) != target) return;
         const native::detail::window_guard guard(*_owner);
         auto *focused = native::detail::input_target(*_owner);
+        if (message && (message->what == B_KEY_DOWN || message->what == B_KEY_UP)) {
+            auto *native_focus = CurrentFocus();
+            auto *receiver = native::detail::find_input_owner(*_owner,
+                [&](native::wnd &candidate) {
+                    BView *view = haiku::view_from_control(&candidate);
+                    for (BView *current = native_focus; current; current = current->Parent())
+                        if (view == current) return true;
+                    return false;
+                });
+            if (!receiver) receiver = _owner;
+            int32 raw = 0, flags = 0;
+            message->FindInt32("key", &raw);
+            message->FindInt32("modifiers", &flags);
+            unsigned mods = (flags & B_SHIFT_KEY ? 1 : 0) |
+                (flags & B_CONTROL_KEY ? 2 : 0) |
+                (flags & B_COMMAND_KEY ? 4 : 0) | (flags & B_OPTION_KEY ? 8 : 0);
+            if (receiver->on_native_tab({haiku::physical_key(raw),
+                    message->what == B_KEY_DOWN ? native::key_action::press : native::key_action::release,
+                    false, static_cast<native::key_modifiers>(mods)})) return;
+        }
         if (!focused && dynamic_cast<native_view *>(CurrentFocus())) focused = _owner;
         if (message && message->what == B_MODIFIERS_CHANGED && focused &&
             focused->get_input_enabled()) {

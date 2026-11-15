@@ -6,6 +6,7 @@
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
 //
+#include "focus_redirect.h"
 #include "combo_picker.h"
 #include "picker_peer.h"
 #include "emulated_tree.h"
@@ -14,17 +15,26 @@
 #include <array>
 #include <charconv>
 #include <algorithm>
+#include <chrono>
 namespace
 {
     using namespace native;
     class calendar_window final : public modeless_wnd
     {
     public:
-        explicit calendar_window(app_wnd &owner)
-            : modeless_wnd(owner, "Calendar") {}
+        explicit calendar_window(app_wnd &owner, bool plain)
+            : modeless_wnd(owner, "Calendar"), _plain(plain) {}
         bool get_native_title_visible() const override {
             return false;
         }
+    protected:
+        void create_native() override {
+            if (_plain)
+                detail::assign_peer_state(*this, new detail::plain_calendar_frame);
+            modeless_wnd::create_native();
+        }
+    private:
+        bool _plain;
     };
     class picker_field final : public detail::combo_picker_field
     {
@@ -104,6 +114,7 @@ namespace
         panel &owner;
         picker_field field;
         date shown;
+        date cursor;
         button previous{"<"}, next{">"};
         std::array<day_button, 42> days;
         std::unique_ptr<calendar_window> popup;
@@ -121,6 +132,19 @@ namespace
     std::string date_text(date value) {
         return two(value.day) + "." + two(value.month) + "." +
                std::to_string(value.year);
+    }
+    // Shift a civil day, month or year, clamping month ends and leap days.
+    date shifted_date(date value, int amount, int component) {
+        using namespace std::chrono;
+        year_month_day day{year(value.year), month(value.month),
+                           std::chrono::day(value.day)};
+        if (component == 0) day = year_month_day{sys_days(day) + days(amount)};
+        else {
+            if (component == 1) day += months(amount);
+            else day += years(amount);
+            if (!day.ok()) day = year_month_day{day.year()/day.month()/last};
+        }
+        return {int(day.year()), unsigned(day.month()), unsigned(day.day())};
     }
     // Parse a complete unsigned component without accepting suffixes.
     bool number(std::string_view text, unsigned &value) {
@@ -177,6 +201,34 @@ namespace
         }
         state.popup->invalidate();
     }
+    // Keep keyboard navigation within the calendar's own top-level window.
+    bool calendar_key(picker &state, key_event event) {
+        if (event.action != key_action::press ||
+            event.modifiers != key_modifiers::none) return false;
+        auto &owner = static_cast<date_picker &>(state.owner);
+        if (event.key == key_code::escape || event.key == key_code::enter ||
+            event.key == key_code::keypad_enter) {
+            if (event.key != key_code::escape && !owner.is_date_enabled(state.cursor))
+                return true;
+            const detail::window_guard guard(owner);
+            const date selected = state.cursor;
+            state.popup->destroy();
+            if (event.key != key_code::escape) owner.on_native_date(selected);
+            if (guard.alive()) state.field.focus();
+            return true;
+        }
+        const int step = event.key == key_code::left ? -1 :
+            event.key == key_code::right ? 1 : event.key == key_code::up ? -7 :
+            event.key == key_code::down ? 7 : 0;
+        if (!step) return false;
+        const date next = shifted_date(state.cursor, step, 0);
+        if (!next.valid() || !owner.is_date_enabled(next)) return true;
+        state.cursor = state.shown = next;
+        refresh_calendar(state);
+        const int index = int(date{next.year, next.month, 1}.weekday()) + int(next.day) - 1;
+        state.days[index].focus();
+        return true;
+    }
     // Toggle a calendar, recreating its native children after
     // dismissal.
     void open(picker &state) {
@@ -187,7 +239,11 @@ namespace
         auto *owner =
             dynamic_cast<app_wnd *>(detail::root_of(&state.owner));
         if (!state.popup) {
-            state.popup = std::make_unique<calendar_window>(*owner);
+            const auto *actions = detail::peer_state<detail::combo_picker_actions>(state.field);
+            state.popup = std::make_unique<calendar_window>(*owner, actions->plain_calendar);
+            state.popup->on_key.connect([&state](key_event event) {
+                return calendar_key(state, event);
+            });
             const auto &font = font_t::stock(font_role::control);
             state.cell =
                 std::max(36, font.measure_text("00").width + 18);
@@ -245,6 +301,9 @@ namespace
             }
             for (int i = 0; i < 42; ++i) {
                 auto &control = state.days[i];
+                control.on_key.connect([&state](key_event event) {
+                    return calendar_key(state, event);
+                });
                 control.set_parent(state.popup.get());
                 control.set_bounds(rect((i % 7) * state.cell + 2,
                                         (i / 7 + 2) * state.row + 2,
@@ -260,8 +319,10 @@ namespace
                     auto &owner =
                         static_cast<date_picker &>(state.owner);
                     if (owner.is_date_enabled(value)) {
+                        const detail::window_guard guard(owner);
                         state.popup->destroy();
                         owner.on_native_date(value);
+                        if (guard.alive()) state.field.focus();
                     }
                     return true;
                 });
@@ -278,10 +339,14 @@ namespace
         }
         state.shown =
             static_cast<date_picker &>(state.owner).get_date();
+        state.cursor = state.shown;
         refresh_calendar(state);
         state.popup->set_position(
             detail::picker_popup_position(state.field));
         state.popup->show();
+        const int index = int(date{state.cursor.year, state.cursor.month, 1}.weekday()) +
+            int(state.cursor.day) - 1;
+        state.days[index].focus();
     }
     // Attach field callbacks and state to their owning opaque peers.
     picker &create(panel &owner) {
@@ -291,6 +356,8 @@ namespace
             commit(*state);
         };
         auto &result = *state;
+        detail::assign_peer_state(owner, new detail::focus_redirect{
+            [target = &result] { target->field.focus(); }});
         detail::assign_peer_state(owner, state.release());
         return result;
     }
@@ -308,6 +375,13 @@ namespace native::detail
     }
     bool create_date_picker_peer(date_picker &owner) {
         auto &state = create(owner);
+        state.field.configured_actions().keyboard_step = [&owner, &state](int direction) {
+            const auto *actions = peer_state<combo_picker_actions>(state.field);
+            const auto caret = actions->caret ? actions->caret() : 0;
+            const auto next = shifted_date(owner.get_date(), direction,
+                                           caret < 3 ? 0 : caret < 6 ? 1 : 2);
+            if (next.valid()) owner.on_native_date(next);
+        };
         state.field.configured_actions().open = [&state] {
             open(state);
         };

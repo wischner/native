@@ -75,8 +75,12 @@ namespace
                 state->hot = control->get_selected_index();
                 state->open = !state->open;
                 state->focused = true;
-                control->on_native_drop_down(state->open);
-                owner->invalidate();
+                const bool open = state->open;
+                const native::detail::window_guard control_guard(*control);
+                const native::detail::window_guard owner_guard(*owner);
+                control->focus();
+                if (control_guard.alive()) control->on_native_drop_down(open);
+                if (owner_guard.alive()) owner->invalidate();
                 return;
             }
             state->open = false;
@@ -126,7 +130,14 @@ namespace
             pressed->invalidate();
         linux::gemix::active_window = pointer_window;
         linux::gemix::activate_menu(pointer_window);
+        const native::detail::window_guard focus_guard(*pointer_window);
+        auto *hit = native::detail::deepest_at(*pointer_window, local);
+        if (dynamic_cast<native::button *>(hit) || dynamic_cast<native::check *>(hit) ||
+            dynamic_cast<native::radio *>(hit) || dynamic_cast<native::list *>(hit))
+            hit->on_native_focus(true);
+        if (!focus_guard.alive()) return;
         linux::gemix::focus_text_edit(pointer_window, local);
+        if (!focus_guard.alive()) return;
         if (!linux::gemix::dispatch_drag_click(
                 pointer_window, local, true) &&
             !linux::gemix::dispatch_surface_click(
@@ -357,12 +368,12 @@ namespace native
                 } else if (top && linux::gemix::dispatch_physical_key(
                                       *top, ks, kr, br)) {
                     // Consumed keys and releases never enter the text path.
+                } else if (top && linux::gemix::handle_combo_key(
+                                      top, ks, kr)) {
+                    // Popup commands precede the embedded text editor.
                 } else if (top && linux::gemix::handle_text_edit_key(
                                       top, ks, kr)) {
                     // A focused editor owns its selection/clipboard commands.
-                } else if (top && linux::gemix::handle_combo_key(
-                                      top, ks, kr)) {
-                    // The focused combo box consumed this key packet.
                 } else if (top && linux::gemix::handle_collection_key(
                                       top, ks, kr)) {
                     // A collection control consumed this key packet.

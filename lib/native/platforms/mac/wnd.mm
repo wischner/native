@@ -187,6 +187,13 @@ namespace mac
 
 namespace native
 {
+    void wnd::focus_native() {
+        NSView *view = mac::view_from_control(this);
+        if ([view isKindOfClass:[NSScrollView class]])
+            view = [(NSScrollView *)view documentView];
+        if (view) [[view window] makeFirstResponder:view];
+    }
+
     void wnd::apply_border_sides() {
         if (!(dynamic_cast<button *>(this) || dynamic_cast<text_edit *>(this) ||
               dynamic_cast<combo_box *>(this) || dynamic_cast<list *>(this) ||

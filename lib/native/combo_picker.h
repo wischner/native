@@ -19,11 +19,14 @@ namespace native
     class app_wnd;
     namespace detail
     {
+        // A titleless calendar with a plain popup frame, not dialog chrome.
+        struct plain_calendar_frame {};
         struct combo_picker_actions
         {
             std::function<void()> open;
             std::function<void()> commit;
             std::function<void(int)> step;
+            std::function<void(int)> keyboard_step;
             // Optional native caret/selection position for component
             // stepping.
             std::function<std::size_t()> caret;
@@ -40,6 +43,7 @@ namespace native
             // default full-height date / half-height time indicator.
             int indicator_width = 0;
             bool framed_calendar = false;
+            bool plain_calendar = false;
             bool read_only = false;
         };
         // Prepare composition callbacks before the backend creates
