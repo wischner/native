@@ -191,6 +191,16 @@ item marked. Hovering another row does not commit it until activation.
 
 ## File icons and special directories
 
+For typed persistent settings, use
+[`configuration<T>`](23-PERSISTENT-CONFIGURATION.md). For application-owned
+configuration files, discover `special_directory_kind::configuration`
+and append your application's subdirectory. Linux (including GEMix) uses
+`$XDG_CONFIG_HOME` or `~/.config`; Haiku uses `~/config/settings`; Windows uses
+Roaming AppData; macOS uses `~/Library/Preferences`. Check `find()` for null
+and copy the path before another `detect()`. Discovery does not create folders.
+Use `std::filesystem` and standard C++ streams for those application-owned
+files. The typed configuration API handles its own platform storage instead.
+
 Filesystem-facing APIs use `std::filesystem::path`. Refresh the system
 directory snapshot, find a semantic location, and request its icon without
 including a platform header:

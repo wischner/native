@@ -37,12 +37,15 @@ namespace
         for (Cardinal index = 0; index < count; ++index) {
             if (!XmIsSash(children[index]))
                 continue;
-            XtVaSetValues(children[index],
-                          XmNwidth, 8,
-                          XmNheight, 8,
-                          XmNborderWidth, 0,
-                          XmNtraversalOn, True,
-                          nullptr);
+            const auto bar = owner->get_splitter_bounds();
+            const bool horizontal = owner->get_orientation() ==
+                native::split_orientation::horizontal;
+            XtConfigureWidget(children[index],
+                bar.p.x + (horizontal ? 0 : std::max<int>(0, bar.d.w / 2 - 4)),
+                bar.p.y + (horizontal ? std::max<int>(0, bar.d.h / 2 - 4) : 0),
+                horizontal ? std::max<int>(1, bar.d.w) : 8,
+                horizontal ? 8 : std::max<int>(1, bar.d.h), 0);
+            XtVaSetValues(children[index], XmNtraversalOn, True, nullptr);
             XtSetMappedWhenManaged(children[index], True);
             if (!XtIsManaged(children[index]))
                 XtManageChild(children[index]);
@@ -137,52 +140,52 @@ namespace native
                 get_orientation() == split_orientation::horizontal
                     ? XmHORIZONTAL : XmVERTICAL,
                 nullptr);
+        apply_ratio();
     }
 
     void split_view::apply_ratio() {
         auto *state = binding(*this);
         if (!state || !state->paned)
             return;
-        const int cross = get_orientation() == split_orientation::horizontal
-            ? get_dimensions().h : get_dimensions().w;
-        XtVaSetValues(state->paned, XmNsashIndent,
-                      std::max(0, cross / 2 - 4), nullptr);
-        Widget first = linux::openmotif::wnd_bindings
-            .handle_from_object(&get_first());
-        if (!first)
-            return;
-        const int total = get_orientation() == split_orientation::horizontal
-            ? static_cast<int>(get_dimensions().w)
-            : static_cast<int>(get_dimensions().h);
-        const int desired = std::max(1, static_cast<int>(
-            (total-get_splitter_size())*get_ratio()));
         state->suppress = true;
-        if (get_orientation() == split_orientation::horizontal)
-            XtVaSetValues(first, XmNwidth, desired, nullptr);
-        else
-            XtVaSetValues(first, XmNheight, desired, nullptr);
+        // Motif can rearrange both children when the host changes. Commit
+        // both resolved rectangles even if their portable caches agree.
+        const auto configure = [](wnd &pane, const rect &bounds) {
+            Widget widget = linux::openmotif::wnd_bindings
+                .handle_from_object(&pane);
+            if (widget)
+                XtConfigureWidget(widget, bounds.p.x, bounds.p.y,
+                    std::max<int>(1, bounds.d.w),
+                    std::max<int>(1, bounds.d.h), 0);
+        };
+        configure(get_first(), get_first_bounds());
+        configure(get_second(), get_second_bounds());
         state->suppress = false;
+        show_sashes(state->paned, this);
     }
 
     void split_view::apply_minimums() {
+        // The portable resolver clamps minimums to the available space.
+        // Native constraints must permit those smaller allocations too.
         Widget first = linux::openmotif::wnd_bindings
             .handle_from_object(&get_first());
         Widget second = linux::openmotif::wnd_bindings
             .handle_from_object(&get_second());
         if (first)
             XtVaSetValues(first,
-                          XmNpaneMinimum, std::max<int>(1, get_first_minimum()),
-                          XmNallowResize, True,
-                          XmNskipAdjust, False,
+                          XmNpaneMinimum, 1,
+                          XmNallowResize, False,
+                          XmNskipAdjust, True,
                           XmNshowSash, True,
                           nullptr);
         if (second)
             XtVaSetValues(second,
-                          XmNpaneMinimum, std::max<int>(1, get_second_minimum()),
-                          XmNallowResize, True,
-                          XmNskipAdjust, False,
+                          XmNpaneMinimum, 1,
+                          XmNallowResize, False,
+                          XmNskipAdjust, True,
                           XmNshowSash, True,
                           nullptr);
+        apply_ratio();
     }
 
     void split_view::apply_splitter_size() {
@@ -193,6 +196,7 @@ namespace native
                           XmNsashWidth, get_splitter_size(),
                           XmNsashHeight, get_splitter_size(),
                           nullptr);
+        apply_ratio();
     }
 
     void split_view::create_native() {
@@ -208,6 +212,9 @@ namespace native
             XmNwidth, _bounds.d.w,
             XmNheight, _bounds.d.h,
             XmNresizable, False,
+            // Native owns both pane rectangles; Motif must not perform
+            // a second layout when a nested pane or sash changes.
+            XmNrefigureMode, False,
             XmNmarginWidth, 0,
             XmNmarginHeight, 0,
             XmNorientation,
@@ -225,7 +232,7 @@ namespace native
         state->paned = paned;
         linux::openmotif::wnd_bindings.register_pair(paned, self);
         linux::openmotif::split_view_bindings.register_pair(self, state);
-        self->_content_hosts_are_panes = true;
+        self->_content_hosts_are_panes = false;
         self->refresh_contents();
         self->apply_minimums();
         self->apply_ratio();

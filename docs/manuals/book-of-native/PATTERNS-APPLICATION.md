@@ -31,6 +31,23 @@ Application code must not:
 - Call a backend initialization function.
 - Call `app::main_loop()` itself.
 
+## Application name
+
+`app::get_name()` defaults to the filename in `argv[0]`, retaining case and any
+extension. The first call captures it; `app::set_name("org.example.mail")`
+selects an explicit stable name instead. Both operations are thread-safe after
+startup. Names are nonempty UTF-8 filename components, at most 255 bytes, with
+no path separators, control characters, or `.`/`..`. The name does not change
+window titles.
+
+[`configuration<T>`](CONFIGURATION.md) takes its namespace from this name at
+construction. No separate store object or mandatory setup call is needed.
+Changing the name affects future bindings only. Construct settings inside
+`program()` or its objects so that the platform launcher has already populated
+`app::argc` and `app::argv`. Without arguments or an explicit name, reading the
+name throws `std::logic_error`. A custom entry point must supply those arguments
+or set the name itself.
+
 ## Backend launcher
 
 Each platform supplies the entry point expected by its environment. The

@@ -9,6 +9,50 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## Persistent configuration (2026-11-17)
+
+`app::get_name()` supplies the namespace for new bindings, defaulting to the
+filename in `argv[0]`. `app::set_name()` optionally overrides it; no separate
+configuration-store class or mandatory setup call remains. `configuration<T>`
+supplies checked scalar/UTF-8 values, implicit reads, immediate assignment writes, defaults and an optional monotonic read
+cache. Zero timeout always reads storage; positive timeouts expire on access.
+`reload()`, `reset()` and `set_timeout()` control freshness explicitly.
+
+| Platform | Implemented store | Runtime evidence |
+| --- | --- | --- |
+| Linux, all toolkits including GEMix | XDG per-application text with ordered system defaults | Both configuration tests pass in SDL2 and GEMix SDKs |
+| Haiku | Native flattened `BMessage` in the user settings directory | Both tests pass in the Haiku VM |
+| Windows | Per-user registry, dotted prefixes as subkeys | Both tests pass in the Windows 11 VM |
+| macOS | Core Foundation current-user preference domain | Both tests pass in the macOS VM |
+
+Debug GCC/ASan/UBSan checks cover defaults, read counts, TTL expiry, failed I/O,
+type/range validation, shared cache ownership and concurrent threads. The naming regressions cover
+argv fallback, invalid names, optional overrides and existing-binding stability. Real
+storage tests verify native representation and separate writer processes;
+Linux/Haiku cover corrupt-file preservation, with XDG priority and failed
+publication also tested on Linux. AppleClang builds through the remote Mac
+workflow; Windows and Haiku use their Docker cross SDKs. These are headless
+storage tests and make no new desktop interaction claim. See
+[the implementation chapter](CONFIGURATION.md) for formats, limits and locking.
+
+
+Consumer patch review (2026-11-17): integrated the Native fixes carried by
+Blaise for nested Motif pane geometry/scrollbar ownership, OPEN LOOK collection
+positions and multiline focus, and Haiku collection-parent resolution.
+Haiku configuration discovery now uses the user settings directory rather
+than its parent config directory. Persistent values now have a separate
+`configuration<T>` API, described below.
+
+Verification: Debug GCC/ASan/UBSan builds pass for Motif and OPEN LOOK, and
+the Haiku SDK cross-build passes. Six focused CTests pass in CDE, including
+both the existing native-control suite and the new nested-split test; five
+focused CTests pass in OPEN LOOK, including its new nested-position/focus test.
+Toolkit leak scanning is disabled for these desktop runs. The broader OPEN
+LOOK control suite still faults in XView `update_value_offset` when shrinking
+a single-line field; rebuilding the original adapter reproduces the same
+failure. See [the open issue](../../notes/BACKEND-OPEN-ISSUES.md#open-look-text-field-resize-2026-11-17).
+Haiku runtime was not exercised because SSH to `hotel` was unreachable.
+
 Picker traversal follow-up (2026-11-15): Vision includes date/time stops and
 all adapters redirect their focus into the real editor. GEM standalone
 pickers match the 24-pixel text fields, support caret-component arrows and
@@ -1792,7 +1836,7 @@ blanking must be disabled for unattended screen captures.
 
 ## Application book and generation resources (2026-10-23)
 
-The application book now has 22 chapters and an index covering every concrete
+The application book now has 23 chapters and an index covering every concrete
 visual control, with aliases and extension bases identified separately.
 New complete programs cover owned/modeless/modal windows, collections/accordion,
 tables, source completion, split/tab workspaces, choices/standard panels, panel/canvas/ruler/status,

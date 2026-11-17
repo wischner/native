@@ -18,6 +18,20 @@ the same commit.
 
 ## Current scope (November 2026)
 
+Typed persistent configuration now has native per-user stores, implicit value
+reads, assignment writes and optional timeout caches. Application identity
+comes from `app::get_name()`, defaulting to the executable filename;
+`app::set_name()` provides an optional stable override. Its two headless tests
+pass on Linux/SDL2, GEMix, Haiku, Windows and macOS. See
+[Persistent configuration](book-of-native/CONFIGURATION.md) for the contract.
+
+The 2026-11-17 consumer patch review verifies nested Motif pane geometry and
+OPEN LOOK collection positions/editor focus in their native desktop sessions.
+Haiku collection-parent and settings-directory repairs are cross-build
+verified; its VM was unavailable. The broader OPEN LOOK text-width test has
+an independently reproduced existing crash. Exact checks and limits are in the
+[feature matrix](book-of-native/FEATURE-MATRIX.md).
+
 The [2026-11-06 feature audit](book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
 checks the recent resource, canvas-input, font, toolbar and ruler additions
 across every maintained build selection; all 351 registered test instances
@@ -207,6 +221,10 @@ limits are recorded in the [feature matrix](book-of-native/FEATURE-MATRIX.md).
 24. [Resource packs](book-of-native/RESOURCES.md)
     Typed assets, backend profiles, fallback ranking, JSON manifests, binary
     file/memory round trips and C++ embedding. Expands Architecture Section 17.
+
+25. [Persistent configuration](book-of-native/CONFIGURATION.md)
+    Typed settings bindings, timeout caches, native per-user stores and
+    safe file publication. Expands Architecture Sections 8 and 17.
 
 For a tutorial organized around complete programs, see
 [Programming Native](PROGRAMMING-NATIVE.md).

@@ -132,13 +132,24 @@ renderer for bottom, left, right, and strip-only placement.
 
 Motif split views retain `XmPanedWindow` and a centered native sash. Both the
 sash and the full divider route pointer dragging through the portable ratio
-transaction, so pane sizes and saved state agree. Panes allow native resize
-requests and enforce positive minimums; the sash is not hidden.
+transaction, so pane sizes and saved state agree. The portable layout resolves
+minimums and commits both child rectangles directly, in splitter coordinates:
+there are no separate Motif pane hosts. Re-entering XmPanedWindow's geometry
+negotiation can loop on incompatible geometry-almost replies in nested splits.
+Automatic Motif reflow and child resize requests are disabled. Native widget
+minimums allow one pixel so they cannot override the portable resolver when
+space is smaller than the requested pane minimums. Collection scrollbars are
+children of their collection, never extra paned-window children. The native sash stays centered in the resolved divider.
 The shared pane refresh skips identical bounds and shows only panes that are
 not already visible, so dragging does not repeatedly run native show/setup.
 Motif invalidation merges pending exposes without erasing the divider first.
 
-OPEN LOOK uses two private XView Panel hosts for its borrowed controls. Live
+Haiku collection creation passes the child identity to the native parent
+resolver so a collection attaches to the correct BSplitView pane host.
+
+OPEN LOOK uses two private XView Panel hosts for its borrowed controls.
+Frame-owned collection panels accumulate the intervening split-pane offsets
+when created and repositioned, including nested second panes. Live
 list sizing uses `PANEL_LIST_WIDTH` and reserves the native scrollbar width;
 `XV_WIDTH` alone does not resize a Panel list's rows. Short raised grip ribs,
 without a surrounding box, identify the divider beside the native scrollbar;

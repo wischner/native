@@ -1,5 +1,26 @@
 # Backend Open Issues
 
+## OPEN LOOK text-field resize (2026-11-17)
+
+`native_openlook_runtime_tests` faults in XView's `update_value_offset` while
+`check_openlook_controls` shrinks a single-line field through
+`wnd::set_dimensions()`. This reproduces in the OPEN LOOK 1.3.1 SDK's Xephyr
+session with ASan/UBSan, both with the consumer pane/focus patches and with the
+original adapter rebuilt without them. The cause remains unqualified; the
+consumer patches do not repair this separate width-change path.
+
+The isolated `native_openlook_split_tests`, tab-order, menu/focus, owned-window
+teardown and collection runtime tests pass. The consumer patch review also
+passes six focused Motif/CDE tests and the Haiku cross-build; Haiku's `hotel`
+VM was unreachable, so its new parent/settings assertions remain runtime
+unverified for this review.
+
+A later configuration-service check reached `hotel` successfully and passed
+both new headless configuration tests, including native BMessage persistence.
+That run does not qualify the earlier UI collection-parent assertions. The
+same configuration tests pass on Linux/SDL2, GEMix, Windows and macOS; see the
+[feature matrix](../manuals/book-of-native/FEATURE-MATRIX.md#persistent-configuration-2026-11-17).
+
 ## GEM compact frame gutter (2026-11-10)
 
 Resolved by GEM SDK 1.5.2 (2026-11-11), built from upstream commit

@@ -409,6 +409,17 @@ Haiku uses `find_directory`, and macOS uses Foundation search paths. Detection
 does not create or require the returned directories. A second `detect()` may
 invalidate pointers returned by `at()` or `find()`.
 
+`configuration` resolves to `$XDG_CONFIG_HOME` (or `~/.config`) on Linux,
+including GEMix, Roaming AppData on Windows, `~/Library/Preferences` on macOS,
+and Haiku's `B_USER_SETTINGS_DIRECTORY` (normally `~/config/settings`).
+Earlier Haiku builds returned the parent `~/config` directory; applications
+that saved files there must choose their own migration policy.
+For typed persistent preferences, use
+[`configuration<T>`](CONFIGURATION.md), which selects the OS store and handles
+reads, writes and caching. `special_directory` remains directory discovery for
+application-owned files, accessed with `std::filesystem` and standard streams.
+`settings_sidebar` supplies settings-window navigation.
+
 ## Standard dialogs
 
 `directory_dialog` extends the existing `file_dialog` state and modal-session
@@ -889,3 +900,7 @@ SDL message boxes preserve paragraphs and wrap text in a read-only, keyboard
 scrollable editor instead of clipping a single line. Height follows the text
 up to the display height. Explicit tab stops include the message and buttons;
 Enter/Space activates the focused button, while Escape keeps dismissal behavior.
+
+OPEN LOOK multiline focus uses the child window of its `PANEL_MULTILINE_TEXT`
+item (`PANEL_ITEM_NTH_WINDOW`), with an absent-window guard. The item is not an
+Openwin container and cannot be focused through `OPENWIN_NTH_VIEW`.

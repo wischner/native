@@ -432,6 +432,7 @@ contents.
 | [PATTERNS-PANELS-AND-CANVASES.md](docs/manuals/book-of-native/PATTERNS-PANELS-AND-CANVASES.md) | Container versus drawing-surface roles, explicit child lifecycle, chrome versus client geometry, 32-bit content bounds, scrollbar resolution, painting order. Expands Architecture 18–19. |
 | [PATTERNS-BACKGROUND-SERVICES.md](docs/manuals/book-of-native/PATTERNS-BACKGROUND-SERVICES.md) | Scoped UI delivery, bounded PCM peers, child ownership and shutdown. Expands Architecture 20. |
 | [PATTERNS-IMAGE-SHADERS.md](docs/manuals/book-of-native/PATTERNS-IMAGE-SHADERS.md) | Immutable portable CPU image programs, typed properties, canvas composition, multipass/history, weak paced delivery and bounded execution. Expands Architecture 21. |
+| [CONFIGURATION.md](docs/manuals/book-of-native/CONFIGURATION.md) | Typed persistent settings, app-owned identity, timeout caches, OS stores, safe file publication and verification. Expands Architecture 8 and 17. |
 | [RESOURCES.md](docs/manuals/book-of-native/RESOURCES.md) | Resource ownership, automatic backend profiles, variant ranking, strict JSON manifest, v1 binary format and embedding. Expands Architecture 17. |
 | [FEATURE-MATRIX.md](docs/manuals/book-of-native/FEATURE-MATRIX.md) | Per-backend feature and test status for what is implemented now. |
 
@@ -446,7 +447,7 @@ Teaches *how to write applications against the library*. Complete runnable
 programs and focused snippets; this is where educational example code lives
 instead of a separate examples source tree. Index:
 [docs/manuals/PROGRAMMING-NATIVE.md](docs/manuals/PROGRAMMING-NATIVE.md) — how
-a native program is organized, the 22-chapter table of contents, the complete
+a native program is organized, the 23-chapter table of contents, the complete
 control index, and build instructions.
 
 | Chapter | Contents |
@@ -473,6 +474,7 @@ control index, and build instructions.
 | [20-IMAGE-SHADERS.md](docs/manuals/programming-native/20-IMAGE-SHADERS.md) | Shader-view lifecycle, source ownership, typed parameters, portable expression authoring/package format, fitting, animation, fallback and mouse acceptance. |
 | [21-SETTINGS-AND-PICKERS.md](docs/manuals/programming-native/21-SETTINGS-AND-PICKERS.md) | Searchable settings pages, shared icons, date/time ranges, excluded holidays/weekdays, validators, and a complete booking program. |
 | [22-TOOLBARS-AND-PROPERTIES.md](docs/manuals/programming-native/22-TOOLBARS-AND-PROPERTIES.md) | Edge toolbars, status, typed properties, custom dropdown ownership, and a complete inspector program. |
+| [23-PERSISTENT-CONFIGURATION.md](docs/manuals/programming-native/23-PERSISTENT-CONFIGURATION.md) | Automatic argv filename/app-name namespaces, typed defaults, implicit reads, assignment writes, timeout caches and a complete persistent counter. |
 
 ## AI application generation
 

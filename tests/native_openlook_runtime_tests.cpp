@@ -59,6 +59,71 @@ namespace
         expect(false, "native window is mapped before capturing pixels");
     }
 
+    // Collection panels are frame-owned, while ordinary controls live in
+    // pane hosts. Their server coordinates must agree through nested splits.
+    void check_nested_split(native::app_wnd &parent) {
+        native::modeless_wnd root(parent, "Nested collections", 20, 20, 620, 400);
+        root.create();
+        root.show();
+        native::table_view folders, messages, preview;
+        native::split_view right(messages, preview,
+            native::split_orientation::vertical);
+        native::split_view outer(folders, right,
+            native::split_orientation::horizontal, 13, 17, 560, 320);
+        attach(outer, root);
+        const auto check_position = [&root](native::wnd &pane,
+                                           native::point expected) {
+            auto *state = ol::window_state(&root);
+            int x = 0, y = 0;
+            Window child = None;
+            XTranslateCoordinates(ol::cached_display,
+                xv_get(peer(pane), XV_XID), xv_get(state->frame, XV_XID),
+                0, 0, &x, &y, &child);
+            expect(x == expected.x && y == expected.y + state->menu_height,
+                   "nested collection has its allocated frame position");
+        };
+        const auto check_all = [&] {
+            const auto origin = outer.get_position();
+            const auto right_origin = outer.get_second_bounds().p;
+            const auto bottom = right.get_second_bounds().p;
+            check_position(folders, origin);
+            check_position(messages, native::point(
+                origin.x + right_origin.x, origin.y + right_origin.y));
+            check_position(preview, native::point(
+                origin.x + right_origin.x + bottom.x,
+                origin.y + right_origin.y + bottom.y));
+        };
+        check_all();
+        for (auto orientation : {native::split_orientation::horizontal,
+                                 native::split_orientation::vertical}) {
+            outer.set_orientation(orientation);
+            for (const float ratio : {0.2f, 0.8f, 0.5f}) {
+                outer.set_ratio(ratio);
+                right.set_ratio(1.0f - ratio);
+                outer.set_bounds(native::rect(21, 23, 520, 300));
+                check_all();
+            }
+        }
+        outer.destroy();
+
+        native::text_edit editor("Two lines\nfor focus",
+            native::text_edit_mode::multi_line, 20, 20, 260, 100);
+        attach(editor, root);
+        auto *state = ol::text_edit_bindings.object_from_handle(&editor);
+        const auto view = xv_get(state->item, PANEL_ITEM_NTH_WINDOW, 0);
+        expect(view != 0, "multiline panel item has a child window");
+        await_viewable(xv_get(view, XV_XID));
+        editor.focus();
+        XSync(ol::cached_display, False);
+        Window focused = None;
+        int revert = 0;
+        XGetInputFocus(ol::cached_display, &focused, &revert);
+        expect(focused == static_cast<Window>(xv_get(view, XV_XID)),
+               "multiline focus reaches the panel item's child window");
+        editor.destroy();
+        root.destroy();
+    }
+
     std::vector<unsigned long> pixels(native::wnd &owner) {
         auto *cache = ol::wnd_gpx_bindings.object_from_handle(&owner);
         expect(cache && cache->backbuffer, "backbuffer exists");
@@ -310,7 +375,8 @@ namespace
     }
 }
 
-int program(int, char **) {
+int program(int argc, char **argv) {
+    const bool split_only = argc > 1 && std::string(argv[1]) == "--split-layout";
     native::app_wnd root("OPEN LOOK peer regressions", 20, 20, 660, 480);
     root.on_wnd_paint.connect([](native::wnd_paint_event event) {
         ++paint_count;
@@ -319,11 +385,15 @@ int program(int, char **) {
             {"Themed list", "Native look", "Portable API"}, 1, {});
         return true;
     });
-    root.on_wnd_create.connect([&root] {
-        native::app::post([&root] {
+    root.on_wnd_create.connect([&root, split_only] {
+        native::app::post([&root, split_only] {
             try {
-                checks(root);
-                check_openlook_controls(root);
+                if (split_only)
+                    check_nested_split(root);
+                else {
+                    checks(root);
+                    check_openlook_controls(root);
+                }
                 std::cout << "OPEN LOOK peer checks passed\n";
             } catch (const std::exception &error) {
                 ++failures;

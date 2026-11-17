@@ -130,10 +130,17 @@ namespace
         while (root &&
                !native::detail::peer_state<
                    linux::openlook::openlook_window>(*root)) {
+            if (auto *split = dynamic_cast<native::split_view *>(root)) {
+                const auto pane = window == &split->get_second()
+                    ? split->get_second_bounds() : split->get_first_bounds();
+                result.x += pane.p.x;
+                result.y += pane.p.y;
+            }
             result.x = static_cast<native::coord>(
                 result.x + root->get_position().x);
             result.y = static_cast<native::coord>(
                 result.y + root->get_position().y);
+            window = root;
             root = root->get_parent();
         }
         auto *state = root ? native::detail::peer_state<
@@ -151,8 +158,10 @@ namespace native
         if (auto *editor = dynamic_cast<text_edit *>(this)) {
             auto *state = linux::openlook::text_edit_bindings.object_from_handle(editor);
             if (state && state->multiline) {
-                auto view = static_cast<Xv_Window>(xv_get(state->item, OPENWIN_NTH_VIEW, 0));
-                xv_set(view, WIN_SET_FOCUS, nullptr);
+                auto view = static_cast<Xv_Window>(xv_get(
+                    state->item, PANEL_ITEM_NTH_WINDOW, 0));
+                if (view)
+                    xv_set(view, WIN_SET_FOCUS, nullptr);
                 return;
             }
         }

@@ -96,3 +96,7 @@ target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.cpp)
 target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/font_locations.cpp)
 
 target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui_dispatch.cpp)
+
+# Persistent settings use OS storage independently of the UI toolkit.
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/configuration.cpp)
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../configuration_file.cpp)

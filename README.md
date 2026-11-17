@@ -51,6 +51,10 @@ If you are looking for a straightforward, understandable UI library, or if you w
   stages whose base implementations retain standard native behavior
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, `std::filesystem::path`, and filter model
+- **Persistent configuration**: Typed settings with implicit reads, assignment writes,
+  defaults and optional timeout caching; uses native per-user stores on each OS
+  under `app::get_name()` (the executable filename unless explicitly set).
+  See [Persistent configuration](docs/manuals/programming-native/23-PERSISTENT-CONFIGURATION.md).
 - **Filesystem resources**: Exact-size native file/folder icons as PNG with
   generic fallbacks, plus typed special directories as `std::filesystem::path`
 - **Clipboard and text editing**: Typed UTF-8/image clipboard transactions,
@@ -58,6 +62,15 @@ If you are looking for a straightforward, understandable UI library, or if you w
 - **Minimal and modern C++**: Clean code, few dependencies
 - **Educational**: Open development process, detailed documentation in chapters
 - **Consistent lowercase API**: Naming inspired by the C++ standard library
+
+The November 17 consumer patch review fixes nested Motif pane geometry,
+OPEN LOOK collection positions/multiline focus, and Haiku collection parenting.
+Motif and OPEN LOOK focused desktop checks pass; Haiku is cross-build verified.
+The [feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md) records
+scope and the separate existing OPEN LOOK text-width crash. Configuration
+folders are portable, including Haiku's user settings folder. The new typed
+configuration API also handles persistence; its cache and native-storage tests
+pass on Linux/SDL2, GEMix, Haiku, Windows and macOS.
 
 The [November 6 feature audit](docs/manuals/book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
 builds all maintained backends and passes all 351 registered test instances

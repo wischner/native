@@ -59,6 +59,98 @@ namespace
         }
     }
 
+    // Collections must remain the only two panes, with their scrollbars
+    // inside them. Exercise the nested layout that previously hung Xt.
+    void check_nested_split(native::app_wnd &root) {
+        native::table_view folders, messages, preview;
+        native::split_view right(messages, preview,
+            native::split_orientation::vertical);
+        native::split_view outer(folders, right,
+            native::split_orientation::horizontal, 13, 17, 560, 320);
+        attach(outer, root);
+        const char *stage = "initial";
+        const auto check_pane = [&stage](native::wnd &pane,
+                                   const native::rect &bounds) {
+            Position x = 0, y = 0;
+            Dimension width = 0, height = 0;
+            XtVaGetValues(widget(pane), XmNx, &x, XmNy, &y,
+                XmNwidth, &width, XmNheight, &height, nullptr);
+            if (x != bounds.p.x || y != bounds.p.y ||
+                width != bounds.d.w || height != bounds.d.h) {
+                throw std::runtime_error(
+                    std::string(stage) + " nested pane: actual " + std::to_string(x) + "," +
+                    std::to_string(y) + " " + std::to_string(width) + "x" +
+                    std::to_string(height) + "; expected " +
+                    std::to_string(bounds.p.x) + "," +
+                    std::to_string(bounds.p.y) + " " +
+                    std::to_string(bounds.d.w) + "x" + std::to_string(bounds.d.h));
+            }
+        };
+        for (auto *table : {&folders, &messages, &preview}) {
+            auto *state = motif::table_view_bindings.object_from_handle(table);
+            expect(state && XtParent(state->vertical_scrollbar) == widget(*table) &&
+                       XtParent(state->horizontal_scrollbar) == widget(*table),
+                   "collection scrollbars belong to their collection");
+        }
+        const auto check_sash = [](native::split_view &split) {
+            WidgetList children = nullptr;
+            Cardinal count = 0;
+            XtVaGetValues(widget(split), XmNchildren, &children,
+                XmNnumChildren, &count, nullptr);
+            const auto bar = split.get_splitter_bounds();
+            bool found = false;
+            for (Cardinal index = 0; index < count; ++index) {
+                if (!XmIsSash(children[index]) || !XtIsManaged(children[index]))
+                    continue;
+                Position x = 0, y = 0;
+                Dimension width = 0, height = 0;
+                XtVaGetValues(children[index], XmNx, &x, XmNy, &y,
+                    XmNwidth, &width, XmNheight, &height, nullptr);
+                expect(bar.contains(native::point(x + width / 2, y + height / 2)),
+                       "native sash stays inside the resolved divider");
+                found = true;
+            }
+            expect(found, "nested split retains a native sash");
+        };
+        const auto check_all = [&] {
+            check_pane(folders, outer.get_first_bounds());
+            check_pane(right, outer.get_second_bounds());
+            check_pane(messages, right.get_first_bounds());
+            check_pane(preview, right.get_second_bounds());
+            check_sash(outer);
+            check_sash(right);
+        };
+        check_all();
+        for (auto orientation : {native::split_orientation::horizontal,
+                                 native::split_orientation::vertical}) {
+            stage = "orientation";
+            outer.set_orientation(orientation);
+            check_all();
+            for (const int width : {560, 380, 600}) {
+                outer.set_bounds(native::rect(13, 17, width, 320));
+                for (const float ratio : {0.2f, 0.8f, 0.5f}) {
+                    stage = "outer ratio";
+                    outer.set_ratio(ratio);
+                    check_all();
+                    stage = "inner ratio";
+                    right.set_ratio(1.0f - ratio);
+                    check_all();
+                    stage = "pump";
+                    pump();
+                    check_all();
+                }
+            }
+        }
+        stage = "minimums and divider size";
+        outer.set_minimums(120, 90);
+        outer.set_splitter_size(10);
+        outer.set_ratio(0.01f);
+        pump();
+        check_all();
+        outer.destroy();
+        pump();
+    }
+
     void key(Widget target, KeySym symbol, unsigned int modifiers = 0) {
         XEvent event{};
         event.xkey.type = KeyPress;
@@ -729,14 +821,17 @@ namespace
 }
 
 int program(int argc, char **argv) {
+    const bool split_only = argc > 1 && std::string(argv[1]) == "--split-layout";
     const bool tree_only = argc > 1 && std::string(argv[1]) == "--tree-repaint";
     const bool styles_only =
         argc > 1 && std::string(argv[1]) == "--control-styles";
     native::app_wnd root("Motif peer regressions", 20, 20, 660, 400);
-    root.on_wnd_create.connect([&root, tree_only, styles_only] {
-        native::app::post([&root, tree_only, styles_only] {
+    root.on_wnd_create.connect([&root, tree_only, styles_only, split_only] {
+        native::app::post([&root, tree_only, styles_only, split_only] {
             try {
-                if (styles_only)
+                if (split_only)
+                    check_nested_split(root);
+                else if (styles_only)
                     check_motif_control_styles(root);
                 else if (tree_only)
                     check_tree_content_repaint(root);

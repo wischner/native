@@ -96,7 +96,8 @@ namespace
             return;
         }
         state.synchronizing_scrollbars = true;
-        const native::rect bounds = owner.get_bounds();
+        // Scrollbars belong to the collection, not its parent's layout.
+        const native::rect bounds(native::point(0, 0), owner.get_dimensions());
         const int width = std::max(1, static_cast<int>(bounds.d.w));
         const int height = std::max(1, static_cast<int>(bounds.d.h));
         int extent = 16;
@@ -744,11 +745,11 @@ namespace
             dynamic_cast<native::tree_view *>(&owner) ||
             dynamic_cast<native::table_view *>(&owner)) {
             state.vertical_scrollbar = create_scrollbar(
-                parent_widget, owner, XmVERTICAL);
+                widget, owner, XmVERTICAL);
         }
         if (dynamic_cast<native::table_view *>(&owner)) {
             state.horizontal_scrollbar = create_scrollbar(
-                parent_widget, owner, XmHORIZONTAL);
+                widget, owner, XmHORIZONTAL);
         }
         return widget;
     }

@@ -7,6 +7,11 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 #include <native.h>
+#if defined(__HAIKU__)
+#include "../lib/native/platforms/haiku/globals.h"
+#include <Autolock.h>
+#include <stdexcept>
+#endif
 
 namespace
 {
@@ -39,6 +44,26 @@ namespace
         main_test_window()
             : app_wnd("teardown", 20, 20, 320, 240), tool_(*this) {
             on_wnd_create.connect([this] {
+#if defined(__HAIKU__)
+                // A collection needs its identity to select the split's
+                // first/second native host, including a nested split.
+                table_view first, second, third;
+                split_view nested(second, third, split_orientation::vertical);
+                split_view split(first, nested, split_orientation::horizontal,
+                                 0, 0, 300, 200);
+                split.set_parent(this);
+                split.create();
+                split.show();
+                auto *outer = haiku::split_view_bindings.object_from_handle(&split);
+                auto *inner = haiku::split_view_bindings.object_from_handle(&nested);
+                BAutolock lock(haiku::wnd_bindings.handle_from_object(this));
+                if (!lock.IsLocked() ||
+                    haiku::view_from_control(&first)->Parent() != outer->first ||
+                    haiku::view_from_control(&second)->Parent() != inner->first ||
+                    haiku::view_from_control(&third)->Parent() != inner->second)
+                    throw std::runtime_error("collection attached to wrong split pane");
+                split.destroy();
+#endif
                 tool_.create();
                 tool_.show();
                 app::post([this] {

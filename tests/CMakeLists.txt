@@ -50,7 +50,10 @@ if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
     target_link_libraries(native_openlook_runtime_tests PRIVATE
         native native_developer_options ${CMAKE_DL_LIBS})
     add_test(NAME native_openlook_runtime_tests COMMAND native_openlook_runtime_tests)
-    set_tests_properties(native_openlook_runtime_tests PROPERTIES TIMEOUT 30)
+    add_test(NAME native_openlook_split_tests
+        COMMAND native_openlook_runtime_tests --split-layout)
+    set_tests_properties(native_openlook_runtime_tests native_openlook_split_tests
+        PROPERTIES TIMEOUT 30)
 endif()
 
 if(UNIX AND TOOLKIT STREQUAL "MOTIF")
@@ -61,7 +64,10 @@ if(UNIX AND TOOLKIT STREQUAL "MOTIF")
     target_link_libraries(native_motif_runtime_tests PRIVATE
         native native_developer_options)
     add_test(NAME native_motif_runtime_tests COMMAND native_motif_runtime_tests)
-    set_tests_properties(native_motif_runtime_tests PROPERTIES TIMEOUT 30)
+    add_test(NAME native_motif_split_tests
+        COMMAND native_motif_runtime_tests --split-layout)
+    set_tests_properties(native_motif_runtime_tests native_motif_split_tests
+        PROPERTIES TIMEOUT 30)
 endif()
 
 if(WIN32)
@@ -125,6 +131,8 @@ set_tests_properties(native_ruler_toolbar_tests PROPERTIES TIMEOUT 30
     ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software")
 
 add_executable(native_owned_teardown_tests native_owned_teardown_tests.cpp)
+target_include_directories(native_owned_teardown_tests PRIVATE
+    $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
 target_link_libraries(native_owned_teardown_tests PRIVATE native native_developer_options)
 add_test(NAME native_owned_teardown_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_owned_teardown_tests>)
@@ -666,3 +674,20 @@ add_test(NAME native_new_features_smoke
     COMMAND ${gemd_runner} $<TARGET_FILE:vision> --new-features --features-smoke)
 set_tests_properties(native_new_features_smoke PROPERTIES TIMEOUT 30
     ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;GEM_RASTA_INVERSE=off;GEM_RASTA_FRAMEBUFFER=/tmp/native-features.fb;GEM_RASTA_PORT=5026")
+
+# Pure value/cache tests use an instrumented backend; storage tests below
+# exercise the real platform service without opening a UI window.
+add_executable(native_configuration_tests
+    native_configuration_tests.cpp
+    ${PROJECT_SOURCE_DIR}/lib/native/app_identity.cpp
+    ${PROJECT_SOURCE_DIR}/lib/native/configuration.cpp
+    ${PROJECT_SOURCE_DIR}/lib/native/text_util.cpp)
+target_include_directories(native_configuration_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(native_configuration_tests PRIVATE native_developer_options Threads::Threads)
+add_test(NAME native_configuration_tests COMMAND native_configuration_tests)
+set_tests_properties(native_configuration_tests PROPERTIES TIMEOUT 20)
+
+add_executable(native_configuration_storage_tests native_configuration_storage_tests.cpp)
+target_link_libraries(native_configuration_storage_tests PRIVATE native native_developer_options)
+add_test(NAME native_configuration_storage_tests COMMAND native_configuration_storage_tests)
+set_tests_properties(native_configuration_storage_tests PROPERTIES TIMEOUT 30)

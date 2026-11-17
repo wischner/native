@@ -40,9 +40,6 @@ namespace native
         void (*loop_wake)() = nullptr;
     } // namespace
 
-    int app::argc = 0;
-    char **app::argv = nullptr;
-    char **app::envp = nullptr;
     app_wnd *app::_main_wnd = nullptr;
 
     int app::run(app_wnd &wnd) {

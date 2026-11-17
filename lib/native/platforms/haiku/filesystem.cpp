@@ -108,7 +108,7 @@ namespace native::detail
                find_special(B_USER_FONTS_DIRECTORY));
         append(result,
                directory_kind::configuration,
-               find_special(B_USER_CONFIG_DIRECTORY));
+               find_special(B_USER_SETTINGS_DIRECTORY));
         append(result,
                directory_kind::application_data,
                find_special(B_USER_DATA_DIRECTORY));

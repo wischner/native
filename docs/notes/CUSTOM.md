@@ -1,5 +1,12 @@
 # Native Versus Custom Control Audit
 
+Consumer patch review (2026-11-17): Motif split panes commit resolved geometry
+without recursive Xt negotiation, and collection scrollbars stay inside their
+collection hosts. OPEN LOOK frame-owned collections include nested pane
+offsets; multiline focus targets the Panel item's actual child window.
+Haiku collections resolve their parent using the child identity. These repairs
+retain all existing **N/H/C/E** control-kind marks and native widgets.
+
 SDL dialog review (2026-11-15): existing **C** buttons/checks/radios support
 keyboard activation. File selectors and message boxes provide explicit tab
 order and initial focus; messages wrap in a scrollable editor, and dialog
@@ -55,7 +62,7 @@ supported backend. It describes the code as it exists, not merely what the
 underlying platform could provide. Its purpose is to make avoidable custom
 implementations easy to find.
 
-Audit date: 2026-11-15 (keyboard traversal; earlier widget audit retained).
+Audit date: 2026-11-17 (consumer patch review; earlier widget audit retained).
 
 GEM document chrome review: the document-associated status-bar constructor
 selects the canvas host, putting its existing **C** status painting inside

@@ -24,6 +24,8 @@
 
 #if defined(__HAIKU__)
 #include <Application.h>
+#include <FindDirectory.h>
+#include <Path.h>
 #include <ScrollBar.h>
 #endif
 
@@ -3316,6 +3318,14 @@ namespace
                        return entry.get_path().is_absolute();
                    }),
                "special-directory paths are absolute filesystem paths");
+#if defined(__HAIKU__)
+        BPath settings_path;
+        const auto *configuration = native::special_directory::find(
+            native::special_directory_kind::configuration);
+        expect(find_directory(B_USER_SETTINGS_DIRECTORY, &settings_path) == B_OK &&
+                   configuration && configuration->get_path() == settings_path.Path(),
+               "Haiku configuration resolves the user settings directory");
+#endif
         expect(native::special_directory::count() ==
                    static_cast<int>(special.size()),
                "special-directory count matches the snapshot");
@@ -3341,6 +3351,10 @@ int main(int argc, char **argv) {
 #if defined(__HAIKU__)
     BApplication application("application/x-vnd.native-window-api-tests");
 #endif
+    if (argc > 1 && std::string(argv[1]) == "--filesystem") {
+        test_filesystem_resources();
+        return failure_count == 0 ? 0 : 1;
+    }
     if (argc > 1 && std::string(argv[1]) == "--tab-order") {
         test_tab_traversal();
         return failure_count == 0 ? 0 : 1;

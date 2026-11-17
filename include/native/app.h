@@ -2,8 +2,8 @@
 // Declares application startup state and the user program entry point.
 // Platform launchers populate arguments before entering the event loop.
 //
-// Also declares app::post, the one operation in this library that may
-// be called from a thread other than the one running the event loop.
+// Also declares thread-safe application naming and app::post for delivery
+// from worker threads to the UI event loop.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -12,6 +12,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 
 namespace native
 {
@@ -81,6 +82,21 @@ namespace native
         // ASCII. Text signals always use UTF-8; a restricted transport can
         // supply only its ASCII subset. Independent of physical-key support.
         static bool get_unicode_text_input_supported();
+
+        // Set the application name used by future configuration bindings.
+        // Call before constructing settings to keep a stable namespace.
+        // Names are nonempty UTF-8 filename components (at most 255 bytes),
+        // without path separators, control characters, or '.'/'..'.
+        // Invalid names throw invalid_argument. Existing settings keep their
+        // original namespace. Thread-safe; does not change window titles.
+        static void set_name(std::string name);
+
+        // Return the application name by value. Unless set explicitly, the
+        // first call captures argv[0]'s filename, including its extension.
+        // Throws logic_error if startup arguments are unavailable: construct
+        // settings inside program(), after the platform launcher has run.
+        // Thread-safe after the launcher has initialized argc/argv.
+        static std::string get_name();
 
         // Return the current main window, or null before run().
         static app_wnd *main_wnd();

@@ -790,12 +790,20 @@ namespace
     linux::openlook::openlook_collection *create_panel(
         native::wnd &owner) {
         native::point position = owner.get_position();
+        native::wnd *child = &owner;
         native::wnd *root = owner.get_parent();
         while (root && !dynamic_cast<native::app_wnd *>(root)) {
+            if (auto *split = dynamic_cast<native::split_view *>(root)) {
+                const auto pane = child == &split->get_second()
+                    ? split->get_second_bounds() : split->get_first_bounds();
+                position.x += pane.p.x;
+                position.y += pane.p.y;
+            }
             position.x = static_cast<native::coord>(
                 position.x + root->get_position().x);
             position.y = static_cast<native::coord>(
                 position.y + root->get_position().y);
+            child = root;
             root = root->get_parent();
         }
         auto *window = dynamic_cast<native::app_wnd *>(root);

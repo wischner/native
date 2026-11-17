@@ -65,3 +65,6 @@ target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.mm)
 target_link_libraries(native PRIVATE "-framework OpenGL")
 
 target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/font_locations.cpp)
+
+# Persistent settings use OS storage independently of the UI toolkit.
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/configuration.cpp)

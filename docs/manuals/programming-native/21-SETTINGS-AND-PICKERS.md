@@ -4,6 +4,10 @@ Build a settings window in three steps: create page objects, describe the
 navigation, and create the sidebar after its parent. This chapter is a complete
 program; it needs no external images or holiday database.
 
+For saving preference values between launches, use the typed
+[`configuration<T>` API](23-PERSISTENT-CONFIGURATION.md). The sidebar itself
+handles navigation and does not persist control values.
+
 ## Step 1: Keep pages and their controls alive
 
 A `settings_sidebar` borrows its pages. Declare the pages before the sidebar

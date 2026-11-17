@@ -11,6 +11,7 @@
 #include <Xm/Xm.h>
 #include <Xm/ComboBox.h>
 #include <Xm/PushB.h>
+#include <Xm/PanedW.h>
 #include <Xm/XmP.h>
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
@@ -258,6 +259,15 @@ namespace native
                                   std::max(1, int(_bounds.d.w) - 20),
                                   nullptr);
             }
+            // The portable splitter already resolved both pane sizes.
+            // Asking XmPanedWindow to negotiate them again can loop on
+            // incompatible geometry-almost replies while shrinking.
+            if (XmIsPanedWindow(XtParent(widget))) {
+                XtConfigureWidget(widget, _bounds.p.x, _bounds.p.y,
+                    std::max<int>(1, _bounds.d.w),
+                    std::max<int>(1, _bounds.d.h), 0);
+                return;
+            }
             XtVaSetValues(widget,
                           XmNwidth,
                           _bounds.d.w,
@@ -292,6 +302,15 @@ namespace native
                                   XmNwidth,
                                   std::max(1, int(_bounds.d.w) - 20),
                                   nullptr);
+            }
+            // The portable splitter already resolved both pane sizes.
+            // Asking XmPanedWindow to negotiate them again can loop on
+            // incompatible geometry-almost replies while shrinking.
+            if (XmIsPanedWindow(XtParent(widget))) {
+                XtConfigureWidget(widget, _bounds.p.x, _bounds.p.y,
+                    std::max<int>(1, _bounds.d.w),
+                    std::max<int>(1, _bounds.d.h), 0);
+                return;
             }
             XtVaSetValues(widget,
                           XmNx,

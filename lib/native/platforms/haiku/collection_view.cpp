@@ -393,7 +393,7 @@ namespace
 namespace haiku
 {
     BView *create_collection_view(native::wnd &owner) {
-        BView *parent = parent_view(owner.get_parent());
+        BView *parent = parent_view(owner.get_parent(), &owner);
         BWindow *window = parent ? parent->Window() : nullptr;
         if (!parent || !window)
             throw std::runtime_error(

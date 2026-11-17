@@ -10,6 +10,7 @@ construction sequence. For implementing the library, use the
 | Resource | Use it for |
 | --- | --- |
 | [Application book](manuals/PROGRAMMING-NATIVE.md) | Step-by-step programs, control selection, layouts, dialogs, deployment |
+| [Persistent settings](manuals/programming-native/23-PERSISTENT-CONFIGURATION.md) | Typed configuration values, defaults, assignment writes and timeout caching |
 | [Implementation book](manuals/BOOK-OF-NATIVE.md) | Peers, lifetime, signals, painting, backend adaptations |
 | [Feature matrix](manuals/book-of-native/FEATURE-MATRIX.md) | Recorded build/runtime evidence and limitations |
 | [Native/custom audit](notes/CUSTOM.md) | Which controls use native widgets, composition, painting, or helpers |

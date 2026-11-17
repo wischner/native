@@ -67,6 +67,7 @@ controls.
 20. [Portable programmable image shaders](programming-native/20-IMAGE-SHADERS.md)
 21. [Settings, dates, and times](programming-native/21-SETTINGS-AND-PICKERS.md)
 22. [Toolbars and property inspectors](programming-native/22-TOOLBARS-AND-PROPERTIES.md)
+23. [Persistent configuration](programming-native/23-PERSISTENT-CONFIGURATION.md)
 
 ## Building the repository program
 
@@ -105,6 +106,7 @@ that are not separate controls.
 | Resizable panes and pages | `split_view`, `tab_view` | [Tabbed workspace](programming-native/16-SPLIT-VIEWS-AND-TABS.md#build-a-tabbed-workspace-step-by-step) |
 | Structural child host | `panel` | [Drawing panel](programming-native/18-PANELS-AND-CANVASES.md#build-a-drawing-panel-step-by-step) |
 | Drawing with scrolling | `canvas` | [Drawing panel](programming-native/18-PANELS-AND-CANVASES.md#build-a-drawing-panel-step-by-step) |
+| Persistent application preferences | `configuration<T>`, `app::set_name` | [Configuration](programming-native/23-PERSISTENT-CONFIGURATION.md) |
 | Settings pages and optional search | `settings_sidebar` | [Settings](programming-native/21-SETTINGS-AND-PICKERS.md) |
 | Date and wall-clock fields | `date_picker`, `time_picker` | [Settings and availability](programming-native/21-SETTINGS-AND-PICKERS.md) |
 | Edge commands and typed inspector | `toolbar`, `property_grid` | [Inspector](programming-native/22-TOOLBARS-AND-PROPERTIES.md) |

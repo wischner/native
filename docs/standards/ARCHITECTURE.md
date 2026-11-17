@@ -836,6 +836,15 @@ to white and disappear. Enabled and selected masks retain normal theme ink.
 
 ## 8. Application
 
+`app::set_name()` and `app::get_name()` own application identity. If unset, the
+first name read captures `app::argv[0]`'s filename, preserving case and extension.
+The name must be a nonempty UTF-8 filename component, at most 255 bytes, with no
+control characters, path separators, or `.`/`..`. Explicit names obey the same
+contract. Naming is thread-safe after launcher initialization and does not
+change window titles. Missing startup arguments without an explicit name throw
+`std::logic_error`; settings should be constructed after entering `program()`.
+The name supplies the namespace for new `configuration<T>` bindings (Section 17).
+
 Input capabilities are queried through the portable `app` interface.
 `get_physical_keyboard_supported()` describes press/release packets;
 `get_unicode_text_input_supported()` independently describes native keyboard
@@ -1655,6 +1664,43 @@ configuration, application data, cache, and temporary storage. A backend
 reports only locations its operating system can identify; shared code adds
 the standard temporary directory and normalizes paths without creating them.
 Each entry obtains its icon through the same `file_icon` contract.
+The configuration location means the user's settings folder: XDG config home
+on Linux (also GEMix), Roaming AppData on Windows, Library/Preferences on
+macOS, and B_USER_SETTINGS_DIRECTORY on Haiku. Folder discovery neither
+creates directories nor serializes application settings.
+
+`configuration<T>` provides persistent preferences independently of windows
+and toolkits. Each binding captures the application name from `app::get_name()`:
+by default, the filename in `argv[0]`, including its extension. Applications can
+call `app::set_name()` before binding settings to choose a stable name instead.
+There is no public configuration-store class. Changing the application name
+affects future bindings only. Setting keys contain at most 255 lowercase ASCII
+bytes and 16 nonempty dot-separated segments, using letters, digits, hyphens and
+underscores. Construction validates but performs no settings read or write.
+Implicit conversion and `get_value()` return owning values. Assignment persists
+immediately; destruction never writes. Missing keys use the constructor default;
+malformed data, incompatible types, out-of-range numbers and I/O failures throw.
+Supported categories are UTF-8 string, bool, signed-64-bit-range integers and
+finite floating values, with checked conversion to the bound C++ scalar type.
+
+Each binding has a monotonic read timeout, defaulting to zero (read the backend
+every time). Positive timeouts reuse a successful read or write until elapsed;
+cache hits never extend it. `reload()` bypasses the cache; `set_timeout()` and
+`reset()` invalidate it. Negative timeouts fail. Failed reads invalidate cached
+values and throw; failed writes do not update the cache. Copy construction shares
+a binding and its cache; assignment between bindings copies the value into the
+destination key. No mutable references or native handles escape the API.
+
+Platform adapters own settings policy: XDG config home and ordered system
+fallbacks on Linux (including GEMix), native flattened `BMessage` in Haiku's
+user settings directory, HKCU registry values on Windows, and Core Foundation
+preferences on macOS. Shared binding locks serialize cache access; process locks
+serialize backend operations. File adapters coordinate writers through stable
+advisory locks, reload/merge after locking, and publish same-filesystem temporary
+files with `std::filesystem::rename` and standard streams. OS service adapters
+use native persistence APIs. The API promises neither multi-key transactions
+nor cross-process cache notifications. See [Persistent configuration](../manuals/book-of-native/CONFIGURATION.md)
+for formats, limits, error behavior and verification.
 
 The Haiku status-strip painter follows the compact system `StatusView`
 convention and uses `BControlLook` for its background. Do not substitute

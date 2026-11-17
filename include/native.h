@@ -24,6 +24,7 @@
 #include "native/collection_view.h"
 #include "native/combo_box.h"
 #include "native/connection.h"
+#include "native/configuration.h"
 #include "native/custom_control.h"
 #include "native/directory_dialog.h"
 #include "native/date_time.h"
