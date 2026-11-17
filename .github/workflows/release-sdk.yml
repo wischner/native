@@ -129,8 +129,6 @@ jobs:
         include:
           - runner: macos-15-intel
             sdk: macos-x86_64
-          - runner: macos-15
-            sdk: macos-arm64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -143,6 +141,7 @@ jobs:
         run: |
           cmake -S . -B "build/$SDK" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
             -DBUILD_TESTING=OFF \
             -DNATIVE_BUILD_SDK=ON \
             -DNATIVE_SDK_VERSION="$TAG" \
@@ -180,7 +179,7 @@ jobs:
           shopt -s nullglob
           archives=(native-"$TAG"-*-sdk.tar.gz)
           checksums=(native-"$TAG"-*-sdk.tar.gz.sha256)
-          [[ ${#archives[@]} == 13 && ${#checksums[@]} == 13 ]]
+          [[ ${#archives[@]} == 12 && ${#checksums[@]} == 12 ]]
           sha256sum --check "${checksums[@]}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --verify-tag --title "Native $TAG" \

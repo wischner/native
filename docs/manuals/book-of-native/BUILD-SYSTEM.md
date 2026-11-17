@@ -308,12 +308,12 @@ Prerelease suffixes do not match. An anchored shell check validates the tag
 before any builds start; a nonexistent tag fails checkout.
 
 Eleven Docker jobs cover Wayland, elementary, X11, SDL2, OpenMotif, OPEN LOOK,
-Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. Two GitHub
-macOS jobs cover `macos-15-intel` (x86_64) and `macos-15` (arm64), using
-AppleClang and the Apple SDK. Amiga is excluded because it has no Native
+Window Maker, direct GEMix, GEMix/gemd, Windows MinGW and Haiku. One GitHub
+macOS job uses `macos-15-intel`, AppleClang and the Apple SDK, with
+`CMAKE_OSX_ARCHITECTURES=x86_64`. macOS release packages target Intel only. Amiga is excluded because it has no Native
 backend. Each job uploads its own archive and checksum as workflow artifacts.
-For tagged builds, only after all 13 jobs succeed does the release job verify
-checksums and attach all 13 separate archives to the tag's GitHub Release.
+For tagged builds, only after all 12 build jobs succeed does the release job verify
+checksums and attach all 12 separate archives to the tag's GitHub Release.
 Untagged manual builds skip this publication job. A tagged rerun updates
 assets with the same names. Only that final job has `contents: write`.
 
@@ -334,7 +334,7 @@ Dependency and license copies preserve file contents and permission bits,
 without importing host filesystem flags or extended attributes. In
 particular, macOS system notices may carry protected flags that cannot be
 applied inside an unprivileged GitHub runner's staging directory. The shared
-copy path handles both Intel and Apple Silicon packages; its regression
+copy path is architecture-independent; its regression
 simulates a rejected metadata copy and checks contents, permissions and hashes.
 
 The package includes a relocatable `lib/cmake/Native/NativeConfig.cmake`,

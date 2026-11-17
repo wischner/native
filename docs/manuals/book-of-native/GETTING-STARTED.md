@@ -20,8 +20,8 @@ AI runners can use the [generation guide](../../ai/README.md).
 
 To consume a prebuilt library, download the matching target's SDK from a
 numeric tag release. Each archive contains public headers, libraries and a
-`Native::Native` CMake target, without Vision or demos. macOS has separate
-Intel and Apple Silicon archives. Read
+`Native::Native` CMake target, without Vision or demos. macOS release archives target
+Intel x86_64. Read
 [SDK releases](BUILD-SYSTEM.md#sdk-releases) for contents and
 [consumer setup](../programming-native/12-BUILDING-AND-DISTRIBUTING.md#prebuilt-sdk-packages)
 for linking and runtime prerequisites.

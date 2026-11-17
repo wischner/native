@@ -20,7 +20,7 @@ propagates C++20, link dependencies and the Windows Common Controls manifest.
 manifest.json records the compiler, architecture, dependency sources, hashes,
 OS-provided libraries and optional libraries unavailable in the build image.
 Use a compiler compatible with the recorded C++ ABI. Windows archives target
-MinGW-w64, not MSVC. macOS architectures are distributed separately.
+MinGW-w64, not MSVC. macOS release archives target Intel x86_64.
 
 Runtime deployment remains application-specific:
 - Linux/Haiku: put lib on the runtime library search path or install the

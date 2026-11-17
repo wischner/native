@@ -53,7 +53,7 @@ startup work.
 ## Prebuilt SDK packages
 
 Numeric tags such as `v1.2.3` produce one archive per target, including
-separate direct GEM/gemd and Intel/Apple Silicon macOS archives. Download the
+separate direct GEM/gemd archives and an Intel x86_64 macOS archive. Download the
 matching `native-<tag>-<target>-sdk.tar.gz` and verify its `.sha256` sidecar.
 Extract it and pass the extracted root as `CMAKE_PREFIX_PATH`:
 

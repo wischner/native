@@ -106,7 +106,7 @@ Numeric release tags such as `v1.2.3` trigger the
 branch and download SDKs from that run's artifacts. Enter an existing release
 tag only when you also want to publish a GitHub Release. There is one
 SDK archive per backend/architecture, including both GEM transports and
-separate Intel/Apple Silicon macOS packages. Each contains `libnative.a`,
+an Intel x86_64 macOS package. Each contains `libnative.a`,
 all public headers, dependency libraries, notices, a dependency manifest,
 and a relocatable `Native::Native` CMake target. Vision and demos are excluded.
 Linux, Windows and Haiku use Docker; macOS uses GitHub macOS runners.
