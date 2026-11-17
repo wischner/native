@@ -84,6 +84,7 @@ endif()
 
 add_executable(native_window_api_tests
     native_window_api_tests.cpp
+    native_image_filter_checks.cpp
 )
 
 target_link_libraries(native_window_api_tests PRIVATE
@@ -96,6 +97,8 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX" AND GEMIX_USE_GEMD)
 endif()
 add_test(NAME native_window_api_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests>)
+add_test(NAME native_image_filter_tests
+    COMMAND $<TARGET_FILE:native_window_api_tests> --image-filters)
 
 add_test(NAME native_tab_order_tests
     COMMAND ${gemd_runner} $<TARGET_FILE:native_window_api_tests> --tab-order)
@@ -233,7 +236,8 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
         COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_input_tests>)
     set_tests_properties(native_gemix_input_tests PROPERTIES TIMEOUT 60 ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-input-tests.fb;GEM_RASTA_PORT=5012;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
-    add_executable(native_gemix_runtime_tests native_gemix_runtime_tests.cpp)
+    add_executable(native_gemix_runtime_tests native_gemix_runtime_tests.cpp
+        native_gemix_color_checks.cpp)
     target_include_directories(native_gemix_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_gemix_runtime_tests PRIVATE native native_developer_options)
@@ -247,6 +251,10 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-tests.fb;GEM_RASTA_PORT=5001;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     add_test(NAME native_gemix_chrome_tests
         COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_runtime_tests> --chrome-only)
+    add_test(NAME native_gemix_color_tests
+        COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_runtime_tests> --bgra-only)
+    set_tests_properties(native_gemix_color_tests PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-color-tests.fb;GEM_RASTA_PORT=5014;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     set_tests_properties(native_gemix_chrome_tests PROPERTIES TIMEOUT 30 ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-chrome-tests.fb;GEM_RASTA_PORT=5013;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
     set_tests_properties(native_window_api_tests PROPERTIES ENVIRONMENT

@@ -337,8 +337,9 @@ the same event, coordinate, clipping, and lifetime rules.
 The pinned hosted GEM SDK's VDI maps index zero (`WHITE`) to raster pixel
 one and other indices to pixel zero. Its RGBA raster displays pixel zero as
 white and pixel one as black, while AES paints directly with that raster
-palette. GEMix therefore sends `BLACK` for light RGBA colors and `WHITE`
-for dark colors to match AES's displayed paper and ink. This backend
+palette. GEMix therefore sends `BLACK` for light frame colours and `WHITE`
+for dark frame colours in its remaining VDI drawing. Work-area painting uses
+the full-colour BGRA presenter described below. This backend
 compatibility mapping is independent of viewer inversion. The maintained
 Rasta session uses 32-bit output with inversion off for the entire desktop;
 inverting only portable client painting would leave AES chrome inconsistent.
@@ -356,8 +357,8 @@ column; `outer_size_for()` compensates to keep requested dimensions exact.
 Corrected SDKs with one-pixel borders already report the exact client area.
 Native leaves frame painting to AES. SDK 1.5.2 removes the old gutter and
 grip through the [GEM-side correction](../../notes/BACKEND-OPEN-ISSUES.md#gem-compact-frame-gutter-2026-11-10).
-Image scanlines are restricted to that visible intersection before VDI calls
-are emitted, avoiding off-clip drawing and unnecessary libgem round trips.
+Image composition and presenter uploads are restricted to that visible
+intersection, avoiding off-clip drawing and unnecessary libgem transfers.
 Container surfaces paint before content; transient combo lists paint last.
 Untitled AES hosts, including modeless property dropdowns, reserve their
 four-pixel `1011` frame outside the portable client rectangle. Host painting
@@ -519,3 +520,35 @@ application event loop.
 a control. The `focus_native()` hook owns the native focus request and does not
 alter the paint sequence, clipping, layout, or graphics-context lifetime.
 See [window traversal](PATTERNS-WINDOWS.md#explicit-keyboard-traversal).
+
+## GEM colour composition
+
+GEM's AES/VDI desktop remains monochrome, but its presenter accepts 32-bit BGRA
+layers. Native retains an RGBA work-area image in each opaque window peer. It
+lazily attaches one overlay when an image needs colour, grayscale or partial
+alpha; binary black/white images can continue through VDI. Ordinary monochrome
+windows retain their existing VDI presentation and consume no overlay slot. Window and child contexts draw into that image with their
+normal offsets and clips. This preserves later text, lines, overlapping
+controls and image alpha in paint order. Frames and desktop menus stay with AES.
+Completed dirty regions are converted to BGRA and uploaded; presentation does
+not automatically dither image content. Explicit image filters are described
+in [Drawing primitives](DRAWING-PRIMITIVES.md#resize-and-dither).
+
+The gemd path uses `gem_overlay_*`; its server owns window placement and
+occlusion. Dirty uploads are tightly packed because libgem serializes complete
+row strides. Direct AES uses Rasta's exported presenter functions and the AES
+`gemd_overlay_window_top_changed` weak hook. That hook refreshes alpha masks
+from AES visible-region enumeration before topology damage is presented,
+including native covering windows and modal/menu occlusion. It catches failures
+at the C callback boundary, hides the affected layer and reports a diagnostic.
+The direct static-library target exports this hook to AES through its CMake
+link interface. These SDK details stay inside the GEM backend.
+
+Paint transactions snapshot visible rectangles before callbacks/uploads, retain
+pixels outside the dirty area and restore painting state on exceptions. Resize
+replaces the work-area storage; teardown releases the layer before deleting the
+AES window. Public `get_gpx()` drawing presents immediately. The hosted SDK has
+eight simultaneous overlay slots, an 8 MiB per-layer limit and a 16-bit byte
+pitch. Unsupported sizes or failed creation/uploads raise a diagnostic exception;
+Native does not silently substitute monochrome output. The filters and public
+drawing signatures have no backend-specific flags.

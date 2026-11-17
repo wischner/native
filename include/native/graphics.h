@@ -22,6 +22,8 @@
 namespace native
 {
     class gpx;
+    struct resize;
+    struct dither;
     namespace detail { class graphics_access; }
 
     // Selects pixel sampling for scaled image drawing.
@@ -155,6 +157,9 @@ namespace native
         gpx &get_gpx() const;
 
     private:
+        friend img operator>>(const img &source, const resize &operation);
+        friend img operator>>(const img &source, dither operation);
+
         // Adopt decoded RGBA storage without exposing a resize
         // operation.
         img(dim width, dim height, std::unique_ptr<rgba[]> pixels);

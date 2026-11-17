@@ -23,6 +23,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/painting.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/color_surface.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/globals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/font.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stock_text.cpp
@@ -56,10 +57,14 @@ target_include_directories(native PRIVATE
 )
 
 if(GEMIX_USE_GEMD)
+    target_compile_definitions(native PRIVATE NATIVE_GEMD)
     find_library(GEMIX_CLIENT_LIBRARY NAMES gem REQUIRED)
     target_link_libraries(native PRIVATE ${GEMIX_CLIENT_LIBRARY})
     message(STATUS "GEMix calls use libgem -> gemd -> AES/VDI.")
 else()
+    # AES calls this weak hook before changing desktop/window occlusion.
+    target_link_options(native INTERFACE
+        "LINKER:--export-dynamic-symbol=gemd_overlay_window_top_changed")
     target_link_libraries(native PRIVATE
         ${GEMIX_AES_LIBRARIES}
         ${GEMIX_VDI_LIBRARIES})

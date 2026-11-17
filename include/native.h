@@ -37,6 +37,7 @@
 #include "native/font.h"
 #include "native/geometry.h"
 #include "native/graphics.h"
+#include "native/image_filters.h"
 #include "native/layout.h"
 #include "native/icon_view.h"
 #include "native/list.h"

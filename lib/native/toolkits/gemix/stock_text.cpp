@@ -1,7 +1,7 @@
 //
 // Reads GEM's immutable stock font for offscreen/rotated text and AES
-// scrollbar arrows. Window text still uses VDI; both targets use the
-// same resource, while arrow glyphs bypass printable-text encoding.
+// scrollbar arrows. Colour windows and VDI frames share this resource;
+// arrow glyphs bypass printable-text encoding.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih

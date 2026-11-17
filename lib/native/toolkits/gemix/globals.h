@@ -23,6 +23,7 @@
 #include "../../wnd_peer.h"
 
 #include "../../emulated_tree.h"
+#include "color_surface.h"
 
 namespace linux::gemix
 {
@@ -85,6 +86,7 @@ namespace linux::gemix
     inline constexpr int dialog_frame_width = 4;
     struct gem_window
     {
+        color_surface color;
         native::rect dirty;
         WORD scroll_kind = 0;
         int hslide = -1, vslide = -1, hsize = -1, vsize = -1;

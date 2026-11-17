@@ -20,6 +20,9 @@
 #include "../lib/native/gpx_wnd.h"
 #include "../lib/native/code_render.h"
 
+// Verify the full-colour presenter independently of chrome fixtures.
+void native_gemix_color_checks(native::app_wnd &owner);
+
 namespace
 {
     void expect(bool condition, const char *message) {
@@ -33,6 +36,7 @@ namespace
     }
 
     bool colors_only = false;
+    bool bgra_only = false;
     bool editor_frame_only = false;
     bool chrome_only = false;
 
@@ -527,6 +531,12 @@ namespace
             try {
                 v_hide_c(runtime.vdi_handle);
                 flush_repaints();
+                if (bgra_only) {
+                    native_gemix_color_checks(*this);
+                    std::cout << "GEM BGRA composition checks passed\n";
+                    destroy();
+                    return;
+                }
                 check_color_indices(*this);
                 if (colors_only) {
                     std::cout << "GEM displayed color checks passed\n";
@@ -849,6 +859,7 @@ namespace
 }
 
 int program(int argc, char **argv) {
+    bgra_only = argc > 1 && std::string(argv[1]) == "--bgra-only";
     colors_only = argc > 1 && std::string(argv[1]) == "--colors-only";
     editor_frame_only = argc > 1 &&
         std::string(argv[1]) == "--editor-frame-only";

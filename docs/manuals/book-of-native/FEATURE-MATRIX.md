@@ -9,6 +9,31 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## Image filters and GEM colour presentation (2026-11-17)
+
+All backends share eager `img >> resize(...) >> dither()` transformations:
+nearest/linear resize and fixed black-and-white ordered dithering, preserving
+source ownership and alpha. GEM direct and gemd work areas now compose in
+RGBA and present full-colour BGRA through the hosted SDK; AES chrome remains
+native. Resource selection reports `color` for GEMix. Paint order, dirty-region
+updates and overlay lifecycle are covered by `native_gemix_color_tests`;
+shared filter checks run inside `native_window_api_tests` and its isolated
+`native_image_filter_tests` mode. See
+[GEM composition and limits](PATTERNS-PAINTING.md#gem-colour-composition).
+
+Validation: GCC Debug/ASan/UBSan Docker builds pass for GEM direct, GEM/gemd
+and SDL2. Each GEM transport passes eleven focused CTests (window API, isolated
+filters, menu, teardown, real input, runtime, chrome, BGRA composition,
+mouse/shader, classic controls and resources). SDL2 passes isolated filters,
+presentation, composition, mouse/shader, terminal screen and resources. Its
+broader window API test retains the tab-height assertion independently
+reproduced at unchanged `b492325`; see the
+[open issue](../../notes/BACKEND-OPEN-ISSUES.md#sdl-tab-height-reset-regression-2026-11-17).
+Documentation link checks and all 21 extracted complete programs pass GCC
+syntax checking in the GEM SDK. These checks do not claim a frame-rate benchmark
+or new runtime coverage on Windows, macOS or Haiku.
+
+
 ## Persistent configuration (2026-11-17)
 
 `app::get_name()` supplies the namespace for new bindings, defaulting to the
@@ -287,8 +312,8 @@ for capabilities absent from the underlying transport. See
 The shared `native::resources` API and `tools/rc/` compiler provide typed named
 variants, deterministic backend/color/theme/size fallback, strict JSON source
 manifests, v1 binary file/memory read-write, and generated C++ embedding.
-Automatic X11/GEMix profiles reflect their monochrome drawing policy; other
-profiles use color. Live theme/DPI/depth detection, control icon rebinding,
+Automatic X11 profiles reflect monochrome drawing; GEMix uses its colour
+presenter profile. Other profiles use color. Live theme/DPI/depth detection, control icon rebinding,
 image conversion and migration of Vision's existing artwork are not included.
 
 The cross-backend audit above supersedes the original X11-only verification.
@@ -1754,7 +1779,9 @@ and track popup hover. Tab children receive their own clicks; hidden ancestor
 pages do not paint through the active page. Table modifiers use the shared
 selection path, and WINGs/Motif completion takes real native focus and handles
 arrows, Enter, Escape and pointer selection. GEM image presentation uses two
-monochrome VDI transfers instead of many individual pixel runs; dirty drawing
+monochrome VDI transfers instead of many individual pixel runs in that
+review. Work-area presentation now uses BGRA overlays (see the colour entry
+above); dirty drawing
 is culled. Its disclosure triangles, resize cursors, oriented toolbar edges,
 dotted property-grid rules and compact navigator follow its existing theme.
 The native AES footer/scrollbar order remains unchanged.

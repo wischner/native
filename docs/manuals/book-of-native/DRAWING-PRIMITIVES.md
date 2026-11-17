@@ -154,6 +154,34 @@ Partially transparent text is composited into straight-alpha RGBA pixels.
 On macOS the backend performs the Quartz coordinate and premultiplied-alpha
 conversion internally; see [Window Painting](PATTERNS-PAINTING.md).
 
+### Resize and dither
+
+The two eager filters are available through `<native.h>` or
+`<native/image_filters.h>`:
+
+```cpp
+auto result = original >> native::resize(384, 272) >> native::dither();
+event.g.draw_img(result, native::point(0, 0));
+```
+
+Operators execute left to right: resize first, then dither that result. The
+result is a 384 by 272 image; the original pixels remain unchanged. Each step
+owns independent storage and executes immediately. Retain the result to avoid
+reprocessing an unchanged image during repaint.
+
+`resize(width, height)` uses nearest sampling. Pass `image_filter::linear` as
+the third argument for edge-clamped, alpha-aware interpolation. Dimensions must
+be nonzero and at most 32767; invalid dimensions or sampler values throw
+`std::invalid_argument`. `dither()` uses ordered 4x4 Bayer black-and-white
+luminance dithering and preserves each pixel's alpha. It adds no palette
+selection or configurable pipeline. Resizing a dithered result can alter its
+pattern, so normally resize before dithering and draw at the resulting size.
+
+GEM presents ordinary images in full colour through 32-bit BGRA overlays.
+Native images remain RGBA on every backend; channel conversion is private.
+Dithering is explicit and works identically for every backend and offscreen
+image. See [GEM composition](PATTERNS-PAINTING.md#gem-colour-composition).
+
 ### Load and decode
 
 PNG and JPEG can be read from either a file or an encoded memory buffer:

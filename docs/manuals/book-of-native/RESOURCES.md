@@ -36,11 +36,11 @@ open a display. CMake supplies private compiled metadata:
 | macOS | `macos` | unspecified | `color` |
 | Haiku | `haiku` | unspecified | `color` |
 | X11 | `linux` | `x11` | `monochrome` |
-| GEMix, either transport | `linux` | `gemix` | `monochrome` |
+| GEMix, either transport | `linux` | `gemix` | `color` |
 | Other Linux backends | `linux` | `sdl2`, `motif`, `openlook`, `wmaker`, `wayland`, or `elementary` | `color` |
 
-X11 and GEMix profiles reflect Native's current monochrome window drawing,
-not the host framebuffer depth. Theme and physical pixel size are unspecified.
+X11's profile reflects its monochrome window drawing. GEMix selects colour
+artwork for its BGRA presenter, even though AES chrome remains monochrome. Theme and physical pixel size are unspecified.
 There is no live display-depth, theme, DPI or per-window detection in v1.
 `get(name, context)` permits explicit contexts for appearance-aware callers,
 offscreen output and deterministic tests without changing global state.

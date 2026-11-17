@@ -250,7 +250,7 @@ Run `vision --new-features` from any backend build (through its documented
 SDK session or native desktop). This public-API window exercises the recent
 resource, document-input and chrome additions together:
 
-1. Read the resource profile at the top. X11/GEMix choose monochrome artwork;
+1. Read the resource profile at the top. X11 chooses monochrome artwork; GEMix chooses colour artwork;
    color backends choose the default blue artwork. The keyboard capability
    is also shown using `app::get_unicode_text_input_supported()`. Both icons come from one named
    `assets.icons.platform-icon` resource with explicit `icon` metadata.

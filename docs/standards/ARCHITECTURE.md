@@ -729,6 +729,22 @@ window system has no codec service. Codec handles and foreign-library types
 must remain below the public API. File load and save accept
 `std::filesystem::path`.
 
+Image transformations are explicit values from `native/image_filters.h`.
+`image >> resize(width, height) >> dither()` executes left to right and returns
+an independent `img` at each step. Sources remain unchanged. Resize defaults
+to nearest sampling; optional linear sampling clamps edges and interpolates
+premultiplied colour before returning straight-alpha RGBA. Dither uses a
+fixed 4x4 Bayer matrix and luminance to produce black/white RGB, preserving
+alpha and dimensions. Drawing never reapplies filters implicitly.
+
+GEM window work areas compose into peer-owned RGBA storage and present through
+32-bit BGRA overlays. Images, later primitives, text and child chrome retain
+drawing order and clipping. AES still owns window frames and menus. Both direct
+Rasta and gemd adapters follow visibility, movement, resize and destruction;
+no GEM type or presentation switch enters the public API. The SDK limits
+simultaneous overlays and their dimensions; allocation/upload failure is
+reported explicitly instead of silently reducing colours.
+
 A native expose or paint event must be translated into one synchronous
 `on_wnd_paint` emission on the UI thread. The `wnd_paint_event` contains the
 invalid rectangle and a borrowed `gpx &` whose concrete context is `gpx_wnd`.
@@ -831,8 +847,7 @@ selected and disabled tools, matching its button-based background.
 `theme::draw_toolbar_icon(image, bounds, state)` owns toolbar artwork state
 painting. The default tints black/transparent masks with toolbar foreground
 and preserves color artwork. GEM uses binary black/transparent stippling for
-disabled masks, matching disabled stock text; gray image ink would threshold
-to white and disappear. Enabled and selected masks retain normal theme ink.
+disabled masks, matching its classic disabled stock text. Enabled and selected masks retain normal theme ink.
 
 ## 8. Application
 
@@ -1519,7 +1534,7 @@ Every serialized resource name has exactly one unqualified default; duplicate
 selectors and mixed types are errors. Lookup excludes foreign platform/toolkit
 selectors, then ranks color, toolkit, platform, theme and pixel size, with
 stable insertion-order ties. CMake supplies platform/toolkit identity and the
-current drawing policy (monochrome on X11/GEMix); v1 does not probe live theme,
+current drawing policy (monochrome on X11; colour on GEMix); v1 does not probe live theme,
 DPI or display depth. An explicit portable context supports those caller
 choices. Unknown names fail explicitly. Returned entries are borrowed from
 the owning container. The v1 API stores bytes; image decoding and control

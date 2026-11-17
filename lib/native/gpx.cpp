@@ -17,65 +17,7 @@
 #include "portable_font.h"
 #include "graphics_lifetime.h"
 #include "text_util.h"
-
-namespace
-{
-    native::rgba mix_pixel(const native::img &source,
-                           const native::rect &source_rect,
-                           double x,
-                           double y,
-                           native::image_filter filter) {
-        const native::rgba *pixels = source.pixels();
-        const auto pixel = [&](int px, int py) {
-            return pixels[static_cast<std::size_t>(py) * source.w() +
-                          static_cast<std::size_t>(px)];
-        };
-        if (filter == native::image_filter::nearest) {
-            const int px = std::clamp(
-                static_cast<int>(std::floor(x + 0.5)),
-                static_cast<int>(source_rect.p.x),
-                source_rect.x2() - 1);
-            const int py = std::clamp(
-                static_cast<int>(std::floor(y + 0.5)),
-                static_cast<int>(source_rect.p.y),
-                source_rect.y2() - 1);
-            return pixel(px, py);
-        }
-
-        const int x0 = std::clamp(
-            static_cast<int>(std::floor(x)),
-            static_cast<int>(source_rect.p.x),
-            source_rect.x2() - 1);
-        const int y0 = std::clamp(
-            static_cast<int>(std::floor(y)),
-            static_cast<int>(source_rect.p.y),
-            source_rect.y2() - 1);
-        const int x1 = std::min(x0 + 1, source_rect.x2() - 1);
-        const int y1 = std::min(y0 + 1, source_rect.y2() - 1);
-        const double fx = x - std::floor(x);
-        const double fy = y - std::floor(y);
-        const native::rgba a = pixel(x0, y0);
-        const native::rgba b = pixel(x1, y0);
-        const native::rgba c = pixel(x0, y1);
-        const native::rgba d = pixel(x1, y1);
-        const auto channel = [&](std::uint8_t av,
-                                 std::uint8_t bv,
-                                 std::uint8_t cv,
-                                 std::uint8_t dv) {
-            const double top = av + (bv - av) * fx;
-            const double bottom = cv + (dv - cv) * fx;
-            return static_cast<std::uint8_t>(std::clamp(
-                static_cast<int>(std::lround(
-                    top + (bottom - top) * fy)),
-                0,
-                255));
-        };
-        return native::rgba(channel(a.r, b.r, c.r, d.r),
-                            channel(a.g, b.g, c.g, d.g),
-                            channel(a.b, b.b, c.b, d.b),
-                            channel(a.a, b.a, c.a, d.a));
-    }
-} // namespace
+#include "software_image.h"
 
 namespace native
 {
@@ -311,7 +253,7 @@ namespace native
                     (static_cast<double>(x) + 0.5) * scale_x - 0.5;
                 target[static_cast<std::size_t>(y) * destination.d.w +
                        static_cast<std::size_t>(x)] =
-                    mix_pixel(source,
+                    detail::sample_image(source,
                               source_rect,
                               source_x,
                               source_y,

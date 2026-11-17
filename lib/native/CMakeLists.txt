@@ -88,6 +88,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/portable_font_data.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/installed_fonts.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/img.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/image_filters.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/software_image.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/software_text.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rotated_text.cpp
@@ -232,7 +233,7 @@ elseif(HAIKU)
 else()
     set(native_resource_platform "linux")
     string(TOLOWER "${TOOLKIT}" native_resource_toolkit)
-    if(TOOLKIT MATCHES "^(X11|GEMIX)$")
+    if(TOOLKIT STREQUAL "X11")
         set(native_resource_color "monochrome")
     endif()
 endif()

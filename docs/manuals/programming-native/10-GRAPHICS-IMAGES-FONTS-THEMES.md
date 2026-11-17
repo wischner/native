@@ -323,3 +323,25 @@ When drawing a toolbar label or tinting a monochrome tool icon separately
 from its background, use `appearance->get_toolbar_text_color(state)`. The
 query matches `draw_toolbar_button()`; GTK button backgrounds require button
 foregrounds rather than the menu-selection text color.
+
+## Transform an image before drawing
+
+Only two image filters are provided: resize and black-and-white dithering.
+
+```cpp
+auto screen = original >> native::resize(384, 272) >> native::dither();
+event.g.draw_img(screen, native::point(0, 0));
+```
+
+The shifts execute left to right. `screen` is a new 384 by 272 dithered image;
+`original` is unchanged. Resize defaults to nearest sampling, suitable for
+pixel art. For smooth scaling use `native::resize(384, 272,
+native::image_filter::linear)`. Dithering keeps the resized dimensions and
+alpha, using a fixed ordered black-and-white pattern. Keep the result between
+repaints when the source has not changed; every shift performs its work now.
+
+Both filters work on every backend. GEM now presents images in full colour
+through its BGRA presenter, so apply `dither()` only when you want that effect.
+The public image representation remains RGBA. Draw the result at its actual
+size to preserve the dither pattern. See the
+[drawing reference](../book-of-native/DRAWING-PRIMITIVES.md#resize-and-dither).

@@ -18,6 +18,12 @@ the same commit.
 
 ## Current scope (November 2026)
 
+Images now support two eager transformations: `resize` and black-and-white
+`dither`, chained left to right with `>>`. GEM direct and gemd present colour
+images through their 32-bit BGRA presenter, retaining native monochrome chrome
+and lazy overlay allocation. See [image filters](book-of-native/DRAWING-PRIMITIVES.md#resize-and-dither)
+and [composition and limits](book-of-native/PATTERNS-PAINTING.md#gem-colour-composition).
+
 Typed persistent configuration now has native per-user stores, implicit value
 reads, assignment writes and optional timeout caches. Application identity
 comes from `app::get_name()`, defaulting to the executable filename;

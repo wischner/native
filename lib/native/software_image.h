@@ -12,6 +12,10 @@
 
 namespace native::detail
 {
+    // Sample a cropped image with edge-clamped nearest/linear filtering.
+    rgba sample_image(const img &source, const rect &bounds,
+                      double x, double y, image_filter filter);
+
     // Return the complete bounds of an image target.
     rect image_bounds(const img &target);
 

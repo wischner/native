@@ -290,8 +290,8 @@ namespace
                 });
             if (!element_state.disabled || !mask)
                 return theme::draw_toolbar_icon(image, bounds, element_state);
-            // Gray image ink thresholds to white in GEM. Match disabled
-            // stock text with a binary stipple instead of losing the icon.
+            // Retain classic GEM disabled artwork: match the binary
+            // stipple used by stock text, even on the colour presenter.
             auto saved = _g.save_state();
             native::img stippled(image.w(), image.h());
             const auto ink = native_palette().menu_text;

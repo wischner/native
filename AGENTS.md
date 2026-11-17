@@ -180,6 +180,16 @@ updated image, rebuild consumers and restart gemd and its clients together;
 protocol-2 clients cannot use the new server. Native reports nonpositive
 menu installation results and preserves the preceding menu on rejection.
 
+GEM image drawing uses the SDK's 32-bit BGRA presenter without automatic
+dithering. Keep Native's RGBA composition and overlay state in the window peer.
+The gemd adapter uses `gem_overlay_*`; direct GEM uses the exported Rasta
+presenter and AES topology hook, exported by Native's CMake link interface.
+Retain the VDI path for monochrome windows and allocate an overlay lazily for
+images requiring colour, grayscale or partial alpha. Both transports must
+preserve clipping, paint order and native-window occlusion. The two portable
+image transformations are `img >> resize(...) >> dither()`; keep them eager,
+left-to-right and independent of presentation.
+
 SDK `1.5.2` uses a plain one-pixel compact window frame, allowing status
 strips to meet the bottom border without a gutter or extra corner strokes.
 Existing development installations must pull the updated image and rebuild.
@@ -419,7 +429,7 @@ contents.
 | [PATTERNS-WINDOWS.md](docs/manuals/book-of-native/PATTERNS-WINDOWS.md) | Window state, hierarchy, lifecycle, layout, backend obligations. Expands Architecture 5. |
 | [PATTERNS-PAINTING.md](docs/manuals/book-of-native/PATTERNS-PAINTING.md) | Graphics contexts, paint-event lifetimes, clipping, invalidation. Expands Architecture 6. |
 | [PATTERNS-THEME.md](docs/manuals/book-of-native/PATTERNS-THEME.md) | Native theme primitives, semantic control states, portable fallbacks. Expands Architecture 7. |
-| [DRAWING-PRIMITIVES.md](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md) | Application-facing reference for window and image graphics, PNG/JPEG I/O, text measurement, and themed control drawing. |
+| [DRAWING-PRIMITIVES.md](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md) | Application-facing reference for window and image graphics, eager resize/dither chains, PNG/JPEG I/O, text measurement, and themed control drawing. |
 | [PATTERNS-APPLICATION.md](docs/manuals/book-of-native/PATTERNS-APPLICATION.md) | Portable startup through `program()`, `app::run()`, and backend launchers. Expands Architecture 8. |
 | [PATTERNS-SCREENS.md](docs/manuals/book-of-native/PATTERNS-SCREENS.md) | Snapshot lifetime, work areas, primary selection, backend detection. Expands Architecture 9. |
 | [PATTERNS-FONTS.md](docs/manuals/book-of-native/PATTERNS-FONTS.md) | Stock/portable font ownership, byte-backed registration, measurement/rasterization and platform discovery. Expands Architecture 10. |

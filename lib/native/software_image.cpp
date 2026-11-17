@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 
 namespace
 {
@@ -39,6 +40,40 @@ namespace
 
 namespace native::detail
 {
+    rgba sample_image(const img &source, const rect &bounds,
+                      double x, double y, image_filter filter) {
+        x = std::clamp(x, double(bounds.x1()), double(bounds.x2() - 1));
+        y = std::clamp(y, double(bounds.y1()), double(bounds.y2() - 1));
+        const auto pixel = [&](int px, int py) {
+            return source.pixels()[std::size_t(py) * source.w() + px];
+        };
+        if (filter == image_filter::nearest)
+            return pixel(int(std::floor(x + 0.5)), int(std::floor(y + 0.5)));
+        const int x0 = int(std::floor(x)), y0 = int(std::floor(y));
+        const int x1 = std::min(x0 + 1, int(bounds.x2() - 1));
+        const int y1 = std::min(y0 + 1, int(bounds.y2() - 1));
+        const double fx = x - x0, fy = y - y0;
+        const rgba samples[] = {pixel(x0, y0), pixel(x1, y0),
+                                pixel(x0, y1), pixel(x1, y1)};
+        const double weights[] = {(1 - fx) * (1 - fy), fx * (1 - fy),
+                                   (1 - fx) * fy, fx * fy};
+        double alpha = 0, red = 0, green = 0, blue = 0;
+        for (int i = 0; i < 4; ++i) {
+            const double weight = weights[i] * samples[i].a;
+            alpha += weight;
+            red += weight * samples[i].r;
+            green += weight * samples[i].g;
+            blue += weight * samples[i].b;
+        }
+        if (alpha == 0) return rgba(0, 0, 0, 0);
+        const auto byte = [](double value) {
+            return static_cast<std::uint8_t>(std::clamp(
+                std::lround(value), 0L, 255L));
+        };
+        return rgba(byte(red / alpha), byte(green / alpha),
+                    byte(blue / alpha), byte(alpha));
+    }
+
     rect image_bounds(const img &target) {
         return rect(0, 0, target.w(), target.h());
     }
@@ -151,20 +186,14 @@ namespace native::detail
                     const img &source,
                     point destination) {
         rgba *target_pixels = const_cast<rgba *>(target.pixels());
-        for (int y = 0; y < source.h(); ++y) {
-            for (int x = 0; x < source.w(); ++x) {
-                const int target_x = destination.x + x;
-                const int target_y = destination.y + y;
-                if (target_x < 0 || target_y < 0 ||
-                    target_x >= target.w() || target_y >= target.h() ||
-                    target_x < clip.x1() || target_y < clip.y1() ||
-                    target_x >= clip.x2() || target_y >= clip.y2()) {
-                    continue;
-                }
-                rgba &pixel =
-                    target_pixels[target_y * target.w() + target_x];
-                pixel =
-                    blend(pixel, source.pixels()[y * source.w() + x]);
+        const auto area = rect(destination, size(source.w(), source.h()))
+            .intersect(clip).intersect(image_bounds(target));
+        for (int y = area.y1(); y < area.y2(); ++y) {
+            for (int x = area.x1(); x < area.x2(); ++x) {
+                const rgba incoming = source.pixels()[
+                    (y - destination.y) * source.w() + x - destination.x];
+                rgba &pixel = target_pixels[y * target.w() + x];
+                pixel = incoming.a == 255 ? incoming : blend(pixel, incoming);
             }
         }
     }

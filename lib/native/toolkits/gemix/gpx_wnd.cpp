@@ -68,6 +68,11 @@ namespace native
     }
 
     gpx &gpx_wnd::clear(rgba color) {
+        linux::gemix::color_target target(*_wnd, _offset, *this);
+        if (target.graphics) {
+            target.graphics->clear(color);
+            if (target.present()) return *this;
+        }
         rect r = _clip;
         r.p.x += _offset.x;
         r.p.y += _offset.y;
@@ -84,6 +89,13 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_line(point from, point to) {
+        linux::gemix::color_target target(*_wnd, _offset, *this);
+        if (target.graphics) {
+            target.graphics->draw_line(
+                point(from.x + target.offset.x, from.y + target.offset.y),
+                point(to.x + target.offset.x, to.y + target.offset.y));
+            if (target.present()) return *this;
+        }
         rect r(_clip.p.x + _offset.x,
                _clip.p.y + _offset.y,
                _clip.d.w,
@@ -110,6 +122,12 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_rect(rect r, bool filled) {
+        linux::gemix::color_target target(*_wnd, _offset, *this);
+        if (target.graphics) {
+            target.graphics->draw_rect(rect(r.x1() + target.offset.x,
+                r.y1() + target.offset.y, r.w(), r.h()), filled);
+            if (target.present()) return *this;
+        }
         if (r.w() == 0 || r.h() == 0 || !_clip.intersect(r).w() ||
             !_clip.intersect(r).h())
             return *this;
@@ -160,9 +178,8 @@ namespace native
         const auto ink = get_ink();
         if (ink.r == ink.g && ink.g == ink.b && ink.r > 0 &&
             ink.r < 255 && !text.empty()) {
-            // A gray foreground must retain ink on a one-bit screen.
-            // Use the same stock glyphs with a checkerboard disabled
-            // mask.
+            // Preserve the classic GEM disabled stock-text pattern
+            // on both colour work areas and monochrome VDI frames.
             const auto metrics = measure_text(text);
             img glyphs(std::max(1, metrics.width),
                        std::max(1, metrics.height));
@@ -179,6 +196,12 @@ namespace native
                             glyphs.pixels()[y * glyphs.w() + x].a = 0;
                 return draw_img(glyphs, p);
             }
+        }
+        linux::gemix::color_target target(*_wnd, _offset, *this);
+        if (target.graphics) {
+            target.graphics->draw_text(text, point(p.x + target.offset.x,
+                                                       p.y + target.offset.y));
+            if (target.present()) return *this;
         }
         rect r(_clip.p.x + _offset.x,
                _clip.p.y + _offset.y,
@@ -212,6 +235,24 @@ namespace native
     }
 
     gpx &gpx_wnd::draw_img(const img &src, point dst) {
+        const auto visible = _clip.intersect(rect(dst, size(src.w(), src.h())));
+        if (!visible.w() || !visible.h()) return *this;
+        linux::gemix::color_target target(*_wnd, _offset, *this);
+        if (target.graphics) {
+            const auto clip = target.graphics->get_clip();
+            if (!clip.w() || !clip.h()) return *this;
+            const auto *pixels = src.pixels();
+            if (std::any_of(pixels, pixels + std::size_t(src.w()) * src.h(),
+                    [](rgba pixel) {
+                        return pixel.a && (pixel.a != 255 ||
+                            pixel.r != pixel.g || pixel.g != pixel.b ||
+                            (pixel.r != 0 && pixel.r != 255));
+                    }))
+                target.enable_color();
+            target.graphics->draw_img(src, point(dst.x + target.offset.x,
+                                                     dst.y + target.offset.y));
+            if (target.present()) return *this;
+        }
         rect clip(_clip.p.x + _offset.x,
                   _clip.p.y + _offset.y,
                   _clip.d.w,
@@ -226,39 +267,6 @@ namespace native
         const int last_x = clip.x2() - origin_x;
         const int first_y = clip.y1() - origin_y;
         const int last_y = clip.y2() - origin_y;
-        constexpr std::uint8_t bayer[16] = {
-            0,  8,  2,  10,
-            12, 4,  14, 6,
-            3,  11, 1,  9,
-            15, 7,  13, 5};
-        bool colored = false;
-        for (int index = 0; index < src.w() * src.h(); ++index) {
-            const rgba pixel = src.pixels()[index];
-            if (pixel.a != 0 &&
-                (pixel.r != pixel.g || pixel.g != pixel.b)) {
-                colored = true;
-                break;
-            }
-        }
-
-        const auto display_color = [colored, &bayer](
-                                       rgba pixel,
-                                       int x,
-                                       int y) -> WORD {
-            if (!colored)
-                return gem_color(pixel);
-
-            const unsigned luminance =
-                (77U * pixel.r + 150U * pixel.g + 29U * pixel.b) >> 8;
-            const unsigned threshold =
-                static_cast<unsigned>(
-                    bayer[(y & 3) * 4 + (x & 3)]) *
-                    16U +
-                8U;
-            return gem_color(luminance >= threshold
-                                 ? native::rgba(255, 255, 255, 255)
-                                 : native::rgba(0, 0, 0, 255));
-        };
         // Upload two monochrome masks instead of issuing a VDI call for
         // each horizontal pixel run. Transparent pixels belong to
         // neither.
@@ -269,17 +277,15 @@ namespace native
         for (int y = first_y; y < last_y; ++y)
             for (int x = first_x; x < last_x; ++x) {
                 const auto pixel = src.pixels()[y * src.w() + x];
-                if (pixel.a <=
-                    unsigned(bayer[(y & 3) * 4 + (x & 3)]) * 16U)
-                    continue;
-                auto &bits = display_color(pixel, x, y) ==
+                if (!pixel.a) continue;
+                auto &bits = gem_color(pixel) ==
                                      gem_color(rgba(0, 0, 0, 255))
                                  ? black
                                  : white;
                 bits[(y - first_y) * stride + (x - first_x) / 16] |=
                     UWORD(0x8000U >> ((x - first_x) % 16));
             }
-        MFDB target{};
+        MFDB destination_bitmap{};
         WORD coordinates[8] = {0,
                                0,
                                WORD(width - 1),
@@ -311,7 +317,7 @@ namespace native
                       MD_TRANS,
                       coordinates,
                       &source,
-                      &target,
+                      &destination_bitmap,
                       colors);
         }
         vs_clip(linux::gemix::runtime.vdi_handle, 0, nullptr);

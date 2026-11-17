@@ -484,8 +484,8 @@ unchanged. See [CPC acceptance](docs/notes/CPC-UAT.md) for validation and limita
 named, typed byte assets with platform/toolkit/color/theme/size variants.
 Named lookup selects a matching representation or its closest fallback.
 `tools/rc/` compiles strict JSON manifests through the same public API and can
-emit C++ bytes for executable embedding. X11/GEMix automatic profiles prefer
-monochrome artwork; v1 does not detect live window theme or DPI.
+emit C++ bytes for executable embedding. X11 automatic profiles prefer monochrome artwork; GEMix prefers colour
+artwork for its BGRA presenter; v1 does not detect live window theme or DPI.
 
 Normal Docker backend builds include the compiler, without an additional JSON
 or archive dependency. See [resource compiler commands](docs/manuals/book-of-native/BUILD-SYSTEM.md#resource-compiler),
@@ -513,3 +513,11 @@ settings editors retain their compact dimensions.
 The edit form includes date/time pickers as individual tab stops. On GEM,
 use Up/Down and Enter to adjust/commit fields, and F4/Alt+Down to open the
 plain-bordered calendar; arrows navigate, Enter selects, Escape cancels.
+
+Image processing provides two eager, portable filters:
+`original >> native::resize(384, 272) >> native::dither()`. They execute left to
+right, preserve the source, and return a resized black-and-white image with
+alpha intact. GEM work areas present full colour through 32-bit BGRA overlays
+on both transports; dithering is opt-in. See
+[image filters](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md#resize-and-dither)
+and [GEM composition and SDK limits](docs/manuals/book-of-native/PATTERNS-PAINTING.md#gem-colour-composition).

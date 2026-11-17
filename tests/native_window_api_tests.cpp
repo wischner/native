@@ -32,6 +32,9 @@
 #include <native.h>
 #include "../lib/native/input_state.h"
 
+// Exercise portable eager image filters without opening a window.
+bool native_image_filter_checks();
+
 namespace
 {
     static_assert(std::is_same_v<
@@ -2479,6 +2482,18 @@ namespace
                    blended.b <= 128 && blended.a == 255,
                "image drawing applies straight-alpha source-over");
 
+        native::img blit_target(3, 2), blit_source(3, 2);
+        blit_target.get_gpx().clear(native::rgba(255, 255, 255, 255));
+        blit_source.get_gpx().clear(native::rgba(20, 40, 80, 255));
+        blit_source.pixels()[4] = native::rgba(90, 100, 110, 255);
+        blit_target.get_gpx().set_clip(native::rect(0, 0, 1, 2))
+            .draw_img(blit_source, native::point(-1, -1));
+        expect(blit_target.pixels()[0] == native::rgba(90, 100, 110, 255),
+               "negative image origins retain the correct source pixel");
+        for (int index = 1; index < 6; ++index)
+            expect(blit_target.pixels()[index] == native::rgba(255, 255, 255, 255),
+                   "clipped image copies leave all other pixels unchanged");
+
         const native::rgba alpha_color(255, 0, 255, 79);
         source.pixels()[1] = alpha_color;
         const std::vector<std::uint8_t> png =
@@ -3351,6 +3366,10 @@ int main(int argc, char **argv) {
 #if defined(__HAIKU__)
     BApplication application("application/x-vnd.native-window-api-tests");
 #endif
+    if (argc > 1 && std::string(argv[1]) == "--image-filters") {
+        expect(native_image_filter_checks(), "portable image filters");
+        return failure_count == 0 ? 0 : 1;
+    }
     if (argc > 1 && std::string(argv[1]) == "--filesystem") {
         test_filesystem_resources();
         return failure_count == 0 ? 0 : 1;
@@ -3382,6 +3401,7 @@ int main(int argc, char **argv) {
     test_advanced_graphics();
     test_portable_fonts();
     test_image_io();
+    expect(native_image_filter_checks(), "portable image filters");
     test_grid_layout_placement();
     test_grid_layout_margins();
     test_grid_layout_auto_placement();

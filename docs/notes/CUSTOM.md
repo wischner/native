@@ -1,5 +1,11 @@
 # Native Versus Custom Control Audit
 
+GEM colour composition review (2026-11-17): existing **C** painted controls
+and **H** document canvases retain their classifications. Their work-area
+painting now composes into peer-owned RGBA images and uses the SDK's BGRA
+presenter. Native AES frames, menus and associated **N** scrollbars remain
+native. This changes presentation, not control ownership or input semantics.
+
 Consumer patch review (2026-11-17): Motif split panes commit resolved geometry
 without recursive Xt negotiation, and collection scrollbars stay inside their
 collection hosts. OPEN LOOK frame-owned collections include nested pane

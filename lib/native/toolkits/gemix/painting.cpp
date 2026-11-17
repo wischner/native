@@ -209,10 +209,29 @@ namespace
                  &box.g_w,
                  &box.g_h);
 
-        wind_update(BEG_UPDATE);
-
+        // Presentation can enumerate AES visibility too. Snapshot pieces
+        // before invoking callbacks or uploading the colour surface.
+        std::vector<native::rect> pieces;
         while (box.g_w > 0 && box.g_h > 0) {
-            native::rect piece(box.g_x, box.g_y, box.g_w, box.g_h);
+            pieces.emplace_back(box.g_x, box.g_y, box.g_w, box.g_h);
+            wind_get(handle, WF_NEXTXYWH,
+                     &box.g_x, &box.g_y, &box.g_w, &box.g_h);
+        }
+        if (pieces.empty()) return;
+        linux::gemix::prepare_color_surface(*owner);
+        struct paint_scope {
+            bool painting = linux::gemix::runtime.painting;
+            native::rect clip = linux::gemix::runtime.paint_clip;
+            paint_scope() { wind_update(BEG_UPDATE); }
+            ~paint_scope() {
+                linux::gemix::runtime.painting = painting;
+                linux::gemix::runtime.paint_clip = clip;
+                wind_update(END_UPDATE);
+            }
+        } scope;
+
+        for (auto piece : pieces) {
+            linux::gemix::runtime.painting = false;
             draw_dialog_frame(owner, piece);
             piece = piece.intersect(work);
             if (clip)
@@ -237,23 +256,17 @@ namespace
                 owner->on_native_paint(e);
                 if (!guard.alive()) {
                     linux::gemix::runtime.painting = false;
-                    wind_update(END_UPDATE);
                     return;
                 }
                 g.set_clip(local_piece);
                 draw_controls(owner, g);
+                if (!guard.alive()) return;
+                linux::gemix::present_color_surface(*owner, local_piece);
                 linux::gemix::runtime.painting = false;
             }
 
-            wind_get(handle,
-                     WF_NEXTXYWH,
-                     &box.g_x,
-                     &box.g_y,
-                     &box.g_w,
-                     &box.g_h);
         }
 
-        wind_update(END_UPDATE);
     }
 
 } // namespace

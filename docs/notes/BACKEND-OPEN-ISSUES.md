@@ -1,5 +1,27 @@
 # Backend Open Issues
 
+## SDL tab-height reset regression (2026-11-17)
+
+`native_window_api_tests` reports “clearing the override restores themed tab
+geometry” in the SDL2 Docker SDK with `SDL_VIDEODRIVER=dummy`. An isolated build
+of unchanged production sources at `b492325` reproduces the same assertion;
+only its CMake output-directory guard was adjusted to keep baseline artifacts
+under this checkout's root `build/`. This predates the image-filter/BGRA work.
+The isolated image-filter test, SDL presentation/composition, mouse/shader,
+terminal-screen and resource tests pass. The tab-height reset remains open.
+
+## GEM colour presenter limits (2026-11-17)
+
+Colour images use lazily allocated SDK overlays. The current hosted presenter
+allows eight simultaneous layers, at most 8 MiB per layer and a 16-bit byte
+pitch. Native reports allocation/upload failure rather than silently dithering.
+The presenter publishes independently of raw VDI update batching: colour
+layers do not promise preservation of an intermediate monochrome framebuffer
+snapshot under a caller's private `wind_update` lock. Ordinary monochrome
+Native windows retain their VDI path and existing opening/closing regression.
+The public Native API exposes neither these locks nor overlay handles. See
+[GEM composition](../manuals/book-of-native/PATTERNS-PAINTING.md#gem-colour-composition).
+
 ## OPEN LOOK text-field resize (2026-11-17)
 
 `native_openlook_runtime_tests` faults in XView's `update_value_offset` while

@@ -49,8 +49,7 @@ namespace
         check(!current.platform.empty());
         if (current.platform == "linux") {
             check(!current.toolkit.empty());
-            check(current.color == ((current.toolkit == "x11" ||
-                current.toolkit == "gemix") ? "monochrome" : "color"));
+            check(current.color == (current.toolkit == "x11" ? "monochrome" : "color"));
         }
         rejects<std::out_of_range>([&] { (void)pack.get("missing"); });
         rejects<std::invalid_argument>([&] { pack.add({name, "text", {}, {}}); });

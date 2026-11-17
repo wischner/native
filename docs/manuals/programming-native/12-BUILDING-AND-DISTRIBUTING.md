@@ -597,6 +597,13 @@ and clipboard paths. This changes transport, not the public Native API.
 
 ### Distribute
 
+GEM images use the hosted SDK's BGRA overlay presenter. The direct Native CMake
+target exports AES's topology hook through its link interface; use that target
+when linking a static SDK so colour layers follow menus and covering windows.
+The gemd build requires matching `gem_overlay_*` client/server support. Both
+keep public images in RGBA and convert channels privately. See
+[GEM composition and presenter limits](../book-of-native/PATTERNS-PAINTING.md#gem-colour-composition).
+
 A runnable GEMix package must provide:
 
 - The executable and application-owned assets.
