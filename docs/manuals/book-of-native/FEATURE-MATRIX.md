@@ -9,6 +9,32 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK SDK 1.4.0 upgrade (2026-11-24)
+
+Builds, F5 and standalone sessions select
+`wischner/gcc-x86_64-linux-openlook:1.4.0`, containing OpenLook v0.5.0 at
+`4af207984537f7f895ca06616ef07c1d79236694`. The existing C++ adapter builds
+without API changes and uses the toolkit's compact menu fitting.
+
+The GCC Debug/ASan/UBSan build succeeds. In an isolated Xephyr/olwm desktop,
+34/39 CTests pass with their existing sanitizer settings. The five failures
+also reproduce with the same binaries against the previous SDK 1.3.1 runtime:
+
+- `native_openlook_runtime_tests`: the existing `update_value_offset` crash
+  while shrinking a text field.
+- `native_window_api_tests`: clearing the tab-height override does not
+  restore themed geometry.
+- `native_openlook_split_tests`, `native_menu_runtime_tests` and
+  `native_owned_teardown_tests`: XView exit allocations reported by
+  LeakSanitizer; split and menu behavior checks complete before leak reporting.
+
+The four SDK-only allocation fixtures pass with their existing narrow
+suppressions. No suppression was broadened for this upgrade. Vision's
+`--new-features --features-smoke` mode passes through the standalone launcher,
+and the F5 GDB/MI transport starts and exits with clean protocol output.
+These checks do not constitute a complete visual desktop walkthrough. See
+[remaining failures](../../notes/BACKEND-OPEN-ISSUES.md#open-look-sdk-140-validation-2026-11-24).
+
 ## OPEN LOOK compact menu panels (2026-11-24)
 
 Native uses XView's standard `window_fit_height()` for its native menu-button
@@ -652,7 +678,7 @@ results remain historical evidence.
 
 ## OPEN LOOK Docker runtime (2026-10-18)
 
-The maintained OPEN LOOK F5 profile builds and runs in
+At that review, the OPEN LOOK F5 profile built and ran in
 `wischner/gcc-x86_64-linux-openlook:latest`, using the image's
 `openlook-xephyr` helper and olwm. The Docker Debug build passes, all 22 CTests
 pass in that nested session, and Vision creates its feature-gallery window.

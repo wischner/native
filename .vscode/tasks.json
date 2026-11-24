@@ -118,6 +118,7 @@
         },
         {
             "label": "CMake Build Debug (Docker OpenLook)",
+            "detail": "Build with OpenLook v0.5.0 in Docker SDK 1.4.0.",
             "type": "shell",
             "command": "cmake",
             "args": [

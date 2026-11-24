@@ -169,7 +169,7 @@ These targets use the following Docker images:
 - GEMix: `wischner/gcc-x86_64-gemix:latest`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
-- OPEN LOOK: `wischner/gcc-x86_64-linux-openlook`
+- OPEN LOOK: `wischner/gcc-x86_64-linux-openlook:1.4.0`
 - Window Maker: `native-wmaker-sdk:1`
 - Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
@@ -274,8 +274,13 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ### OPEN LOOK backend
 
 - Build with `docker-openlook`. F5 and standalone execution use the
-  `wischner/gcc-x86_64-linux-openlook:latest` image and its `openlook-xephyr`
+  `wischner/gcc-x86_64-linux-openlook:1.4.0` image and its `openlook-xephyr`
   helper, which supplies Xephyr and olwm. No Tribblix VM is required.
+- SDK 1.4.0 contains OpenLook v0.5.0, revision
+  `4af207984537f7f895ca06616ef07c1d79236694`. Keep builds, F5 and standalone
+  launches on this SDK. CMake migrates the former `latest` default while
+  preserving custom image selections. Rebuild consumers and restart sessions
+  after upgrading so XView and olwm come from the same image.
 - Keep GDB/MI stdout clean and use `scripts/linux/docker-debug.sh` for F5,
   or `scripts/linux/toolkit-session-run.sh openlook` for standalone runs.
 

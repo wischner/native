@@ -126,8 +126,14 @@ cmake --build build/cmake --target docker-openmotif
 Build the Linux OPEN LOOK target backed by XView and OLGX:
 
 ```bash
+docker pull wischner/gcc-x86_64-linux-openlook:1.4.0
+cmake -S . -B build/cmake
 cmake --build build/cmake --target docker-openlook
 ```
+
+SDK 1.4.0 contains OpenLook v0.5.0. Reconfiguration migrates the former
+`latest` image default; custom image selections remain intact. Restart F5
+or standalone sessions after rebuilding to load the matching XView and olwm.
 
 Build the Window Maker target backed by WINGs:
 

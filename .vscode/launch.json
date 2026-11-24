@@ -108,7 +108,7 @@
                 "pipeArgs": [
                     "--session",
                     "openlook-xephyr",
-                    "wischner/gcc-x86_64-linux-openlook:latest"
+                    "wischner/gcc-x86_64-linux-openlook:1.4.0"
                 ],
                 "debuggerPath": "/usr/bin/gdb"
             },

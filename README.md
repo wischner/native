@@ -72,6 +72,11 @@ folders are portable, including Haiku's user settings folder. The new typed
 configuration API also handles persistence; its cache and native-storage tests
 pass on Linux/SDL2, GEMix, Haiku, Windows and macOS.
 
+The November 24 OPEN LOOK upgrade uses SDK 1.4.0 / OpenLook v0.5.0.
+The Debug build, Vision smoke and debugger startup pass; 34/39 CTests pass.
+The five failing checks also reproduce against SDK 1.3.1's runtime; see the
+[upgrade validation](docs/manuals/book-of-native/FEATURE-MATRIX.md#open-look-sdk-140-upgrade-2026-11-24).
+
 The [November 6 feature audit](docs/manuals/book-of-native/FEATURE-MATRIX.md#cross-backend-feature-audit-2026-11-06)
 builds all maintained backends and passes all 351 registered test instances
 on Linux, macOS, Windows and Haiku with the documented runtimes. The interface follow-up repairs native editing, toolbar
@@ -138,7 +143,12 @@ remote Apple SDK workflow. The SDK dependency overview is:
 - OpenMotif uses Xlib, Xt, and Motif.
 - OPEN LOOK uses XView, OLGX, Xlib, Xrandr, and libtirpc. Its standard
   `File_chooser`, Panel controls, OpenMenu menus, Selection service, and OLGX
-  painter remain native to the toolkit.
+  painter remain native to the toolkit. Builds, F5 and standalone sessions
+  use `wischner/gcc-x86_64-linux-openlook:1.4.0`, containing
+  [OpenLook v0.5.0](https://github.com/retro-vault/open-look/releases/tag/v0.5.0).
+  Reconfigure `build/cmake` to migrate the old `latest` default, rebuild
+  `docker-openlook`, and restart running sessions to use the updated XView
+  libraries, compact menu-panel fitting and olwm.
 - Window Maker uses WINGs, WUtil, wraster, Xlib, and Xrandr. WINGs supplies
   its windows, menus, controls, text editors, standard file panels, clipboard
   selection service, stock fonts, and native-look drawing resources.

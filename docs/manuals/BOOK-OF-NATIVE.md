@@ -18,6 +18,13 @@ the same commit.
 
 ## Current scope (November 2026)
 
+OPEN LOOK builds, F5 and standalone launches use SDK 1.4.0 with OpenLook
+v0.5.0. The Debug build, Vision feature smoke and GDB/MI startup pass;
+34/39 CTests pass with existing sanitizer settings. The five failures also
+reproduce against the previous SDK 1.3.1 runtime. See the
+[upgrade validation](book-of-native/FEATURE-MATRIX.md#open-look-sdk-140-upgrade-2026-11-24)
+for the text-resize, tab-height and exit-allocation limits.
+
 Images now support two eager transformations: `resize` and black-and-white
 `dither`, chained left to right with `>>`. GEM direct and gemd present colour
 images through their 32-bit BGRA presenter, retaining native monochrome chrome
@@ -99,9 +106,9 @@ runtime evidence are recorded separately in the feature matrix.
     control fixture also passes through the normal desktop GDB path
   - Linux OpenMotif backend: 25/25 headless tests plus the CDE desktop
     control fixture, including native picker fields and centered panels
-  - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm: 24/24
-    tests, including native input, editable-combo/picker composition and
-    background damage that preserves windowless text items
+  - Linux OPEN LOOK/XView backend in Docker with Xephyr and olwm: SDK 1.4.0
+    passes 34/39 tests; the current-scope note above records the remaining
+    text-resize, tab-height and exit-allocation failures
   - Linux Window Maker/WINGs backend in Docker with Xephyr and Window Maker;
     classic input/picker/panel checks pass on the desktop, while full CTest
     reports 20/22 due to Fontconfig/Pango exit allocations

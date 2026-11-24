@@ -155,7 +155,7 @@ The images are:
 - `wischner/gcc-x86_64-gemix:latest`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
-- `wischner/gcc-x86_64-linux-openlook`
+- `wischner/gcc-x86_64-linux-openlook:1.4.0`
 - `native-wmaker-sdk:1`
 - `native-windows-winui-sdk:24.04` (local `docker-win-sdk` dependency)
 - `wischner/gcc-x86_64-haiku`
@@ -531,8 +531,23 @@ tools and are not referenced by any F5 configuration or task.
 Select **Linux OPEN LOOK, Xephyr**. F5 builds the
 `docker-openlook` target into `build/linux-openlook/` and runs the image's
 GDB through `scripts/linux/docker-debug.sh --session openlook-xephyr`.
-The `wischner/gcc-x86_64-linux-openlook:latest` image supplies XView, OLGX,
+The `wischner/gcc-x86_64-linux-openlook:1.4.0` image supplies XView, OLGX,
 Xephyr, olwm, fonts, X utilities and GDB. No guest setup is required.
+
+SDK 1.4.0 packages [OpenLook v0.5.0](https://github.com/retro-vault/open-look/releases/tag/v0.5.0),
+revision `4af207984537f7f895ca06616ef07c1d79236694`. Its development headers,
+libraries and `xview`/`olgx` pkg-config files remain under `/usr/openwin`;
+configuration lives in `/etc/openlook`. The pkg-config package versions
+still report `1.0.0`; the image's `org.opencontainers.image.openlook.revision`
+label identifies the upstream revision. Native's existing
+`window_fit_height()` call uses the updated compact menu-panel fitting.
+
+CMake pins this SDK independently of the general `DOCKER_TAG` setting and
+migrates the previous `DOCKER_IMAGE_OPENLOOK=...:latest` default. Custom
+image selections remain supported through `DOCKER_IMAGE_OPENLOOK`, the F5
+image argument and `OPENLOOK_IMAGE` for standalone launches. Pull
+`wischner/gcc-x86_64-linux-openlook:1.4.0`, reconfigure `build/cmake`, rebuild
+`docker-openlook`, and restart sessions when upgrading an existing checkout.
 
 The pipe forwards the host X11 socket and Xauthority file and allocates free
 nested displays. The image helper starts Xephyr and olwm, runs GDB, and cleans

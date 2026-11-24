@@ -1,5 +1,25 @@
 # Backend Open Issues
 
+## OPEN LOOK SDK 1.4.0 validation (2026-11-24)
+
+The upgrade to OpenLook v0.5.0 builds successfully and passes 34/39 CTests
+under the SDK's Xephyr/olwm session with existing sanitizer settings. The
+five failed checks also fail when the same binaries load SDK 1.3.1's runtime:
+the text-field resize crash described below, the themed tab-height reset
+assertion in `native_window_api_tests`, and exit leaks in split, menu and
+owned-teardown tests. Split and menu behavior assertions pass before the
+leak reports. This comparison isolates runtime-image differences; it is not
+a fresh build against the old headers.
+
+Menu and owned-teardown tests report `win_add_drop_interest`. Split teardown
+also retains TextSW input/filename storage and caret graphics allocations.
+The filename allocation changes from 35 bytes in SDK 1.3.1 to 31 bytes in
+1.4.0 with its `/etc/openlook` layout. Existing SDK-only allocation fixtures
+still pass with their narrow suppressions; no new suppression hides these
+broader runtime failures. Vision's feature smoke and GDB/MI startup pass.
+See the [upgrade matrix](../manuals/book-of-native/FEATURE-MATRIX.md#open-look-sdk-140-upgrade-2026-11-24)
+for the tested scope.
+
 ## SDL tab-height reset regression (2026-11-17)
 
 `native_window_api_tests` reports “clearing the override restores themed tab
