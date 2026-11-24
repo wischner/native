@@ -11,6 +11,9 @@
 #include "../lib/native/post_backend.h"
 
 #include <X11/keysym.h>
+#include <X11/Xutil.h>
+#include <xview/svrimage.h>
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <thread>
@@ -134,12 +137,35 @@ void check_openlook_desktop(native::app_wnd &owner) {
     auto *menu = ol::menu_bindings.object_from_handle(dialog.menu.id());
     expect(menu && menu->menus.size() == 1, "native menu exists");
     expect(xv_get(menu->menus[0], MENU_NITEMS) == 3,
-           "menu groups retain a visible spacer row");
+           "menu groups retain a separator row");
     const auto menu_button = xv_get(menu->bar, PANEL_FIRST_ITEM);
     expect(!xv_get(menu_button, PANEL_ACCEPT_KEYSTROKE),
            "menu buttons do not acquire keyboard focus arrows");
-    const auto spacer = xv_get(menu->menus[0], MENU_NTH_ITEM, 2);
-    expect(xv_get(spacer, MENU_INACTIVE), "menu spacer cannot be activated");
+    const auto separator = xv_get(menu->menus[0], MENU_NTH_ITEM, 2);
+    expect(xv_get(separator, MENU_INACTIVE),
+           "menu separator cannot be activated");
+    const auto rule = xv_get(separator, MENU_IMAGE);
+    expect(rule && xv_get(rule, XV_HEIGHT) == 1,
+           "menu separator has a one-pixel horizontal rule");
+    const int rule_width = xv_get(rule, XV_WIDTH);
+    XImage *pixels = XGetImage(ol::cached_display, xv_get(rule, XV_XID),
+        0, 0, rule_width, 1, AllPlanes, ZPixmap);
+    expect(pixels, "separator bitmap can be read from the X server");
+    bool continuous = rule_width >= 32;
+    for (int x = 0; x < rule_width; ++x)
+        continuous = continuous && XGetPixel(pixels, x, 0) == 1;
+    XDestroyImage(pixels);
+    expect(continuous, "popup separator contains a continuous rule");
+
+    native::img toolbar_gap(32, 32);
+    const native::rgba paper(255, 255, 255, 255);
+    std::fill_n(toolbar_gap.pixels(), 32 * 32, paper);
+    auto theme = native::theme::create(toolbar_gap.get_gpx());
+    theme->draw_toolbar_separator(native::rect(0, 0, 32, 32),
+                                  native::separator_orientation::vertical);
+    expect(std::all_of(toolbar_gap.pixels(), toolbar_gap.pixels() + 32 * 32,
+                       [paper](native::rgba pixel) { return pixel == paper; }),
+           "toolbar groups retain whitespace without a separator line");
     native::text_edit first("", native::text_edit_mode::single_line,
                              20, 20, 200, 24);
     native::text_edit second("", native::text_edit_mode::single_line,

@@ -32,7 +32,7 @@ an already-visible window preserves its current focus. With no eligible
 tab stops, focus is unchanged. Other backends retain their existing behavior.
 
 Open Look toolbar groups use whitespace, native choice stacks center within
-allocated bounds, and menu groups include inactive blank rows. Full XView
+allocated bounds, and menu groups include inactive horizontal-rule rows. Full XView
 keyboard mode and Panel key routing support explicit Tab/Shift+Tab stops
 through text fields, checkboxes and buttons. Native button/choice/list focus
 eligibility follows positive tab order, including live changes; zero-order
@@ -43,7 +43,7 @@ Enter-as-Tab on fields and handle Enter as a default command.
 `native_menu_runtime_tests` and `native_ruler_toolbar_tests` pass in SDK 1.4.0
 under Xvfb/olwm, with address/undefined sanitizers and leak detection disabled.
 The desktop fixture checks actual XView caret items, Panel key dispatch,
-choice rectangles after resizing/item replacement, and inactive menu spacers.
+choice rectangles after resizing/item replacement, and inactive menu separators.
 It also clicks an unordered native checkbox, verifies mouse activation, and
 checks that no native focus-arrow window remains visible. SDL core, tab-order,
 menu and ruler/toolbar regressions pass with the optional synchronization hook.

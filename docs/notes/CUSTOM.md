@@ -623,6 +623,11 @@ destruction, not a timeout that could outlive their parent.
 | `message_box` | **N** | Motif error, warning, question, or information dialogs. |
 ## Linux OPEN LOOK/XView
 
+The 2026-11-24 separator follow-up keeps toolbar groups as whitespace.
+Popup-menu separators use disabled native image rows with a one-pixel
+horizontal rule; XView owns and releases their bitmaps with the menu items.
+Menu classification remains native/hybrid.
+
 The 2026-11-24 sheet-selector audit retains **C/H** for `tab_view`.
 Selection-only tabs create only the tab-strip Panel; they have no content
 Panel because their page bounds are empty. Showing, resizing, repopulating

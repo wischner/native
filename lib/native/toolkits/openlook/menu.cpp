@@ -12,7 +12,9 @@
 #include <native.h>
 #include <native/menu.h>
 
+#include <xview/font.h>
 #include <xview/frame.h>
+#include <xview/svrimage.h>
 #include <xview/openmenu.h>
 #include <xview/panel.h>
 #include <xview/window.h>
@@ -134,14 +136,30 @@ namespace native
                 XV_NULL, toggles ? MENU_TOGGLE_MENU : MENU_COMMAND_MENU,
                 nullptr));
             state->menus.push_back(menu);
+            // A bitmap label gives XView a real rule to paint: its
+            // MENU_LINE_AFTER_ITEM attribute has no rendering path.
+            const auto font = xv_get(bar, XV_FONT);
+            int rule_width = 32;
+            for (const auto &entry : top.items) {
+                if (entry.separator) continue;
+                Font_string_dims dimensions{};
+                xv_get(font, FONT_STRING_DIMS, entry.label.c_str(),
+                       &dimensions);
+                rule_width = std::max(rule_width, dimensions.width);
+            }
             for (const auto &entry : top.items) {
                 if (entry.separator) {
-                    // XView accepts MENU_LINE_AFTER_ITEM but never paints
-                    // it. A disabled blank native row keeps groups visible.
-                    Menu_item spacer = static_cast<Menu_item>(xv_create(
-                        XV_NULL, MENUITEM, MENU_STRING, " ",
-                        MENU_INACTIVE, TRUE, nullptr));
-                    xv_set(menu, MENU_APPEND_ITEM, spacer, nullptr);
+                    const std::vector<unsigned char> bits(
+                        (rule_width + 7) / 8, 0xff);
+                    const auto image = xv_create(XV_NULL, SERVER_IMAGE,
+                        XV_WIDTH, rule_width, XV_HEIGHT, 1,
+                        SERVER_IMAGE_DEPTH, 1,
+                        SERVER_IMAGE_X_BITS, bits.data(), nullptr);
+                    Menu_item separator = static_cast<Menu_item>(xv_create(
+                        XV_NULL, MENUITEM, MENU_RELEASE, MENU_RELEASE_IMAGE,
+                        MENU_IMAGE, image, MENU_INACTIVE, TRUE,
+                        MENU_FEEDBACK, FALSE, nullptr));
+                    xv_set(menu, MENU_APPEND_ITEM, separator, nullptr);
                     continue;
                 }
                 auto *callback =
