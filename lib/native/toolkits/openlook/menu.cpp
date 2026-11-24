@@ -136,12 +136,8 @@ namespace native
             state->menus.push_back(menu);
             for (const auto &entry : top.items) {
                 if (entry.separator) {
-                    // A blank native title row paints only XView's straight
-                    // text ledge. Ordinary image items acquire button chrome.
-                    Menu_item separator = static_cast<Menu_item>(xv_create(
-                        XV_NULL, MENUITEM, MENU_RELEASE,
-                        MENU_STRING, " ", MENU_TITLE,
-                        MENU_INACTIVE, TRUE, MENU_FEEDBACK, FALSE, nullptr));
+                    const Menu_item separator =
+                        linux::openlook::create_menu_separator();
                     xv_set(menu, MENU_APPEND_ITEM, separator, nullptr);
                     continue;
                 }

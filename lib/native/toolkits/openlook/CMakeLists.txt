@@ -67,6 +67,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/code_edit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/table_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/menu.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/menu_separator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/message_box.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/open_file_dialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/radio.cpp

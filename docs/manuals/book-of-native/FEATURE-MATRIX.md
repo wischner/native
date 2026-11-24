@@ -44,12 +44,13 @@ Enter-as-Tab on fields and handle Enter as a default command.
 under Xvfb/olwm, with address/undefined sanitizers and leak detection disabled.
 The desktop fixture checks actual XView caret items, Panel key dispatch,
 choice rectangles after resizing/item replacement, and inactive menu separators.
-Separator verification opens both command and checkable popups and requires
-one or two uninterrupted horizontal scanlines without surrounding chrome.
-Blank inactive title rows use XView's native straight ledge with feedback
-disabled; image menu items were unsuitable because XView painted rounded
-button chrome around them. `NATIVE_POPUP_CAPTURE` optionally saves captures
-of both popup types to an existing directory for visual review.
+Separator verification opens and reopens both command and checkable popups,
+forces an exposure, and requires exactly one uninterrupted horizontal
+scanline at the center of the separator row. A backend repaint hook uses
+XView's resolved menu geometry to draw the line; blank inactive rows reserve
+the space without button chrome, title ledges or stippling.
+`NATIVE_POPUP_CAPTURE` optionally saves both popup types to an existing
+directory for visual review.
 It also clicks an unordered native checkbox, verifies mouse activation, and
 checks that no native focus-arrow window remains visible. SDL core, tab-order,
 menu and ruler/toolbar regressions pass with the optional synchronization hook.

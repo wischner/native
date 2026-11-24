@@ -73,15 +73,19 @@ namespace
                 attributes.map_state != IsViewable ||
                 attributes.width < 32 || attributes.height < 40)
                 continue;
+            // Re-expose a cached popup so the rule must survive repainting.
+            XClearArea(ol::cached_display, children[i - 1], 0, 0, 0, 0, True);
+            pump();
             XImage *image = XGetImage(ol::cached_display, children[i - 1],
                 0, 0, attributes.width, attributes.height, AllPlanes, ZPixmap);
             if (image) {
                 // The middle of this three-row fixture contains only the
                 // separator. Each painted scanline must be uninterrupted;
-                // the rule occupies at most two rows, with no rounded ends.
+                // the rule is exactly one centered row, with no rounded ends.
                 const auto background = XGetPixel(image, 8,
                                                   attributes.height / 3 + 1);
                 int painted_rows = 0;
+                int line_y = -1;
                 bool straight = true;
                 for (int y = attributes.height / 3 + 2;
                      y < 2 * attributes.height / 3; ++y) {
@@ -90,11 +94,13 @@ namespace
                         ink += XGetPixel(image, x, y) != background;
                     if (ink) {
                         ++painted_rows;
+                        line_y = y;
                         straight = straight && ink == attributes.width - 16;
                     }
                 }
                 visible_rule = straight &&
-                    painted_rows >= 1 && painted_rows <= 2;
+                    painted_rows == 1 &&
+                    std::abs(2 * line_y - (attributes.height - 1)) <= 1;
                 if (const char *directory = std::getenv("NATIVE_POPUP_CAPTURE")) {
                     native::img capture(attributes.width, attributes.height);
                     for (int y = 0; y < attributes.height; ++y)
@@ -124,7 +130,7 @@ namespace
         send(ol::cached_display, escape, False, 0);
         pump();
         dlclose(library);
-        expect(visible_rule, "popup separator is a straight rule without rounded button chrome");
+        expect(visible_rule, "popup separator is one centered pixel without button chrome");
     }
 
     class blocked_text final : public native::text_edit
@@ -228,8 +234,9 @@ void check_openlook_desktop(native::app_wnd &owner) {
     const auto separator = xv_get(menu->menus[0], MENU_NTH_ITEM, 2);
     expect(xv_get(separator, MENU_INACTIVE),
            "menu separator cannot be activated");
-    for (const auto popup : menu->menus)
-        check_popup_rule(popup, menu->bar);
+    for (int cycle = 0; cycle < 2; ++cycle)
+        for (const auto popup : menu->menus)
+            check_popup_rule(popup, menu->bar);
 
     native::img toolbar_gap(32, 32);
     const native::rgba paper(255, 255, 255, 255);
