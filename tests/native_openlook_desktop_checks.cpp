@@ -60,6 +60,9 @@ void check_openlook_desktop(native::app_wnd &owner) {
     expect(menu && menu->menus.size() == 1, "native menu exists");
     expect(xv_get(menu->menus[0], MENU_NITEMS) == 3,
            "menu groups retain a visible spacer row");
+    const auto menu_button = xv_get(menu->bar, PANEL_FIRST_ITEM);
+    expect(!xv_get(menu_button, PANEL_ACCEPT_KEYSTROKE),
+           "menu buttons do not acquire keyboard focus arrows");
     const auto spacer = xv_get(menu->menus[0], MENU_NTH_ITEM, 2);
     expect(xv_get(spacer, MENU_INACTIVE), "menu spacer cannot be activated");
     native::text_edit first("", native::text_edit_mode::single_line,
@@ -86,6 +89,14 @@ void check_openlook_desktop(native::app_wnd &owner) {
     }
     key(panel, XK_Tab, ShiftMask);
     expect(caret() == &button, "Shift+Tab wraps to the native button");
+    button.set_tab_order(0);
+    expect(!xv_get(ol::wnd_bindings.handle_from_object(&button),
+                  PANEL_ACCEPT_KEYSTROKE),
+           "clearing a live button tab order removes native focus eligibility");
+    expect(caret() != &button, "clearing tab order releases the native caret");
+    button.set_tab_order(4);
+    button.focus();
+    expect(caret() == &button, "restoring tab order restores native button focus");
     int activations = 0;
     button.on_key.connect([&](native::key_event event) {
         if (event.key != native::key_code::enter)
@@ -126,5 +137,48 @@ void check_openlook_desktop(native::app_wnd &owner) {
     centered();
     combo.set_items({"50%", "100%", "200%"});
     centered();
+    auto *combo_state = ol::combo_box_bindings.object_from_handle(&combo);
+    expect(!xv_get(combo_state->choice, PANEL_ACCEPT_KEYSTROKE),
+           "unordered toolbar-style choices cannot acquire a focus arrow");
+    first.focus();
+    combo.focus();
+    expect(caret() == &first,
+           "an unordered choice does not steal the native caret");
+    combo.set_tab_order(5);
+    expect(xv_get(combo_state->choice, PANEL_ACCEPT_KEYSTROKE),
+           "a live explicit tab order enables choice focus");
+    combo.set_items({"75%", "100%"});
+    expect(xv_get(combo_state->choice, PANEL_ACCEPT_KEYSTROKE),
+           "choice replacement preserves explicit focus eligibility");
+    combo.set_tab_order(0);
+    combo.set_items({"100%", "200%"});
+    expect(!xv_get(combo_state->choice, PANEL_ACCEPT_KEYSTROKE),
+           "choice replacement preserves exclusion from keyboard focus");
+    native::button unordered_button("Tool", 250, 100, 80, 28);
+    native::check unordered_check("Tool option", 250, 140, 140, 24);
+    for (auto *control : std::array<native::wnd *, 2>{
+             &unordered_button, &unordered_check}) {
+        attach(*control, dialog);
+        expect(!xv_get(ol::wnd_bindings.handle_from_object(control),
+                      PANEL_ACCEPT_KEYSTROKE),
+               "unordered buttons and checks remain outside native focus");
+    }
+    first.focus();
+    const auto check_item = ol::wnd_bindings.handle_from_object(&unordered_check);
+    const auto *check_rect = reinterpret_cast<const Rect *>(
+        xv_get(check_item, PANEL_ITEM_RECT));
+    Event click{};
+    event_set_id(&click, MS_LEFT);
+    event_set_action(&click, ACTION_SELECT);
+    event_set_x(&click, check_rect->r_left + 5);
+    event_set_y(&click, check_rect->r_top + check_rect->r_height / 2);
+    panel_handle_event(check_item, &click);
+    event_set_up(&click);
+    panel_handle_event(check_item, &click);
+    expect(unordered_check.get_checked(), "unordered checks retain mouse activation");
+    const auto frame = ol::window_state(&dialog)->frame;
+    const auto indicator = xv_get(frame, FRAME_FOCUS_WIN);
+    expect(!xv_get(indicator, XV_SHOW),
+           "mouse activation of an unordered choice leaves no focus arrow");
     dialog.destroy();
 }

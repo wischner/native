@@ -13,6 +13,7 @@
 #include <native/tab_view.h>
 #include "input_state.h"
 #include "focus_redirect.h"
+#include "tab_order_binding.h"
 
 #include <algorithm>
 #include <functional>
@@ -25,10 +26,16 @@ namespace native
 
     wnd &wnd::set_tab_order(unsigned order) {
         _tab_order = order;
+        if (auto *binding = detail::peer_state<detail::tab_order_binding>(*this)) {
+            const auto apply = binding->apply;
+            apply();
+        }
         return *this;
     }
 
     void wnd::focus() {
+        if (!_tab_order && detail::peer_state<detail::tab_order_binding>(*this))
+            return;
         for (wnd *ancestor = this; ancestor; ancestor = ancestor->_parent)
             if (!ancestor->get_created() || !ancestor->get_visible() ||
                 !ancestor->get_input_enabled()) return;

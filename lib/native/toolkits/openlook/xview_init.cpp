@@ -45,7 +45,8 @@ namespace linux::openlook
         int argc = native::app::argc;
         char **argv = native::app::argv;
         std::vector<std::string> resources = {
-            // Full keyboard mode lets buttons and choices accept focus.
+            // Enable native focus indicators; each button/choice explicitly
+            // opts into keyboard focus only when it has a tab order.
             "OpenWindows.KeyboardCommands: Full",
             "OpenWindows.KeyboardCommand.Again: "
             "a+Ctrl+Meta,L2",

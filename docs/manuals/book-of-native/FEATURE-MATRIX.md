@@ -14,7 +14,9 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 Open Look toolbar groups use whitespace, native choice stacks center within
 allocated bounds, and menu groups include inactive blank rows. Full XView
 keyboard mode and Panel key routing support explicit Tab/Shift+Tab stops
-through text fields, checkboxes and buttons. Applications can disable
+through text fields, checkboxes and buttons. Native button/choice/list focus
+eligibility follows positive tab order, including live changes; zero-order
+toolbar controls and menu buttons do not acquire focus arrows. Applications can disable
 Enter-as-Tab on fields and handle Enter as a default command.
 
 `native_openlook_desktop_tests`, `native_tab_order_tests`,
@@ -22,8 +24,12 @@ Enter-as-Tab on fields and handle Enter as a default command.
 under Xvfb/olwm, with address/undefined sanitizers and leak detection disabled.
 The desktop fixture checks actual XView caret items, Panel key dispatch,
 choice rectangles after resizing/item replacement, and inactive menu spacers.
+It also clicks an unordered native checkbox, verifies mouse activation, and
+checks that no native focus-arrow window remains visible. SDL core, tab-order,
+menu and ruler/toolbar regressions pass with the optional synchronization hook.
 This targeted run does not replace the full-suite results and leak limitations
-recorded below. All production changes are confined to the Open Look toolkit.
+recorded below. The focus-eligibility policy is confined to Open Look; its optional peer-owned
+tab-order synchronizer is not installed by other backends.
 
 
 ## OPEN LOOK SDK 1.4.0 upgrade (2026-11-24)

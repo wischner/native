@@ -4,7 +4,9 @@
 
 Toolbar separator rules, vertically shifted choice stacks, invisible menu
 grouping and keyboard traversal limited to text fields are corrected in the
-Open Look adapter. The focused desktop, tab-order, menu and ruler/toolbar
+Open Look adapter. Button/choice/list keyboard eligibility is restricted to
+positive explicit tab orders; toolbar and menu controls no longer gain focus
+arrows merely because XView keyboard mode is enabled. The focused desktop, tab-order, menu and ruler/toolbar
 checks pass in SDK 1.4.0 under Xvfb/olwm with ASan/UBSan and leak detection
 disabled. The older full-suite failures below remain separate known issues.
 

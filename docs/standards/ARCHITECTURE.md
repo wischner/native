@@ -242,8 +242,14 @@ current control has no order. An internal editor uses its enclosing control's
 stop when one exists. With no eligible stops, focus stays put. Traversal keys
 are consumed before native widget defaults and `on_key`; Ctrl, Alt and Meta
 chords remain available to the control. `wnd::focus()` explicitly focuses a
-created, visible, enabled control regardless of its tab order. The protected
-`focus_native()` hook changes the actual toolkit keyboard target.
+created, visible, enabled control subject to native focus eligibility. The
+protected `focus_native()` hook changes the actual toolkit keyboard target.
+OPEN LOOK buttons, checks, radios, lists and choice-stack controls are eligible
+only with a positive tab order; zero-order toolbar controls and menu buttons
+never acquire the native focus arrow. Text editors retain their ordinary caret.
+An optional peer-owned tab-order binding synchronizes eligibility on live
+changes and releases an ineligible native caret. Other backends install no
+such binding and retain their existing programmatic-focus behavior.
 
 Application canvases with tab order zero retain Tab and Shift+Tab as
 application input (for example spreadsheet navigation). Give a canvas a

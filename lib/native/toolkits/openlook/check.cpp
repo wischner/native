@@ -91,6 +91,7 @@ namespace native
                 "OpenLook/XView: failed to create check.");
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
+        linux::openlook::bind_tab_focus(*self);
     }
 
     void check::show_native() {

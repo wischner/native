@@ -65,6 +65,7 @@ namespace native
                 "OpenLook/XView: failed to create button.");
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
+        linux::openlook::bind_tab_focus(*self);
         linux::openlook::fit_item_width(item, _bounds.d.w);
     }
 

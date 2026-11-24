@@ -7,6 +7,7 @@
 //
 
 #include "globals.h"
+#include "../../tab_order_binding.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -32,6 +33,50 @@ namespace linux::openlook
     native::bindings<
         const native::file_dialog *, openlook_file_dialog *>
         file_dialog_bindings;
+
+    void dispatch_panel_item(Panel_item item, Event *event) {
+        auto *control = wnd_bindings.object_from_handle(item);
+        if (!control) {
+            panel_default_handle_event(item, event);
+            return;
+        }
+        const native::detail::window_guard guard(*control);
+        panel_default_handle_event(item, event);
+        if (!guard.alive() || control->get_tab_order())
+            return;
+        // XView choices draw a focus arrow during mouse preview even when
+        // PANEL_ACCEPT_KEYSTROKE is false. Restore the actual caret's
+        // indicator, or hide it when there is no ordered caret item.
+        const auto panel = static_cast<Panel>(xv_get(item, XV_OWNER));
+        const auto caret = xv_get(panel, PANEL_CARET_ITEM);
+        const auto *focused = wnd_bindings.object_from_handle(caret);
+        const auto frame = xv_get(panel, WIN_FRAME);
+        const auto indicator = xv_get(frame, FRAME_FOCUS_WIN);
+        if (indicator)
+            xv_set(indicator, XV_SHOW, FALSE, nullptr);
+        if (focused && focused->get_tab_order())
+            xv_set(panel, PANEL_CARET_ITEM, caret, nullptr);
+    }
+
+    void bind_tab_focus(native::wnd &control) {
+        auto apply = [&control] {
+            const auto item = wnd_bindings.handle_from_object(&control);
+            if (!item)
+                return;
+            const bool eligible = control.get_tab_order() > 0;
+            xv_set(item, PANEL_ACCEPT_KEYSTROKE, eligible ? TRUE : FALSE,
+                   nullptr);
+            const auto panel = static_cast<Panel>(xv_get(item, XV_OWNER));
+            if (!eligible && xv_get(panel, PANEL_CARET_ITEM) == item)
+                panel_advance_caret(panel);
+        };
+        if (!dynamic_cast<native::combo_box *>(&control))
+            xv_set(wnd_bindings.handle_from_object(&control),
+                   PANEL_EVENT_PROC, dispatch_panel_item, nullptr);
+        native::detail::assign_peer_state(control,
+            new native::detail::tab_order_binding{apply});
+        apply();
+    }
 
     native::size menu_mark_dimensions(const void *information) {
         const auto *metrics = static_cast<const Graphics_info *>(

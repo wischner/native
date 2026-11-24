@@ -175,6 +175,8 @@ namespace native
             }
             xv_create(bar,
                       PANEL_BUTTON,
+                      PANEL_ACCEPT_KEYSTROKE,
+                      FALSE,
                       PANEL_LABEL_STRING,
                       top.title.c_str(),
                       PANEL_NOTIFY_PROC,

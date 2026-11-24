@@ -138,6 +138,7 @@ namespace native
                 "OpenLook/XView: failed to create list.");
         }
         linux::openlook::wnd_bindings.register_pair(item, self);
+        linux::openlook::bind_tab_focus(*self);
         apply_dimensions();
         replace_items(item, _items);
         if (_selected_index >= 0) {

@@ -130,7 +130,7 @@ namespace
             }
             return;
         }
-        panel_default_handle_event(item, event);
+        linux::openlook::dispatch_panel_item(item, event);
     }
 
     void add_choices(Panel_item choice,
@@ -234,6 +234,8 @@ namespace
             choice = static_cast<Panel_item>(xv_create(
                 panel,
                 PANEL_CHOICE_STACK,
+                PANEL_EVENT_PROC,
+                choice_event,
                 PANEL_NOTIFY_PROC,
                 selected,
                 PANEL_CLIENT_DATA,
@@ -252,6 +254,8 @@ namespace
         }
         if (!choice)
             return XV_NULL;
+        xv_set(choice, PANEL_ACCEPT_KEYSTROKE,
+               owner->get_tab_order() > 0 ? TRUE : FALSE, nullptr);
         if (!editable)
             add_choices(choice, owner->get_items());
         if (!editable && owner->get_selected_index() >= 0)
@@ -391,6 +395,7 @@ namespace native
         linux::openlook::wnd_bindings.register_pair(
             binding->choice, self);
         linux::openlook::combo_box_bindings.register_pair(self, binding);
+        linux::openlook::bind_tab_focus(*self);
     }
 
     void combo_box::show_native() {

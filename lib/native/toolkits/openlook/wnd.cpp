@@ -169,6 +169,8 @@ namespace native
         if (auto *state = collection_state(this); state && state->paint_window) {
             xv_set(state->paint_window, WIN_SET_FOCUS, nullptr);
         } else if (Panel_item item = control_item(this)) {
+            if (!xv_get(item, PANEL_ACCEPT_KEYSTROKE))
+                return;
             Panel panel = static_cast<Panel>(xv_get(item, XV_OWNER));
             xv_set(panel, PANEL_CARET_ITEM, item, nullptr);
             xv_set(panel, WIN_SET_FOCUS, nullptr);

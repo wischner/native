@@ -1,9 +1,16 @@
 # Native Versus Custom Control Audit
 
 OPEN LOOK consumer desktop review (2026-11-24): existing **N/H** control
-kinds are unchanged. XView full keyboard mode admits buttons and checkboxes
-into native Panel focus; the Panel handler delivers physical keys to its
-actual caret item. Choice stacks center their native rectangle inside the
+kinds are unchanged. XView keyboard mode supplies native focus indicators,
+but buttons, checks, radios, lists and choice stacks admit keyboard focus only
+with a positive explicit tab order. Toolbar choices and menu buttons have no
+focus arrow. Live tab-order changes and combo replacement preserve this rule;
+clearing an active tab stop releases its caret. XView mouse preview can draw
+an arrow without keyboard eligibility, so unordered items restore the real
+caret indicator after native event dispatch. Mouse activation remains native.
+Text editors retain their
+ordinary typing caret. The Panel handler delivers physical keys to its actual
+caret item. Choice stacks center their native rectangle inside the
 portable bounds, including after item replacement. Toolbar separators draw
 no rule. Menus use inactive blank native rows because XView stores
 `MENU_LINE_AFTER_ITEM` without rendering it.

@@ -31,6 +31,12 @@
 
 namespace linux::openlook
 {
+    // Bind native Panel keyboard eligibility to an explicit tab order.
+    void bind_tab_focus(native::wnd &control);
+
+    // Preserve native mouse behavior without unordered focus indicators.
+    void dispatch_panel_item(Panel_item item, Event *event);
+
     // Remove hidden edges after native windowless Panel items repaint.
     void mask_panel_borders(Panel panel);
     // Owns the XView resources representing one portable top level.
