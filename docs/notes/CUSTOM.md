@@ -624,11 +624,11 @@ destruction, not a timeout that could outlive their parent.
 ## Linux OPEN LOOK/XView
 
 The 2026-11-24 separator follow-up keeps toolbar groups as whitespace.
-Popup-menu separators use disabled native image rows with a one-pixel
-horizontal rule; XView owns and releases their bitmaps with the menu items.
-The separator keeps native feedback enabled because XView uses that flag to
-paint the row at all; inactivity alone prevents activation. The desktop test
-opens both command and checkable menus and inspects the actual popup pixels.
+Popup-menu separators use blank, inactive native title rows. XView paints
+its straight title ledge while feedback is disabled, so there is no command
+button outline, rounded end cap, or inactive stipple. The ledge follows the
+native 2D/3D theme. The desktop test opens both command and checkable menus
+and requires a continuous straight rule with no surrounding button chrome.
 Menu classification remains native/hybrid.
 
 The 2026-11-24 sheet-selector audit retains **C/H** for `tab_view`.

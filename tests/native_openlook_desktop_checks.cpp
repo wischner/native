@@ -13,7 +13,6 @@
 #include <X11/keysym.h>
 #include <dlfcn.h>
 #include <X11/Xutil.h>
-#include <xview/svrimage.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -47,8 +46,8 @@ namespace
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
-    // Inspect the mapped popup, not just the source bitmap: XView can
-    // retain a valid image while suppressing the entire menu row.
+    // Require a straight rule in the mapped popup. A disabled image item
+    // can produce rounded button chrome that also contains dark pixels.
     void check_popup_rule(Menu menu, Panel bar) {
         pump();
         Event event{};
@@ -77,16 +76,37 @@ namespace
             XImage *image = XGetImage(ol::cached_display, children[i - 1],
                 0, 0, attributes.width, attributes.height, AllPlanes, ZPixmap);
             if (image) {
-                // This fixture has three equal-height rows. Only the middle
-                // row is a separator; exclude the popup's outer border.
+                // The middle of this three-row fixture contains only the
+                // separator. Each painted scanline must be uninterrupted;
+                // the rule occupies at most two rows, with no rounded ends.
+                const auto background = XGetPixel(image, 8,
+                                                  attributes.height / 3 + 1);
+                int painted_rows = 0;
+                bool straight = true;
                 for (int y = attributes.height / 3 + 2;
-                     y < 2 * attributes.height / 3 - 2; ++y) {
+                     y < 2 * attributes.height / 3; ++y) {
                     int ink = 0;
                     for (int x = 8; x < attributes.width - 8; ++x)
-                        ink += XGetPixel(image, x, y) ==
-                            BlackPixel(ol::cached_display,
-                                       DefaultScreen(ol::cached_display));
-                    visible_rule = visible_rule || ink > attributes.width / 4;
+                        ink += XGetPixel(image, x, y) != background;
+                    if (ink) {
+                        ++painted_rows;
+                        straight = straight && ink == attributes.width - 16;
+                    }
+                }
+                visible_rule = straight &&
+                    painted_rows >= 1 && painted_rows <= 2;
+                if (const char *directory = std::getenv("NATIVE_POPUP_CAPTURE")) {
+                    native::img capture(attributes.width, attributes.height);
+                    for (int y = 0; y < attributes.height; ++y)
+                        for (int x = 0; x < attributes.width; ++x) {
+                            const auto pixel = XGetPixel(image, x, y);
+                            capture.pixels()[y * attributes.width + x] =
+                                native::rgba((pixel >> 16) & 255,
+                                    (pixel >> 8) & 255, pixel & 255, 255);
+                        }
+                    const bool toggle = xv_get(menu, MENU_CLASS) == MENU_TOGGLE;
+                    capture.save(std::filesystem::path(directory) /
+                        (toggle ? "toggle-menu.png" : "command-menu.png"));
                 }
                 XDestroyImage(image);
             }
@@ -104,7 +124,7 @@ namespace
         send(ol::cached_display, escape, False, 0);
         pump();
         dlclose(library);
-        expect(visible_rule, "opened popup paints a visible separator line");
+        expect(visible_rule, "popup separator is a straight rule without rounded button chrome");
     }
 
     class blocked_text final : public native::text_edit
@@ -208,19 +228,6 @@ void check_openlook_desktop(native::app_wnd &owner) {
     const auto separator = xv_get(menu->menus[0], MENU_NTH_ITEM, 2);
     expect(xv_get(separator, MENU_INACTIVE),
            "menu separator cannot be activated");
-    const auto rule = xv_get(separator, MENU_IMAGE);
-    expect(rule && xv_get(rule, XV_HEIGHT) == 1,
-           "menu separator has a one-pixel horizontal rule");
-    const int rule_width = xv_get(rule, XV_WIDTH);
-    XImage *pixels = XGetImage(ol::cached_display, xv_get(rule, XV_XID),
-        0, 0, rule_width, 1, AllPlanes, ZPixmap);
-    expect(pixels, "separator bitmap can be read from the X server");
-    bool continuous = rule_width >= 32;
-    for (int x = 0; x < rule_width; ++x)
-        continuous = continuous && XGetPixel(pixels, x, 0) == 1;
-    XDestroyImage(pixels);
-    expect(continuous, "popup separator contains a continuous rule");
-
     for (const auto popup : menu->menus)
         check_popup_rule(popup, menu->bar);
 

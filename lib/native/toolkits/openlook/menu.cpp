@@ -12,9 +12,7 @@
 #include <native.h>
 #include <native/menu.h>
 
-#include <xview/font.h>
 #include <xview/frame.h>
-#include <xview/svrimage.h>
 #include <xview/openmenu.h>
 #include <xview/panel.h>
 #include <xview/window.h>
@@ -136,30 +134,14 @@ namespace native
                 XV_NULL, toggles ? MENU_TOGGLE_MENU : MENU_COMMAND_MENU,
                 nullptr));
             state->menus.push_back(menu);
-            // A bitmap label gives XView a real rule to paint: its
-            // MENU_LINE_AFTER_ITEM attribute has no rendering path.
-            const auto font = xv_get(bar, XV_FONT);
-            int rule_width = 32;
-            for (const auto &entry : top.items) {
-                if (entry.separator) continue;
-                Font_string_dims dimensions{};
-                xv_get(font, FONT_STRING_DIMS, entry.label.c_str(),
-                       &dimensions);
-                rule_width = std::max(rule_width, dimensions.width);
-            }
             for (const auto &entry : top.items) {
                 if (entry.separator) {
-                    const std::vector<unsigned char> bits(
-                        (rule_width + 7) / 8, 0xff);
-                    const auto image = xv_create(XV_NULL, SERVER_IMAGE,
-                        XV_WIDTH, rule_width, XV_HEIGHT, 1,
-                        SERVER_IMAGE_DEPTH, 1,
-                        SERVER_IMAGE_X_BITS, bits.data(), nullptr);
-                    // MENU_INACTIVE prevents activation. Do not disable
-                    // MENU_FEEDBACK: XView then skips painting the row.
+                    // A blank native title row paints only XView's straight
+                    // text ledge. Ordinary image items acquire button chrome.
                     Menu_item separator = static_cast<Menu_item>(xv_create(
-                        XV_NULL, MENUITEM, MENU_RELEASE, MENU_RELEASE_IMAGE,
-                        MENU_IMAGE, image, MENU_INACTIVE, TRUE, nullptr));
+                        XV_NULL, MENUITEM, MENU_RELEASE,
+                        MENU_STRING, " ", MENU_TITLE,
+                        MENU_INACTIVE, TRUE, MENU_FEEDBACK, FALSE, nullptr));
                     xv_set(menu, MENU_APPEND_ITEM, separator, nullptr);
                     continue;
                 }
