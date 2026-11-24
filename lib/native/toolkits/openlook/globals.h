@@ -80,9 +80,6 @@ namespace linux::openlook
         bool checkable = false;
     };
 
-    // Create an inactive menu row with a centered single-pixel rule.
-    Menu_item create_menu_separator();
-
     // Owns the native panel menu bar and command menus.
     struct openlook_menu
     {

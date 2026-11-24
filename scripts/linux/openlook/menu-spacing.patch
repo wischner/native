@@ -1,0 +1,228 @@
+--- a/lib/libxview/menu/om_render.c
++++ b/lib/libxview/menu/om_render.c
+@@ -70,7 +70,7 @@
+ static void cleanup(register Xv_menu_info *m, Cleanup_mode cleanup_mode);
+ static int compute_dimensions(register Xv_menu_info *menu, int iwidth, int iheight, register Rect *rect);
+ static void compute_item_row_column(Xv_menu_info *menu, int item_nbr, int *row, int *column);
+-static void compute_rects(Xv_menu_info *menu, struct inputevent *iep, int item_height, Rect *mrect, Rect *srect);
++static void compute_rects(Xv_menu_info *menu, struct inputevent *iep, Rect *mrect, Rect *srect);
+ static Menu_status render_pullright(register Xv_menu_info *parent_menu, register Xv_menu_item_info *mi, Rect *position_rect, int stay_up);
+ static void submenu_done(register Xv_menu_info *m);
+ static void feedback(register Xv_menu_info *m, int n, Menu_feedback state);
+@@ -118,6 +118,73 @@
+ #define MENU_TITLE_MARGIN 3
+ #define MOUSE_BUMP 5		/* jiggle damping factor on MENU click */
+ 
++/* OPEN LOOK desktop separators occupy half an OLGX button and have no ink.
++ * Keep sizing, painting offsets and hit testing on the same row geometry.
++ * In a multi-column menu a row keeps its normal height if any cell needs it.
++ */
++static int
++is_blank_separator(Xv_menu_item_info *item)
++{
++    if (!item || !item->inactive || !item->no_feedback || item->title ||
++        item->image.svr_im)
++        return FALSE;
++#ifdef OW_I18N
++    _xv_use_pswcs_value_nodup(&item->image.string);
++    const wchar_t *text = item->image.string.pswcs.value;
++#else
++    const char *text = item->image.string;
++#endif
++    if (!text) return FALSE;
++    while (*text == ' ' || *text == '\t') ++text;
++    return *text == 0;
++}
++
++static int
++layout_row_height(Xv_menu_info *menu, int row, int rows, int columns,
++                  int normal_height)
++{
++    int column, index, populated = FALSE;
++    int title = menu->nitems && menu->item_list[0]->title;
++    if (title && row == 0) return normal_height;
++    for (column = 0; column < columns; ++column) {
++        if (menu->column_major)
++            index = title && column > 0
++                ? rows + (column - 1) * (rows - 1) + row - 1
++                : column * rows + row;
++        else
++            index = title ? 1 + (row - 1) * columns + column
++                          : row * columns + column;
++        if (index >= menu->nitems) continue;
++        populated = TRUE;
++        if (!is_blank_separator(menu->item_list[index])) return normal_height;
++    }
++    return populated ? imax(1, Button_Height(menu->ginfo) / 2) : normal_height;
++}
++
++static int
++layout_height(Xv_menu_info *menu, int rows, int columns, int normal_height)
++{
++    int row, height = 0;
++    for (row = 0; row < rows; ++row)
++        height += layout_row_height(menu, row, rows, columns, normal_height);
++    return height;
++}
++
++static int
++row_height(Xv_menu_info *menu, int row)
++{
++    return layout_row_height(menu, row, menu->nrows, menu->ncols,
++                             menu->default_image.height);
++}
++
++static int
++row_offset(Xv_menu_info *menu, int row)
++{
++    int current, offset = 0;
++    for (current = 0; current < row; ++current)
++        offset += row_height(menu, current);
++    return offset;
++}
+ 
+ /* ------------------------------------------------------------------------- */
+ 
+@@ -462,7 +529,7 @@
+      *   shadowrect - shadow rectangle
+      * Both rects are in screen coordinates.
+      */
+-    compute_rects(m, iep, item_height, &m->fs_menurect, &shadowrect);
++    compute_rects(m, iep, &m->fs_menurect, &shadowrect);
+ 
+     /* Compute pushpin coordinates */
+     if (m->pin) {
+@@ -628,12 +695,14 @@
+ 	    *column = m->ncols - 1;
+     }
+ 
+-    *row = (event->ie_locy - m->menurect.r_top - WALKMENU_BORDER(m))
+-	/ m->default_image.height;
+-    if (*row < 0)
+-	*row = 0;
+-    else if (*row >= m->nrows)
+-	*row = m->nrows - 1;
++    {
++        int y = event->ie_locy - m->menurect.r_top - WALKMENU_BORDER(m);
++        *row = 0;
++        while (*row + 1 < m->nrows && y >= row_height(m, *row)) {
++            y -= row_height(m, *row);
++            ++*row;
++        }
++    }
+ 
+     if (m->column_major) {
+ 	newitem = *column * m->nrows + *row + 1;
+@@ -884,7 +953,11 @@
+ 		 */
+ 		mi_paint_rect.r_left += m->menurect.r_left + 1;
+ 		mi_paint_rect.r_top = m->menurect.r_top + mi_top;
+-		mi_paint_rect.r_height = m->default_image.height;
++		{
++                    int item_row, item_column;
++                    compute_item_row_column(m, newitem, &item_row, &item_column);
++                    mi_paint_rect.r_height = row_height(m, item_row);
++                }
+ 		/* If we're not over the oval/box, then there's no new item */
+ 		if (!keyboard_event &&
+ 		    !rect_includespoint(&mi_paint_rect,
+@@ -1053,7 +1126,7 @@
+ 	     */
+ 	    itemrect.r_left = left_bdry + mi->image.button_pos.x;
+ 	    itemrect.r_top = m->menurect.r_top + WALKMENU_BORDER(m) +
+-		row * m->default_image.height + mi->image.button_pos.y;
++		row_offset(m, row) + mi->image.button_pos.y;
+             /* ACC_XVIEW */
+ 	    itemrect.r_width = Button_Width(m->ginfo,m->default_image.left_edge,
+             				     m->default_key_image.left_edge,
+@@ -1499,10 +1572,9 @@
+     }
+ 
+ 
+-    rect->r_height = (nrows * iheight) + 2 * WALKMENU_BORDER(menu);
++    rect->r_height = layout_height(menu, nrows + (menu->item_list[0]->title ? 1 : 0),
++                                      ncols, iheight) + 2 * WALKMENU_BORDER(menu);
+     rect->r_width = (ncols * iwidth) + 2 * WALKMENU_BORDER(menu);
+-    if (menu->item_list[0]->title)
+-        rect->r_height += iheight;
+  
+     max_height = fs_screenrect->r_height - SCREEN_MARGIN;
+     max_width = fs_screenrect->r_width - SCREEN_MARGIN;
+@@ -1521,10 +1593,9 @@
+                     ncols++;
+                 nrows = ((nitems - 1) / ncols) + 1;
+  
+-                rect->r_height = (nrows * iheight) + 2 * WALKMENU_BORDER(menu);
++                rect->r_height = layout_height(menu, nrows + (menu->item_list[0]->title ? 1 : 0),
++                                      ncols, iheight) + 2 * WALKMENU_BORDER(menu);
+                 rect->r_width = (ncols * iwidth) + 2 * WALKMENU_BORDER(menu);
+-                if (menu->item_list[0]->title)
+-                    rect->r_height += iheight;
+  
+                 /*
+                  * if number of cols has decreased and menu width
+@@ -1558,10 +1629,9 @@
+                     nrows++;
+                 ncols = ((nitems - 1) / nrows) + 1;
+  
+-                rect->r_height = (nrows * iheight) + 2 * WALKMENU_BORDER(menu);
++                rect->r_height = layout_height(menu, nrows + (menu->item_list[0]->title ? 1 : 0),
++                                      ncols, iheight) + 2 * WALKMENU_BORDER(menu);
+                 rect->r_width = (ncols * iwidth) + 2 * WALKMENU_BORDER(menu);
+-                if (menu->item_list[0]->title)
+-                    rect->r_height += iheight;
+  
+                 /*
+                  * if number of rows has decreased and menu height
+@@ -1589,10 +1659,9 @@
+             ncols++;
+             nrows = ((nitems - 1) / ncols) + 1;
+  
+-            rect->r_height = (nrows * iheight) + 2 * WALKMENU_BORDER(menu);
++            rect->r_height = layout_height(menu, nrows + (menu->item_list[0]->title ? 1 : 0),
++                                      ncols, iheight) + 2 * WALKMENU_BORDER(menu);
+             rect->r_width = (ncols * iwidth) + 2 * WALKMENU_BORDER(menu);
+-            if (menu->item_list[0]->title)
+-                rect->r_height += iheight;
+  
+             if (rect->r_width > max_width)
+             {
+@@ -1658,10 +1727,9 @@
+  *	srect = shadow rectangle in screen coordinates
+  */
+ static void
+-compute_rects(menu, iep, item_height, mrect, srect)
++compute_rects(menu, iep, mrect, srect)
+     Xv_menu_info	*menu;
+     struct inputevent	*iep;
+-    int             	 item_height;
+     Rect           	*mrect,
+ 			*srect;	/* menu and shadow rect, in scrn coordinates */
+ {
+@@ -1702,7 +1770,7 @@
+ 	    menu->menurect.r_left++;
+ 	    menu->menurect.r_top = iep->ie_locy;
+ 	}
+-	menu->menurect.r_top -= row * item_height + item_height / 2;
++	menu->menurect.r_top -= row_offset(menu, row) + row_height(menu, row) / 2;
+     } else {
+ 	if (enable_rect->r_width)	/* if an enable rect has been defined */
+ 	    position_rect = enable_rect;
+@@ -1722,7 +1790,7 @@
+ 		position_rect->r_width;
+ 	    menu->menurect.r_top = position_rect->r_top +
+ 		position_rect->r_height / 2 -
+-		row * item_height - item_height / 2;
++		row_offset(menu, row) - row_height(menu, row) / 2;
+ 	}
+     }
+     menu->menurect.r_width = mrect->r_width;
+@@ -2120,7 +2188,7 @@
+ 			Button_Width(m->ginfo,m->default_image.left_edge,
+                         m->default_key_image.left_edge,
+                         m->default_key_image.width);
+-    *item_top = WALKMENU_BORDER(m) + row * m->default_image.height;
++    *item_top = WALKMENU_BORDER(m) + row_offset(m, row);
+ 
+     switch (m->class) {
+ 

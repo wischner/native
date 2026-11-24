@@ -44,11 +44,13 @@ Enter-as-Tab on fields and handle Enter as a default command.
 under Xvfb/olwm, with address/undefined sanitizers and leak detection disabled.
 The desktop fixture checks actual XView caret items, Panel key dispatch,
 choice rectangles after resizing/item replacement, and inactive menu separators.
-Separator verification opens and reopens both command and checkable popups,
-forces an exposure, and requires exactly one uninterrupted horizontal
-scanline at the center of the separator row. A backend repaint hook uses
-XView's resolved menu geometry to draw the line; blank inactive rows reserve
-the space without button chrome, title ledges or stippling.
+Separator verification opens and reopens command and checkable popups,
+forces an exposure, and requires a blank gap exactly half the OLGX button
+height, matching olwm's desktop menu. Pointer hits below the gap and arrow
+navigation across it use XView's compact row geometry. The local
+`native-openlook-sdk:1` adds that layout fix; no backend separator paint hook
+is installed. Desktop, menu and ruler/toolbar regressions pass in this image
+with ASan/UBSan and leak detection disabled.
 `NATIVE_POPUP_CAPTURE` optionally saves both popup types to an existing
 directory for visual review.
 It also clicks an unordered native checkbox, verifies mouse activation, and

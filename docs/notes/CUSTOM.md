@@ -624,15 +624,13 @@ destruction, not a timeout that could outlive their parent.
 ## Linux OPEN LOOK/XView
 
 The 2026-11-24 separator follow-up keeps toolbar groups as whitespace.
-Popup-menu separators use blank inactive native rows, with a backend paint
-hook drawing a single-pixel rule at each row's vertical center after XView
-paints the popup. The hook uses XView's resolved row/column geometry and
-foreground color, and follows cached-window reuse without retaining menu
-pointers. Native title ledges are not used because they are bottom-aligned
-and two pixels tall in 3D. The desktop test requires exactly one centered,
-uninterrupted scanline in command and checkable menus, including reopening
-and repainting the popup. Toolbar groups remain whitespace-only.
-Menu classification remains native/hybrid.
+Popup separators are inactive, feedback-free blank XView items. The local
+`native-openlook-sdk:1` patch gives them `Button_Height / 2` pixels, matching
+olwm desktop separators. XView uses the same variable row geometry for
+menu sizing, painting, hit testing and submenu placement. Native adds no
+separator paint hook. The desktop fixture checks blank pixels, exact gap
+height, pointer hits and keyboard traversal in command and checkable menus,
+including reopening and repainting. Menu classification remains native.
 
 The 2026-11-24 sheet-selector audit retains **C/H** for `tab_view`.
 Selection-only tabs create only the tab-strip Panel; they have no content

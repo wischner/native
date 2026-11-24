@@ -54,7 +54,7 @@ openmotif | motif | cde)
     PARENT_DISPLAY_VARIABLE=CDE_PARENT_DISPLAY
     ;;
 openlook)
-    IMAGE=${OPENLOOK_IMAGE:-wischner/gcc-x86_64-linux-openlook:1.4.0}
+    IMAGE=${OPENLOOK_IMAGE:-native-openlook-sdk:1}
     SESSION=openlook-xephyr
     DISPLAY_VARIABLE=OPENLOOK_DISPLAY
     PARENT_DISPLAY_VARIABLE=OPENLOOK_PARENT_DISPLAY

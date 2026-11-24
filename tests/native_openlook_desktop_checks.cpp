@@ -10,6 +10,10 @@
 #include "../lib/native/toolkits/openlook/globals.h"
 #include "../lib/native/post_backend.h"
 
+#define class xview_menu_class
+#include <xview_private/om_impl.h>
+#undef class
+
 #include <X11/keysym.h>
 #include <dlfcn.h>
 #include <X11/Xutil.h>
@@ -46,9 +50,21 @@ namespace
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
-    // Require a straight rule in the mapped popup. A disabled image item
-    // can produce rounded button chrome that also contains dark pixels.
-    void check_popup_rule(Menu menu, Panel bar) {
+    // Desktop separators are blank half-button gaps, including on repaint.
+    void check_popup_spacing(Menu menu, Panel bar) {
+        void *library = dlopen("libXtst.so.6", RTLD_NOW | RTLD_LOCAL);
+        using key_proc = int (*)(Display *, unsigned, Bool, unsigned long);
+        auto send = library ? reinterpret_cast<key_proc>(
+            dlsym(library, "XTestFakeKeyEvent")) : nullptr;
+        expect(send, "XTest can dismiss the rendered popup");
+        using motion_proc = int (*)(Display *, int, int, int, unsigned long);
+        auto motion = reinterpret_cast<motion_proc>(
+            dlsym(library, "XTestFakeMotionEvent"));
+        expect(motion, "XTest can move through the rendered popup");
+        auto button = reinterpret_cast<key_proc>(
+            dlsym(library, "XTestFakeButtonEvent"));
+        expect(button, "XTest can hold the menu button during pointer tracking");
+        std::array<int, 4> selected{-1, -1, -1, -1};
         pump();
         Event event{};
         event_set_window(&event, bar);
@@ -63,7 +79,7 @@ namespace
         unsigned count = 0;
         XQueryTree(ol::cached_display, root, &returned_root, &parent,
                    &children, &count);
-        bool visible_rule = false;
+        bool blank_gap = false;
         // The menu is above its shadow and all ordinary application windows.
         for (unsigned i = count; i > 0; --i) {
             XWindowAttributes attributes{};
@@ -73,34 +89,22 @@ namespace
                 attributes.map_state != IsViewable ||
                 attributes.width < 32 || attributes.height < 40)
                 continue;
-            // Re-expose a cached popup so the rule must survive repainting.
+            // Re-expose the cached popup to check its native repaint path.
             XClearArea(ol::cached_display, children[i - 1], 0, 0, 0, 0, True);
             pump();
             XImage *image = XGetImage(ol::cached_display, children[i - 1],
                 0, 0, attributes.width, attributes.height, AllPlanes, ZPixmap);
             if (image) {
-                // The middle of this three-row fixture contains only the
-                // separator. Each painted scanline must be uninterrupted;
-                // the rule is exactly one centered row, with no rounded ends.
-                const auto background = XGetPixel(image, 8,
-                                                  attributes.height / 3 + 1);
-                int painted_rows = 0;
-                int line_y = -1;
-                bool straight = true;
-                for (int y = attributes.height / 3 + 2;
-                     y < 2 * attributes.height / 3; ++y) {
-                    int ink = 0;
-                    for (int x = 8; x < attributes.width - 8; ++x)
-                        ink += XGetPixel(image, x, y) != background;
-                    if (ink) {
-                        ++painted_rows;
-                        line_y = y;
-                        straight = straight && ink == attributes.width - 16;
-                    }
-                }
-                visible_rule = straight &&
-                    painted_rows == 1 &&
-                    std::abs(2 * line_y - (attributes.height - 1)) <= 1;
+                const auto *state = MENU_PRIVATE(menu);
+                const int border = state->xview_menu_class == MENU_COMMAND ? 2 : 6;
+                const int row = state->default_image.height;
+                const int gap = Button_Height(state->ginfo) / 2;
+                const auto background = XGetPixel(image, 8, border + row);
+                blank_gap = attributes.height == 2 * border + 2 * row + gap;
+                for (int y = border + row; y < border + row + gap; ++y)
+                    for (int x = border; x < attributes.width - border; ++x)
+                        blank_gap = blank_gap &&
+                            XGetPixel(image, x, y) == background;
                 if (const char *directory = std::getenv("NATIVE_POPUP_CAPTURE")) {
                     native::img capture(attributes.width, attributes.height);
                     for (int y = 0; y < attributes.height; ++y)
@@ -115,22 +119,48 @@ namespace
                         (toggle ? "toggle-menu.png" : "command-menu.png"));
                 }
                 XDestroyImage(image);
+                // Hit the row below the compact gap, then navigate across it.
+                const int x = attributes.x + attributes.width / 2;
+                // menu_show received MENU-down; supply the matching physical
+                // button state so XView receives drag events from the server.
+                button(ol::cached_display, 3, True, 0);
+                motion(ol::cached_display, -1, x,
+                    attributes.y + border + row + gap + row / 2, 0);
+                for (int attempt = 0; attempt < 20; ++attempt) pump();
+                selected[0] = state->curitem;
+                const auto up = XKeysymToKeycode(ol::cached_display, XK_Up);
+                send(ol::cached_display, up, True, 0);
+                send(ol::cached_display, up, False, 0);
+                for (int attempt = 0; attempt < 20; ++attempt) pump();
+                selected[1] = state->curitem;
+                const auto down = XKeysymToKeycode(ol::cached_display, XK_Down);
+                send(ol::cached_display, down, True, 0);
+                send(ol::cached_display, down, False, 0);
+                for (int attempt = 0; attempt < 20; ++attempt) pump();
+                selected[2] = state->curitem;
+                motion(ol::cached_display, -1, x,
+                    attributes.y + border + row + gap / 2, 0);
+                for (int attempt = 0; attempt < 20; ++attempt) pump();
+                // XView tracks the hovered inactive row but cannot activate it.
+                selected[3] = state->curitem;
             }
             break;
         }
         if (children) XFree(children);
         // Dismiss the popup through the real keyboard path before proceeding.
-        void *library = dlopen("libXtst.so.6", RTLD_NOW | RTLD_LOCAL);
-        using key_proc = int (*)(Display *, unsigned, Bool, unsigned long);
-        auto send = library ? reinterpret_cast<key_proc>(
-            dlsym(library, "XTestFakeKeyEvent")) : nullptr;
-        expect(send, "XTest can dismiss the rendered popup");
         const auto escape = XKeysymToKeycode(ol::cached_display, XK_Escape);
         send(ol::cached_display, escape, True, 0);
         send(ol::cached_display, escape, False, 0);
         pump();
+        button(ol::cached_display, 3, False, 0);
+        pump();
         dlclose(library);
-        expect(visible_rule, "popup separator is one centered pixel without button chrome");
+        if (selected[0] != 3 || selected[1] != 1 ||
+            selected[2] != 3 || selected[3] != 2)
+            throw std::runtime_error("menu hit after pointer/up/down/gap: " +
+                std::to_string(selected[0]) + "/" + std::to_string(selected[1]) +
+                "/" + std::to_string(selected[2]) + "/" + std::to_string(selected[3]));
+        expect(blank_gap, "popup separator is a blank half-button desktop gap");
     }
 
     class blocked_text final : public native::text_edit
@@ -236,7 +266,7 @@ void check_openlook_desktop(native::app_wnd &owner) {
            "menu separator cannot be activated");
     for (int cycle = 0; cycle < 2; ++cycle)
         for (const auto popup : menu->menus)
-            check_popup_rule(popup, menu->bar);
+            check_popup_spacing(popup, menu->bar);
 
     native::img toolbar_gap(32, 32);
     const native::rgba paper(255, 255, 255, 255);

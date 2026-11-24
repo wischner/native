@@ -151,6 +151,7 @@ The top-level CMake project provides:
 - `docker-elementary` (GTK 4.14 + Granite 7 C interface)
 - `docker-wayland-sdk` (builds the shared local SDK image)
 - `docker-win-sdk` (builds the pinned GNU/WinUI SDK image)
+- `docker-openlook-sdk` (builds XView with desktop menu separator spacing)
 - `docker-wmaker-sdk` (builds the WINGs SDK with resource-lifetime fixes)
 - `docker-x11`
 - `docker-gemix`
@@ -169,7 +170,7 @@ These targets use the following Docker images:
 - GEMix: `wischner/gcc-x86_64-gemix:latest`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
-- OPEN LOOK: `wischner/gcc-x86_64-linux-openlook:1.4.0`
+- OPEN LOOK: `native-openlook-sdk:1`
 - Window Maker: `native-wmaker-sdk:1`
 - Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
@@ -274,11 +275,14 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ### OPEN LOOK backend
 
 - Build with `docker-openlook`. F5 and standalone execution use the
-  `wischner/gcc-x86_64-linux-openlook:1.4.0` image and its `openlook-xephyr`
+  `native-openlook-sdk:1` image and its `openlook-xephyr`
   helper, which supplies Xephyr and olwm. No Tribblix VM is required.
-- SDK 1.4.0 contains OpenLook v0.5.0, revision
+- `docker-openlook` depends on `docker-openlook-sdk`, which builds the pinned
+  SDK 1.4.0 base plus `scripts/linux/openlook/menu-spacing.patch`. Blank inactive
+  popup items occupy half an OLGX button, matching olwm. SDK 1.4.0 contains
+  OpenLook v0.5.0, revision
   `4af207984537f7f895ca06616ef07c1d79236694`. Keep builds, F5 and standalone
-  launches on this SDK. CMake migrates the former `latest` default while
+  launches on this SDK. CMake migrates the stock `latest` and `1.4.0` defaults while
   preserving custom image selections. Rebuild consumers and restart sessions
   after upgrading so XView and olwm come from the same image.
 - Keep GDB/MI stdout clean and use `scripts/linux/docker-debug.sh` for F5,

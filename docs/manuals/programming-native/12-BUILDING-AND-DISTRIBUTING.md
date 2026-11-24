@@ -125,7 +125,7 @@ outputs are:
 | `docker-x11` | `wischner/gcc-x86_64-linux-x11:latest` | `build/linux-x11/src/vision` |
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
-| `docker-openlook` | `wischner/gcc-x86_64-linux-openlook:1.4.0` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
+| `docker-openlook` | `native-openlook-sdk:1` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
 | `docker-wmaker` | `native-wmaker-sdk:1` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
@@ -135,11 +135,12 @@ outputs are:
 The Docker image supplies build dependencies only. It does not make its shared
 libraries appear on an end user's machine.
 
-OPEN LOOK SDK 1.4.0 contains OpenLook v0.5.0. Use its matching XView/OLGX
-runtime libraries and fonts when deploying; rebuilding Native alone does not
+OPEN LOOK uses local `native-openlook-sdk:1`, built automatically by
+`docker-openlook-sdk` from pinned SDK 1.4.0 / OpenLook v0.5.0 plus the blank
+menu-spacing patch. Use its matching XView/OLGX runtime libraries and fonts when deploying; rebuilding Native alone does not
 upgrade an installed toolkit. F5 and standalone Docker sessions use the same
-versioned image. Reconfigure existing control trees to migrate the old
-`latest` default, then rebuild and restart sessions.
+versioned image. Reconfigure existing control trees to migrate the
+stock image defaults, then rebuild and restart sessions.
 
 ## Deployment summary
 

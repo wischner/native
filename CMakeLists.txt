@@ -129,13 +129,13 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(DOCKER_IMAGE_X11 "wischner/gcc-x86_64-linux-x11:${DOCKER_TAG}" CACHE STRING "Docker image for X11 builds")
     set(DOCKER_IMAGE_SDL2 "wischner/gcc-x86_64-linux-sdl:${DOCKER_TAG}" CACHE STRING "Docker image for SDL2 builds")
     set(DOCKER_IMAGE_OPENMOTIF "wischner/gcc-x86_64-linux-motif:${DOCKER_TAG}" CACHE STRING "Docker image for OpenMotif builds")
-    # SDK 1.4.0 carries OpenLook v0.5.0. Upgrade the former floating
-    # default in existing control trees, preserving custom SDK images.
-    if(DOCKER_IMAGE_OPENLOOK STREQUAL "wischner/gcc-x86_64-linux-openlook:latest")
+    # Upgrade stock defaults to the desktop-spacing SDK; preserve custom images.
+    if(DOCKER_IMAGE_OPENLOOK STREQUAL "wischner/gcc-x86_64-linux-openlook:latest"
+       OR DOCKER_IMAGE_OPENLOOK STREQUAL "wischner/gcc-x86_64-linux-openlook:1.4.0")
         unset(DOCKER_IMAGE_OPENLOOK CACHE)
     endif()
     set(DOCKER_IMAGE_OPENLOOK
-        "wischner/gcc-x86_64-linux-openlook:1.4.0"
+        "native-openlook-sdk:1"
         CACHE STRING
         "Docker image for OpenLook/XView builds")
     if(DOCKER_IMAGE_WMAKER STREQUAL "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}")
@@ -241,6 +241,11 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                 -f ${CMAKE_SOURCE_DIR}/scripts/windows/winui/Dockerfile
                 ${CMAKE_SOURCE_DIR}/scripts/windows/winui
             USES_TERMINAL)
+        add_custom_target(docker-openlook-sdk
+            COMMAND ${DOCKER_EXECUTABLE} build -t native-openlook-sdk:1
+                -f ${CMAKE_SOURCE_DIR}/scripts/linux/openlook/Dockerfile
+                ${CMAKE_SOURCE_DIR}/scripts/linux/openlook
+            USES_TERMINAL)
         add_custom_target(docker-wmaker-sdk
             COMMAND ${DOCKER_EXECUTABLE} build -t native-wmaker-sdk:1
                 -f ${CMAKE_SOURCE_DIR}/scripts/linux/wmaker/Dockerfile
@@ -268,6 +273,9 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             build/linux-openlook
             ${DOCKER_IMAGE_OPENLOOK}
             -DTOOLKIT=OPENLOOK)
+        if(DOCKER_IMAGE_OPENLOOK STREQUAL "native-openlook-sdk:1")
+            add_dependencies(docker-openlook docker-openlook-sdk)
+        endif()
         add_docker_cmake_build_target(
             docker-wmaker
             build/linux-wmaker

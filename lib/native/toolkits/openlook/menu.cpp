@@ -137,7 +137,9 @@ namespace native
             for (const auto &entry : top.items) {
                 if (entry.separator) {
                     const Menu_item separator =
-                        linux::openlook::create_menu_separator();
+                        xv_create(nullptr, MENUITEM, MENU_RELEASE,
+                                  MENU_STRING, " ", MENU_INACTIVE, TRUE,
+                                  MENU_FEEDBACK, FALSE, nullptr);
                     xv_set(menu, MENU_APPEND_ITEM, separator, nullptr);
                     continue;
                 }

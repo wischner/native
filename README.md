@@ -153,9 +153,10 @@ remote Apple SDK workflow. The SDK dependency overview is:
 - OPEN LOOK uses XView, OLGX, Xlib, Xrandr, and libtirpc. Its standard
   `File_chooser`, Panel controls, OpenMenu menus, Selection service, and OLGX
   painter remain native to the toolkit. Builds, F5 and standalone sessions
-  use `wischner/gcc-x86_64-linux-openlook:1.4.0`, containing
-  [OpenLook v0.5.0](https://github.com/retro-vault/open-look/releases/tag/v0.5.0).
-  Reconfigure `build/cmake` to migrate the old `latest` default, rebuild
+  use `native-openlook-sdk:1`, containing
+  the pinned SDK 1.4.0 base plus desktop-height blank menu separators.
+  The base contains [OpenLook v0.5.0](https://github.com/retro-vault/open-look/releases/tag/v0.5.0).
+  Reconfigure `build/cmake` to migrate the stock image defaults, rebuild
   `docker-openlook`, and restart running sessions to use the updated XView
   libraries, compact menu-panel fitting and olwm.
 - Window Maker uses WINGs, WUtil, wraster, Xlib, and Xrandr. WINGs supplies
