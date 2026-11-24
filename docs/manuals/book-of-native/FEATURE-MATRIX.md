@@ -44,6 +44,10 @@ Enter-as-Tab on fields and handle Enter as a default command.
 under Xvfb/olwm, with address/undefined sanitizers and leak detection disabled.
 The desktop fixture checks actual XView caret items, Panel key dispatch,
 choice rectangles after resizing/item replacement, and inactive menu separators.
+Separator verification opens both command and checkable popups and checks
+the rendered middle row. Checking the bitmap alone missed XView suppressing
+the entire row when `MENU_FEEDBACK` was false; separators now leave feedback
+enabled and use `MENU_INACTIVE` to prevent selection.
 It also clicks an unordered native checkbox, verifies mouse activation, and
 checks that no native focus-arrow window remains visible. SDL core, tab-order,
 menu and ruler/toolbar regressions pass with the optional synchronization hook.

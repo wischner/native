@@ -155,10 +155,11 @@ namespace native
                         XV_WIDTH, rule_width, XV_HEIGHT, 1,
                         SERVER_IMAGE_DEPTH, 1,
                         SERVER_IMAGE_X_BITS, bits.data(), nullptr);
+                    // MENU_INACTIVE prevents activation. Do not disable
+                    // MENU_FEEDBACK: XView then skips painting the row.
                     Menu_item separator = static_cast<Menu_item>(xv_create(
                         XV_NULL, MENUITEM, MENU_RELEASE, MENU_RELEASE_IMAGE,
-                        MENU_IMAGE, image, MENU_INACTIVE, TRUE,
-                        MENU_FEEDBACK, FALSE, nullptr));
+                        MENU_IMAGE, image, MENU_INACTIVE, TRUE, nullptr));
                     xv_set(menu, MENU_APPEND_ITEM, separator, nullptr);
                     continue;
                 }

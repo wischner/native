@@ -11,6 +11,7 @@
 #include "../lib/native/post_backend.h"
 
 #include <X11/keysym.h>
+#include <dlfcn.h>
 #include <X11/Xutil.h>
 #include <xview/svrimage.h>
 #include <algorithm>
@@ -44,6 +45,66 @@ namespace
         notify_dispatch();
         native::detail::drain_posted_work();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    // Inspect the mapped popup, not just the source bitmap: XView can
+    // retain a valid image while suppressing the entire menu row.
+    void check_popup_rule(Menu menu, Panel bar) {
+        pump();
+        Event event{};
+        event_set_window(&event, bar);
+        event_set_id(&event, MS_RIGHT);
+        event_set_down(&event);
+        event_set_x(&event, 10);
+        event_set_y(&event, 30);
+        menu_show(menu, bar, &event, nullptr);
+        pump();
+        Window root = DefaultRootWindow(ol::cached_display);
+        Window parent = None, returned_root = None, *children = nullptr;
+        unsigned count = 0;
+        XQueryTree(ol::cached_display, root, &returned_root, &parent,
+                   &children, &count);
+        bool visible_rule = false;
+        // The menu is above its shadow and all ordinary application windows.
+        for (unsigned i = count; i > 0; --i) {
+            XWindowAttributes attributes{};
+            XGetWindowAttributes(ol::cached_display, children[i - 1],
+                                 &attributes);
+            if (!attributes.override_redirect ||
+                attributes.map_state != IsViewable ||
+                attributes.width < 32 || attributes.height < 40)
+                continue;
+            XImage *image = XGetImage(ol::cached_display, children[i - 1],
+                0, 0, attributes.width, attributes.height, AllPlanes, ZPixmap);
+            if (image) {
+                // This fixture has three equal-height rows. Only the middle
+                // row is a separator; exclude the popup's outer border.
+                for (int y = attributes.height / 2 - 3;
+                     y <= attributes.height / 2 + 3; ++y) {
+                    int ink = 0;
+                    for (int x = 8; x < attributes.width - 8; ++x)
+                        ink += XGetPixel(image, x, y) ==
+                            BlackPixel(ol::cached_display,
+                                       DefaultScreen(ol::cached_display));
+                    visible_rule = visible_rule || ink > attributes.width / 4;
+                }
+                XDestroyImage(image);
+            }
+            break;
+        }
+        if (children) XFree(children);
+        // Dismiss the popup through the real keyboard path before proceeding.
+        void *library = dlopen("libXtst.so.6", RTLD_NOW | RTLD_LOCAL);
+        using key_proc = int (*)(Display *, unsigned, Bool, unsigned long);
+        auto send = library ? reinterpret_cast<key_proc>(
+            dlsym(library, "XTestFakeKeyEvent")) : nullptr;
+        expect(send, "XTest can dismiss the rendered popup");
+        const auto escape = XKeysymToKeycode(ol::cached_display, XK_Escape);
+        send(ol::cached_display, escape, True, 0);
+        send(ol::cached_display, escape, False, 0);
+        pump();
+        dlclose(library);
+        expect(visible_rule, "opened popup paints a visible separator line");
     }
 
     class blocked_text final : public native::text_edit
@@ -132,10 +193,13 @@ void check_openlook_desktop(native::app_wnd &owner) {
     native::modeless_wnd dialog(owner, "Desktop controls", 40, 40, 520, 250);
     dialog.menu << "Format" << (native::menu_items("Style")
         << native::menu_separator << "Alignment");
+    dialog.menu << "View" << (native::menu_items("Zoom")
+        << native::menu_separator
+        << native::menu_check_item{51, "Grid lines", true});
     dialog.create();
     dialog.show();
     auto *menu = ol::menu_bindings.object_from_handle(dialog.menu.id());
-    expect(menu && menu->menus.size() == 1, "native menu exists");
+    expect(menu && menu->menus.size() == 2, "native menu exists");
     expect(xv_get(menu->menus[0], MENU_NITEMS) == 3,
            "menu groups retain a separator row");
     const auto menu_button = xv_get(menu->bar, PANEL_FIRST_ITEM);
@@ -156,6 +220,9 @@ void check_openlook_desktop(native::app_wnd &owner) {
         continuous = continuous && XGetPixel(pixels, x, 0) == 1;
     XDestroyImage(pixels);
     expect(continuous, "popup separator contains a continuous rule");
+
+    for (const auto popup : menu->menus)
+        check_popup_rule(popup, menu->bar);
 
     native::img toolbar_gap(32, 32);
     const native::rgba paper(255, 255, 255, 255);
