@@ -40,6 +40,12 @@ namespace native
         auto *state = linux::openlook::create_collection_panel(*self);
         linux::openlook::tab_view_bindings.register_pair(self, state);
         self->synchronize_theme_metrics();
+        // Selection-only tabs have no page. X11 rejects the empty
+        // content bounds as a zero-sized native window.
+        if (get_selection_only()) {
+            self->refresh();
+            return;
+        }
         const rect content = get_content_bounds();
         const int panel_x = static_cast<int>(xv_get(state->panel, XV_X));
         const int panel_y = static_cast<int>(xv_get(state->panel, XV_Y));
@@ -74,11 +80,13 @@ namespace native
         if (window != None && linux::openlook::cached_display) {
             XRaiseWindow(linux::openlook::cached_display, window);
         }
-        xv_set(state->content_panel, XV_SHOW, TRUE, nullptr);
-        const Window content_window = static_cast<Window>(
-            xv_get(state->content_panel, XV_XID));
-        if (content_window != None && linux::openlook::cached_display)
-            XRaiseWindow(linux::openlook::cached_display, content_window);
+        if (state->content_panel) {
+            xv_set(state->content_panel, XV_SHOW, TRUE, nullptr);
+            const Window content_window = static_cast<Window>(
+                xv_get(state->content_panel, XV_XID));
+            if (content_window != None && linux::openlook::cached_display)
+                XRaiseWindow(linux::openlook::cached_display, content_window);
+        }
         if (linux::openlook::cached_display)
             XFlush(linux::openlook::cached_display);
         const int selected = get_selected_index();

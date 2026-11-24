@@ -51,12 +51,14 @@ if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
     target_link_libraries(native_openlook_runtime_tests PRIVATE
         native native_developer_options ${CMAKE_DL_LIBS})
     add_test(NAME native_openlook_runtime_tests COMMAND native_openlook_runtime_tests)
+    add_test(NAME native_openlook_selection_tests
+        COMMAND native_openlook_runtime_tests --selection-only)
     add_test(NAME native_openlook_split_tests
         COMMAND native_openlook_runtime_tests --split-layout)
     add_test(NAME native_openlook_desktop_tests
         COMMAND native_openlook_runtime_tests --desktop-controls)
     set_tests_properties(native_openlook_runtime_tests native_openlook_split_tests
-        native_openlook_desktop_tests
+        native_openlook_desktop_tests native_openlook_selection_tests
         PROPERTIES TIMEOUT 30)
 endif()
 

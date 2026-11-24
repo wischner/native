@@ -9,6 +9,20 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK sheet selectors (2026-11-24)
+
+Selection-only `tab_view` controls omit the native content Panel. Their
+empty page bounds previously caused X11 `BadValue` during window creation,
+terminating consumers such as Isaac at startup. The OPEN LOOK runtime suite
+covers creation, selection, resizing, repopulation, repeated show and recreation
+without a page host; ordinary page tabs retain their existing host.
+`native_openlook_selection_tests` runs the selector regression independently
+of the existing text-field resize crash in `native_openlook_runtime_tests`.
+The focused test passes in SDK 1.4.0 under Xephyr/olwm with ASan/UBSan
+and leak detection disabled. Isaac's Debug desktop suite passes 940/940
+checks, and its F5 wrapper reaches the event loop. The broader control
+suite still hits the previously recorded text-field resize crash.
+
 ## OPEN LOOK consumer desktop follow-up (2026-11-24)
 
 On OPEN LOOK, opening an owned window focuses its first eligible positive

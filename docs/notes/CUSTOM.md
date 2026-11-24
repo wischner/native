@@ -623,6 +623,11 @@ destruction, not a timeout that could outlive their parent.
 | `message_box` | **N** | Motif error, warning, question, or information dialogs. |
 ## Linux OPEN LOOK/XView
 
+The 2026-11-24 sheet-selector audit retains **C/H** for `tab_view`.
+Selection-only tabs create only the tab-strip Panel; they have no content
+Panel because their page bounds are empty. Showing, resizing, repopulating
+and recreating a selector are covered by the OPEN LOOK runtime checks.
+
 The 2026-09-05 follow-up retains native Panel items. OLGX button primitives
 use the intrinsic native button height, and radio primitives use rectangular
 choice-item geometry. Radio peers clear selection through `PANEL_TOGGLE_VALUE`

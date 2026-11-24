@@ -156,6 +156,35 @@ namespace
         notify_dispatch();
     }
 
+    // Sheet selectors have no page host, including after recreation.
+    void check_selection_only_tabs(native::wnd &root) {
+        native::tab_view tabs(10, 250, 220, 24);
+        tabs.set_selection_only(true).set_page_frame_visible(false)
+            .set_tab_placement(native::tab_placement::bottom);
+        tabs.add_item("Sheet1");
+        tabs.add_item("Sheet2");
+        for (int cycle = 0; cycle < 2; ++cycle) {
+            attach(tabs, root);
+            const auto *state = ol::tab_view_bindings.object_from_handle(&tabs);
+            expect(state && state->panel && !state->content_panel,
+                   "selection-only tabs create only the tab strip");
+            tabs.set_dimensions(native::size(300, tabs.get_tab_extent()));
+            tabs.set_position(native::point(20, 260));
+            tabs.on_native_selection(1);
+            expect(tabs.get_selected_index() == 1,
+                   "sheet selection works without a page host");
+            tabs.clear_items();
+            tabs.add_item("Renamed sheet");
+            tabs.show();
+            XSync(ol::cached_display, False);
+            expect(tabs.get_selected_index() == 0,
+                   "selection-only tabs can repopulate and show again");
+            tabs.destroy();
+            tabs.add_item("Sheet2");
+            XSync(ol::cached_display, False);
+        }
+    }
+
     void check_tab_fitting(native::tab_view &tabs) {
         for (const auto placement : {native::tab_placement::top,
                  native::tab_placement::bottom, native::tab_placement::left,
@@ -309,6 +338,7 @@ namespace
             expect(text_visible, "new native tab page survives old page cleanup");
         }
         check_tab_fitting(tabs);
+        check_selection_only_tabs(root);
 
         native::code_edit editor("", 10, 320, 400, 100);
         attach(editor, root);
@@ -377,6 +407,7 @@ namespace
 }
 
 int program(int argc, char **argv) {
+    const bool selection_only = argc > 1 && std::string(argv[1]) == "--selection-only";
     const bool split_only = argc > 1 && std::string(argv[1]) == "--split-layout";
     const bool desktop_only = argc > 1 && std::string(argv[1]) == "--desktop-controls";
     native::app_wnd root("OPEN LOOK peer regressions", 20, 20, 660, 480);
@@ -387,10 +418,12 @@ int program(int argc, char **argv) {
             {"Themed list", "Native look", "Portable API"}, 1, {});
         return true;
     });
-    root.on_wnd_create.connect([&root, split_only, desktop_only] {
-        native::app::post([&root, split_only, desktop_only] {
+    root.on_wnd_create.connect([&root, split_only, desktop_only, selection_only] {
+        native::app::post([&root, split_only, desktop_only, selection_only] {
             try {
-                if (desktop_only)
+                if (selection_only)
+                    check_selection_only_tabs(root);
+                else if (desktop_only)
                     check_openlook_desktop(root);
                 else if (split_only)
                     check_nested_split(root);
