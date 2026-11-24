@@ -266,6 +266,12 @@ namespace native
                                      &ks,
                                      &kr,
                                      &br);
+            // MU_TIMER always reports an event, so none means the GEM
+            // server has gone (GEM quit); end the loop instead of retrying.
+            if (events == 0) {
+                linux::gemix::runtime.shutdown_requested = true;
+                break;
+            }
 
             WORD pointer_handle = wind_find(mx, my);
             auto *hover_window = window_from_handle(pointer_handle);

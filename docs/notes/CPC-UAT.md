@@ -325,3 +325,14 @@ The isolated Docker/GCC Debug build at `build/cpc-focus-regression` passed
 and undefined-behavior sanitizers. Unrelated in-progress Native changes were
 preserved; this follow-up changes only shared focus ordering, its regression
 and the matching documentation.
+
+## GEM media filters (2026-11-18)
+
+CPC runtime acceptance with GEM `de90fd423a88b7091a0ae3309dacac8531765eb6`
+over SDK 1.5.5 confirms Native forwards the complete first filter group.
+The Open selector visibly lists BIN/CDT/DSK/SNA/TAP fixtures, hides a TXT
+fixture, and exposes the semicolon-separated patterns in its Filter field.
+Save displays `*.dsk`; saving an extensionless name appends `.dsk` and
+preserves the source disk bytes. CPC owns the default-extension setting;
+Native owns joining the filter patterns. CPC tests and captures live in
+`tests/ui/gem_media.py` and `build/gem-media-test/` in the CPC checkout.

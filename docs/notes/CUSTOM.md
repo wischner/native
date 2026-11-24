@@ -1,5 +1,11 @@
 # Native Versus Custom Control Audit
 
+OPEN LOOK menu spacing review (2026-11-24): menus retain their **N** kind,
+using XView Panel buttons and native popup menus. The menu panel now follows
+the standard `window_fit_height()` API. Compact DeskSet sizing is supplied
+by the updated XView library; Native has no private sizing override. Vision's
+painted client-boundary strip is an application diagnostic.
+
 GEM colour composition review (2026-11-17): existing **C** painted controls
 and **H** document canvases retain their classifications. Their work-area
 painting now composes into peer-owned RGBA images and uses the SDK's BGRA
@@ -1171,3 +1177,10 @@ above. The optional `selection_only` model uses the same peers/drawing stages
 and needs no application page windows. No new control or painter was added.
 `tab_strip` remains **C** for API compatibility; new external-content selectors
 should use the optional `tab_view` mode. Isaac has migrated to that path.
+
+GEM file-filter correction (2026-11-18): open/save selectors retain their
+AES-native **N** implementation. Native passes every nonempty wildcard in the
+first filter group as a semicolon-separated expression, rather than discarding
+all but the first pattern. The GEM selector revision `de90fd423a88b7091a0ae3309dacac8531765eb6`
+provides the editable Filter field and multi-pattern matching; SDK 1.5.5
+predates that selector revision.

@@ -9,6 +9,26 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK compact menu panels (2026-11-24)
+
+Native uses XView's standard `window_fit_height()` for its native menu-button
+panel. Compact fitting is implemented in the updated XView library, which
+leaves two pixels below the lowest menu button, including wrapped rows.
+Ordinary forms and explicit margins retain their toolkit behavior. Older
+SDK/runtime images still produce the font-dependent gap. Vision's main
+gallery paints a six-pixel blue strip at client `y = 0` so the menu boundary
+can be inspected directly.
+
+Validation: GCC Debug/ASan/UBSan Docker build, documentation link checks and
+the menu runtime CTest pass. Xephyr/olwm captures of the same Vision binary
+with old and patched XView show the menu panel shrinking from 36 to 25 pixels
+at medium scale, with the blue strip at the first client row. The upstream
+`panel_fit_test` reproduces the old gap and passes all four font scales with
+the patched library, including non-menu forms and explicit margins. The
+local SDK image was updated for F5; this does not publish an updated image.
+Forced termination of both capture sessions triggers the same XView
+panel-list teardown crash, so those captures do not qualify clean shutdown.
+
 ## Image filters and GEM colour presentation (2026-11-17)
 
 All backends share eager `img >> resize(...) >> dither()` transformations:
@@ -2122,3 +2142,10 @@ both default page lifecycles and the opt-in model, mode-change rejection, disabl
 items, overflow, activation and creation without external page ownership.
 Isaac's GEM desktop suite exercises the selector, double-click rename and undo.
 Non-Linux native-peer runtime behavior still needs its platform acceptance run.
+
+GEM file-filter correction (2026-11-18): open/save selectors retain their
+AES-native **N** implementation. Native passes every nonempty wildcard in the
+first filter group as a semicolon-separated expression, rather than discarding
+all but the first pattern. The GEM selector revision `de90fd423a88b7091a0ae3309dacac8531765eb6`
+provides the editable Filter field and multi-pattern matching; SDK 1.5.5
+predates that selector revision.

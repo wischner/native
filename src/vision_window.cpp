@@ -341,6 +341,10 @@ namespace vision
     }
 
     bool vision_window::on_paint(native::wnd_paint_event event) {
+        // Mark the first client pixels so menu padding is visible.
+        event.g.set_ink(native::rgba(0, 96, 160, 255));
+        event.g.draw_rect(native::rect(0, 0, get_dimensions().w, 6),
+                          true);
         event.g.set_ink(native::rgba(0, 0, 0, 255));
         event.g.set_font(
             native::font_t::stock(native::font_role::system));

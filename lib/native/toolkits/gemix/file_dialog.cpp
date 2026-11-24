@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <utility>
 #include <native/message_box.h>
 
 namespace linux::gemix
@@ -35,9 +36,16 @@ namespace linux::gemix
         if (directory.empty())
             directory = fs::current_path();
         std::string pattern = "*";
-        if (!dialog.get_filters().empty() &&
-            !dialog.get_filters().front().patterns.empty())
-            pattern = dialog.get_filters().front().patterns.front();
+        if (!dialog.get_filters().empty()) {
+            std::string combined;
+            for (const auto &item :
+                 dialog.get_filters().front().patterns) {
+                if (item.empty()) continue;
+                if (!combined.empty()) combined += ';';
+                combined += item;
+            }
+            if (!combined.empty()) pattern = std::move(combined);
+        }
         std::array<char, 4096> path{}, name{};
         const auto copy = [](auto &buffer, const std::string &text) {
             std::copy_n(text.begin(),

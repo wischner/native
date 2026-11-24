@@ -59,6 +59,16 @@ ordinary commands in that group clear their transient selection. SDL2 and
 Window Maker update their existing popup models and paint a separate tick
 gutter. The native resource never replaces the portable state as authority.
 
+OPEN LOOK menu titles are native XView `PANEL_BUTTON` items with
+`PANEL_ITEM_MENU`. Native uses the standard `window_fit_height()` call and
+reserves the resulting panel height above the client area. Compact menu
+sizing belongs to XView: the updated toolkit gives horizontal menu-button
+panels two pixels below the lowest item, including wrapped rows. With its
+default four-pixel top inset, a single row is the button height plus six
+pixels. Older SDK/runtime libraries retain XView's font-dependent bottom
+margin; rebuilding Native alone does not update the toolkit. Vision paints
+a blue strip at client `y = 0` to make this boundary visible.
+
 Painted controls share two public intermediate bases. `custom_control` owns
 focus state and active-theme synchronization. `collection_view` identifies
 painted item collections and adds an optional pixel-based vertical offset;

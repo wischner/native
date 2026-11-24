@@ -189,6 +189,13 @@ the top-level CMake project.
 
 Every backend builds the same `vision` application from `src/`.
 
+The main gallery paints a six-pixel blue strip across the first client row,
+directly below the main menu. It makes the menu/client boundary visible:
+any space above the strip belongs to the menu, while the controls retain
+their normal client padding below it. On OPEN LOOK, compact menu fitting
+requires the updated XView runtime; rebuilding Vision with an older SDK
+does not change the toolkit's menu height.
+
 Run using its matching F5 profile or Docker runtime. A direct launch requires
 the same runtime libraries as the SDK and a compatible desktop:
 
