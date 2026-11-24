@@ -1,5 +1,11 @@
 # Native Versus Custom Control Audit
 
+OPEN LOOK hosted-text review (2026-11-24): native Panel text fields retain
+their **N** implementation. Keyboard dispatch publishes the windowless caret
+item as the portable focus owner before delivering keys, so a toolbar canvas
+cannot consume text intended for its native field. Blaise's XTest search,
+clear, selection and resize checks exercise this path.
+
 On OPEN LOOK, opening an owned window focuses its first eligible positive
 tab-order control after the window manager maps it. Hidden, disabled and
 uncreated controls are skipped. Reopening repeats this selection; showing

@@ -161,9 +161,15 @@ namespace
         // The Panel caret may belong to a button or checkbox as well as
         // a text field. Deliver physical keys before XView's defaults.
         if (XEvent *raw = event_xevent(input); control && raw &&
-            (raw->type == KeyPress || raw->type == KeyRelease) &&
-            native::detail::dispatch_x_keyboard(*control, *raw))
-            return NOTIFY_DONE;
+            (raw->type == KeyPress || raw->type == KeyRelease)) {
+            // XView's windowless caret item owns these keys. Publish that
+            // focus before dispatch, or a hosting canvas consumes the text.
+            const native::detail::window_guard guard(*control);
+            control->on_native_focus(true);
+            if (!guard.alive() ||
+                native::detail::dispatch_x_keyboard(*control, *raw))
+                return NOTIFY_DONE;
+        }
         auto *owner = dynamic_cast<native::text_edit *>(control);
         if (owner && !linux::openlook::permit_input(owner))
             return NOTIFY_DONE;

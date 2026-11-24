@@ -9,6 +9,13 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK hosted text input (2026-11-24)
+
+Windowless Panel caret items become the portable focus owner before keyboard
+dispatch. This prevents a hosting toolbar canvas from consuming their text.
+Blaise's debug desktop checks and XTest typing/filtering, Ctrl+A/Backspace,
+message selection and input after resize/divider dragging pass.
+
 ## OPEN LOOK sheet selectors (2026-11-24)
 
 Selection-only `tab_view` controls omit the native content Panel. Their
