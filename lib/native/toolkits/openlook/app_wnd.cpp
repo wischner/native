@@ -259,7 +259,7 @@ namespace
             raw && native::detail::dispatch_x_tab(*receiver, *raw))
             return NOTIFY_DONE;
         if (XEvent *raw = event_xevent(event);
-            raw && native::detail::dispatch_x_keyboard(*owner, *raw))
+            raw && native::detail::dispatch_x_keyboard(*receiver, *raw))
             return NOTIFY_DONE;
         const int action = event_action(event);
         if (action == LOC_WINEXIT)

@@ -18,6 +18,12 @@ the same commit.
 
 ## Current scope (November 2026)
 
+OPEN LOOK consumer desktop corrections cover whitespace toolbar groups,
+centered choice stacks, visible menu groups and full native Panel keyboard
+navigation. See the [feature matrix](book-of-native/FEATURE-MATRIX.md#open-look-consumer-desktop-follow-up-2026-11-24)
+for the focused validation and its limits.
+
+
 OPEN LOOK builds, F5 and standalone launches use SDK 1.4.0 with OpenLook
 v0.5.0. The Debug build, Vision feature smoke and GDB/MI startup pass;
 34/39 CTests pass with existing sanitizer settings. The five failures also

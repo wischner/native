@@ -134,12 +134,14 @@ namespace native
                 XV_NULL, toggles ? MENU_TOGGLE_MENU : MENU_COMMAND_MENU,
                 nullptr));
             state->menus.push_back(menu);
-            Menu_item previous = static_cast<Menu_item>(XV_NULL);
             for (const auto &entry : top.items) {
                 if (entry.separator) {
-                    if (previous)
-                        xv_set(previous, MENU_LINE_AFTER_ITEM,
-                               MENU_HORIZONTAL_LINE, nullptr);
+                    // XView accepts MENU_LINE_AFTER_ITEM but never paints
+                    // it. A disabled blank native row keeps groups visible.
+                    Menu_item spacer = static_cast<Menu_item>(xv_create(
+                        XV_NULL, MENUITEM, MENU_STRING, " ",
+                        MENU_INACTIVE, TRUE, nullptr));
+                    xv_set(menu, MENU_APPEND_ITEM, spacer, nullptr);
                     continue;
                 }
                 auto *callback =
@@ -170,7 +172,6 @@ namespace native
                            entry.shortcut.c_str(),
                            nullptr);
                 xv_set(menu, MENU_APPEND_ITEM, item, nullptr);
-                previous = item;
             }
             xv_create(bar,
                       PANEL_BUTTON,

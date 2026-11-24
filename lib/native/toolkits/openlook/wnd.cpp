@@ -94,9 +94,10 @@ namespace
                    nullptr);
         if (state->choice && !editable)
             xv_set(state->choice, PANEL_VALUE_X, bounds.p.x,
-                   XV_Y, bounds.p.y - 1 - std::max(0,
-                       (int(xv_get(state->choice, XV_HEIGHT)) -
-                        native::font_t::stock(native::font_role::control).get_metrics().height) / 2), nullptr);
+                   XV_Y, bounds.p.y +
+                       (int(bounds.h()) -
+                        int(xv_get(state->choice, XV_HEIGHT))) / 2,
+                   nullptr);
     }
 
     void fit_list_height(Panel_item item, int requested_height) {

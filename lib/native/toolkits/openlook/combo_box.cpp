@@ -264,9 +264,9 @@ namespace
         if (!editable)
             xv_set(choice, XV_X, bounds.p.x, XV_Y, bounds.p.y,
                    PANEL_VALUE_X, bounds.p.x,
-                   XV_Y, bounds.p.y - 1 - std::max(0,
-                       (int(xv_get(choice, XV_HEIGHT)) -
-                        native::font_t::stock(native::font_role::control).get_metrics().height) / 2), nullptr);
+                   XV_Y, bounds.p.y +
+                       (int(bounds.h()) - int(xv_get(choice, XV_HEIGHT))) / 2,
+                   nullptr);
         return choice;
     }
 }

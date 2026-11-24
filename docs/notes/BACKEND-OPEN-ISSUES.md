@@ -1,5 +1,14 @@
 # Backend Open Issues
 
+## OPEN LOOK consumer desktop follow-up (2026-11-24)
+
+Toolbar separator rules, vertically shifted choice stacks, invisible menu
+grouping and keyboard traversal limited to text fields are corrected in the
+Open Look adapter. The focused desktop, tab-order, menu and ruler/toolbar
+checks pass in SDK 1.4.0 under Xvfb/olwm with ASan/UBSan and leak detection
+disabled. The older full-suite failures below remain separate known issues.
+
+
 ## OPEN LOOK SDK 1.4.0 validation (2026-11-24)
 
 The upgrade to OpenLook v0.5.0 builds successfully and passes 34/39 CTests

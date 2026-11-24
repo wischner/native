@@ -210,6 +210,12 @@ namespace
         explicit openlook_theme(native::gpx &graphics)
             : emulated_theme(graphics) {}
 
+        // OPEN LOOK separates toolbar groups with whitespace alone.
+        theme &draw_toolbar_separator(
+            const native::rect &, native::separator_orientation) override {
+            return *this;
+        }
+
         metrics defaults() const override {
             metrics result;
             result.menu_bar_height = 30;

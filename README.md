@@ -72,6 +72,11 @@ folders are portable, including Haiku's user settings folder. The new typed
 configuration API also handles persistence; its cache and native-storage tests
 pass on Linux/SDL2, GEMix, Haiku, Windows and macOS.
 
+OPEN LOOK consumer desktop corrections cover whitespace toolbar groups,
+centered choice stacks, visible menu groups and full native Panel keyboard
+navigation. See the [feature matrix](docs/manuals/book-of-native/FEATURE-MATRIX.md#open-look-consumer-desktop-follow-up-2026-11-24)
+for the focused validation and its limits.
+
 The November 24 OPEN LOOK upgrade uses SDK 1.4.0 / OpenLook v0.5.0.
 The Debug build, Vision smoke and debugger startup pass; 34/39 CTests pass.
 The five failing checks also reproduce against SDK 1.3.1's runtime; see the

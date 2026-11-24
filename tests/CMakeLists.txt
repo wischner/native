@@ -44,7 +44,8 @@ if(APPLE)
 endif()
 
 if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
-    add_executable(native_openlook_runtime_tests native_openlook_runtime_tests.cpp native_openlook_control_checks.cpp)
+    add_executable(native_openlook_runtime_tests native_openlook_runtime_tests.cpp native_openlook_control_checks.cpp
+        native_openlook_desktop_checks.cpp)
     target_include_directories(native_openlook_runtime_tests PRIVATE
         $<TARGET_PROPERTY:native,INCLUDE_DIRECTORIES>)
     target_link_libraries(native_openlook_runtime_tests PRIVATE
@@ -52,7 +53,10 @@ if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
     add_test(NAME native_openlook_runtime_tests COMMAND native_openlook_runtime_tests)
     add_test(NAME native_openlook_split_tests
         COMMAND native_openlook_runtime_tests --split-layout)
+    add_test(NAME native_openlook_desktop_tests
+        COMMAND native_openlook_runtime_tests --desktop-controls)
     set_tests_properties(native_openlook_runtime_tests native_openlook_split_tests
+        native_openlook_desktop_tests
         PROPERTIES TIMEOUT 30)
 endif()
 

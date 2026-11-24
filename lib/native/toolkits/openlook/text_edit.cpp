@@ -153,15 +153,18 @@ namespace
         Panel panel = static_cast<Panel>(client);
         Panel_item item = static_cast<Panel_item>(xv_get(
             panel, PANEL_CARET_ITEM));
-        auto *owner = item
-                          ? dynamic_cast<native::text_edit *>(
-                                linux::openlook::wnd_bindings
-                                    .object_from_handle(item))
-                          : nullptr;
+        auto *control = linux::openlook::wnd_bindings
+                            .object_from_handle(item);
         Event *input = reinterpret_cast<Event *>(event);
-        if (owner && event_xevent(input) &&
-            native::detail::dispatch_x_tab(*owner, *event_xevent(input)))
+        if (control && !linux::openlook::permit_input(control))
             return NOTIFY_DONE;
+        // The Panel caret may belong to a button or checkbox as well as
+        // a text field. Deliver physical keys before XView's defaults.
+        if (XEvent *raw = event_xevent(input); control && raw &&
+            (raw->type == KeyPress || raw->type == KeyRelease) &&
+            native::detail::dispatch_x_keyboard(*control, *raw))
+            return NOTIFY_DONE;
+        auto *owner = dynamic_cast<native::text_edit *>(control);
         if (owner && !linux::openlook::permit_input(owner))
             return NOTIFY_DONE;
         if (owner && event_is_down(input) &&

@@ -1,5 +1,14 @@
 # Native Versus Custom Control Audit
 
+OPEN LOOK consumer desktop review (2026-11-24): existing **N/H** control
+kinds are unchanged. XView full keyboard mode admits buttons and checkboxes
+into native Panel focus; the Panel handler delivers physical keys to its
+actual caret item. Choice stacks center their native rectangle inside the
+portable bounds, including after item replacement. Toolbar separators draw
+no rule. Menus use inactive blank native rows because XView stores
+`MENU_LINE_AFTER_ITEM` without rendering it.
+
+
 OPEN LOOK menu spacing review (2026-11-24): menus retain their **N** kind,
 using XView Panel buttons and native popup menus. The menu panel now follows
 the standard `window_fit_height()` API. Compact DeskSet sizing is supplied
