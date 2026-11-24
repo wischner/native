@@ -79,8 +79,8 @@ namespace
             if (image) {
                 // This fixture has three equal-height rows. Only the middle
                 // row is a separator; exclude the popup's outer border.
-                for (int y = attributes.height / 2 - 3;
-                     y <= attributes.height / 2 + 3; ++y) {
+                for (int y = attributes.height / 3 + 2;
+                     y < 2 * attributes.height / 3 - 2; ++y) {
                     int ink = 0;
                     for (int x = 8; x < attributes.width - 8; ++x)
                         ink += XGetPixel(image, x, y) ==
