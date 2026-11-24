@@ -11,6 +11,12 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 ## OPEN LOOK consumer desktop follow-up (2026-11-24)
 
+On OPEN LOOK, opening an owned window focuses its first eligible positive
+tab-order control after the window manager maps it. Hidden, disabled and
+uncreated controls are skipped. Reopening repeats this selection; showing
+an already-visible window preserves its current focus. With no eligible
+tab stops, focus is unchanged. Other backends retain their existing behavior.
+
 Open Look toolbar groups use whitespace, native choice stacks center within
 allocated bounds, and menu groups include inactive blank rows. Full XView
 keyboard mode and Panel key routing support explicit Tab/Shift+Tab stops

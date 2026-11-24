@@ -2,6 +2,12 @@
 
 ## OPEN LOOK consumer desktop follow-up (2026-11-24)
 
+On OPEN LOOK, opening an owned window focuses its first eligible positive
+tab-order control after the window manager maps it. Hidden, disabled and
+uncreated controls are skipped. Reopening repeats this selection; showing
+an already-visible window preserves its current focus. With no eligible
+tab stops, focus is unchanged. Other backends retain their existing behavior.
+
 Toolbar separator rules, vertically shifted choice stacks, invisible menu
 grouping and keyboard traversal limited to text fields are corrected in the
 Open Look adapter. Button/choice/list keyboard eligibility is restricted to

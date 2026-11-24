@@ -46,6 +46,7 @@ namespace linux::openlook
         Panel content = XV_NULL;
         Xv_Window paint_window = XV_NULL;
         int menu_height = 0;
+        bool focus_first_on_map = false;
         bool repaint_pending = false;
         native::rect pending_damage;
     };

@@ -72,6 +72,9 @@ folders are portable, including Haiku's user settings folder. The new typed
 configuration API also handles persistence; its cache and native-storage tests
 pass on Linux/SDL2, GEMix, Haiku, Windows and macOS.
 
+Owned OPEN LOOK dialogs focus the first eligible explicit tab stop when opened
+or reopened, allowing immediate typing in the first ordered text field.
+
 OPEN LOOK consumer desktop corrections cover whitespace toolbar groups,
 centered choice stacks, visible menu groups and explicit native Panel keyboard
 navigation. Only controls with positive tab orders receive button/choice focus

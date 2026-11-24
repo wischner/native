@@ -8,11 +8,16 @@
 
 #include <native.h>
 #include "../lib/native/toolkits/openlook/globals.h"
+#include "../lib/native/post_backend.h"
 
 #include <X11/keysym.h>
 #include <array>
+#include <chrono>
+#include <thread>
 #include <cstdlib>
 #include <stdexcept>
+
+extern "C" Notify_value xv_input_pending(Display *, int);
 
 namespace
 {
@@ -27,6 +32,75 @@ namespace
         control.set_parent(&parent);
         control.create();
         control.show();
+    }
+
+    // Pump the real mapping/focus notifications and posted work in the fixture.
+    void pump() {
+        XSync(ol::cached_display, False);
+        xv_input_pending(ol::cached_display, ConnectionNumber(ol::cached_display));
+        notify_dispatch();
+        native::detail::drain_posted_work();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    class blocked_text final : public native::text_edit
+    {
+    public:
+        bool get_input_enabled() const override { return false; }
+    };
+
+    void check_initial_focus(native::app_wnd &owner) {
+        native::modeless_wnd dialog(owner, "Initial dialog focus", 80, 80, 420, 200);
+        native::text_edit later("", native::text_edit_mode::single_line,
+                                20, 60, 180, 24);
+        native::text_edit first("", native::text_edit_mode::single_line,
+                                20, 20, 180, 24);
+        native::text_edit hidden, uncreated;
+        blocked_text disabled;
+        later.set_tab_order(20);
+        first.set_tab_order(10);
+        disabled.set_tab_order(1);
+        hidden.set_tab_order(2);
+        uncreated.set_tab_order(3);
+        uncreated.set_parent(&dialog);
+        for (int cycle = 0; cycle < 2; ++cycle) {
+            dialog.create();
+            attach(later, dialog); // Creation order must not select this field.
+            attach(first, dialog);
+            attach(disabled, dialog);
+            hidden.set_parent(&dialog);
+            hidden.create(); // Explicitly hidden lower-order stop.
+            dialog.show();
+            const auto panel = ol::parent_panel(&first);
+            const auto caret = [&] {
+                return ol::wnd_bindings.object_from_handle(
+                    xv_get(panel, PANEL_CARET_ITEM));
+            };
+            const auto input_window = xv_get(
+                ol::window_state(&dialog)->paint_window, XV_XID);
+            bool ready = false;
+            for (int attempt = 0; attempt < 500; ++attempt) {
+                pump();
+                Window focused = None;
+                int revert = 0;
+                XGetInputFocus(ol::cached_display, &focused, &revert);
+                if (caret() == &first && focused == input_window) {
+                    ready = true;
+                    break;
+                }
+            }
+            expect(ready,
+                   "opening/reopening focuses the lowest eligible tab order natively");
+            later.focus();
+            dialog.show(); // Raising an open dialog must preserve the chosen field.
+            for (int i = 0; i < 20; ++i) pump();
+            expect(caret() == &later, "raising an open dialog does not restart traversal");
+            dialog.destroy();
+        }
+        dialog.create();
+        dialog.show();
+        dialog.destroy(); // Mapping callbacks must not retain a destroyed dialog.
+        for (int i = 0; i < 20; ++i) pump();
     }
 
     // Post to the native Panel, rather than calling portable input hooks.
@@ -51,6 +125,7 @@ namespace
 }
 
 void check_openlook_desktop(native::app_wnd &owner) {
+    check_initial_focus(owner);
     native::modeless_wnd dialog(owner, "Desktop controls", 40, 40, 520, 250);
     dialog.menu << "Format" << (native::menu_items("Style")
         << native::menu_separator << "Alignment");

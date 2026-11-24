@@ -18,6 +18,9 @@ the same commit.
 
 ## Current scope (November 2026)
 
+Owned OPEN LOOK dialogs focus the first eligible explicit tab stop when opened
+or reopened, allowing immediate typing in the first ordered text field.
+
 OPEN LOOK consumer desktop corrections cover whitespace toolbar groups,
 centered choice stacks, visible menu groups and explicit native Panel keyboard
 navigation. Only controls with positive tab orders receive button/choice focus

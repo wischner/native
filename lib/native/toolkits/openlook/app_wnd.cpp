@@ -248,6 +248,22 @@ namespace
 
         linux::openlook::permit_input(owner);
 
+        if (auto *state = linux::openlook::window_state(owner);
+            state && window == state->frame && state->focus_first_on_map &&
+            event_xevent(event) && event_xevent(event)->type == MapNotify) {
+            state->focus_first_on_map = false;
+            const native::detail::window_guard guard(*owner);
+            // The WM must finish mapping before XView can focus a Panel
+            // item. Use the same eligible ordering as ordinary Tab traversal.
+            native::app::post([owner, guard] {
+                if (guard.alive() && owner->get_visible() &&
+                    owner->get_input_enabled())
+                    owner->on_native_tab({native::key_code::tab,
+                        native::key_action::press, false,
+                        native::key_modifiers::none});
+            });
+        }
+
         native::wnd *receiver = owner;
         if (auto *state = linux::openlook::window_bindings.object_from_handle(owner);
             state && window == state->paint_window) {
@@ -548,6 +564,7 @@ namespace native
                    handle_window_event,
                    WIN_CONSUME_EVENTS,
                    KBD_USE,
+                   WIN_STRUCTURE_NOTIFY,
                    ACTION_SELECT,
                    ACTION_ADJUST,
                    ACTION_MENU,
@@ -583,6 +600,9 @@ namespace native
             throw std::runtime_error(
                 "OpenLook/XView: missing frame binding.");
         }
+
+        if (get_owner() && !get_visible())
+            state->focus_first_on_map = true;
 
         const point position =
             linux::openlook::constrain_frame_position(

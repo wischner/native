@@ -837,6 +837,12 @@ An optional peer-owned tab-order binding synchronizes eligibility on live
 changes and releases an ineligible native caret. Other backends install no
 such binding and retain their existing programmatic-focus behavior.
 
+On OPEN LOOK, opening an owned window focuses its first eligible positive
+tab-order control after the window manager maps it. Hidden, disabled and
+uncreated controls are skipped. Reopening repeats this selection; showing
+an already-visible window preserves its current focus. With no eligible
+tab stops, focus is unchanged. Other backends retain their existing behavior.
+
 Application canvases with tab order zero retain Tab and Shift+Tab as
 application input (for example spreadsheet navigation). Give a canvas a
 positive tab order to opt it into form traversal.

@@ -1,5 +1,11 @@
 # Native Versus Custom Control Audit
 
+On OPEN LOOK, opening an owned window focuses its first eligible positive
+tab-order control after the window manager maps it. Hidden, disabled and
+uncreated controls are skipped. Reopening repeats this selection; showing
+an already-visible window preserves its current focus. With no eligible
+tab stops, focus is unchanged. Other backends retain their existing behavior.
+
 OPEN LOOK consumer desktop review (2026-11-24): existing **N/H** control
 kinds are unchanged. XView keyboard mode supplies native focus indicators,
 but buttons, checks, radios, lists and choice stacks admit keyboard focus only

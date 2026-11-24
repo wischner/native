@@ -22,6 +22,12 @@ activating the main window
 can bring it in front of a modeless window. This does not change `get_owner()`,
 owned-window cleanup, or exclusion while an owner-modal dialog is open.
 
+On OPEN LOOK, opening an owned window focuses its first eligible positive
+tab-order control after the window manager maps it. Hidden, disabled and
+uncreated controls are skipped. Reopening repeats this selection; showing
+an already-visible window preserves its current focus. With no eligible
+tab stops, focus is unchanged. Other backends retain their existing behavior.
+
 ## Build owned windows step by step
 
 1. Keep a modeless palette and a modal dialog as members of their owner.
