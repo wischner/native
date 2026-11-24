@@ -456,6 +456,7 @@ namespace native
             delete binding;
             throw;
         }
+        apply_position();
     }
 
     void text_edit::show_native() {

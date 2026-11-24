@@ -135,7 +135,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         unset(DOCKER_IMAGE_OPENLOOK CACHE)
     endif()
     set(DOCKER_IMAGE_OPENLOOK
-        "native-openlook-sdk:1"
+        "native-openlook-sdk:2"
         CACHE STRING
         "Docker image for OpenLook/XView builds")
     if(DOCKER_IMAGE_WMAKER STREQUAL "wischner/gcc-x86_64-linux-window-maker:${DOCKER_TAG}")
@@ -242,7 +242,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
                 ${CMAKE_SOURCE_DIR}/scripts/windows/winui
             USES_TERMINAL)
         add_custom_target(docker-openlook-sdk
-            COMMAND ${DOCKER_EXECUTABLE} build -t native-openlook-sdk:1
+            COMMAND ${DOCKER_EXECUTABLE} build -t native-openlook-sdk:2
                 -f ${CMAKE_SOURCE_DIR}/scripts/linux/openlook/Dockerfile
                 ${CMAKE_SOURCE_DIR}/scripts/linux/openlook
             USES_TERMINAL)
@@ -273,7 +273,7 @@ if(UNIX AND NOT APPLE AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
             build/linux-openlook
             ${DOCKER_IMAGE_OPENLOOK}
             -DTOOLKIT=OPENLOOK)
-        if(DOCKER_IMAGE_OPENLOOK STREQUAL "native-openlook-sdk:1")
+        if(DOCKER_IMAGE_OPENLOOK STREQUAL "native-openlook-sdk:2")
             add_dependencies(docker-openlook docker-openlook-sdk)
         endif()
         add_docker_cmake_build_target(

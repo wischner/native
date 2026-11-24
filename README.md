@@ -153,7 +153,7 @@ remote Apple SDK workflow. The SDK dependency overview is:
 - OPEN LOOK uses XView, OLGX, Xlib, Xrandr, and libtirpc. Its standard
   `File_chooser`, Panel controls, OpenMenu menus, Selection service, and OLGX
   painter remain native to the toolkit. Builds, F5 and standalone sessions
-  use `native-openlook-sdk:1`, containing
+  use `native-openlook-sdk:2`, containing
   the pinned SDK 1.4.0 base plus desktop-height blank menu separators.
   The base contains [OpenLook v0.5.0](https://github.com/retro-vault/open-look/releases/tag/v0.5.0).
   Reconfigure `build/cmake` to migrate the stock image defaults, rebuild
@@ -541,3 +541,9 @@ alpha intact. GEM work areas present full colour through 32-bit BGRA overlays
 on both transports; dithering is opt-in. See
 [image filters](docs/manuals/book-of-native/DRAWING-PRIMITIVES.md#resize-and-dither)
 and [GEM composition and SDK limits](docs/manuals/book-of-native/PATTERNS-PAINTING.md#gem-colour-composition).
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.

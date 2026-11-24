@@ -125,7 +125,7 @@ outputs are:
 | `docker-x11` | `wischner/gcc-x86_64-linux-x11:latest` | `build/linux-x11/src/vision` |
 | `docker-sdl2` | `wischner/gcc-x86_64-linux-sdl:latest` | `build/linux-sdl2/src/vision` |
 | `docker-openmotif` | `wischner/gcc-x86_64-linux-motif:latest` | `build/linux-openmotif/src/vision` |
-| `docker-openlook` | `native-openlook-sdk:1` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
+| `docker-openlook` | `native-openlook-sdk:2` | `build/linux-openlook/src/vision` (run through `scripts/linux/toolkit-session-run.sh openlook`) |
 | `docker-wmaker` | `native-wmaker-sdk:1` | `build/linux-wmaker/src/vision` (run through `scripts/linux/toolkit-session-run.sh wmaker`) |
 | `docker-gemix` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix/src/vision` |
 | `docker-gemix-gemd` | `wischner/gcc-x86_64-gemix:latest` | `build/linux-gemix-gemd/src/vision` |
@@ -135,7 +135,7 @@ outputs are:
 The Docker image supplies build dependencies only. It does not make its shared
 libraries appear on an end user's machine.
 
-OPEN LOOK uses local `native-openlook-sdk:1`, built automatically by
+OPEN LOOK uses local `native-openlook-sdk:2`, built automatically by
 `docker-openlook-sdk` from pinned SDK 1.4.0 / OpenLook v0.5.0 plus the blank
 menu-spacing patch. Use its matching XView/OLGX runtime libraries and fonts when deploying; rebuilding Native alone does not
 upgrade an installed toolkit. F5 and standalone Docker sessions use the same
@@ -1067,3 +1067,9 @@ auto bytes = output.encode(); // Same pack, for memory transport.
 atomic; parent directories must already exist. `resources::from_manifest(path)`
 exposes the same JSON compilation used by `rc`. The API does not export JSON
 manifests or unpack assets into directories.
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.

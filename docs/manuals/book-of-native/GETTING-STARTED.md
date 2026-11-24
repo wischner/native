@@ -130,7 +130,7 @@ cmake -S . -B build/cmake
 cmake --build build/cmake --target docker-openlook
 ```
 
-`docker-openlook` builds `native-openlook-sdk:1` first. It layers the desktop
+`docker-openlook` builds `native-openlook-sdk:2` first. It layers the desktop
 menu spacing patch over pinned SDK 1.4.0 / OpenLook v0.5.0. Reconfiguration
 migrates stock `latest` and `1.4.0` image defaults; custom selections remain
 intact. Restart F5
@@ -420,3 +420,9 @@ The existing Vision F5 launch configurations continue to start Vision.
 `vision --new-features --features-smoke` checks it and exits. Run it in the
 backend's normal session and retain its sibling `retro-terminal/` font assets.
 See the [walkthrough](../programming-native/22-TOOLBARS-AND-PROPERTIES.md#new-feature-acceptance-window).
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.

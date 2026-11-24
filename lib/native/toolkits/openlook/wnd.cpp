@@ -234,6 +234,15 @@ namespace native
         }
         if (item) {
             int y = _bounds.p.y;
+            // Panel text keeps its intrinsic font height even when its
+            // portable allocation is taller. Center the native item so
+            // its baseline aligns with adjacent form and toolbar labels.
+            // The item includes one bottom underline pixel; round the
+            // spare space upward to center the text above that pixel.
+            const auto *edit = dynamic_cast<text_edit *>(this);
+            if (edit && edit->get_mode() == text_edit_mode::single_line)
+                y += std::max(0, (static_cast<int>(_bounds.d.h) -
+                    static_cast<int>(xv_get(item, XV_HEIGHT)) + 1) / 2);
             // XView lists have integral rows. Keep the bottom-facing tab
             // join flush with the list's real border, not its allocation.
             const auto *tabs = dynamic_cast<tab_view *>(get_parent());
@@ -303,9 +312,11 @@ namespace native
                    nullptr);
             // XView ignores XV_WIDTH for the editable value. Update its
             // display width as well, including after native creation.
-            if (dynamic_cast<text_edit *>(this))
+            if (dynamic_cast<text_edit *>(this)) {
                 xv_set(item, PANEL_VALUE_DISPLAY_WIDTH,
                        _bounds.d.w, nullptr);
+                apply_position();
+            }
             // PANEL_LABEL_WIDTH is a button attribute in the XView
             // implementations we support.  Applying it to check, radio,
             // list, or text items emits a bad-attribute warning and can

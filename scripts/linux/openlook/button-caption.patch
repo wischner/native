@@ -1,0 +1,27 @@
+--- a/lib/olgx/ol_button.c
++++ b/lib/olgx/ol_button.c
+@@ -275,0 +276,21 @@
++			int text_offset = info->endcap_width;
++			/* Center ordinary push-button captions; menu rows and menu
++			   buttons retain their label/mark alignment. */
++			if (!(state & (OLGX_MENU_ITEM | OLGX_MENU_MARK))) {
++				int label_width;
++#ifdef OW_I18N
++				if (Olgx_Flags(info) & OLGX_FONTSET) {
++					if (state & OLGX_LABEL_IS_WCS)
++						label_width = XwcTextEscapement(info->textfontset,
++							(wchar_t *)label, wslen((wchar_t *)label));
++					else
++						label_width = XmbTextEscapement(info->textfontset,
++							(char *)label, strlen((char *)label));
++				} else
++#endif
++					label_width = XTextWidth(TextFont_Struct(info),
++						(char *)label, strlen((char *)label));
++				if (label_width < inside_width)
++					text_offset += (inside_width - label_width) / 2;
++			}
++
+@@ -284 +305 @@
+-						   x + info->endcap_width,
++						   x + text_offset,

@@ -631,7 +631,7 @@ destruction, not a timeout that could outlive their parent.
 
 The 2026-11-24 separator follow-up keeps toolbar groups as whitespace.
 Popup separators are inactive, feedback-free blank XView items. The local
-`native-openlook-sdk:1` patch gives them `Button_Height / 2` pixels, matching
+`native-openlook-sdk:2` patch gives them `Button_Height / 2` pixels, matching
 olwm desktop separators. XView uses the same variable row geometry for
 menu sizing, painting, hit testing and submenu placement. Native adds no
 separator paint hook. The desktop fixture checks blank pixels, exact gap
@@ -1226,3 +1226,20 @@ first filter group as a semicolon-separated expression, rather than discarding
 all but the first pattern. The GEM selector revision `de90fd423a88b7091a0ae3309dacac8531765eb6`
 provides the editable Filter field and multi-pattern matching; SDK 1.5.5
 predates that selector revision.
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.
+
+Validation (2026-11-24): SDK 2 built successfully; Blaise passed 1,507/1,507
+OPEN LOOK desktop assertions plus physical search typing/clearing. Its eight
+secondary window types were captured under Xephyr/olwm and reviewed for centered
+button captions and spacing, including small Compose and Address Book windows.
+This is consumer acceptance coverage, not an exhaustive Native dialog suite.
+
+OPEN LOOK single-line text fields (2026-11-24) center their intrinsic XView
+item height within the portable allocation on creation, movement and resizing,
+so form and toolbar captions share the text baseline. Multiline fields retain
+their existing placement. The controls remain native XView items (N).

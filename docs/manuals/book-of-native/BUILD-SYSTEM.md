@@ -155,7 +155,7 @@ The images are:
 - `wischner/gcc-x86_64-gemix:latest`
 - `wischner/gcc-x86_64-linux-sdl`
 - `wischner/gcc-x86_64-linux-motif`
-- `native-openlook-sdk:1`
+- `native-openlook-sdk:2`
 - `native-wmaker-sdk:1`
 - `native-windows-winui-sdk:24.04` (local `docker-win-sdk` dependency)
 - `wischner/gcc-x86_64-haiku`
@@ -532,7 +532,7 @@ tools and are not referenced by any F5 configuration or task.
 Select **Linux OPEN LOOK, Xephyr**. F5 builds the
 `docker-openlook` target into `build/linux-openlook/` and runs the image's
 GDB through `scripts/linux/docker-debug.sh --session openlook-xephyr`.
-The `native-openlook-sdk:1` image supplies XView, OLGX,
+The `native-openlook-sdk:2` image supplies XView, OLGX,
 Xephyr, olwm, fonts, X utilities and GDB. No guest setup is required.
 
 `docker-openlook-sdk` builds this local image from the pinned SDK 1.4.0 base
@@ -974,3 +974,9 @@ through WINGs' own teardown API.
 caller's responsibility. The older default cache value migrates automatically.
 The existing narrow font-cache LSan suppressions are unchanged: the native-only
 allocation fixture still reports Xft/Fontconfig shutdown retention without them.
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.

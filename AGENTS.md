@@ -170,7 +170,7 @@ These targets use the following Docker images:
 - GEMix: `wischner/gcc-x86_64-gemix:latest`
 - SDL2: `wischner/gcc-x86_64-linux-sdl`
 - OpenMotif: `wischner/gcc-x86_64-linux-motif`
-- OPEN LOOK: `native-openlook-sdk:1`
+- OPEN LOOK: `native-openlook-sdk:2`
 - Window Maker: `native-wmaker-sdk:1`
 - Windows MinGW-w64/WinUI: `native-windows-winui-sdk:24.04` (built locally by `docker-win-sdk`)
 - Haiku cross toolchain: `wischner/gcc-x86_64-haiku`
@@ -275,7 +275,7 @@ Do not collapse multiple platform or toolkit builds into the same CMake build di
 ### OPEN LOOK backend
 
 - Build with `docker-openlook`. F5 and standalone execution use the
-  `native-openlook-sdk:1` image and its `openlook-xephyr`
+  `native-openlook-sdk:2` image and its `openlook-xephyr`
   helper, which supplies Xephyr and olwm. No Tribblix VM is required.
 - `docker-openlook` depends on `docker-openlook-sdk`, which builds the pinned
   SDK 1.4.0 base plus `scripts/linux/openlook/menu-spacing.patch`. Blank inactive
@@ -614,3 +614,9 @@ requests.
 Vision's terminal acceptance mode keeps its attributed shader/font assets under
 `src/assets/retro-terminal/`. Copy the complete directory beside the deployed
 binary; its asset README records upstream revision, licenses and port limits.
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.

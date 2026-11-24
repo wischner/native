@@ -55,7 +55,7 @@ Separator verification opens and reopens command and checkable popups,
 forces an exposure, and requires a blank gap exactly half the OLGX button
 height, matching olwm's desktop menu. Pointer hits below the gap and arrow
 navigation across it use XView's compact row geometry. The local
-`native-openlook-sdk:1` adds that layout fix; no backend separator paint hook
+`native-openlook-sdk:2` adds that layout fix; no backend separator paint hook
 is installed. Desktop, menu and ruler/toolbar regressions pass in this image
 with ASan/UBSan and leak detection disabled.
 `NATIVE_POPUP_CAPTURE` optionally saves both popup types to an existing
@@ -2234,3 +2234,20 @@ first filter group as a semicolon-separated expression, rather than discarding
 all but the first pattern. The GEM selector revision `de90fd423a88b7091a0ae3309dacac8531765eb6`
 provides the editable Filter field and multi-pattern matching; SDK 1.5.5
 predates that selector revision.
+
+OPEN LOOK SDK 2 also applies `scripts/linux/openlook/button-caption.patch`: ordinary
+OLGX push-button captions are centered within their requested width, including
+native dialog buttons. Menu rows and menu-mark buttons retain their alignment.
+Deploy the matching XView and OLGX libraries together. Native buttons remain
+XView controls (N); this changes the toolkit renderer, not application painting.
+
+Validation (2026-11-24): SDK 2 built successfully; Blaise passed 1,507/1,507
+OPEN LOOK desktop assertions plus physical search typing/clearing. Its eight
+secondary window types were captured under Xephyr/olwm and reviewed for centered
+button captions and spacing, including small Compose and Address Book windows.
+This is consumer acceptance coverage, not an exhaustive Native dialog suite.
+
+OPEN LOOK single-line text fields (2026-11-24) center their intrinsic XView
+item height within the portable allocation on creation, movement and resizing,
+so form and toolbar captions share the text baseline. Multiline fields retain
+their existing placement. The controls remain native XView items (N).
