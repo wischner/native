@@ -16,8 +16,11 @@ to the canvas range and `on_scroll`. Programmatic changes remain silent and
 publish slider sizes/positions using the 0..1000 AES protocol. The canvas
 reserves no duplicate track or corner space. Its status bar ends at the AES
 work-area edge, directly above the native bottom track. Nested/unassociated
-canvases retain their internal scrollbars. Other backends retain their
-existing canvas controls and geometry through the default adapter.
+canvases retain their internal scrollbars. OPEN LOOK places real XView
+`Scrollbar` objects in every canvas's reserved tracks instead of painting
+them: one unit is one theme line, and programmatic scrolls move the elevator
+silently. Other backends retain their existing canvas controls and geometry
+through the default adapter.
 
 `canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
 The axis visibility getters include frame bars; `get_client_bounds()` always

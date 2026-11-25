@@ -36,4 +36,8 @@ namespace linux::openlook
     void resize_collection_panel(native::wnd &owner,
                                  openlook_collection &state,
                                  const native::size &dimensions);
+
+    // Publish a created collection's scroll state to its XView
+    // Scrollbars, creating a canvas axis when it first becomes visible.
+    void synchronize_collection_scrollbars(native::wnd &owner);
 } // namespace linux::openlook

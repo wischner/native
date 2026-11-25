@@ -1,5 +1,10 @@
 # Native Versus Custom Control Audit
 
+OPEN LOOK canvas scrollbar review (2026-11-25): `canvas` scrollbars moved
+from library-painted tracks to real XView `SCROLLBAR` objects; the canvas
+stays **H**. Fyodor's document canvas showed the emulated arrow/trough bar
+instead of the OPEN LOOK elevator and cable.
+
 OPEN LOOK hosted-text review (2026-11-24): native Panel text fields retain
 their **N** implementation. Keyboard dispatch publishes the windowless caret
 item as the portable focus owner before delivering keys, so a toolbar canvas
@@ -676,7 +681,7 @@ retired native list pages hide before their deferred destruction.
 | `panel` | **N** | Borderless XView `PANEL` placed on the frame at the accumulated child offset; XView clears it and it accepts Panel items. |
 | `property_grid` | **H** | Compact typed rows with separate labels/scrollbar and a canvas value host parenting native text/check/combo editors; plain values use black text, custom dropdowns retain the native choice-combo enclosure, and background painting cannot cover editor input. |
 | `toolbar` | **C** | Menu-themed canvas strip at any edge; momentary/toggle/exclusive tools and configurable image sizes. |
-| `canvas` | **H** | Shared XView collection Panel and paint window; the client, rulers, and themed scrollbars are painted by portable code. |
+| `canvas` | **H** | Shared XView collection Panel and paint window with native XView `SCROLLBAR` objects in the reserved tracks; the client and rulers are painted by portable code. |
 | `shader_view` | **C** | Existing canvas host with the shared image-shader executors, owned source, ordered passes and temporal history; optional GLSL follows live capabilities. |
 | `ruler`, `status_bar` | **C** | Shared library-painted non-client strips using the OPEN LOOK theme. |
 | File open/save/directory | **N/H** | XView `FILE_CHOOSER`, adapted for directory-only and save behavior. |

@@ -14,6 +14,7 @@
 #include <xview/svrimage.h>
 #include <xview/font.h>
 #include <xview/textsw.h>
+#include <xview/win_notify.h>
 #define delete xview_delete_handler
 #include <xview_private/panel_impl.h>
 #undef delete
@@ -610,6 +611,89 @@ void check_openlook_controls(native::app_wnd &owner) {
     server.click(up);
     expect(closed_from_commit && !window.get_created(),
            "a typed-time commit may destroy its window before stepping continues");
+    window.destroy();
+    pump();
+}
+
+// A scrolling canvas uses XView Scrollbars in its reserved tracks, and
+// both programmatic and pointer scrolling keep the two in step.
+void check_openlook_canvas_scrollbars(native::app_wnd &owner) {
+    using namespace native;
+    namespace ol = linux::openlook;
+    modeless_wnd window(
+        owner, "OPEN LOOK canvas scrollbars", 120, 120, 420, 320);
+    canvas content(10, 10, 300, 200);
+    content.set_content_bounds({0, 0, 100, 2000})
+        .set_vertical_scrollbar_policy(scrollbar_policy::always)
+        .set_horizontal_scrollbar_policy(scrollbar_policy::automatic);
+    int notifications = 0;
+    content.on_scroll.connect([&](canvas_scroll_position) {
+        ++notifications;
+        return true;
+    });
+    window.create();
+    window.show();
+    attach(content, window);
+    pump();
+
+    const auto *state = ol::canvas_bindings.object_from_handle(&content);
+    expect(state && state->vertical_scrollbar,
+           "a vertically scrolling canvas owns an XView Scrollbar");
+    expect(!state->horizontal_scrollbar,
+           "a canvas creates no XView Scrollbar for a hidden axis");
+    const Scrollbar vertical = state->vertical_scrollbar;
+    const int extent = static_cast<int>(xv_get(vertical, XV_WIDTH));
+    expect(xv_get(vertical, XV_SHOW) &&
+               static_cast<int>(xv_get(vertical, XV_X)) == 300 - extent &&
+               static_cast<int>(xv_get(vertical, XV_HEIGHT)) == 200,
+           "the canvas XView Scrollbar fills its reserved vertical track");
+    expect(content.get_client_bounds().d.w == 300u - extent,
+           "the canvas viewport excludes the native scrollbar");
+
+    content.set_scroll_position({0, 5000});
+    pump();
+    const int object =
+        static_cast<int>(xv_get(vertical, SCROLLBAR_OBJECT_LENGTH));
+    const int view =
+        static_cast<int>(xv_get(vertical, SCROLLBAR_VIEW_LENGTH));
+    expect(static_cast<int>(xv_get(vertical, SCROLLBAR_VIEW_START)) ==
+               object - view,
+           "a programmatic scroll to the end moves the native elevator");
+    expect(notifications == 0,
+           "a programmatic canvas scroll stays silent");
+
+    // XView moves the elevator, then posts SCROLLBAR_REQUEST to the
+    // notify client; the canvas follows in whole theme lines.
+    content.set_scroll_position({0, 0});
+    pump();
+    const int line = std::max(
+        1, theme::create(content.get_gpx())->get_list_item_height());
+    expect(static_cast<int>(xv_get(vertical, SCROLLBAR_PIXELS_PER_UNIT)) ==
+               line,
+           "one native scrollbar unit is one theme line");
+    xv_set(vertical, SCROLLBAR_VIEW_START, 3, nullptr);
+    win_post_id_and_arg(
+        static_cast<Notify_client>(
+            xv_get(vertical, SCROLLBAR_NOTIFY_CLIENT)),
+        SCROLLBAR_REQUEST,
+        NOTIFY_IMMEDIATE,
+        reinterpret_cast<Notify_arg>(vertical),
+        NOTIFY_COPY_NULL,
+        NOTIFY_RELEASE_NULL);
+    pump();
+    expect(content.get_scroll_position().y == 3 * line &&
+               notifications == 1,
+           "a native scrollbar request scrolls the canvas and notifies");
+    content.focus();
+    pump();
+
+    content.set_content_bounds({0, 0, 1000, 2000});
+    pump();
+    expect(state->horizontal_scrollbar &&
+               xv_get(state->horizontal_scrollbar, XV_SHOW),
+           "an overflowing canvas axis gains an XView Scrollbar");
+    expect(static_cast<int>(xv_get(vertical, XV_HEIGHT)) == 200 - extent,
+           "both canvas Scrollbars leave the corner free");
     window.destroy();
     pump();
 }

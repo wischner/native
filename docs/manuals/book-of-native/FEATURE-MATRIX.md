@@ -9,6 +9,24 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK canvas scrollbars (2026-11-25)
+
+OPEN LOOK canvases now use real XView `Scrollbar` objects in their reserved
+tracks; previously they painted the generic arrow/trough bar. An axis's bar is
+created when its policy first shows it. Arrows step one theme line, the cable
+pages, and the anchors reach both exact ends. `native_openlook_canvas_scrollbar_tests`
+(`--canvas-scrollbars`) checks placement, the corner, silent programmatic
+sync, request routing to `on_scroll`, and a horizontal axis appearing on
+overflow. Under olwm, Fyodor's document canvas showed the elevator, and
+arrow, cable and anchor clicks scrolled it.
+
+Clicking any OPEN LOOK collection `Scrollbar` (including the existing
+`table_view` one) and then destroying its window in the runtime harness makes
+XView report an invalid object and exit; this predates the canvas change. The
+canvas check therefore posts `SCROLLBAR_REQUEST` as XView does. The full
+`native_openlook_runtime_tests` run also exits 1 on the unchanged baseline
+without reporting a failed check.
+
 ## Top-level window icons (2026-11-25)
 
 `app_wnd::set_icon()` shares one `img` with a top-level window. Adapters fit

@@ -698,6 +698,20 @@ namespace
                 // backbuffer track must remain unpainted.
                 return *this;
             }
+            if (auto *content = dynamic_cast<native::canvas *>(window)) {
+                // A canvas axis paints nothing once its native XView
+                // Scrollbar exists in the reserved track.
+                const auto *host =
+                    linux::openlook::canvas_bindings.object_from_handle(
+                        content);
+                const Scrollbar native_bar =
+                    !host ? XV_NULL
+                    : orientation == native::scrollbar_orientation::vertical
+                        ? host->vertical_scrollbar
+                        : host->horizontal_scrollbar;
+                if (native_bar)
+                    return *this;
+            }
             return emulated_theme::draw_scrollbar_part(
                 bounds, orientation, part, element_state);
         }

@@ -117,6 +117,8 @@ namespace linux::openlook
         Xv_Window paint_window = XV_NULL;
         Scrollbar vertical_scrollbar = XV_NULL;
         Scrollbar horizontal_scrollbar = XV_NULL;
+        // Scrollbar notify client already carrying the request monitor.
+        Notify_client scrollbar_client = XV_NULL;
         bool synchronizing_scrollbars = false;
         bool completion_visible = false;
         bool repaint_pending = false;

@@ -581,6 +581,10 @@ custom collection paints into its backing Pixmap and copies the requested
 region directly; it must not clear the live Panel before requesting Expose.
 `icon_view`, `tree_view`, and `table_view` attach real XView `Scrollbar`
 objects to that Panel (vertical where applicable and horizontal for tables).
+A `canvas` creates each XView `Scrollbar` when its policy first shows that
+axis and places it in the track the portable geometry reserves. One unit is
+one theme line, so the arrows step a line and the last unit reaches the exact
+end; programmatic scrolls move the elevator without emitting `on_scroll`.
 The backend synchronizes their object, page, and view positions in both
 directions and suppresses only the duplicate portable scrollbar paint; it
 must not substitute an emulated track when XView supplies the native control.
@@ -2034,8 +2038,10 @@ to the canvas range and `on_scroll`. Programmatic changes remain silent and
 publish slider sizes/positions using the 0..1000 AES protocol. The canvas
 reserves no duplicate track or corner space. Its status bar ends at the AES
 work-area edge, directly above the native bottom track. Nested/unassociated
-canvases retain their internal scrollbars. Other backends retain their
-existing canvas controls and geometry through the default adapter.
+canvases retain their internal scrollbars. OPEN LOOK places real XView
+`Scrollbar` objects in every canvas's reserved tracks instead of painting
+them. Other backends retain their existing canvas controls and geometry
+through the default adapter.
 
 `canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
 The axis visibility getters include frame bars; `get_client_bounds()` always

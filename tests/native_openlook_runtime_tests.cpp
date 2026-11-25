@@ -23,6 +23,7 @@ extern "C" void rl_initwithrect(Rect *, Rectlist *);
 extern "C" void rl_free(Rectlist *);
 
 void check_openlook_controls(native::app_wnd &owner);
+void check_openlook_canvas_scrollbars(native::app_wnd &owner);
 void check_openlook_desktop(native::app_wnd &owner);
 
 namespace
@@ -410,6 +411,7 @@ int program(int argc, char **argv) {
     const bool selection_only = argc > 1 && std::string(argv[1]) == "--selection-only";
     const bool split_only = argc > 1 && std::string(argv[1]) == "--split-layout";
     const bool desktop_only = argc > 1 && std::string(argv[1]) == "--desktop-controls";
+    const bool canvas_only = argc > 1 && std::string(argv[1]) == "--canvas-scrollbars";
     native::app_wnd root("OPEN LOOK peer regressions", 20, 20, 660, 480);
     root.on_wnd_paint.connect([](native::wnd_paint_event event) {
         ++paint_count;
@@ -418,8 +420,10 @@ int program(int argc, char **argv) {
             {"Themed list", "Native look", "Portable API"}, 1, {});
         return true;
     });
-    root.on_wnd_create.connect([&root, split_only, desktop_only, selection_only] {
-        native::app::post([&root, split_only, desktop_only, selection_only] {
+    root.on_wnd_create.connect([&root, split_only, desktop_only, selection_only,
+                                canvas_only] {
+        native::app::post([&root, split_only, desktop_only, selection_only,
+                           canvas_only] {
             try {
                 if (selection_only)
                     check_selection_only_tabs(root);
@@ -427,6 +431,8 @@ int program(int argc, char **argv) {
                     check_openlook_desktop(root);
                 else if (split_only)
                     check_nested_split(root);
+                else if (canvas_only)
+                    check_openlook_canvas_scrollbars(root);
                 else {
                     checks(root);
                     check_openlook_controls(root);

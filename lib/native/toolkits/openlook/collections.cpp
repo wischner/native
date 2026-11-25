@@ -5,6 +5,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <limits>
@@ -115,6 +117,160 @@ namespace
                std::max(1, width),
                XV_HEIGHT,
                std::max(1, height),
+               nullptr);
+    }
+
+    // Create one hidden, unsplittable XView Scrollbar on a Panel.
+    Scrollbar create_scrollbar(Panel panel, bool horizontal) {
+        const auto scrollbar = static_cast<Scrollbar>(xv_create(
+            panel,
+            SCROLLBAR,
+            SCROLLBAR_DIRECTION,
+            horizontal ? SCROLLBAR_HORIZONTAL : SCROLLBAR_VERTICAL,
+            SCROLLBAR_PIXELS_PER_UNIT,
+            1,
+            SCROLLBAR_SPLITTABLE,
+            FALSE,
+            XV_SHOW,
+            FALSE,
+            nullptr));
+        if (!scrollbar) {
+            throw std::runtime_error(
+                horizontal ? "OpenLook/XView: failed to create native "
+                             "horizontal scrollbar."
+                           : "OpenLook/XView: failed to create native "
+                             "vertical scrollbar.");
+        }
+        return scrollbar;
+    }
+
+    // Route a Scrollbar's requests to its owner, interposing once per
+    // notify client because a Panel's Scrollbars share one.
+    void monitor_scrollbar(linux::openlook::openlook_collection &state,
+                           Scrollbar scrollbar) {
+        const auto client = static_cast<Notify_client>(
+            xv_get(scrollbar, SCROLLBAR_NOTIFY_CLIENT));
+        if (!client || client == state.scrollbar_client)
+            return;
+        if (notify_interpose_event_func(
+                client,
+                reinterpret_cast<Notify_func>(handle_scrollbar_event),
+                NOTIFY_SAFE) != NOTIFY_OK) {
+            throw std::runtime_error(
+                "OpenLook/XView: failed to monitor native scrollbar.");
+        }
+        state.scrollbar_client = client;
+    }
+
+    //
+    // Describe one canvas axis in XView scrollbar units.
+    //
+    // Notes:
+    //      A unit is one theme line, so the OPEN LOOK arrows step a
+    //      line as the portable canvas arrows do. The last unit maps
+    //      to the exact end of the range, which need not be a whole
+    //      number of lines.
+    //
+    struct canvas_axis
+    {
+        std::int64_t origin = 0;
+        std::int64_t range = 0;
+        int line = 1;
+        int units = 0;
+        int page = 1;
+        int start = 0;
+    };
+
+    int unit_count(std::int64_t value) {
+        // Halved so the object length (units + page) cannot overflow.
+        return static_cast<int>(std::clamp<std::int64_t>(
+            value, 0, std::numeric_limits<int>::max() / 2));
+    }
+
+    canvas_axis canvas_axis_for(native::canvas &content, bool horizontal) {
+        const native::canvas_content_bounds bounds =
+            content.get_content_bounds();
+        const native::rect viewport = content.get_client_bounds();
+        const native::canvas_scroll_position scroll =
+            content.get_scroll_position();
+        canvas_axis axis;
+        axis.line = std::max(
+            1, native::theme::create(content.get_gpx())
+                   ->get_list_item_height());
+        axis.origin = horizontal ? bounds.x : bounds.y;
+        const std::int64_t extent =
+            horizontal ? bounds.width : bounds.height;
+        const std::int64_t view =
+            horizontal ? viewport.d.w : viewport.d.h;
+        axis.range = std::clamp<std::int64_t>(
+            extent - view,
+            0,
+            std::numeric_limits<std::int32_t>::max() - axis.origin);
+        axis.units = unit_count((axis.range + axis.line - 1) / axis.line);
+        axis.page = std::max(1, unit_count(view / axis.line));
+        const std::int64_t offset = std::clamp<std::int64_t>(
+            (horizontal ? scroll.x : scroll.y) - axis.origin,
+            0,
+            axis.range);
+        axis.start = offset >= axis.range
+                         ? axis.units
+                         : unit_count(offset / axis.line);
+        return axis;
+    }
+
+    std::int32_t canvas_axis_position(const canvas_axis &axis, int start) {
+        const std::int64_t offset = std::min<std::int64_t>(
+            axis.range,
+            static_cast<std::int64_t>(std::max(0, start)) * axis.line);
+        return static_cast<std::int32_t>(axis.origin + offset);
+    }
+
+    // Create a canvas axis the first time its policy shows it. Without
+    // a native Scrollbar the theme keeps painting the portable track.
+    void ensure_canvas_scrollbar(
+        linux::openlook::openlook_collection &state,
+        Scrollbar &slot,
+        bool visible,
+        bool horizontal) {
+        if (slot || !visible || !state.panel)
+            return;
+        Scrollbar created = XV_NULL;
+        try {
+            created = create_scrollbar(state.panel, horizontal);
+            monitor_scrollbar(state, created);
+            slot = created;
+        } catch (const std::exception &) {
+            if (created)
+                xv_destroy_safe(created);
+        }
+    }
+
+    void configure_canvas_scrollbar(Scrollbar scrollbar,
+                                    bool visible,
+                                    const canvas_axis &axis) {
+        if (!scrollbar)
+            return;
+        if (!visible) {
+            xv_set(scrollbar, XV_SHOW, FALSE, nullptr);
+            return;
+        }
+        if (static_cast<int>(xv_get(scrollbar, SCROLLBAR_PIXELS_PER_UNIT)) !=
+            axis.line) {
+            xv_set(scrollbar, SCROLLBAR_PIXELS_PER_UNIT, axis.line, nullptr);
+        }
+        xv_set(scrollbar,
+               SCROLLBAR_OBJECT_LENGTH,
+               axis.units + axis.page,
+               SCROLLBAR_PAGE_LENGTH,
+               axis.page,
+               SCROLLBAR_VIEW_LENGTH,
+               axis.page,
+               SCROLLBAR_VIEW_START,
+               axis.start,
+               SCROLLBAR_INACTIVE,
+               axis.units ? FALSE : TRUE,
+               XV_SHOW,
+               TRUE,
                nullptr);
     }
 
@@ -252,6 +408,32 @@ namespace
                             header + body_height,
                             body_width,
                             scrollbar_extent);
+        } else if (auto *content =
+                       dynamic_cast<native::canvas *>(&owner)) {
+            // Match the tracks the portable canvas geometry reserves.
+            const bool vertical = content->get_vertical_scrollbar_visible();
+            const bool horizontal =
+                content->get_horizontal_scrollbar_visible();
+            ensure_canvas_scrollbar(
+                state, state.vertical_scrollbar, vertical, false);
+            ensure_canvas_scrollbar(
+                state, state.horizontal_scrollbar, horizontal, true);
+            configure_canvas_scrollbar(state.vertical_scrollbar,
+                                       vertical,
+                                       canvas_axis_for(*content, false));
+            configure_canvas_scrollbar(state.horizontal_scrollbar,
+                                       horizontal,
+                                       canvas_axis_for(*content, true));
+            place_scrollbar(state.vertical_scrollbar,
+                            width - scrollbar_extent,
+                            0,
+                            scrollbar_extent,
+                            height - (horizontal ? scrollbar_extent : 0));
+            place_scrollbar(state.horizontal_scrollbar,
+                            0,
+                            height - scrollbar_extent,
+                            width - (vertical ? scrollbar_extent : 0),
+                            scrollbar_extent);
         }
 
         state.synchronizing_scrollbars = false;
@@ -309,7 +491,18 @@ namespace
             event_id(event) == SCROLLBAR_REQUEST) {
             const int start = static_cast<int>(xv_get(
                 scrollbar, SCROLLBAR_VIEW_START));
-            if (scrollbar == state->vertical_scrollbar) {
+            auto *content = dynamic_cast<native::canvas *>(owner);
+            const bool horizontal =
+                scrollbar == state->horizontal_scrollbar;
+            if (content &&
+                (horizontal || scrollbar == state->vertical_scrollbar)) {
+                native::canvas_scroll_position position =
+                    content->get_scroll_position();
+                (horizontal ? position.x : position.y) =
+                    canvas_axis_position(
+                        canvas_axis_for(*content, horizontal), start);
+                content->on_native_scroll(position);
+            } else if (scrollbar == state->vertical_scrollbar) {
                 if (auto *icons =
                         dynamic_cast<native::icon_view *>(owner)) {
                     icons->set_scroll_offset(start);
@@ -857,66 +1050,12 @@ namespace
                 dynamic_cast<native::tree_view *>(&owner) ||
                 dynamic_cast<native::table_view *>(&owner);
             if (vertical) {
-                state->vertical_scrollbar =
-                    static_cast<Scrollbar>(xv_create(
-                        panel,
-                        SCROLLBAR,
-                        SCROLLBAR_DIRECTION,
-                        SCROLLBAR_VERTICAL,
-                        SCROLLBAR_PIXELS_PER_UNIT,
-                        1,
-                        SCROLLBAR_SPLITTABLE,
-                        FALSE,
-                        XV_SHOW,
-                        FALSE,
-                        nullptr));
-                if (!state->vertical_scrollbar) {
-                    throw std::runtime_error(
-                        "OpenLook/XView: failed to create native "
-                        "vertical scrollbar.");
-                }
+                state->vertical_scrollbar = create_scrollbar(panel, false);
+                monitor_scrollbar(*state, state->vertical_scrollbar);
             }
             if (dynamic_cast<native::table_view *>(&owner)) {
-                state->horizontal_scrollbar =
-                    static_cast<Scrollbar>(xv_create(
-                        panel,
-                        SCROLLBAR,
-                        SCROLLBAR_DIRECTION,
-                        SCROLLBAR_HORIZONTAL,
-                        SCROLLBAR_PIXELS_PER_UNIT,
-                        1,
-                        SCROLLBAR_SPLITTABLE,
-                        FALSE,
-                        XV_SHOW,
-                        FALSE,
-                        nullptr));
-                if (!state->horizontal_scrollbar) {
-                    throw std::runtime_error(
-                        "OpenLook/XView: failed to create native "
-                        "horizontal scrollbar.");
-                }
-            }
-
-            Notify_client installed_client = XV_NULL;
-            for (Scrollbar scrollbar : {
-                     state->vertical_scrollbar,
-                     state->horizontal_scrollbar}) {
-                if (!scrollbar)
-                    continue;
-                Notify_client client = static_cast<Notify_client>(
-                    xv_get(scrollbar, SCROLLBAR_NOTIFY_CLIENT));
-                if (!client || client == installed_client)
-                    continue;
-                if (notify_interpose_event_func(
-                        client,
-                        reinterpret_cast<Notify_func>(
-                            handle_scrollbar_event),
-                        NOTIFY_SAFE) != NOTIFY_OK) {
-                    throw std::runtime_error(
-                        "OpenLook/XView: failed to monitor native "
-                        "scrollbar.");
-                }
-                installed_client = client;
+                state->horizontal_scrollbar = create_scrollbar(panel, true);
+                monitor_scrollbar(*state, state->horizontal_scrollbar);
             }
         } catch (...) {
             delete state;
@@ -1034,6 +1173,11 @@ namespace linux::openlook
             static_cast<Xv_Window>(xv_get(
                 state.panel, CANVAS_NTH_PAINT_WINDOW, 0)));
         synchronize_scrollbars(owner, state);
+    }
+
+    void synchronize_collection_scrollbars(native::wnd &owner) {
+        if (auto *state = state_for(owner))
+            synchronize_scrollbars(owner, *state);
     }
 } // namespace linux::openlook
 

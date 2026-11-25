@@ -57,8 +57,11 @@ if(UNIX AND TOOLKIT STREQUAL "OPENLOOK")
         COMMAND native_openlook_runtime_tests --split-layout)
     add_test(NAME native_openlook_desktop_tests
         COMMAND native_openlook_runtime_tests --desktop-controls)
+    add_test(NAME native_openlook_canvas_scrollbar_tests
+        COMMAND native_openlook_runtime_tests --canvas-scrollbars)
     set_tests_properties(native_openlook_runtime_tests native_openlook_split_tests
         native_openlook_desktop_tests native_openlook_selection_tests
+        native_openlook_canvas_scrollbar_tests
         PROPERTIES TIMEOUT 30)
 endif()
 
