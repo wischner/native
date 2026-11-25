@@ -9,6 +9,39 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## Top-level window icons (2026-11-25)
+
+`app_wnd::set_icon()` shares one `img` with a top-level window. Adapters fit
+square, aspect-preserving copies for the sizes their window system requests;
+see [top-level window icons](PATTERNS-WINDOWS.md#top-level-window-icons).
+Vision's main window uses the gear tile. The `--new-features` window uses its
+resource-selected icon.
+
+OPEN LOOK no longer treats XView `ACTION_CLOSE` as a close request. That
+action is olwm's Close, which iconifies, and XView derives it from the
+frame's unmap. Before this change, iconifying a window destroyed it. Quit
+still arrives as `ACTION_DISMISS` or through the destroy notifier.
+
+Validation:
+
+- **X11 (GCC Debug/ASan/UBSan Docker):** `native_x11_runtime_tests` passes
+  under Xvfb, publishing, replacing and clearing `_NET_WM_ICON` and
+  `WM_HINTS` on a live shell. `native_window_api_tests` passes the new
+  cache and fitting checks. It still reports only the known themed
+  tab-height assertion, which an earlier X11 log already shows.
+- **X11 visuals:** a scratch probe confirmed colour 48-pixel ICCCM pixmaps on
+  a 24-bit TrueColor screen, and depth-1 bitmaps on 8-bit StaticGray and
+  PseudoColor screens.
+- **OPEN LOOK (Xvfb/olwm, SDK 2):** Vision publishes a 64×64 colour XView
+  icon window. olwm advertises 1 to 160 pixels in `WM_ICON_SIZE`. After an
+  ICCCM iconify request the window is Iconic and Vision keeps running.
+- **Builds:** SDL2, Motif, Window Maker, Windows and GEM direct Docker builds
+  pass. Motif and Window Maker were built before the final icon-size
+  selection change.
+- **Not yet verified:** the GEM/gemd, Wayland, elementary and Haiku builds and
+  the remote macOS build were still pending when this was recorded. No
+  Windows VM or macOS desktop runtime check was made.
+
 ## OPEN LOOK hosted text input (2026-11-24)
 
 Windowless Panel caret items become the portable focus owner before keyboard
@@ -1027,6 +1060,7 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Exact-size file/directory PNG icons | Freedesktop + fallback (build tested) | Freedesktop + fallback (tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Shell + fallback (tested) | Tracker + fallback (build tested) | AppKit + fallback (tested) | WIP |
 | Typed special-directory detection | XDG/C++ (build tested) | XDG/C++ (tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | Known Folders (tested) | `find_directory` (build tested) | Foundation (tested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | WIP |
+| Top-level window icon (`app_wnd::set_icon`) | EWMH + Xt pixmap (tested) | `SDL_SetWindowIcon` (build tested) | EWMH + Xt pixmap (build tested) | XView `FRAME_ICON` (tested) | WINGs miniwindow + EWMH (build tested) | Cached only; AES has no icon (build tested) | `WM_SETICON` (build tested) | Cached only; no window icon (untested) | Main window sets Dock image (untested) | GTK Wayland/elementary: cached only (untested) |
 | Central non-const lifecycle and visible-state contract | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Owner-blocking, focus-taking `modal_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |

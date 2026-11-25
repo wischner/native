@@ -7,6 +7,7 @@
 //
 
 #include "vision_window.h"
+#include "navigation_icons.h"
 
 #include <exception>
 #include <algorithm>
@@ -126,6 +127,8 @@ namespace vision
                                              std::string::npos;
         });
 
+        // Exercise the top-level window icon on every backend.
+        set_icon(navigation_image(navigation_icon::settings));
         configure_menu();
         configure_file_dialogs();
         connect_events();

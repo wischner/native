@@ -30,7 +30,9 @@ keep their compact sizes. Explicit non-default button heights are respected.
 ## Runtime changes
 
 `button::set_text()` updates both the cached label and an existing backend
-control. `app_wnd::set_title()` does the same for the application window.
+control. `app_wnd::set_title()` does the same for the application window, as
+does `app_wnd::set_icon()` for its
+[icon](01-FIRST-APPLICATION.md#window-icon).
 
 ```cpp
 //

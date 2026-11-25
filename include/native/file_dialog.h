@@ -94,5 +94,6 @@ namespace native
         void apply_bounds() override;
         void apply_parent() override;
         void apply_title() override;
+        void apply_icon() override;
     };
 } // namespace native

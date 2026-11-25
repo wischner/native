@@ -7,6 +7,7 @@
 //
 
 #include <algorithm>
+#include <cstddef>
 #include <stdexcept>
 
 #include <X11/Xlib.h>
@@ -19,7 +20,9 @@
 #include "globals.h"
 #include "dialog_position.h"
 #include "../x_keyboard.h"
+#include "../x_window_icon.h"
 #include "../x_window_title.h"
+#include "../../window_icon.h"
 
 namespace
 {
@@ -258,6 +261,31 @@ namespace
     }
 } // namespace
 
+namespace
+{
+    // Convert an icon into a retained WINGs pixmap and alpha mask.
+    WMPixmap *miniwindow_pixmap(const native::img &icon) {
+        Display *display = linux::wmaker::display;
+        const native::dim edge = native::detail::x_icon_edge(
+            display, DefaultScreen(display), 64);
+        const auto square = native::detail::fit_window_icon(icon, edge);
+        RImage *image = RCreateImage(edge, edge, True);
+        if (!image)
+            return nullptr;
+        const native::rgba *pixel = square->pixels();
+        for (std::size_t i = 0; i < std::size_t(edge) * edge; ++i) {
+            image->data[i * 4] = pixel[i].r;
+            image->data[i * 4 + 1] = pixel[i].g;
+            image->data[i * 4 + 2] = pixel[i].b;
+            image->data[i * 4 + 3] = pixel[i].a;
+        }
+        WMPixmap *pixmap = WMCreatePixmapFromRImage(
+            linux::wmaker::screen, image, 128);
+        RReleaseImage(image);
+        return pixmap;
+    }
+} // namespace
+
 namespace native
 {
     void app_wnd::apply_title() {
@@ -269,6 +297,31 @@ namespace native
         WMSetWindowTitle(window_state->window, _title.c_str());
         detail::set_x_window_title(linux::wmaker::display,
             WMWidgetXID(window_state->window), _title);
+    }
+
+    void app_wnd::apply_icon() {
+        auto *window_state = linux::wmaker::state(this);
+        if (!window_state || !window_state->window) {
+            throw std::runtime_error(
+                "Window Maker/WINGs: missing window binding.");
+        }
+        WMWindow *window = window_state->window;
+        const Window target = WMWidgetXID(window);
+        // WINGs replaces a miniwindow pixmap only through an empty one.
+        WMSetWindowMiniwindowPixmap(window, nullptr);
+        if (_icon) {
+            WMPixmap *pixmap = miniwindow_pixmap(*_icon);
+            if (!pixmap)
+                throw std::runtime_error(
+                    "Window Maker/WINGs: unable to create an icon.");
+            WMSetWindowMiniwindowPixmap(window, pixmap);
+            WMReleasePixmap(pixmap);
+        } else {
+            // Clearing leaves the released pixmap in WM_HINTS.
+            detail::clear_x_icon_hints(linux::wmaker::display, target);
+        }
+        detail::set_x_net_wm_icon(
+            linux::wmaker::display, target, _icon.get());
     }
 
     void app_wnd::create_native() {
@@ -344,6 +397,8 @@ namespace native
 
         WMRealizeWidget(window);
         apply_title();
+        if (_icon)
+            apply_icon();
         self->menu.attach(*self);
 
         self->on_native_move(position);

@@ -71,5 +71,6 @@ target_link_libraries(native PRIVATE
 )
 
 # Native per-edge border visibility uses the X Shape extension.
-target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../x_border.cpp)
+target_sources(native PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../x_border.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../xt_shell_icon.cpp)
 target_link_libraries(native PRIVATE Xext)

@@ -22,6 +22,7 @@
 #include "scale.h"
 #include "../x_keyboard.h"
 #include "../x_window_title.h"
+#include "../xt_shell_icon.h"
 #include "window_position.h"
 
 namespace
@@ -297,6 +298,18 @@ namespace native
             XFlush(XtDisplay(shell));
     }
 
+    void app_wnd::apply_icon() {
+        Widget shell =
+            linux::x11::shell_bindings.handle_from_object(this);
+        if (!shell)
+            throw std::runtime_error(
+                "X11/Athena: Missing shell binding for app_wnd.");
+
+        detail::apply_xt_shell_icon(*this, shell, _icon.get());
+        if (XtIsRealized(shell))
+            XFlush(XtDisplay(shell));
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
@@ -504,7 +517,8 @@ namespace native
                           self);
 
         linux::x11::wnd_bindings.register_pair(canvas, self);
-
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {
@@ -524,6 +538,8 @@ namespace native
         XtRealizeWidget(shell);
         linux::x11::cached_display = XtDisplay(shell);
         apply_shell_title(shell, _title);
+        if (_icon)
+            detail::publish_xt_shell_icon(shell, _icon.get());
         linux::x11::request_frame_extents(shell);
         keep_shell_reachable(self, shell);
 
@@ -585,6 +601,7 @@ namespace native
                 XtPopdown(shell);
             XtDestroyWidget(shell);
         }
+        detail::release_xt_shell_icon(*self);
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()
                                  ? owner

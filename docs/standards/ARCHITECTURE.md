@@ -215,8 +215,9 @@ the cached value without exposing or querying native types. Use a separate
 backend notification to update cached state after native-originated changes and
 avoid sending the change back to the backend.
 
-`wnd::set_bounds()` with unchanged constrained geometry and
-`app_wnd::set_title()` with unchanged text are no-ops.
+`wnd::set_bounds()` with unchanged constrained geometry,
+`app_wnd::set_title()` with unchanged text and `app_wnd::set_icon()` with the
+same shared image are no-ops.
 `main_menu::set_checked()` also skips an unchanged check. Repeated layout updates
 must not discard shader history merely because the same bounds were assigned.
 
@@ -316,6 +317,25 @@ and keeps its loop active while the main resource remains created. SDL2 also
 routes application quit requests through it. Explicit destruction remains the
 unconditional resource operation; native teardown notifications are not a
 second cancellable close request.
+
+`app_wnd::set_icon(std::shared_ptr<const img>)` shares a top-level window
+icon and `get_icon()` returns it; null selects the backend default. Like the
+title, the cached icon is applied by native creation and immediately while
+created. Adapters fit one square, aspect-preserving copy per native size and
+keep their icon resources in the window peer or with the owning toolkit:
+
+- Win32 sends big and small 32-bit alpha icons through `WM_SETICON`.
+- SDL2 uses `SDL_SetWindowIcon`. SDL2 ignores a null icon, so clearing takes
+  effect at the next creation.
+- X11-family adapters publish EWMH `_NET_WM_ICON` at 16 to 128 pixels and the
+  toolkit's ICCCM path: Xt `iconPixmap`/`iconMask` for Athena and Motif, an
+  XView `FRAME_ICON` window for OPEN LOOK, and the WINGs miniwindow pixmap
+  for Window Maker. TrueColor screens receive colour pixmaps; other screens
+  receive dithered bitmaps. Masks keep alpha of 128 or more.
+- AppKit has no per-window icon, so the main window sets the Dock image.
+- GTK 4.14 Wayland/elementary (desktop-entry icons), Haiku (executable
+  attributes) and GEM AES have no per-window icon and only cache the image.
+- System file and directory panels ignore the icon.
 
 `mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
 `crosshair`, `resize_horizontal`, `resize_vertical`,

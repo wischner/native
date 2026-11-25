@@ -53,6 +53,7 @@ namespace
             _resources = resources::decode(source.encode());
             const auto &entry = _resources.get("assets.icons.platform-icon");
             _icon.reset(new img(img::decode(entry.data.data(), entry.data.size())));
+            set_icon(_icon);
             const auto context = resources::current_context();
             _profile = context.platform + "/" + context.toolkit + ": " +
                 context.color + "; selected " +

@@ -26,6 +26,10 @@ namespace native
         wind_set_str(handle, WF_NAME, _title.c_str());
     }
 
+    void app_wnd::apply_icon() {
+        // AES windows carry no icon, so the image is only cached.
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         if (!linux::gemix::ensure_runtime())

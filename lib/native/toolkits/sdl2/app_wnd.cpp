@@ -15,9 +15,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <stdexcept>
+#include <string>
 
 #include "globals.h"
 #include "scale.h"
+#include "../../window_icon.h"
 #include "window_position.h"
 
 #ifdef HAVE_SDL2_TTF
@@ -47,6 +49,32 @@ namespace native
                 "SDL2: Missing SDL_Window binding for app_wnd.");
 
         SDL_SetWindowTitle(window, _title.c_str());
+    }
+
+    void app_wnd::apply_icon() {
+        SDL_Window *window =
+            linux::sdl2::wnd_bindings.handle_from_object(this);
+        if (!window)
+            throw std::runtime_error(
+                "SDL2: Missing SDL_Window binding for app_wnd.");
+
+        // SDL2 ignores a null icon, so clearing takes effect only when
+        // the window is next created.
+        if (!_icon)
+            return;
+        const dim edge = static_cast<dim>(std::clamp<int>(
+            std::max(_icon->w(), _icon->h()), 16, 256));
+        auto square = detail::fit_window_icon(*_icon, edge);
+        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(
+            square->pixels(), edge, edge, 32, edge * 4,
+            SDL_PIXELFORMAT_RGBA32);
+        if (!surface)
+            throw std::runtime_error(
+                std::string("SDL2: Failed to wrap the window icon: ") +
+                SDL_GetError());
+        // SDL copies the pixels into its video driver at once.
+        SDL_SetWindowIcon(window, surface);
+        SDL_FreeSurface(surface);
     }
 
     void app_wnd::create_native() {
@@ -163,7 +191,8 @@ namespace native
             size(window_size.w,
                  static_cast<dim>(
                      std::max(1, window_size.h - menu_height))));
-
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {

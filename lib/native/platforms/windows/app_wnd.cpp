@@ -5,8 +5,11 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <windows.h>
 
@@ -14,6 +17,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "../../window_icon.h"
 
 namespace windows
 {
@@ -28,6 +32,71 @@ namespace windows
     }
 
     const wchar_t class_name[] = L"native_window_class";
+
+    // Large and small icons owned by one top-level window peer.
+    struct window_icons
+    {
+        HICON big_icon = nullptr;
+        HICON small_icon = nullptr;
+
+        window_icons() = default;
+        window_icons(const window_icons &) = delete;
+        window_icons &operator=(const window_icons &) = delete;
+
+        // Destroy icons after their window no longer references them.
+        ~window_icons() {
+            if (big_icon)
+                DestroyIcon(big_icon);
+            if (small_icon)
+                DestroyIcon(small_icon);
+        }
+    };
+
+    // Build a straight-alpha 32-bit icon at one square size.
+    static HICON create_icon(const native::img &source, int edge) {
+        const auto square = native::detail::fit_window_icon(
+            source, static_cast<native::dim>(edge));
+        BITMAPV5HEADER header = {};
+        header.bV5Size = sizeof(header);
+        header.bV5Width = edge;
+        header.bV5Height = -edge;
+        header.bV5Planes = 1;
+        header.bV5BitCount = 32;
+        header.bV5Compression = BI_BITFIELDS;
+        header.bV5RedMask = 0x00ff0000;
+        header.bV5GreenMask = 0x0000ff00;
+        header.bV5BlueMask = 0x000000ff;
+        header.bV5AlphaMask = 0xff000000;
+        void *bits = nullptr;
+        HDC screen = GetDC(nullptr);
+        HBITMAP color = CreateDIBSection(
+            screen, reinterpret_cast<BITMAPINFO *>(&header),
+            DIB_RGB_COLORS, &bits, nullptr, 0);
+        ReleaseDC(nullptr, screen);
+        if (!color)
+            return nullptr;
+        auto *target = static_cast<std::uint8_t *>(bits);
+        const native::rgba *pixel = square->pixels();
+        for (int i = 0; i < edge * edge; ++i) {
+            target[i * 4] = pixel[i].b;
+            target[i * 4 + 1] = pixel[i].g;
+            target[i * 4 + 2] = pixel[i].r;
+            target[i * 4 + 3] = pixel[i].a;
+        }
+        // Alpha icons ignore an all-zero monochrome AND mask.
+        const std::vector<std::uint8_t> zeros(
+            std::size_t((edge + 15) / 16 * 2) * edge, 0);
+        HBITMAP mask = CreateBitmap(edge, edge, 1, 1, zeros.data());
+        ICONINFO info = {};
+        info.fIcon = TRUE;
+        info.hbmMask = mask;
+        info.hbmColor = color;
+        HICON icon = mask ? CreateIconIndirect(&info) : nullptr;
+        if (mask)
+            DeleteObject(mask);
+        DeleteObject(color);
+        return icon;
+    }
 
     void register_window_class() {
         static bool registered = false;
@@ -60,6 +129,37 @@ namespace native
 
         std::wstring wide = windows::utf8_to_wide(_title);
         SetWindowTextW(hwnd, wide.c_str());
+    }
+
+    void app_wnd::apply_icon() {
+        HWND hwnd = windows::wnd_bindings.handle_from_object(this);
+        if (!hwnd)
+            throw std::runtime_error(
+                "Windows: Missing HWND binding for app_wnd.");
+
+        auto *icons = detail::peer_state<windows::window_icons>(*this);
+        if (!icons) {
+            icons = new windows::window_icons;
+            detail::assign_peer_state(*this, icons);
+        }
+        windows::window_icons next;
+        if (_icon) {
+            next.big_icon = windows::create_icon(
+                *_icon, GetSystemMetrics(SM_CXICON));
+            next.small_icon = windows::create_icon(
+                *_icon, GetSystemMetrics(SM_CXSMICON));
+            if (!next.big_icon || !next.small_icon)
+                throw std::runtime_error(
+                    "Windows: Failed to create the window icon.");
+        }
+        // Null icons restore the class default (the system icon).
+        SendMessageW(hwnd, WM_SETICON, ICON_BIG,
+                     reinterpret_cast<LPARAM>(next.big_icon));
+        SendMessageW(hwnd, WM_SETICON, ICON_SMALL,
+                     reinterpret_cast<LPARAM>(next.small_icon));
+        // The previous icons are released when next goes out of scope.
+        std::swap(icons->big_icon, next.big_icon);
+        std::swap(icons->small_icon, next.small_icon);
     }
 
     void app_wnd::create_native() {
@@ -112,6 +212,8 @@ namespace native
             hwnd, this);
         this->menu.attach(
             *this);
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {

@@ -17,7 +17,9 @@
 #include <dlfcn.h>
 #include <algorithm>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
+#include <vector>
 
 // Check the native input compositions after the fixture is mapped.
 void run_x11_control_checks(native::app_wnd &owner);
@@ -106,6 +108,62 @@ namespace
             pixel(owner, 0, d.h / 2) == ink &&
             pixel(owner, d.w - 1, d.h / 2) == ink,
             "all four collection/table borders remain visible");
+    }
+
+    // Read the published EWMH icon cardinals of a shell window.
+    std::vector<unsigned long> net_wm_icon(Window window) {
+        Atom type = None; int format = 0;
+        unsigned long count = 0, remaining = 0;
+        unsigned char *data = nullptr;
+        XGetWindowProperty(cached_display, window,
+            XInternAtom(cached_display, "_NET_WM_ICON", False), 0,
+            1 << 20, False, AnyPropertyType, &type, &format, &count,
+            &remaining, &data);
+        std::vector<unsigned long> values;
+        if (data && format == 32) {
+            // Xlib returns format-32 items as sign-extended C longs.
+            const auto *cardinals = reinterpret_cast<long *>(data);
+            for (unsigned long i = 0; i < count; ++i)
+                values.push_back(
+                    static_cast<unsigned long>(cardinals[i]) & 0xffffffffUL);
+        }
+        if (data) XFree(data);
+        return values;
+    }
+
+    // Return whether WM_HINTS currently names an icon pixmap and mask.
+    bool icon_hints(Window window) {
+        XWMHints *hints = XGetWMHints(cached_display, window);
+        const bool present = hints &&
+            (hints->flags & IconPixmapHint) && hints->icon_pixmap &&
+            (hints->flags & IconMaskHint) && hints->icon_mask;
+        if (hints) XFree(hints);
+        return present;
+    }
+
+    // Publish, replace and clear a live Athena shell icon.
+    void check_icon(app_wnd &owner) {
+        const Window shell = XtWindow(shell_bindings.handle_from_object(&owner));
+        auto icon = std::make_shared<img>(4, 2);
+        for (int i = 0; i < 8; ++i) icon->pixels()[i] = rgba(255, 0, 0, 255);
+        owner.set_icon(icon);
+        auto values = net_wm_icon(shell);
+        std::size_t expected = 0;
+        for (unsigned long edge : {16UL, 32UL, 48UL, 64UL, 128UL})
+            expected += 2 + edge * edge;
+        expect(values.size() == expected && values[0] == 16 && values[1] == 16,
+            "_NET_WM_ICON publishes every fitted square size");
+        // A 4x2 source fits 16x8, centered with four transparent rows.
+        expect((values[2] >> 24) == 0 &&
+            values[2 + 4 * 16] == 0xffff0000UL,
+            "EWMH icon pixels are centered straight-alpha ARGB");
+        expect(icon_hints(shell), "WM_HINTS names icon pixmap and mask");
+        owner.set_icon(std::make_shared<img>(8, 8));
+        expect(net_wm_icon(shell).size() == expected && icon_hints(shell),
+            "replacing an icon republishes both icon paths");
+        owner.set_icon(nullptr);
+        expect(net_wm_icon(shell).empty() && !icon_hints(shell),
+            "clearing an icon restores the manager default");
     }
 
     class rows final : public table_model
@@ -707,6 +765,7 @@ namespace
                            "Enter retains custom editable-combo text");
                     check_message();
                     check_files();
+                    check_icon(*this);
                 } else if (phase == 24) {
                     set_dimensions(size(100, 100));
                     XMoveWindow(cached_display, XtWindow(shell_bindings.handle_from_object(this)),

@@ -116,6 +116,7 @@ target_sources(native PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tab_view_selection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/split_view.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/app_wnd.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/window_icon.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/owned_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modeless_wnd.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/modal_wnd.cpp

@@ -125,4 +125,6 @@ namespace native
     void file_dialog::apply_parent() {}
 
     void file_dialog::apply_title() {}
+
+    void file_dialog::apply_icon() {}
 } // namespace native

@@ -17,8 +17,10 @@
 
 #include <X11/Xlib.h>
 #include <xview/canvas.h>
+#include <xview/icon.h>
 #include <xview/notify.h>
 #include <xview/rectlist.h>
+#include <xview/svrimage.h>
 #include <xview/win_input.h>
 #include <xview/window.h>
 #include <xview/xview.h>
@@ -27,6 +29,7 @@
 #include "panel_painting.h"
 #include "../../mouse_state.h"
 #include "../x_keyboard.h"
+#include "../x_window_icon.h"
 #include "../x_window_title.h"
 #include "window_position.h"
 #include "xview_init.h"
@@ -36,6 +39,69 @@ extern "C" void rl_free(Rectlist *);
 
 namespace
 {
+    // Application icon objects. XView frames destroy only their own
+    // default icon, so Native destroys these after the frame.
+    struct frame_icon
+    {
+        Icon icon = XV_NULL;
+        Server_image image = XV_NULL;
+        Server_image mask = XV_NULL;
+    };
+
+    // Destroy icon objects once no frame refers to them.
+    void destroy_frame_icon(const frame_icon &value) {
+        if (value.icon)
+            xv_destroy(value.icon);
+        if (value.image)
+            xv_destroy(value.image);
+        if (value.mask)
+            xv_destroy(value.mask);
+    }
+
+    // Adopt a pixmap; the server image frees it when destroyed.
+    Server_image adopt_pixmap(Pixmap pixmap) {
+        return pixmap ? static_cast<Server_image>(xv_create(
+                            XV_NULL, SERVER_IMAGE,
+                            SERVER_IMAGE_PIXMAP, pixmap, nullptr))
+                      : XV_NULL;
+    }
+
+    // Build an XView icon window drawing a masked image.
+    frame_icon create_frame_icon(Frame frame, const native::img &icon) {
+        Display *display = linux::openlook::cached_display;
+        const int screen = DefaultScreen(display);
+        const native::dim edge =
+            native::detail::x_icon_edge(display, screen, 64);
+        auto pixmaps = native::detail::create_x_icon_pixmaps(
+            display, screen, icon, edge);
+        frame_icon result;
+        result.image = adopt_pixmap(pixmaps.image);
+        if (!result.image)
+            native::detail::free_x_icon_pixmaps(display, pixmaps);
+        else {
+            pixmaps.image = None;
+            result.mask = adopt_pixmap(pixmaps.mask);
+            if (!result.mask)
+                native::detail::free_x_icon_pixmaps(display, pixmaps);
+        }
+        if (result.image && result.mask)
+            result.icon = static_cast<Icon>(xv_create(
+                xv_get(frame, XV_ROOT), ICON,
+                XV_OWNER, frame,
+                ICON_IMAGE, result.image,
+                ICON_MASK_IMAGE, result.mask,
+                ICON_TRANSPARENT, TRUE,
+                XV_WIDTH, edge,
+                XV_HEIGHT, edge,
+                nullptr));
+        if (!result.icon) {
+            destroy_frame_icon(result);
+            throw std::runtime_error(
+                "OpenLook/XView: failed to create a frame icon.");
+        }
+        return result;
+    }
+
     native::mouse_button decode_button(int action) {
         switch (action) {
         case ACTION_SELECT:
@@ -292,7 +358,10 @@ namespace
         // every later show() re-shows a frame that is gone. Close it
         // here instead. destroy() is idempotent, so a backend path
         // that does reach frame_done() still costs nothing.
-        if (action == ACTION_DISMISS || action == ACTION_CLOSE) {
+        // ACTION_CLOSE is not a close request: OPEN LOOK "Close" means
+        // iconify, and XView derives it from the frame's UnmapNotify.
+        // It continues to XView, which records the iconic state.
+        if (action == ACTION_DISMISS) {
             if (!linux::openlook::permit_input(owner))
                 return NOTIFY_DONE;
 
@@ -435,6 +504,29 @@ namespace native
                nullptr);
         detail::set_x_window_title(linux::openlook::cached_display,
             static_cast<Window>(xv_get(state->frame, XV_XID)), _title);
+    }
+
+    void app_wnd::apply_icon() {
+        auto *state = linux::openlook::window_state(this);
+        if (!state || !state->frame) {
+            throw std::runtime_error(
+                "OpenLook/XView: missing frame binding.");
+        }
+        auto *current = detail::peer_state<frame_icon>(*this);
+        if (!current) {
+            current = new frame_icon;
+            detail::assign_peer_state(*this, current);
+        }
+        const frame_icon previous = *current;
+        *current = _icon ? create_frame_icon(state->frame, *_icon)
+                         : frame_icon{};
+        // A null icon makes XView restore the frame's default icon.
+        if (current->icon || previous.icon)
+            xv_set(state->frame, FRAME_ICON, current->icon, nullptr);
+        destroy_frame_icon(previous);
+        detail::set_x_net_wm_icon(linux::openlook::cached_display,
+            static_cast<Window>(xv_get(state->frame, XV_XID)),
+            _icon.get());
     }
 
     void app_wnd::create_native() {
@@ -587,6 +679,8 @@ namespace native
 
         if (self == app::main_wnd())
             linux::openlook::main_frame = frame;
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {
@@ -654,6 +748,11 @@ namespace native
         linux::openlook::frame_bindings.unregister_by_object(self);
         linux::openlook::window_bindings.unregister_by_handle(self);
 
+        frame_icon icon;
+        if (auto *current = detail::peer_state<frame_icon>(*self)) {
+            icon = *current;
+            *current = {};
+        }
         if (state) {
             Frame frame = state->frame;
             state->frame = XV_NULL;
@@ -661,7 +760,12 @@ namespace native
             state->paint_window = XV_NULL;
             delete state;
             if (frame)
-                app::post([frame] { xv_destroy(frame); });
+                app::post([frame, icon] {
+                    xv_destroy(frame);
+                    destroy_frame_icon(icon);
+                });
+        } else {
+            destroy_frame_icon(icon);
         }
         if (self == app::main_wnd()) {
             linux::openlook::exit_requested = true;

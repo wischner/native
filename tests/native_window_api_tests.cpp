@@ -31,6 +31,7 @@
 
 #include <native.h>
 #include "../lib/native/input_state.h"
+#include "../lib/native/window_icon.h"
 
 // Exercise portable eager image filters without opening a window.
 bool native_image_filter_checks();
@@ -606,6 +607,26 @@ namespace
                "window caches its dimensions");
         expect(window.get_title() == "Updated",
                "window caches its title");
+        expect(!window.get_icon(),
+               "windows default to the backend icon");
+        auto icon = std::make_shared<native::img>(4, 2);
+        for (int i = 0; i < 8; ++i)
+            icon->pixels()[i] = native::rgba(255, 0, 0, 255);
+        native::app_wnd *icon_chain = &window.set_icon(icon);
+        expect(icon_chain == &window && window.get_icon() == icon,
+               "window icons share the image and chain");
+        window.set_icon(nullptr);
+        expect(!window.get_icon(),
+               "a null icon restores the backend default");
+        const auto fitted = native::detail::fit_window_icon(*icon, 16);
+        expect(fitted->w() == 16 && fitted->h() == 16 &&
+                   fitted->pixels()[0].a == 0 &&
+                   fitted->pixels()[3 * 16].a == 0 &&
+                   fitted->pixels()[4 * 16].r == 255 &&
+                   fitted->pixels()[4 * 16].a == 255 &&
+                   fitted->pixels()[11 * 16 + 15].a == 255 &&
+                   fitted->pixels()[12 * 16].a == 0,
+               "window icons fit centered without distortion");
         expect(window.get_cursor() == native::mouse_cursor::arrow,
                "windows default to the arrow cursor");
         native::wnd *chained =

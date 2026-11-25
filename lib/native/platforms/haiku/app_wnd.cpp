@@ -33,6 +33,12 @@ namespace native
         window->Unlock();
     }
 
+    void app_wnd::apply_icon() {
+        // BWindow has no icon. Deskbar and Tracker read the vector
+        // icon stored in the executable's attributes, so the image is
+        // only cached.
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         if (!haiku::global_app) {

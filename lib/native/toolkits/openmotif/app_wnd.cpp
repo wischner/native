@@ -21,6 +21,7 @@
 #include "globals.h"
 #include "../x_keyboard.h"
 #include "../x_window_title.h"
+#include "../xt_shell_icon.h"
 
 namespace
 {
@@ -236,6 +237,17 @@ namespace native
             detail::set_x_window_title(XtDisplay(shell), XtWindow(shell), _title);
     }
 
+    void app_wnd::apply_icon() {
+        Widget shell =
+            linux::openmotif::shell_bindings.handle_from_object(this);
+        if (!shell)
+            throw std::runtime_error(
+                "Motif: Missing shell binding for app_wnd.");
+
+        // XmNiconPixmap and XmNiconMask are the WMShell resources.
+        detail::apply_xt_shell_icon(*this, shell, _icon.get());
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
@@ -360,6 +372,8 @@ namespace native
 
         this->menu.attach(
             *this);
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {
@@ -384,6 +398,8 @@ namespace native
         const size requested = _bounds.d;
         XtRealizeWidget(shell);
         apply_title();
+        if (_icon)
+            detail::publish_xt_shell_icon(shell, _icon.get());
         linux::openmotif::set_work_dimensions(this, requested);
         linux::openmotif::cached_display = XtDisplay(shell);
         // The public bounds already specify a position. CDE otherwise
@@ -453,6 +469,7 @@ namespace native
             // popup recursively and then dereference its freed widget.
             XtDestroyWidget(shell);
         }
+        detail::release_xt_shell_icon(*self);
         if (get_modal() && owner) {
             app_wnd *focus = owner->get_input_enabled()
                                  ? owner

@@ -1,6 +1,7 @@
 //
 // Declares a portable top-level application window, including its
-// cached title, menu event surface, and independent owner graph.
+// cached title and icon, menu event surface, and independent owner
+// graph.
 //
 // MIT License (see: LICENSE)
 // Copyright (C) 2026 Tomaz Stih
@@ -8,6 +9,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,6 +20,7 @@
 namespace native
 {
     class canvas;
+    class img;
     class modal_wnd;
     class owned_wnd;
 
@@ -48,6 +51,16 @@ namespace native
 
         // Change the title and update a created native window.
         app_wnd &set_title(const std::string &title);
+
+        // Return the shared cached window icon, or null for the
+        // backend default.
+        std::shared_ptr<const img> get_icon() const;
+
+        // Share an icon image and update a created native window.
+        // Backends fit one square copy per native size. Null restores
+        // the backend default. Backends without window icons only cache
+        // it; on macOS the main window sets the Dock image.
+        app_wnd &set_icon(std::shared_ptr<const img> icon);
 
         // Associate one direct-child document canvas before window creation.
         // GEM uses AES frame scrollbars for this canvas; other backends keep
@@ -123,12 +136,17 @@ namespace native
         // Apply the cached title to a created backend window.
         virtual void apply_title();
 
+        // Apply the cached icon, or the backend default, to a created
+        // backend window.
+        virtual void apply_icon();
+
     private:
         friend class canvas;
         friend class modal_wnd;
         friend class owned_wnd;
 
         std::string _title;
+        std::shared_ptr<const img> _icon;
         canvas *_scroll_content = nullptr;
 
         // Independent owned windows never participate in child layout.

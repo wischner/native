@@ -33,7 +33,7 @@ The base class owns or records only portable state:
 - Invalidation and lifecycle entry points.
 
 Derived classes add properties and signals specific to one kind of window.
-`app_wnd`, for example, adds a title, menu, and menu-command signal. `button`
+`app_wnd`, for example, adds a title, icon, menu, and menu-command signal. `button`
 adds its text and activation signal. `check` and `radio` add selection state,
 while `list` adds an item model and single-selection signal. `text_edit` adds
 single-line or multiline UTF-8 editing, read-only state, live validation, and
@@ -770,6 +770,57 @@ menu-click and accelerator `WM_COMMAND` notifications.
 X11-family adapters publish UTF-8 EWMH titles and converted ICCCM text for
 classic window managers. Xt/WINGs initialize their character locale before
 converting titles; the desktop's fonts still determine available glyphs.
+
+## Top-level window icons
+
+`app_wnd::set_icon()` caches a `std::shared_ptr<const img>`, so one decoded
+image can serve several windows and toolbar items without copying pixels.
+Assigning the same pointer does nothing; assigning null restores the
+backend default. Each backend's `create_native()` applies a cached icon in
+the same creation transaction as the title, and the virtual `apply_icon()`
+updates a created window. `file_dialog` overrides the hook with a no-op,
+because system panels own their own chrome.
+
+Native window systems want square icons at sizes of their own choosing.
+The internal `detail::fit_window_icon()` scales the application image into a
+transparent square without distortion. Whole-number enlargement keeps hard
+pixel edges; other scales sample linearly. Each adapter asks for the sizes
+it needs:
+
+| Backend | Native path | Sizes | Resource owner |
+| --- | --- | --- | --- |
+| Win32 | `WM_SETICON` big and small alpha `HICON`s | `SM_CXICON`, `SM_CXSMICON` | Window peer |
+| SDL2 | `SDL_SetWindowIcon` | Source edge, 16 to 256 | SDL copies at once |
+| X11/Athena, Motif | Xt `iconPixmap`/`iconMask` plus `_NET_WM_ICON` | 48; EWMH 16 to 128 | Window peer pixmaps |
+| OPEN LOOK | XView `ICON` window through `FRAME_ICON` plus `_NET_WM_ICON` | 64 | Window peer; destroyed after the frame |
+| Window Maker | WINGs miniwindow pixmap plus `_NET_WM_ICON` | 64 | WINGs retains the pixmap |
+| AppKit | Main window sets `applicationIconImage` | Source edge, 16 to 1024 | AppKit |
+| GTK Wayland/elementary, Haiku, GEM | None; the image is cached | — | — |
+
+ICCCM sizes are each toolkit's conventional edge. A manager's `WM_ICON_SIZE`
+lists acceptable ranges rather than a preference, so it only moves that edge
+into the nearest range. olwm, for example, accepts 1 to 160 pixels and so
+receives 64.
+
+The X11-family toolkits share `x_window_icon.*` for EWMH ARGB publication and
+ICCCM pixmap conversion. A TrueColor default visual receives a colour pixmap
+built from the visual's channel masks. Every other visual, including the
+monochrome X11 debug display, receives a dithered depth-1 bitmap. The
+depth-1 mask keeps pixels with alpha of 128 or more. Athena and Motif also
+share `xt_shell_icon.*`, which sets the WMShell resources before
+realization. It publishes EWMH data once the shell has an X window.
+
+Some toolkit icon paths need explicit handling:
+
+- Clearing an Xt resource leaves the hint flag set on a `None` pixmap.
+- WINGs leaves a released pixmap in `WM_HINTS` when its miniwindow pixmap is
+  removed, and replaces a pixmap only after it has been cleared.
+- XView frames destroy only their own default icon.
+
+Native therefore removes stale ICCCM hints itself, and destroys OPEN LOOK icon
+objects after the posted frame destruction. Haiku and GEM windows have no
+icon at all. GTK 4.14 can name only themed icons, and Wayland compositors
+take a window's icon from the desktop entry that matches its application ID.
 
 ### GEM modeless menu ownership
 

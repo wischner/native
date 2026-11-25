@@ -5,6 +5,8 @@
 // Copyright (C) 2026 Tomaz Stih
 //
 
+#include <algorithm>
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 
@@ -15,6 +17,7 @@
 
 #include "native_window.h"
 #include "globals.h"
+#include "../../window_icon.h"
 
 namespace native
 {
@@ -26,6 +29,51 @@ namespace native
 
         [window
             setTitle:[NSString stringWithUTF8String:_title.c_str()]];
+    }
+
+    void app_wnd::apply_icon() {
+        NSWindow *window = mac::wnd_bindings.handle_from_object(this);
+        if (!window)
+            throw std::runtime_error(
+                "macOS: Missing NSWindow binding for app_wnd.");
+
+        // AppKit windows have no icon of their own. The main window
+        // supplies the Dock image; other windows only cache theirs.
+        if (this != app::main_wnd())
+            return;
+        NSImage *image = nil;
+        if (_icon) {
+            static_assert(sizeof(rgba) == 4);
+            const int edge = std::clamp<int>(
+                std::max(_icon->w(), _icon->h()), 16, 1024);
+            const auto square = detail::fit_window_icon(
+                *_icon, static_cast<dim>(edge));
+            NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc]
+                initWithBitmapDataPlanes:nullptr
+                              pixelsWide:edge
+                              pixelsHigh:edge
+                           bitsPerSample:8
+                         samplesPerPixel:4
+                                hasAlpha:YES
+                                isPlanar:NO
+                          colorSpaceName:NSDeviceRGBColorSpace
+                            bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
+                             bytesPerRow:edge * 4
+                            bitsPerPixel:32];
+            if (!bitmap)
+                throw std::runtime_error(
+                    "macOS: Failed to create the application icon.");
+            std::memcpy([bitmap bitmapData], square->pixels(),
+                        std::size_t(edge) * edge * 4);
+            image = [[NSImage alloc]
+                initWithSize:NSMakeSize(edge, edge)];
+            [image addRepresentation:bitmap];
+            [bitmap release];
+        }
+        // Nil restores the bundle or generic application icon.
+        [[NSApplication sharedApplication]
+            setApplicationIconImage:image];
+        [image release];
     }
 
     void app_wnd::create_native() {
@@ -46,6 +94,8 @@ namespace native
 
         this->menu.attach(
             *this);
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {

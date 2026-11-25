@@ -12,6 +12,11 @@ namespace native
             GTK_WINDOW(linux::wayland::state(*this).widget),
             _title.c_str());
     }
+    void app_wnd::apply_icon() {
+        // GTK 4.14 names themed icons only, and Wayland compositors
+        // take the icon from the desktop entry matching the application
+        // ID. The image therefore remains a portable cached value.
+    }
     void app_wnd::create_native() {
         validate_owner_created();
         linux::wayland::initialize();

@@ -56,4 +56,37 @@ Coordinates use `native::coord`; non-negative dimensions use `native::dim`.
 The geometry chapter in the internal book explains the underlying value
 types in more detail.
 
+## Window icon
+
+A top-level window can share an icon image. Decode it once, then pass the
+shared pointer before or after the window is created:
+
+```cpp
+// img owns its pixels and is neither copied nor moved, so the
+// decoded value initializes the shared image in place.
+std::shared_ptr<const native::img> icon(
+    new native::img(native::img::load("assets/app.png")));
+native::app_wnd window("My application", 80, 80, 800, 600);
+window.set_icon(icon);
+return native::app::run(window);
+```
+
+Supply one image, ideally square and at least 64 pixels. Each backend fits a
+copy into the square sizes it needs without distorting it. `set_icon(nullptr)`
+restores the platform default, and `get_icon()` returns the shared image.
+
+Where the icon appears depends on the desktop:
+
+- Windows shows it in the title bar and taskbar.
+- X11 window managers, CDE, OPEN LOOK and Window Maker show it in task lists
+  and iconified windows.
+- SDL2 passes it to its video driver.
+- On macOS only the main window's icon is used, as the Dock image.
+- GTK on Wayland, elementary OS, Haiku and GEM have no per-window icons. They
+  keep the value but show the application's desktop-entry or executable icon
+  instead.
+
+[Chapter 10](10-GRAPHICS-IMAGES-FONTS-THEMES.md#png-and-jpeg-from-files-or-memory)
+explains loading images from files or memory.
+
 Next: [Painting and mouse input](02-PAINTING-AND-INPUT.md).
