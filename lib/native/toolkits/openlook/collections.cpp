@@ -36,6 +36,11 @@ namespace
         Scrollbar scrollbar,
         Notify_event_type type);
 
+    Notify_value keep_paint_focus(Notify_client client,
+                                  Event *event,
+                                  Notify_arg argument,
+                                  Notify_event_type type);
+
     linux::openlook::openlook_collection *state_for(
         native::wnd &owner) {
         return native::detail::peer_state<
@@ -141,7 +146,48 @@ namespace
                            : "OpenLook/XView: failed to create native "
                              "vertical scrollbar.");
         }
+        // XView installs the Scrollbar handler on both notifier chains.
+        for (const auto chain : {NOTIFY_SAFE, NOTIFY_IMMEDIATE}) {
+            if (notify_interpose_event_func(
+                    scrollbar,
+                    reinterpret_cast<Notify_func>(keep_paint_focus),
+                    chain) != NOTIFY_OK) {
+                xv_destroy_safe(scrollbar);
+                throw std::runtime_error("OpenLook/XView: failed to monitor "
+                                         "native scrollbar focus.");
+            }
+        }
         return scrollbar;
+    }
+
+    //
+    // Keep keyboard focus on the collection a Scrollbar belongs to.
+    //
+    // Notes:
+    //      XView answers a Scrollbar's KBD_USE by parenting the Frame's
+    //      focus arrow to the bar's top-left corner, drawing a black
+    //      triangle over its anchor. Portable scrollbars never own
+    //      focus, and keys must keep reaching the content, so focus
+    //      returns to the paint window and the arrow is never shown.
+    //
+    Notify_value keep_paint_focus(Notify_client client,
+                                  Event *event,
+                                  Notify_arg argument,
+                                  Notify_event_type type) {
+        const int action = event ? event_action(event) : 0;
+        if (action == KBD_USE || action == KBD_DONE) {
+            if (action == KBD_USE) {
+                auto *owner = linux::openlook::wnd_bindings
+                                  .object_from_handle(static_cast<Panel>(
+                                      xv_get(client, XV_OWNER)));
+                auto *state = owner ? state_for(*owner) : nullptr;
+                if (state && state->paint_window)
+                    xv_set(state->paint_window, WIN_SET_FOCUS, nullptr);
+            }
+            return NOTIFY_DONE;
+        }
+        return notify_next_event_func(
+            client, reinterpret_cast<Notify_event>(event), argument, type);
     }
 
     // Route a Scrollbar's requests to its owner, interposing once per
@@ -1173,6 +1219,10 @@ namespace linux::openlook
             static_cast<Xv_Window>(xv_get(
                 state.panel, CANVAS_NTH_PAINT_WINDOW, 0)));
         synchronize_scrollbars(owner, state);
+        // XView reports no resize for a Frame-sibling Panel. Report it
+        // as the ConfigureNotify-driven X backends do, so content that
+        // tracks its viewport fills the newly exposed area.
+        owner.on_native_resize(dimensions);
     }
 
     void synchronize_collection_scrollbars(native::wnd &owner) {

@@ -9,6 +9,21 @@ boxes preserve/wrap paragraphs, allow scrolling, and traverse their buttons.
 
 # Feature Matrix
 
+## OPEN LOOK canvas resize and Scrollbar focus (2026-11-25)
+
+Resizing an OPEN LOOK canvas or collection did not emit `on_wnd_resize`:
+XView reports no resize for the Frame-sibling Panel. Content sized from its
+viewport, such as Isaac's grid, left the enlarged area black. Applying the
+dimensions now reports them through `on_native_resize()`. A collection
+`Scrollbar` that received keyboard focus also showed XView's black focus
+arrow over its top anchor and took the keys; its `KBD_USE` now returns focus
+to the paint window. `--canvas-scrollbars` checks both and fails without the
+fix. Under Xvfb/olwm, Isaac repainted fully after enlargement, showed no arrow
+after scrollbar and title-bar clicks, and kept arrow keys on the grid. The
+runtime suite's completion check still pressed Tab, which ordered traversal
+has owned since the Enter-only completion contract in
+[the source editor chapter](PATTERNS-CODE-EDIT.md); it now accepts with Enter.
+
 ## OPEN LOOK canvas scrollbars (2026-11-25)
 
 OPEN LOOK canvases now use real XView `Scrollbar` objects in their reserved
@@ -81,6 +96,11 @@ Blaise's debug desktop checks and XTest typing/filtering, Ctrl+A/Backspace,
 message selection and input after resize/divider dragging pass.
 
 ## OPEN LOOK sheet selectors (2026-11-24)
+
+Canvas stacking follow-up (2026-11-25): showing a canvas restores its visible
+descendants above the canvas Panel. Isaac's sheet-tab toolbar was previously
+obscured by that Panel, leaving an unpainted bottom strip. The selection-only
+regression also checks native sibling order after show, resize, and recreation.
 
 Selection-only `tab_view` controls omit the native content Panel. Their
 empty page bounds previously caused X11 `BadValue` during window creation,

@@ -48,7 +48,7 @@ namespace
     }
     // XView keeps these panels as Frame siblings. Restore semantic
     // parent-before-child stacking when a page maps after its pickers.
-    void raise_descendants(native::panel &owner, Panel host) {
+    void raise_descendants(native::wnd &owner, Panel host) {
         auto *root = dynamic_cast<native::app_wnd *>(
             native::detail::root_of(&owner));
         auto *state = linux::openlook::window_state(root);
@@ -180,7 +180,7 @@ namespace native
         const Window window =
             static_cast<Window>(xv_get(state->panel, XV_XID));
         if (window != None && linux::openlook::cached_display) {
-            XRaiseWindow(linux::openlook::cached_display, window);
+            raise_descendants(*this, state->panel);
             XFlush(linux::openlook::cached_display);
         }
     }

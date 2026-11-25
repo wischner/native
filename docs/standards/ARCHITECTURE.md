@@ -576,7 +576,10 @@ active Panel color map so their font, geometry, colors, and state match those
 native items. Canvas-backed collection panels are frame siblings rather than
 children of the portable composite surface; their frame position must therefore
 include the complete portable ancestor offset and the top-level menu height.
-They must never cover a host-owned tab strip or splitter. Invalidating a
+They must never cover a host-owned tab strip or splitter. Showing a panel or
+canvas restores visible descendants above it in portable ancestor order, so
+Frame sibling stacking cannot hide a nested toolbar or its hosted controls.
+Invalidating a
 custom collection paints into its backing Pixmap and copies the requested
 region directly; it must not clear the live Panel before requesting Expose.
 `icon_view`, `tree_view`, and `table_view` attach real XView `Scrollbar`
@@ -588,6 +591,12 @@ end; programmatic scrolls move the elevator without emitting `on_scroll`.
 The backend synchronizes their object, page, and view positions in both
 directions and suppresses only the duplicate portable scrollbar paint; it
 must not substitute an emulated track when XView supplies the native control.
+Collection Scrollbars never keep keyboard focus: a Scrollbar's `KBD_USE`
+returns focus to the collection's paint window and is not passed to XView,
+which would otherwise draw the Frame's focus arrow over the bar's top anchor
+and route keys to the bar. XView reports no resize for these Frame-sibling
+Panels, so applying a collection's dimensions calls `on_native_resize()` and
+emits `on_wnd_resize`, as the ConfigureNotify-driven X backends do.
 Vertical XView scrollbars occupy the east-side extent reserved by the shared
 renderer; a table scrollbar begins below its header, and a horizontal bar
 occupies the reserved bottom extent without overlapping the corner. OPEN LOOK

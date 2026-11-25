@@ -19,7 +19,8 @@ work-area edge, directly above the native bottom track. Nested/unassociated
 canvases retain their internal scrollbars. OPEN LOOK places real XView
 `Scrollbar` objects in every canvas's reserved tracks instead of painting
 them: one unit is one theme line, and programmatic scrolls move the elevator
-silently. Other backends retain their existing canvas controls and geometry
+silently. Those Scrollbars hand keyboard focus back to the canvas, and resizing
+the canvas emits `on_wnd_resize` as on the other X backends. Other backends retain their existing canvas controls and geometry
 through the default adapter.
 
 `canvas::get_window_scrollbars()` reports whether the frame owns scrolling.
@@ -40,6 +41,11 @@ height and center inside bounds allocations; their cache reflects that smaller
 field. Multiline text edits and ordinary panel/canvas children retain the
 requested allocation. Status bars reserve the outermost bottom strip before
 bottom toolbars, including when attached to a panel or canvas.
+
+OPEN LOOK represents nested canvas and toolbar surfaces as XView Frame
+siblings. Showing a panel or canvas raises visible descendants after their
+ancestors, preserving the portable hierarchy's stacking order. A canvas-hosted
+toolbar and its controls therefore remain visible when the canvas is shown.
 
 ## Why two classes and not one
 

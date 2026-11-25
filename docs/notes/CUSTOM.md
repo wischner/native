@@ -5,6 +5,11 @@ from library-painted tracks to real XView `SCROLLBAR` objects; the canvas
 stays **H**. Fyodor's document canvas showed the emulated arrow/trough bar
 instead of the OPEN LOOK elevator and cable.
 
+OPEN LOOK canvas stacking review (2026-11-25): existing canvas, toolbar,
+and tab classifications are unchanged. Showing a canvas raises its visible
+portable descendants in parent-before-child order because their XView Panels
+are Frame siblings. This keeps a document's hosted sheet-tab bar visible.
+
 OPEN LOOK hosted-text review (2026-11-24): native Panel text fields retain
 their **N** implementation. Keyboard dispatch publishes the windowless caret
 item as the portable focus owner before delivering keys, so a toolbar canvas

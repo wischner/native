@@ -158,7 +158,58 @@ namespace
     }
 
     // Sheet selectors have no page host, including after recreation.
+    // XView flattens canvas descendants into Frame siblings. Showing
+    // their canvas must keep the toolbar and its sheet selector above it.
+    void check_canvas_stacking(native::wnd &root) {
+        native::canvas drawing(10, 20, 400, 220);
+        native::tab_view tabs;
+        tabs.set_selection_only(true).set_page_frame_visible(false);
+        tabs.add_item("Sheet1");
+        tabs.add_item("Sheet2");
+        native::toolbar bar(drawing, native::window_edge::bottom, 32);
+        native::tool_item item;
+        item.id = "sheets";
+        item.kind = native::tool_kind::control;
+        item.control = &tabs;
+        item.length = 300;
+        bar.add_item(item);
+        drawing.set_parent(&root);
+        for (int cycle = 0; cycle < 2; ++cycle) {
+            drawing.create();
+            for (const int height : {220, 260, 180}) {
+                drawing.set_dimensions(native::size(400, height));
+                drawing.show();
+                XSync(ol::cached_display, False);
+                Window returned_root = None, parent = None;
+                Window *children = nullptr;
+                unsigned count = 0;
+                const auto *host = ol::window_state(
+                    dynamic_cast<native::app_wnd *>(&root));
+                expect(host, "canvas fixture has a native Frame");
+                const Window frame = xv_get(host->frame, XV_XID);
+                expect(XQueryTree(ol::cached_display, frame,
+                    &returned_root, &parent, &children, &count),
+                    "read native Frame stacking order");
+                int canvas_index = -1, bar_index = -1, tabs_index = -1;
+                for (unsigned i = 0; i < count; ++i) {
+                    if (children[i] == Window(xv_get(peer(drawing), XV_XID)))
+                        canvas_index = static_cast<int>(i);
+                    if (children[i] == Window(xv_get(peer(*tabs.get_parent()), XV_XID)))
+                        bar_index = static_cast<int>(i);
+                    if (children[i] == Window(xv_get(peer(tabs), XV_XID)))
+                        tabs_index = static_cast<int>(i);
+                }
+                if (children) XFree(children);
+                expect(canvas_index >= 0 && bar_index > canvas_index &&
+                       tabs_index > bar_index,
+                       "showing/resizing a canvas keeps hosted sheet tabs visible");
+            }
+            drawing.destroy();
+        }
+    }
+
     void check_selection_only_tabs(native::wnd &root) {
+        check_canvas_stacking(root);
         native::tab_view tabs(10, 250, 220, 24);
         tabs.set_selection_only(true).set_page_frame_visible(false)
             .set_tab_placement(native::tab_placement::bottom);

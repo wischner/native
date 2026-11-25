@@ -309,10 +309,11 @@ void check_openlook_controls(native::app_wnd &owner) {
     });
     code.show_completion({{"One", "1", ""}, {"Two", "2", ""}});
     pump();
+    // Enter accepts; Tab stays focus traversal even with completion open.
     server.key(XK_Down);
-    server.key(XK_Tab);
+    server.key(XK_Return);
     expect(accepted == "Two",
-           "OPEN LOOK physical arrows and Tab accept completion");
+           "OPEN LOOK physical arrows and Enter accept completion");
     accepted.clear();
     code.show_completion({{"One", "1", ""}, {"Two", "2", ""}});
     pump();
@@ -694,6 +695,33 @@ void check_openlook_canvas_scrollbars(native::app_wnd &owner) {
            "an overflowing canvas axis gains an XView Scrollbar");
     expect(static_cast<int>(xv_get(vertical, XV_HEIGHT)) == 200 - extent,
            "both canvas Scrollbars leave the corner free");
+
+    // XView reports no resize for the Frame-sibling Panel. Content
+    // sized from its viewport would otherwise leave new area unpainted.
+    size reported;
+    content.on_wnd_resize.connect([&](size dimensions) {
+        reported = dimensions;
+        return true;
+    });
+    content.set_dimensions(size(340, 240));
+    pump();
+    expect(reported.w == 340 && reported.h == 240,
+           "resizing a canvas reports its new dimensions");
+
+    // A Scrollbar never keeps keyboard focus: the canvas gets it back
+    // and XView's focus arrow is not drawn over the Scrollbar anchor.
+    win_post_id(vertical, KBD_USE, NOTIFY_IMMEDIATE);
+    pump();
+    const Xv_Window arrow = static_cast<Xv_Window>(
+        xv_get(xv_get(vertical, WIN_FRAME), FRAME_FOCUS_WIN));
+    expect(!arrow || !xv_get(arrow, XV_SHOW),
+           "a canvas Scrollbar given focus shows no XView focus arrow");
+    Window focused = None;
+    int revert = 0;
+    XGetInputFocus(ol::cached_display, &focused, &revert);
+    expect(focused == static_cast<Window>(
+                          xv_get(state->paint_window, XV_XID)),
+           "a canvas Scrollbar returns keyboard focus to its canvas");
     window.destroy();
     pump();
 }
