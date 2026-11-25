@@ -39,6 +39,11 @@ namespace native
         // only cached.
     }
 
+    void app_wnd::apply_icon_text() {
+        // Deskbar lists minimized windows by title; there is no
+        // separate icon label, so the text is only cached.
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         if (!haiku::global_app) {

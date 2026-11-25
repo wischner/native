@@ -17,6 +17,9 @@ namespace native
         // take the icon from the desktop entry matching the application
         // ID. The image therefore remains a portable cached value.
     }
+    void app_wnd::apply_icon_text() {
+        // GTK 4 windows have no icon label; shells show the title.
+    }
     void app_wnd::create_native() {
         validate_owner_created();
         linux::wayland::initialize();

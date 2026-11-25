@@ -91,7 +91,10 @@ has no equivalent.
 ## Build system rules
 
 - The build system entry point is `CMakeLists.txt`.
-- CMake toolchain files live in `scripts/cmake/`.
+- CMake toolchain files live in `scripts/cmake/`, together with
+  `native-program-icon.cmake`. Its `native_add_program_icon(<target> <png>)`
+  generates a GEMix desktop program icon with the SDK's `resgen` and does
+  nothing on other backends.
 - Developer automation lives in purpose-specific directories under
   `scripts/`, such as `scripts/linux/`, `scripts/windows/`, and
   `scripts/macos/remote/`.
@@ -190,6 +193,13 @@ images requiring colour, grayscale or partial alpha. Both transports must
 preserve clipping, paint order and native-window occlusion. The two portable
 image transformations are `img >> resize(...) >> dither()`; keep them eager,
 left-to-right and independent of presentation.
+
+GEM AES windows have no icons. The GEMix desktop draws
+`icons/<executable stem>.rsc` from the GEM resource search path. When the
+main window's icon is applied, Native writes that file if it is missing:
+under `$GEM_RESOURCE_DIR/icons`, or else `$XDG_DATA_HOME/gem/icons`. It never
+replaces a file and ignores failures. Keep the encoder byte-compatible with
+`resgen`; `native_gemix_program_icon_tests` checks that.
 
 SDK `1.5.2` uses a plain one-pixel compact window frame, allowing status
 strips to meet the bottom border without a gutter or extra corner strokes.

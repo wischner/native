@@ -1,5 +1,6 @@
 //
-// Implements backend-neutral application-window title and icon state.
+// Implements backend-neutral application-window title, icon and icon
+// text state.
 // Backends provide native creation, destruction, display, and updates.
 //
 // MIT License (see: LICENSE)
@@ -69,8 +70,12 @@ namespace native
     app_wnd &app_wnd::set_title(const std::string &title) {
         if (_title == title) return *this;
         _title = title;
-        if (_created)
-            apply_title();
+        if (!_created)
+            return *this;
+        apply_title();
+        // An unset icon text follows the title.
+        if (_icon_text.empty())
+            apply_icon_text();
         return *this;
     }
 
@@ -84,6 +89,22 @@ namespace native
         if (_created)
             apply_icon();
         return *this;
+    }
+
+    const std::string &app_wnd::get_icon_text() const {
+        return _icon_text;
+    }
+
+    app_wnd &app_wnd::set_icon_text(const std::string &text) {
+        if (_icon_text == text) return *this;
+        _icon_text = text;
+        if (_created)
+            apply_icon_text();
+        return *this;
+    }
+
+    const std::string &app_wnd::get_effective_icon_text() const {
+        return _icon_text.empty() ? _title : _icon_text;
     }
 
     app_wnd *app_wnd::get_owner() const {

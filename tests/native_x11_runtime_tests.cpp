@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 // Check the native input compositions after the fixture is mapped.
@@ -164,6 +165,51 @@ namespace
         owner.set_icon(nullptr);
         expect(net_wm_icon(shell).empty() && !icon_hints(shell),
             "clearing an icon restores the manager default");
+    }
+
+    // Read a UTF-8 window property as text.
+    std::string utf8_property(Window window, const char *name) {
+        Atom type = None; int format = 0;
+        unsigned long count = 0, remaining = 0;
+        unsigned char *data = nullptr;
+        XGetWindowProperty(cached_display, window,
+            XInternAtom(cached_display, name, False), 0, 1024, False,
+            XInternAtom(cached_display, "UTF8_STRING", False), &type,
+            &format, &count, &remaining, &data);
+        std::string text = data && format == 8
+            ? std::string(reinterpret_cast<char *>(data), count) : "";
+        if (data) XFree(data);
+        return text;
+    }
+
+    // Publish, follow and restore a live Athena shell icon name.
+    void check_icon_text(app_wnd &owner) {
+        const Window shell = XtWindow(shell_bindings.handle_from_object(&owner));
+        const std::string title = owner.get_title();
+        expect(utf8_property(shell, "_NET_WM_ICON_NAME") == title,
+            "an unset icon text publishes the title");
+        owner.set_icon_text("Ikona \xc4\x8d");
+        XTextProperty property{};
+        char **list = nullptr; int count = 0;
+        const bool icccm = XGetWMIconName(cached_display, shell, &property) &&
+            Xutf8TextPropertyToTextList(cached_display, &property, &list,
+                &count) >= Success && count == 1 &&
+            std::string(list[0]) == "Ikona \xc4\x8d";
+        if (list) XFreeStringList(list);
+        if (property.value) XFree(property.value);
+        expect(icccm && utf8_property(shell, "_NET_WM_ICON_NAME") ==
+                "Ikona \xc4\x8d" &&
+            utf8_property(shell, "_NET_WM_NAME") == title,
+            "icon text publishes UTF-8 icon names and keeps the title");
+        owner.set_title(title + " renamed");
+        expect(utf8_property(shell, "_NET_WM_ICON_NAME") == "Ikona \xc4\x8d",
+            "a title change keeps an explicit icon text");
+        owner.set_icon_text("");
+        expect(utf8_property(shell, "_NET_WM_ICON_NAME") == title + " renamed",
+            "clearing icon text follows the current title");
+        owner.set_title(title);
+        expect(utf8_property(shell, "_NET_WM_ICON_NAME") == title,
+            "a following icon name tracks title changes");
     }
 
     class rows final : public table_model
@@ -766,6 +812,7 @@ namespace
                     check_message();
                     check_files();
                     check_icon(*this);
+                    check_icon_text(*this);
                 } else if (phase == 24) {
                     set_dimensions(size(100, 100));
                     XMoveWindow(cached_display, XtWindow(shell_bindings.handle_from_object(this)),

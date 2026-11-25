@@ -17,6 +17,19 @@ see [top-level window icons](PATTERNS-WINDOWS.md#top-level-window-icons).
 Vision's main window uses the gear tile. The `--new-features` window uses its
 resource-selected icon.
 
+`app_wnd::set_icon_text()` sets the label under an iconified window and
+follows the title while empty; see
+[icon text](PATTERNS-WINDOWS.md#icon-text). The X11 runtime test checks the
+UTF-8 `WM_ICON_NAME`/`_NET_WM_ICON_NAME` publication, title separation and
+title following. Under olwm in Xvfb, an iconified OPEN LOOK window showed the
+label below both a custom image and the XView default icon.
+
+GEMix windows have no icon. The GEMix desktop draws `icons/<executable
+stem>.rsc` instead. The build step `native_add_program_icon()` runs the SDK's
+`resgen` to produce it, and Vision's GEM build generates `vision.rsc` from
+the gear tile. Its 96-byte RSC header and `ICONBLK` match the bundled
+`calc.rsc` byte for byte. The desktop itself has not been run against it.
+
 OPEN LOOK no longer treats XView `ACTION_CLOSE` as a close request. That
 action is olwm's Close, which iconifies, and XView derives it from the
 frame's unmap. Before this change, iconifying a window destroyed it. Quit
@@ -1060,7 +1073,8 @@ passed in the preceding review after the shared tab-text contrast correction.
 | Exact-size file/directory PNG icons | Freedesktop + fallback (build tested) | Freedesktop + fallback (tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Freedesktop + fallback (build tested) | Shell + fallback (tested) | Tracker + fallback (build tested) | AppKit + fallback (tested) | WIP |
 | Typed special-directory detection | XDG/C++ (build tested) | XDG/C++ (tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | XDG/C++ (build tested) | Known Folders (tested) | `find_directory` (build tested) | Foundation (tested) | WIP |
 | Main window create/show | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | WIP |
-| Top-level window icon (`app_wnd::set_icon`) | EWMH + Xt pixmap (tested) | `SDL_SetWindowIcon` (build tested) | EWMH + Xt pixmap (build tested) | XView `FRAME_ICON` (tested) | WINGs miniwindow + EWMH (build tested) | Cached only; AES has no icon (build tested) | `WM_SETICON` (build tested) | Cached only; no window icon (untested) | Main window sets Dock image (untested) | GTK Wayland/elementary: cached only (untested) |
+| Top-level window icon (`app_wnd::set_icon`) | EWMH + Xt pixmap (tested) | `SDL_SetWindowIcon` (build tested) | EWMH + Xt pixmap (build tested) | XView `FRAME_ICON` (tested) | WINGs miniwindow + EWMH (build tested) | Window: cached only; desktop program icon via `native_add_program_icon` (build tested) | `WM_SETICON` (build tested) | Cached only; no window icon (untested) | Main window sets Dock image (untested) | GTK Wayland/elementary: cached only (untested) |
+| Iconified-window label (`app_wnd::set_icon_text`) | Xt `iconName` + EWMH (tested) | Cached only (build tested) | Xt `iconName` + EWMH (build tested) | XView `ICON_LABEL` + EWMH (tested) | WINGs miniwindow title + EWMH (build tested) | Cached only (build tested) | Cached only (build tested) | Cached only (build tested) | `miniwindowTitle` (untested) | GTK Wayland/elementary: cached only (build tested) |
 | Central non-const lifecycle and visible-state contract | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Independent owned `modeless_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (untested) | WIP |
 | Owner-blocking, focus-taking `modal_wnd` | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (tested) | Yes (tested) | Yes (tested) | Yes (build tested) | Yes (build tested) | Yes (untested) | WIP |

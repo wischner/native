@@ -624,6 +624,44 @@ the image's GEMix/Rasta distribution as a versioned runtime and deploy the
 application against the matching target installation. AES supplies the file
 selector; no desktop chooser process is required.
 
+### Program icon
+
+AES windows have no icon. The GEMix desktop instead draws a program icon
+from `icons/<name>.rsc`, where `<name>` is the executable's file name without
+its extension. It finds the file through the GEM resource search path:
+`GEM_RESOURCE_DIR`, then the XDG data directories under `gem/`. Upstream GEM
+installs its own program icons in `<datadir>/gem/icons`.
+
+When a GEMix application's main window has an icon, Native checks the first
+of those folders: `$GEM_RESOURCE_DIR/icons`, or `$XDG_DATA_HOME/gem/icons`
+(default `~/.local/share/gem/icons`) when the variable is unset. If
+`<name>.rsc` is missing, Native writes it from the image, using the same
+32x32 monochrome conversion as `resgen`. It never replaces an existing file.
+A folder it cannot write to, such as a read-only installation, is skipped
+silently, and the application runs normally.
+
+To ship the icon instead, generate it at build time. In this repository,
+`scripts/cmake/native-program-icon.cmake` provides that step:
+
+```cmake
+native_add_program_icon(vision
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/navigation/gear.png)
+```
+
+On GEMix it runs the SDK's `resgen icons` while building and writes
+`<build>/share/gem/icons/vision.rsc`. It also installs that file into
+`<datadir>/gem/icons`. Supply 32x32 art: `resgen` makes pixels with alpha
+below 32 transparent and turns any channel below 224 into black. Other
+backends get no build step from this function. Applications built against
+a prebuilt SDK package run the same command themselves:
+
+```bash
+resgen icons -o myapp.rsc myapp.png
+```
+
+Copy the result into the target installation's program-icon folder, next to
+the bundled icons.
+
 ## Windows with MinGW-w64
 
 ### Compile

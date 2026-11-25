@@ -17,7 +17,11 @@ same `docs/` paths against that checkout.
    and [control lifecycle](../../manuals/programming-native/04-BUTTONS.md)
    when creating a new app. Native supplies the process entry point;
    implement `int program(int, char **)` and keep a named `app_wnd` alive
-   through `app::run(window)`.
+   through `app::run(window)`. Give the main window an icon by passing a
+   shared `img` to `set_icon()`. Do not write platform icon files yourself:
+   Native fits the image per backend and, on GEMix, publishes the desktop
+   program icon. Use `set_icon_text()` only when the iconified label should
+   differ from the title.
 3. Choose concrete controls using the
    [control index](../../manuals/PROGRAMMING-NATIVE.md#find-every-control).
    Read the relevant complete example and current `include/native/*.h`

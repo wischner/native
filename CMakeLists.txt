@@ -298,6 +298,7 @@ endif()
 
 # Build the library before programs that consume it.
 add_subdirectory(lib/native)
+include(scripts/cmake/native-program-icon.cmake)
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     if(NATIVE_BUILD_SDK)
         include(scripts/release/sdk.cmake)

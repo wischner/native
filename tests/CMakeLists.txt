@@ -242,6 +242,22 @@ if(UNIX AND TOOLKIT STREQUAL "GEMIX")
         COMMAND ${gemd_runner} $<TARGET_FILE:native_gemix_input_tests>)
     set_tests_properties(native_gemix_input_tests PROPERTIES TIMEOUT 60 ENVIRONMENT
         "GEM_RASTA_FRAMEBUFFER=/tmp/native-gemix-input-tests.fb;GEM_RASTA_PORT=5012;GEM_VDI_WIDTH=904;GEM_VDI_HEIGHT=900;GEM_RASTA_INVERSE=off;ASAN_OPTIONS=detect_leaks=0")
+    # Encoder parity uses Vision's resgen output; no AES session is needed.
+    add_executable(native_gemix_program_icon_tests
+        native_gemix_program_icon_tests.cpp)
+    target_link_libraries(native_gemix_program_icon_tests PRIVATE
+        native native_developer_options)
+    if(TARGET vision_program_icon)
+        add_dependencies(native_gemix_program_icon_tests vision_program_icon)
+    endif()
+    add_test(NAME native_gemix_program_icon_tests
+        COMMAND native_gemix_program_icon_tests
+            ${PROJECT_SOURCE_DIR}/src/assets/navigation/gear.png
+            ${CMAKE_BINARY_DIR}/share/gem/icons/vision.rsc
+            ${CMAKE_CURRENT_BINARY_DIR}/program-icon-scratch)
+    set_tests_properties(native_gemix_program_icon_tests PROPERTIES
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+
     add_executable(native_gemix_runtime_tests native_gemix_runtime_tests.cpp
         native_gemix_color_checks.cpp)
     target_include_directories(native_gemix_runtime_tests PRIVATE

@@ -18,6 +18,17 @@ the same commit.
 
 ## Current scope (November 2026)
 
+Top-level windows share one icon image through `app_wnd::set_icon()`, and
+adapters fit it to each native size. Win32, SDL2, the X11-family toolkits and
+the macOS Dock (main window only) display it. GTK Wayland/elementary and
+Haiku cache it. On GEMix the main window writes a missing desktop program
+icon, `icons/<stem>.rsc`, and ignores failures. `app_wnd::set_icon_text()`
+sets the label shown under an iconified window, following the title when
+empty; the X11-family toolkits and macOS display it. OPEN LOOK iconification is
+no longer treated as closing a window. See
+[top-level window icons](book-of-native/PATTERNS-WINDOWS.md#top-level-window-icons)
+and the [validation record](book-of-native/FEATURE-MATRIX.md#top-level-window-icons-2026-11-25).
+
 Owned OPEN LOOK dialogs focus the first eligible explicit tab stop when opened
 or reopened, allowing immediate typing in the first ordered text field.
 

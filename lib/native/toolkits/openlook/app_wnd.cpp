@@ -7,6 +7,9 @@
 //
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdlib>
+#include <memory>
 #include <stdexcept>
 
 #include <native.h>
@@ -17,6 +20,7 @@
 
 #include <X11/Xlib.h>
 #include <xview/canvas.h>
+#include <xview/font.h>
 #include <xview/icon.h>
 #include <xview/notify.h>
 #include <xview/rectlist.h>
@@ -24,10 +28,12 @@
 #include <xview/win_input.h>
 #include <xview/window.h>
 #include <xview/xview.h>
+#include <xview_private/icon_impl.h>
 
 #include "globals.h"
 #include "panel_painting.h"
 #include "../../mouse_state.h"
+#include "../../window_icon.h"
 #include "../x_keyboard.h"
 #include "../x_window_icon.h"
 #include "../x_window_title.h"
@@ -46,10 +52,33 @@ namespace
         Icon icon = XV_NULL;
         Server_image image = XV_NULL;
         Server_image mask = XV_NULL;
+        // Whether the image leaves room for XView's label strip.
+        bool labelled = false;
     };
+
+    //
+    // Free an XView icon's label before the icon is destroyed.
+    //
+    // Parameters:
+    //      icon        - Live icon object, or XV_NULL.
+    //
+    // Notes:
+    //      XView's icon destructor never frees ic_text, and setting a
+    //      null XV_LABEL frees it without clearing the pointer before a
+    //      repaint reads it. A null ic_text paints no label, so the icon
+    //      stays safe until its destruction.
+    //
+    void release_icon_label(Icon icon) {
+        if (!icon)
+            return;
+        auto *info = ICON_PRIVATE(icon);
+        std::free(info->ic_text);
+        info->ic_text = nullptr;
+    }
 
     // Destroy icon objects once no frame refers to them.
     void destroy_frame_icon(const frame_icon &value) {
+        release_icon_label(value.icon);
         if (value.icon)
             xv_destroy(value.icon);
         if (value.image)
@@ -66,15 +95,49 @@ namespace
                       : XV_NULL;
     }
 
-    // Build an XView icon window drawing a masked image.
-    frame_icon create_frame_icon(Frame frame, const native::img &icon) {
+    //
+    // Fit an icon image above XView's label strip.
+    //
+    // Parameters:
+    //      source      - Application icon of any positive size.
+    //      edge        - Square icon window edge in pixels.
+    //      label       - Height of the bottom strip XView labels.
+    //
+    // Returns:
+    //      An edge-by-edge transparent image with the source fitted
+    //      into the square above the strip, centered horizontally.
+    //
+    std::unique_ptr<native::img> compose_frame_icon(
+        const native::img &source, native::dim edge, native::dim label) {
+        const auto area = static_cast<native::dim>(
+            std::max(1, int(edge) - int(label)));
+        const auto fitted = native::detail::fit_window_icon(source, area);
+        auto result = std::make_unique<native::img>(edge, edge);
+        const int left = (edge - area) / 2;
+        for (int y = 0; y < area; ++y)
+            std::copy_n(fitted->pixels() + std::size_t(y) * area, area,
+                        result->pixels() + std::size_t(y) * edge + left);
+        return result;
+    }
+
+    // Build an XView icon window drawing a masked image. A labelled
+    // icon reserves XView's one-line strip: the font's line height plus
+    // the three pixels icon_draw_label clears above it.
+    frame_icon create_frame_icon(Frame frame, const native::img &icon,
+                                 bool labelled) {
         Display *display = linux::openlook::cached_display;
         const int screen = DefaultScreen(display);
         const native::dim edge =
             native::detail::x_icon_edge(display, screen, 64);
+        native::dim label = 0;
+        if (labelled)
+            label = static_cast<native::dim>(3 + xv_get(
+                xv_get(frame, WIN_FONT), FONT_DEFAULT_CHAR_HEIGHT));
+        const auto composed = compose_frame_icon(icon, edge, label);
         auto pixmaps = native::detail::create_x_icon_pixmaps(
-            display, screen, icon, edge);
+            display, screen, *composed, edge);
         frame_icon result;
+        result.labelled = labelled;
         result.image = adopt_pixmap(pixmaps.image);
         if (!result.image)
             native::detail::free_x_icon_pixmaps(display, pixmaps);
@@ -506,6 +569,31 @@ namespace native
             static_cast<Window>(xv_get(state->frame, XV_XID)), _title);
     }
 
+    void app_wnd::apply_icon_text() {
+        auto *state = linux::openlook::window_state(this);
+        if (!state || !state->frame) {
+            throw std::runtime_error(
+                "OpenLook/XView: missing frame binding.");
+        }
+        const std::string &text = get_effective_icon_text();
+        // A custom image is fitted above the label strip only while a
+        // label exists, so recompose it when that changes.
+        auto *current = detail::peer_state<frame_icon>(*this);
+        if (_icon && current && current->labelled == text.empty()) {
+            apply_icon();
+            return;
+        }
+        // XView clients paint their own icon label, so olwm draws none.
+        // The label also covers XView's default icon. XV_LABEL with null
+        // keeps a freed pointer, so empty text is passed instead.
+        if (auto icon = static_cast<Icon>(
+                xv_get(state->frame, FRAME_ICON)))
+            xv_set(icon, XV_LABEL, text.c_str(), nullptr);
+        // XView stores WM_ICON_NAME as STRING; publish UTF-8 forms.
+        detail::set_x_icon_name(linux::openlook::cached_display,
+            static_cast<Window>(xv_get(state->frame, XV_XID)), text);
+    }
+
     void app_wnd::apply_icon() {
         auto *state = linux::openlook::window_state(this);
         if (!state || !state->frame) {
@@ -518,15 +606,23 @@ namespace native
             detail::assign_peer_state(*this, current);
         }
         const frame_icon previous = *current;
-        *current = _icon ? create_frame_icon(state->frame, *_icon)
+        *current = _icon ? create_frame_icon(
+                               state->frame, *_icon,
+                               !get_effective_icon_text().empty())
                          : frame_icon{};
         // A null icon makes XView restore the frame's default icon.
-        if (current->icon || previous.icon)
+        // Replacing the default icon destroys it, so free its label.
+        if (current->icon || previous.icon) {
+            release_icon_label(static_cast<Icon>(
+                xv_get(state->frame, FRAME_ICON)));
             xv_set(state->frame, FRAME_ICON, current->icon, nullptr);
+        }
         destroy_frame_icon(previous);
         detail::set_x_net_wm_icon(linux::openlook::cached_display,
             static_cast<Window>(xv_get(state->frame, XV_XID)),
             _icon.get());
+        // A replaced or default icon starts without the label.
+        apply_icon_text();
     }
 
     void app_wnd::create_native() {
@@ -711,6 +807,7 @@ namespace native
                WIN_FRONT,
                nullptr);
         apply_title();
+        apply_icon_text();
         self->on_native_move(position);
         linux::openlook::request_frame_extents(state->frame);
 
@@ -759,11 +856,15 @@ namespace native
             state->content = XV_NULL;
             state->paint_window = XV_NULL;
             delete state;
-            if (frame)
+            if (frame) {
+                // The frame destroys a default icon without its label.
+                release_icon_label(static_cast<Icon>(
+                    xv_get(frame, FRAME_ICON)));
                 app::post([frame, icon] {
                     xv_destroy(frame);
                     destroy_frame_icon(icon);
                 });
+            }
         } else {
             destroy_frame_icon(icon);
         }

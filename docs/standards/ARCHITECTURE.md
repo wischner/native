@@ -216,8 +216,8 @@ backend notification to update cached state after native-originated changes and
 avoid sending the change back to the backend.
 
 `wnd::set_bounds()` with unchanged constrained geometry,
-`app_wnd::set_title()` with unchanged text and `app_wnd::set_icon()` with the
-same shared image are no-ops.
+`app_wnd::set_title()` and `app_wnd::set_icon_text()` with unchanged text and
+`app_wnd::set_icon()` with the same shared image are no-ops.
 `main_menu::set_checked()` also skips an unchanged check. Repeated layout updates
 must not discard shader history merely because the same bounds were assigned.
 
@@ -335,7 +335,29 @@ keep their icon resources in the window peer or with the owning toolkit:
 - AppKit has no per-window icon, so the main window sets the Dock image.
 - GTK 4.14 Wayland/elementary (desktop-entry icons), Haiku (executable
   attributes) and GEM AES have no per-window icon and only cache the image.
+  The GEMix desktop draws a program icon, `icons/<executable stem>.rsc`.
+  When the main window's icon is applied, GEMix writes that file in the
+  first resource root, `$GEM_RESOURCE_DIR` or `$XDG_DATA_HOME/gem`. It
+  never replaces an existing file and ignores every failure. The build step
+  `native_add_program_icon()` produces the same file with the SDK's
+  `resgen` and installs it under `<datadir>/gem/icons`.
 - System file and directory panels ignore the icon.
+
+`app_wnd::set_icon_text(const std::string &)` caches the UTF-8 label a window
+manager shows with the minimized window's icon, and `get_icon_text()` returns
+it. Empty text, the default, follows the title: `set_title()` then also
+reapplies the icon text. Creation applies the effective text and the virtual
+`apply_icon_text()` updates a created window; `file_dialog` overrides it with
+a no-op.
+
+- X11-family adapters publish ICCCM `WM_ICON_NAME` and EWMH
+  `_NET_WM_ICON_NAME` separately from the title: the Xt `iconName` resource
+  for Athena and Motif, and `WMSetWindowMiniwindowTitle` for Window Maker.
+  XView paints OPEN LOOK icon labels itself, so the adapter sets
+  `ICON_LABEL` on the frame's icon and fits a custom image above that strip.
+- AppKit sets `NSWindow.miniwindowTitle`, which labels the window in the Dock.
+- Win32, SDL2, GTK 4.14 Wayland/elementary, Haiku and GEM have no separate
+  icon label and only cache the text.
 
 `mouse_cursor` exposes the portable system shapes `arrow`, `ibeam`,
 `crosshair`, `resize_horizontal`, `resize_vertical`,

@@ -13,6 +13,7 @@
 #include <native/app_wnd.h>
 
 #include "globals.h"
+#include "program_icon.h"
 
 namespace native
 {
@@ -27,7 +28,16 @@ namespace native
     }
 
     void app_wnd::apply_icon() {
-        // AES windows carry no icon, so the image is only cached.
+        // AES windows carry no icon. The GEMix desktop instead draws
+        // icons/<program>.rsc; the main window supplies it when the
+        // installation has none, and failures leave the app running.
+        if (_icon && this == app::main_wnd())
+            detail::publish_gem_program_icon(*_icon);
+    }
+
+    void app_wnd::apply_icon_text() {
+        // AES windows have no icon, and the GEMix desktop labels a
+        // program icon with its file name, so the text is only cached.
     }
 
     void app_wnd::create_native() {
@@ -61,6 +71,8 @@ namespace native
 
         this->menu.attach(
             *this);
+        if (_icon)
+            apply_icon();
     }
 
     void app_wnd::show_native() {

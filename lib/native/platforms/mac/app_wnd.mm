@@ -31,6 +31,18 @@ namespace native
             setTitle:[NSString stringWithUTF8String:_title.c_str()]];
     }
 
+    void app_wnd::apply_icon_text() {
+        NSWindow *window = mac::wnd_bindings.handle_from_object(this);
+        if (!window)
+            throw std::runtime_error(
+                "macOS: Missing NSWindow binding for app_wnd.");
+
+        // The Dock labels a minimized window with its miniwindow title.
+        [window setMiniwindowTitle:
+            [NSString stringWithUTF8String:
+                get_effective_icon_text().c_str()]];
+    }
+
     void app_wnd::apply_icon() {
         NSWindow *window = mac::wnd_bindings.handle_from_object(this);
         if (!window)
@@ -94,6 +106,7 @@ namespace native
 
         this->menu.attach(
             *this);
+        apply_icon_text();
         if (_icon)
             apply_icon();
     }

@@ -138,6 +138,15 @@ of the same backend wait for each other, preventing generated Makefiles and
 backend directories can still build concurrently. The lock is released when
 the driver exits, including on a configure or build failure.
 
+Inside a backend build, the top-level project includes
+`scripts/cmake/native-program-icon.cmake`. Its
+`native_add_program_icon(<target> <png>)` generates a GEMix desktop program
+icon with the SDK's `resgen`, writing `<build>/share/gem/icons/<name>.rsc` and
+an install rule for `<datadir>/gem/icons`. It adds no build step on other
+backends. At run time, a GEMix main window with an icon also writes a
+missing program icon into the first GEM resource root. Vision uses it for the gear tile; see
+[GEMix program icons](../programming-native/12-BUILDING-AND-DISTRIBUTING.md#program-icon).
+
 - `docker-x11`
 - `docker-gemix`
 - `docker-gemix-gemd`
@@ -225,6 +234,7 @@ executables:
 | `native_sdl_control_tests` | Queued SDL Ctrl/Shift table selection, text replacement and popup synchronization, tab child lists, completion keyboard/mouse, picker availability/toggling/time steps, compact picker widths and seconds resizing, square step-button geometry and mirrored glyph pixels, equal navigation margins/search gap, list primitive pixel parity and bounded repeated-frame text uploads | SDL2 dummy/software; earlier input coverage also verified through Docker/GDB on the host X11 desktop |
 | `native_sdl_composition_tests` | Final renderer pixels for panel/tab/split/canvas and accordion/panel/canvas nesting, neighboring four-edge tab strips with non-client chrome, tab switching, resizing, and video shutdown preserving separately owned audio | SDL2 dummy video with software rendering; desktop pixel readback also requires `SDL_RENDER_DRIVER=software` |
 | `native_canvas_input_tests` | Actual SDL button/motion events through nested tabs and split canvases, button identity, drag/release capture and cancellation without synthetic releases | SDL2 dummy video with software rendering |
+| `native_gemix_program_icon_tests` | GEMix desktop program icon: byte parity with Vision's SDK `resgen` output for the gear tile, publication to `GEM_RESOURCE_DIR/icons`, no replacement of an existing icon, silent failure for an unwritable root, and the XDG user-data fallback | GEMix direct and gemd builds; no AES session; uses Vision's generated `share/gem/icons/vision.rsc` |
 | `native_gemix_runtime_tests` | Absolute displayed white/black colors (`--colors-only` isolates it), stable source-editor borders across caret changes (`--editor-frame-only` isolates it), packed/RGBA framebuffer decoding, initial desktop, menu topology/teardown, root damage, pressed feedback, popup borders, overlap/title restoration, occlusion-correct modal/modeless opening, untitled modal geometry and `1011` edges, atomic close presentation, text/source-editor input and clipboard, splitter capture, stock bitmap fonts, and original scrollbar arrow pixels in both orientations with pressed/clipped/small-button coverage | GEMix; uses a separate rasta framebuffer without requiring a viewer |
 | `native_gemix_chrome_tests` | Runtime fixture in `--chrome-only` mode: client dimensions, full-width status, all four toolbar inward borders and masks, virtual-table header bottom rules, expanded/collapsed group joins, selected tab joins and splitter grip pixels. `NATIVE_GEM_PLAIN_FRAME=1` also requires the SDK 1.5.2 one-pixel compact frame with no gutter or extra corner strokes | GEMix direct and proxy; private Rasta framebuffer |
 | `native_gemix_color_tests` | Runtime fixture in `--bgra-only` mode: exact BGRA colours, image alpha, subsequent lines/text, clipping, partial repaint, native-window occlusion, move/resize, immediate drawing and overlay slot reuse | GEMix direct and proxy; private Rasta framebuffer |

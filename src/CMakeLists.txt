@@ -44,6 +44,10 @@ target_sources(vision PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/navigation_icons.cpp)
 target_link_libraries(vision PRIVATE native)
 
+# The GEMix desktop shows this beside the executable's directory entry.
+native_add_program_icon(vision
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/navigation/gear.png)
+
 # Vision is a GUI application on Windows. CMake selects the appropriate
 # linker option for both MinGW (-mwindows) and Microsoft toolchains.
 if(WIN32)

@@ -82,9 +82,27 @@ Where the icon appears depends on the desktop:
   and iconified windows.
 - SDL2 passes it to its video driver.
 - On macOS only the main window's icon is used, as the Dock image.
-- GTK on Wayland, elementary OS, Haiku and GEM have no per-window icons. They
-  keep the value but show the application's desktop-entry or executable icon
+- GTK on Wayland, elementary OS and Haiku have no per-window icons. They keep
+  the value but show the application's desktop-entry or executable icon
   instead.
+- GEM windows have no icons either. On GEMix the main window's icon becomes
+  the desktop's program icon when none is installed yet; see
+  [Chapter 12](12-BUILDING-AND-DISTRIBUTING.md#program-icon).
+
+Some desktops also write a label under an iconified window. It follows the
+title unless you set a shorter one:
+
+```cpp
+native::app_wnd window("Vision - untitled document", 80, 80, 800, 600);
+window.set_icon_text("Vision");
+```
+
+`get_icon_text()` returns the text you set, and an empty string makes the
+label follow the title again. X11 window managers, CDE, OPEN LOOK and Window
+Maker show it under the icon. OPEN LOOK icons are 64 pixels wide, so prefer
+a short label there; macOS uses it for the minimized window in the
+Dock. Windows, SDL2, GTK, Haiku and GEM keep the value but label minimized
+windows with the title or file name.
 
 [Chapter 10](10-GRAPHICS-IMAGES-FONTS-THEMES.md#png-and-jpeg-from-files-or-memory)
 explains loading images from files or memory.

@@ -618,6 +618,16 @@ namespace
         window.set_icon(nullptr);
         expect(!window.get_icon(),
                "a null icon restores the backend default");
+        expect(window.get_icon_text().empty(),
+               "icon text defaults to following the title");
+        native::app_wnd *text_chain = &window.set_icon_text("Short");
+        expect(text_chain == &window &&
+                   window.get_icon_text() == "Short" &&
+                   window.get_title() == "Updated",
+               "icon text is cached apart from the title and chains");
+        window.set_icon_text("");
+        expect(window.get_icon_text().empty(),
+               "empty icon text follows the title again");
         const auto fitted = native::detail::fit_window_icon(*icon, 16);
         expect(fitted->w() == 16 && fitted->h() == 16 &&
                    fitted->pixels()[0].a == 0 &&

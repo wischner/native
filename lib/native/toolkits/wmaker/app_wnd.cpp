@@ -299,6 +299,20 @@ namespace native
             WMWidgetXID(window_state->window), _title);
     }
 
+    void app_wnd::apply_icon_text() {
+        auto *window_state = linux::wmaker::state(this);
+        if (!window_state || !window_state->window) {
+            throw std::runtime_error(
+                "Window Maker/WINGs: missing window binding.");
+        }
+        // Window Maker labels miniwindows with WM_ICON_NAME. WINGs
+        // encodes it through the locale, so publish UTF-8 afterwards.
+        const std::string &text = get_effective_icon_text();
+        WMSetWindowMiniwindowTitle(window_state->window, text.c_str());
+        detail::set_x_icon_name(linux::wmaker::display,
+            WMWidgetXID(window_state->window), text);
+    }
+
     void app_wnd::apply_icon() {
         auto *window_state = linux::wmaker::state(this);
         if (!window_state || !window_state->window) {
@@ -397,6 +411,7 @@ namespace native
 
         WMRealizeWidget(window);
         apply_title();
+        apply_icon_text();
         if (_icon)
             apply_icon();
         self->menu.attach(*self);

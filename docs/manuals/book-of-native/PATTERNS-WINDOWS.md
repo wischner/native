@@ -768,7 +768,9 @@ uses the message's top-level window and its owner chain, and accepts both
 menu-click and accelerator `WM_COMMAND` notifications.
 
 X11-family adapters publish UTF-8 EWMH titles and converted ICCCM text for
-classic window managers. Xt/WINGs initialize their character locale before
+classic window managers. Titles (`WM_NAME`) and icon names (`WM_ICON_NAME`)
+are published separately by `x_window_title.*`; see
+[Icon text](#icon-text). Xt/WINGs initialize their character locale before
 converting titles; the desktop's fonts still determine available glyphs.
 
 ## Top-level window icons
@@ -795,7 +797,8 @@ it needs:
 | OPEN LOOK | XView `ICON` window through `FRAME_ICON` plus `_NET_WM_ICON` | 64 | Window peer; destroyed after the frame |
 | Window Maker | WINGs miniwindow pixmap plus `_NET_WM_ICON` | 64 | WINGs retains the pixmap |
 | AppKit | Main window sets `applicationIconImage` | Source edge, 16 to 1024 | AppKit |
-| GTK Wayland/elementary, Haiku, GEM | None; the image is cached | — | — |
+| GTK Wayland/elementary, Haiku | None; the image is cached | — | — |
+| GEMix | Main window writes a missing desktop program icon, `icons/<stem>.rsc` | 32×32 monochrome `.rsc` | File in the first GEM resource root |
 
 ICCCM sizes are each toolkit's conventional edge. A manager's `WM_ICON_SIZE`
 lists acceptable ranges rather than a preference, so it only moves that edge
@@ -819,8 +822,78 @@ Some toolkit icon paths need explicit handling:
 
 Native therefore removes stale ICCCM hints itself, and destroys OPEN LOOK icon
 objects after the posted frame destruction. Haiku and GEM windows have no
-icon at all. GTK 4.14 can name only themed icons, and Wayland compositors
+icon at all.
+
+The GEMix desktop looks up a program's icon by executable name, as
+`icons/<stem>.rsc` on the GEM resource path. The stem is the executable's
+leaf name without its extension. On GEMix, applying the main window's icon
+publishes that file when it is missing (`toolkits/gemix/program_icon.*`):
+
+1. The target folder is `$GEM_RESOURCE_DIR/icons`. When that variable is
+   unset, it is `$XDG_DATA_HOME/gem/icons`, by default
+   `~/.local/share/gem/icons`. These are the first places the desktop
+   searches.
+2. An existing file is kept, so installed or hand-made icons win.
+3. The image is fitted into 32×32 pixels and encoded with the SDK `resgen`
+   pixel rule: alpha below 32 is transparent, and a visible pixel with any
+   channel below 224 is black.
+4. The resource uses the GEMix host layout: an `RSHDR` with one `ICONBLK`
+   using 64-bit offsets, one free string, the mask and data planes, and an
+   uppercase label.
+5. The file is written under a temporary name and then renamed.
+6. Every failure, such as a read-only installation, is swallowed, and the
+   application continues.
+
+For the gear tile, the encoder produces the same bytes as `resgen`. Owned
+windows never publish a program icon. Installations that prefer packaged
+icons can generate them at build time; see
+[GEMix program icons](../programming-native/12-BUILDING-AND-DISTRIBUTING.md#program-icon). GTK 4.14 can name only themed icons, and Wayland compositors
 take a window's icon from the desktop entry that matches its application ID.
+
+### Icon text
+
+Classic desktops label an iconified window. `app_wnd::set_icon_text()`
+caches that label apart from the title; empty text, the default, follows the
+title. The private `get_effective_icon_text()` resolves the two, and the
+virtual `apply_icon_text()` publishes it. `set_title()` calls
+`apply_icon_text()` as well while the icon text is empty, so a following
+label never goes stale. Each `create_native()` applies the effective text, and
+toolkits that rewrite properties at realization apply it again afterwards,
+beside the title.
+
+| Backend | Native path |
+| --- | --- |
+| X11/Athena, Motif | Xt `iconName` resource, then UTF-8 `WM_ICON_NAME` and `_NET_WM_ICON_NAME` once realized |
+| OPEN LOOK | XView `ICON_LABEL` on the frame's custom or default icon, then the UTF-8 properties |
+| Window Maker | `WMSetWindowMiniwindowTitle`, then the UTF-8 properties |
+| AppKit | `NSWindow.miniwindowTitle` |
+| Win32, SDL2, GTK Wayland/elementary, Haiku, GEM | None; the text is cached |
+
+XView clients paint their own icon labels and tell olwm not to draw
+`WM_ICON_NAME`. XView paints the label into a one-line strip at the bottom
+of the 64-pixel icon window. A custom image is therefore fitted into the
+square above that strip, which is the font's line height plus three pixels.
+It is recomposed when the label appears or disappears. The XView default
+icon is labelled in place. Setting `ICON_LABEL` also writes a Latin-1
+`WM_ICON_NAME`, so the adapter then republishes the UTF-8 forms.
+`FRAME_LABEL` writes only `WM_NAME`, so title changes cannot overwrite the
+icon name.
+
+XView has two label-lifetime defects. Its icon destructor never frees the
+label, and a null `XV_LABEL` frees the string without clearing the pointer
+that the next repaint reads. Native therefore passes empty text instead of
+null. Before an icon is destroyed, it frees the label through
+`xview_private/icon_impl.h` and clears the pointer. This covers an icon
+being replaced, a default icon replaced by `FRAME_ICON` and a frame being
+destroyed.
+
+WINGs converts its miniwindow title through the locale, so Window Maker
+republishes the UTF-8 forms as it does for titles.
+
+Win32 taskbar buttons, Haiku's Deskbar and GTK shells label minimized
+windows with the title. SDL2 publishes its title as the icon name and has
+no separate call. GEM AES windows have no icon, and the GEMix desktop labels
+a program icon with its file name.
 
 ### GEM modeless menu ownership
 

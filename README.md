@@ -51,6 +51,13 @@ If you are looking for a straightforward, understandable UI library, or if you w
   stages whose base implementations retain standard native behavior
 - **Standard file dialogs**: Native open/save panels with one portable modal
   result, `std::filesystem::path`, and filter model
+- **Window icons**: One shared `img` passed to `app_wnd::set_icon()` is
+  fitted for each platform: Win32 `WM_SETICON`, SDL2, EWMH plus Xt/XView/WINGs
+  icons on X11 desktops, and the Dock image on macOS. On GEMix, the main
+  window writes a missing desktop program icon. `app_wnd::set_icon_text()`
+  sets the label under an iconified window on X11 desktops and in the macOS
+  Dock. See
+  [Window icon](docs/manuals/programming-native/01-FIRST-APPLICATION.md#window-icon)
 - **Persistent configuration**: Typed settings with implicit reads, assignment writes,
   defaults and optional timeout caching; uses native per-user stores on each OS
   under `app::get_name()` (the executable filename unless explicitly set).

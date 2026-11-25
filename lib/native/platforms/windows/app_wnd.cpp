@@ -131,6 +131,11 @@ namespace native
         SetWindowTextW(hwnd, wide.c_str());
     }
 
+    void app_wnd::apply_icon_text() {
+        // Minimized windows appear as taskbar buttons labelled with
+        // the window text, so the icon text is only cached.
+    }
+
     void app_wnd::apply_icon() {
         HWND hwnd = windows::wnd_bindings.handle_from_object(this);
         if (!hwnd)

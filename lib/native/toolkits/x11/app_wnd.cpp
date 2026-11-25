@@ -31,18 +31,25 @@ namespace
     // window managers prefer _NET_WM_NAME and do not display Xt's
     // legacy WM_NAME value by itself.
     void apply_shell_title(Widget shell, const std::string &title) {
-        XtVaSetValues(shell,
-                      XtNtitle,
-                      title.c_str(),
-                      XtNiconName,
-                      title.c_str(),
-                      nullptr);
+        XtVaSetValues(shell, XtNtitle, title.c_str(), nullptr);
 
         if (!XtIsRealized(shell))
             return;
 
         native::detail::set_x_window_title(
             XtDisplay(shell), XtWindow(shell), title);
+    }
+
+    // Publish the iconified-window label. Xt writes iconName at
+    // realization; the realized window then receives UTF-8 forms.
+    void apply_shell_icon_name(Widget shell, const std::string &text) {
+        XtVaSetValues(shell, XtNiconName, text.c_str(), nullptr);
+
+        if (!XtIsRealized(shell))
+            return;
+
+        native::detail::set_x_icon_name(
+            XtDisplay(shell), XtWindow(shell), text);
     }
 
     native::mouse_button decode_button(unsigned int button) {
@@ -310,6 +317,18 @@ namespace native
             XFlush(XtDisplay(shell));
     }
 
+    void app_wnd::apply_icon_text() {
+        Widget shell =
+            linux::x11::shell_bindings.handle_from_object(this);
+        if (!shell)
+            throw std::runtime_error(
+                "X11/Athena: Missing shell binding for app_wnd.");
+
+        apply_shell_icon_name(shell, get_effective_icon_text());
+        if (XtIsRealized(shell))
+            XFlush(XtDisplay(shell));
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
@@ -517,6 +536,7 @@ namespace native
                           self);
 
         linux::x11::wnd_bindings.register_pair(canvas, self);
+        apply_icon_text();
         if (_icon)
             apply_icon();
     }
@@ -538,6 +558,7 @@ namespace native
         XtRealizeWidget(shell);
         linux::x11::cached_display = XtDisplay(shell);
         apply_shell_title(shell, _title);
+        apply_shell_icon_name(shell, get_effective_icon_text());
         if (_icon)
             detail::publish_xt_shell_icon(shell, _icon.get());
         linux::x11::request_frame_extents(shell);

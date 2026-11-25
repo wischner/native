@@ -51,6 +51,11 @@ namespace native
         SDL_SetWindowTitle(window, _title.c_str());
     }
 
+    void app_wnd::apply_icon_text() {
+        // SDL2 publishes the title as its icon name and offers no
+        // separate label, so the text is only cached.
+    }
+
     void app_wnd::apply_icon() {
         SDL_Window *window =
             linux::sdl2::wnd_bindings.handle_from_object(this);

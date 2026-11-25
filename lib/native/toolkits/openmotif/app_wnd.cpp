@@ -248,6 +248,20 @@ namespace native
         detail::apply_xt_shell_icon(*this, shell, _icon.get());
     }
 
+    void app_wnd::apply_icon_text() {
+        Widget shell =
+            linux::openmotif::shell_bindings.handle_from_object(this);
+        if (!shell)
+            throw std::runtime_error(
+                "Motif: Missing shell binding for app_wnd.");
+
+        // dtwm and mwm label icons from the TopLevelShell iconName.
+        const std::string &text = get_effective_icon_text();
+        XtVaSetValues(shell, XtNiconName, text.c_str(), nullptr);
+        if (XtIsRealized(shell))
+            detail::set_x_icon_name(XtDisplay(shell), XtWindow(shell), text);
+    }
+
     void app_wnd::create_native() {
         validate_owner_created();
         Widget shell = nullptr;
@@ -372,6 +386,7 @@ namespace native
 
         this->menu.attach(
             *this);
+        apply_icon_text();
         if (_icon)
             apply_icon();
     }
@@ -398,6 +413,7 @@ namespace native
         const size requested = _bounds.d;
         XtRealizeWidget(shell);
         apply_title();
+        apply_icon_text();
         if (_icon)
             detail::publish_xt_shell_icon(shell, _icon.get());
         linux::openmotif::set_work_dimensions(this, requested);
